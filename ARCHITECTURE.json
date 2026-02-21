@@ -1,0 +1,1333 @@
+{
+  "project": {
+    "name": "DGLab PWA",
+    "version": "1.0.0",
+    "description": "A comprehensive Progressive Web Application framework with MVC architecture, API system, chunking capabilities, and modular tool integration for InfinityFree hosting",
+    "platform": "InfinityFree Free Hosting",
+    "requirements": {
+      "php": "8.0+",
+      "mysql": "5.7+",
+      "extensions": ["pdo", "pdo_mysql", "json", "mbstring", "zip", "xml", "gd"]
+    }
+  },
+
+  "architecture_overview": {
+    "title": "DGLab PWA Architecture Overview",
+    "description": "The DGLab PWA is built on a custom MVC (Model-View-Controller) OOP framework designed specifically for shared hosting environments like InfinityFree. The architecture emphasizes modularity, extensibility, and performance optimization through intelligent caching, asset bundling, and chunked processing capabilities. The framework follows PSR-4 autoloading standards and implements modern PHP 8+ features including typed properties, named arguments, match expressions, and constructor property promotion. The design philosophy centers on creating a lightweight yet powerful foundation that can accommodate various tools and services while maintaining clean separation of concerns.",
+
+    "core_principles": [
+      {
+        "principle": "Single Responsibility",
+        "description": "Each class and component handles exactly one concern. Controllers manage request flow, Models handle data operations, Views render presentation logic, and Services encapsulate business logic. This separation ensures maintainability and testability throughout the codebase."
+      },
+      {
+        "principle": "Dependency Injection",
+        "description": "The framework implements a lightweight dependency injection container that manages object creation and lifecycle. Dependencies are injected through constructors or setter methods, promoting loose coupling and facilitating unit testing through mock objects."
+      },
+      {
+        "principle": "Convention over Configuration",
+        "description": "Sensible defaults reduce configuration overhead. Controllers auto-map to URLs, models auto-associate with database tables, and views auto-render based on action names. Custom configurations override defaults only when necessary."
+      },
+      {
+        "principle": "Progressive Enhancement",
+        "description": "The PWA layer enhances the core application without requiring it. Users with modern browsers receive full offline capabilities, push notifications, and background sync, while older browsers gracefully degrade to standard web functionality."
+      },
+      {
+        "principle": "Modular Extensibility",
+        "description": "The Tools system provides a standardized interface for adding new functionality. Each tool is a self-contained module with its own routes, controllers, views, and services. The framework auto-discovers and registers tools at initialization."
+      }
+    ],
+
+    "design_patterns": [
+      {
+        "pattern": "Front Controller",
+        "description": "All requests funnel through a single entry point (index.php) which handles routing, authentication, and request preprocessing. This centralized approach enables consistent error handling, logging, and security measures across all endpoints."
+      },
+      {
+        "pattern": "Active Record",
+        "description": "Model classes extend a base Model class providing CRUD operations, relationships, and query building. Each model instance represents a database row with methods for persistence and retrieval operations."
+      },
+      {
+        "pattern": "Template View",
+        "description": "Views use a simple PHP-based templating system with layout inheritance, partials, and helper functions. Templates compile to native PHP for optimal performance without the overhead of external template engines."
+      },
+      {
+        "pattern": "Observer",
+        "description": "Events system allows decoupled communication between components. Models fire events on lifecycle changes (creating, created, updating, updated, deleting, deleted) that listeners can subscribe to for side effects like cache invalidation or audit logging."
+      },
+      {
+        "pattern": "Strategy",
+        "description": "Different processing strategies implement a common interface for file handling, allowing the chunking system to adapt processing based on file type, size, and available server resources."
+      },
+      {
+        "pattern": "Factory",
+        "description": "Tool factory creates and configures tool instances based on registration data. This abstracts tool instantiation complexity and ensures consistent initialization across all tools."
+      },
+      {
+        "pattern": "Adapter",
+        "description": "The asset bundling system adapts various asset types (SCSS, CSS, JS, images) to a unified bundling interface, handling compilation, minification, and optimization transparently."
+      }
+    ]
+  },
+
+  "directory_structure": {
+    "title": "Complete Directory Structure",
+    "description": "The project follows a logical directory organization that separates concerns while maintaining accessibility. The structure supports PSR-4 autoloading and clearly delineates framework code from application code, making updates and maintenance straightforward.",
+
+    "structure": {
+      "/": {
+        "type": "root",
+        "contents": [
+          "index.php - Application entry point and front controller",
+          "composer.json - Dependency management and autoloading configuration",
+          ".htaccess - Apache rewrite rules and security headers",
+          "robots.txt - Search engine crawling directives",
+          "manifest.json - PWA manifest for installation and theming"
+        ]
+      },
+      "app/": {
+        "type": "application",
+        "description": "Contains all application-specific code including controllers, models, views, and middleware. This directory houses the business logic unique to DGLab's tools and services.",
+        "contents": {
+          "Controllers/": "HTTP request handlers that orchestrate model interactions and view rendering",
+          "Models/": "Data access objects representing database entities with business logic",
+          "Views/": "Template files organized by controller with layouts and partials",
+          "Middleware/": "Request filters for authentication, rate limiting, CORS, and logging",
+          "Services/": "Business logic services that encapsulate complex operations",
+          "Helpers/": "Utility functions and helper classes for common operations"
+        }
+      },
+      "core/": {
+        "type": "framework",
+        "description": "Framework core classes that provide foundational functionality. This directory should rarely need modification and remains stable across application updates.",
+        "contents": {
+          "App.php": "Main application class managing lifecycle and dependency container",
+          "Router.php": "URL routing and dispatch system with RESTful support",
+          "Controller.php": "Base controller with common functionality",
+          "Model.php": "Active Record base class with query building",
+          "View.php": "Template rendering engine with layout support",
+          "Database.php": "PDO wrapper with query building and transaction support",
+          "Request.php": "HTTP request abstraction with input validation",
+          "Response.php": "HTTP response builder with format support",
+          "Session.php": "Session management with flash messages",
+          "Cache.php": "File-based caching system for shared hosting",
+          "Config.php": "Configuration loader with environment support",
+          "Container.php": "Dependency injection container",
+          "Event.php": "Event dispatcher and listener management",
+          "Logger.php": "Logging system with multiple channels",
+          "Security.php": "Security utilities for CSRF, XSS protection, and encryption"
+        }
+      },
+      "services/": {
+        "type": "tools",
+        "description": "Modular tool implementations following the ToolInterface. Each tool is self-contained with its own controllers, views, and business logic. The framework auto-discovers tools in this directory.",
+        "contents": {
+          "ToolInterface.php": "Contract that all tools must implement",
+          "ToolManager.php": "Tool registration, discovery, and lifecycle management",
+          "EpubFontChanger/": "First tool: Epub font modification with Epub 3 validation",
+          "PdfTools/": "Future tool: PDF manipulation suite",
+          "ImageTools/": "Future tool: Image processing and optimization"
+        }
+      },
+      "api/": {
+        "type": "api",
+        "description": "RESTful API controllers and middleware. API routes are versioned for backward compatibility and documented using OpenAPI specification.",
+        "contents": {
+          "v1/": "API version 1 controllers and endpoints",
+          "Middleware/": "API-specific middleware for rate limiting, authentication, and content negotiation",
+          "openapi.json": "OpenAPI 3.0 specification for API documentation"
+        }
+      },
+      "public/": {
+        "type": "public",
+        "description": "Web-accessible directory containing static assets, compiled CSS/JS, and the service worker. This is the document root for web server configuration.",
+        "contents": {
+          "index.php": "Entry point that boots the application",
+          "sw.js": "Service worker for offline functionality",
+          "css/": "Compiled and minified CSS bundles",
+          "js/": "Compiled and minified JavaScript bundles",
+          "fonts/": "Web fonts for tools and UI",
+          "images/": "Static images, icons, and logos",
+          "uploads/": "User uploaded files with organized subdirectories",
+          "work/": "Temporary working directory for file processing"
+        }
+      },
+      "assets/": {
+        "type": "source",
+        "description": "Source files for frontend assets before compilation. SCSS files, unminified JavaScript, and raw images live here. Build processes transform these into public assets.",
+        "contents": {
+          "scss/": "SCSS source files with variables, mixins, and components",
+          "js/": "JavaScript source files with ES6+ features and modules",
+          "images/": "Source images for optimization and processing"
+        }
+      },
+      "config/": {
+        "type": "configuration",
+        "description": "Configuration files for different environments and services. Environment-specific settings override defaults through a cascading configuration system.",
+        "contents": {
+          "app.php": "Application settings including debug mode and timezone",
+          "database.php": "Database connection parameters",
+          "routes.php": "Route definitions and URL patterns",
+          "services.php": "Service container bindings and aliases",
+          "tools.php": "Tool registration and configuration",
+          "cache.php": "Caching configuration and TTL settings",
+          "security.php": "Security settings for CSRF, rate limiting, and headers",
+          "mail.php": "Email configuration for notifications"
+        }
+      },
+      "templates/": {
+        "type": "templates",
+        "description": "Base template files for layouts, partials, and email templates. Views extend these templates for consistent UI presentation.",
+        "contents": {
+          "layouts/": "Base layouts (main, app, blank, print)",
+          "partials/": "Reusable UI components (header, footer, nav, alerts)",
+          "emails/": "Email templates for notifications",
+          "errors/": "Error page templates (404, 500, 403)"
+        }
+      },
+      "utils/": {
+        "type": "utilities",
+        "description": "Utility classes and helper functions for file operations, string manipulation, and common algorithms.",
+        "contents": {
+          "FileHandler.php": "File system operations with chunking support",
+          "ZipHandler.php": "ZIP file creation and extraction utilities",
+          "EpubValidator.php": "Epub 3 validation and compliance checking",
+          "FontManager.php": "Font file handling and conversion",
+          "XmlHandler.php": "XML parsing and manipulation utilities",
+          "ChunkProcessor.php": "Chunked file processing with progress tracking"
+        }
+      },
+      "storage/": {
+        "type": "storage",
+        "description": "Application storage for cache, logs, and temporary files. This directory should be outside the web root for security.",
+        "contents": {
+          "cache/": "File-based cache storage with TTL management",
+          "logs/": "Application and error logs with rotation",
+          "temp/": "Temporary file storage for processing operations",
+          "sessions/": "File-based session storage (alternative to database)"
+        }
+      }
+    }
+  },
+
+  "mvc_framework": {
+    "title": "MVC OOP Framework Implementation",
+    "description": "The framework implements a full MVC architecture with advanced features including middleware pipeline, dependency injection, event system, and intelligent routing. Built for PHP 8+, it leverages modern language features while maintaining compatibility with shared hosting environments.",
+
+    "core_classes": {
+      "App": {
+        "description": "The App class serves as the application bootstrap and lifecycle manager. It initializes the dependency container, loads configuration, registers services, and handles the request-response cycle. The singleton pattern ensures only one application instance exists throughout the request lifecycle.",
+        "responsibilities": [
+          "Boot sequence with service provider registration",
+          "Configuration loading and environment detection",
+          "Container binding and dependency resolution",
+          "Error and exception handling setup",
+          "Request processing and response sending",
+          "Shutdown cleanup and logging"
+        ],
+        "methods": {
+          "boot()": "Initializes all service providers and framework components in the correct order",
+          "handle(Request $request)": "Processes incoming request through middleware pipeline",
+          "terminate(Response $response)": "Sends response and performs cleanup operations",
+          "make(string $abstract)": "Resolves dependencies from the container",
+          "bind(string $abstract, Closure $concrete)": "Registers container bindings",
+          "singleton(string $abstract, Closure $concrete)": "Registers singleton bindings"
+        }
+      },
+
+      "Router": {
+        "description": "The Router handles URL to controller mapping with support for RESTful routing, route parameters, middleware attachment, and named routes. Routes are compiled to regex patterns for efficient matching, and the dispatcher resolves matched routes to controller actions.",
+        "responsibilities": [
+          "Route registration (GET, POST, PUT, PATCH, DELETE, OPTIONS)",
+          "Route group with shared prefix, middleware, and namespace",
+          "Route parameter extraction and validation",
+          "Middleware attachment to routes and groups",
+          "Named route generation for URL building",
+          "Route caching for production optimization"
+        ],
+        "methods": {
+          "get(string $path, $handler)": "Register GET route",
+          "post(string $path, $handler)": "Register POST route",
+          "put(string $path, $handler)": "Register PUT route",
+          "delete(string $path, $handler)": "Register DELETE route",
+          "group(array $attributes, Closure $callback)": "Create route group",
+          "match(string $method, string $path)": "Find matching route",
+          "dispatch(Route $route, Request $request)": "Execute matched route",
+          "url(string $name, array $params)": "Generate URL for named route"
+        },
+        "route_patterns": {
+          "{id}": "Matches numeric ID, passed as $id parameter",
+          "{slug}": "Matches alphanumeric slug with hyphens",
+          "{any}": "Matches any string segment",
+          "{file}": "Matches filename with extension"
+        }
+      },
+
+      "Controller": {
+        "description": "Base controller providing common functionality for all application controllers. Includes request/response handling, view rendering, model access, and helper methods. Controllers extend this base class to inherit shared capabilities.",
+        "responsibilities": [
+          "Request data retrieval and validation",
+          "Response building for various formats",
+          "View rendering with layout support",
+          "Model instantiation and database access",
+          "Authentication and authorization checks",
+          "Flash message handling"
+        ],
+        "methods": {
+          "request()": "Get current request instance",
+          "input(string $key = null)": "Get request input data",
+          "validate(array $rules)": "Validate request data",
+          "view(string $template, array $data)": "Render view template",
+          "json($data, int $status)": "Return JSON response",
+          "redirect(string $url, int $status)": "Return redirect response",
+          "back()": "Redirect to previous page",
+          "flash(string $key, $value)": "Set flash message",
+          "authorize($ability, $arguments)": "Check authorization"
+        }
+      },
+
+      "Model": {
+        "description": "Active Record implementation providing intuitive database interaction. Models map to database tables with automatic CRUD operations, relationship management, and query building. The base Model class handles property access, dirty tracking, and lifecycle events.",
+        "responsibilities": [
+          "Table mapping and primary key configuration",
+          "CRUD operations (Create, Read, Update, Delete)",
+          "Relationship definitions (hasOne, hasMany, belongsTo, belongsToMany)",
+          "Query building with fluent interface",
+          "Attribute casting and accessor/mutator support",
+          "Model events and observers",
+          "Mass assignment protection",
+          "Soft deletes and timestamps"
+        ],
+        "methods": {
+          "all()": "Retrieve all records",
+          "find($id)": "Find by primary key",
+          "where(string $column, $operator, $value)": "Add WHERE clause",
+          "orderBy(string $column, string $direction)": "Add ORDER BY",
+          "limit(int $count)": "Limit results",
+          "first()": "Get first result",
+          "get()": "Execute query and get results",
+          "create(array $attributes)": "Create new record",
+          "update(array $attributes)": "Update record",
+          "delete()": "Delete record",
+          "save()": "Persist changes to database"
+        },
+        "relationships": {
+          "hasOne": "One-to-one relationship, returns single model",
+          "hasMany": "One-to-many relationship, returns collection",
+          "belongsTo": "Inverse one-to-one or one-to-many",
+          "belongsToMany": "Many-to-many with pivot table"
+        }
+      },
+
+      "View": {
+        "description": "Template rendering engine supporting layouts, partials, sections, and helper functions. Views are standard PHP files with access to framework helpers. The engine handles template inheritance, escaping, and asset injection.",
+        "responsibilities": [
+          "Template file resolution and loading",
+          "Layout inheritance with sections",
+          "Partial rendering and reuse",
+          "Data extraction and variable scope",
+          "Output escaping for XSS prevention",
+          "Asset bundling integration"
+        ],
+        "methods": {
+          "render(string $template, array $data)": "Render template with data",
+          "extends(string $layout)": "Declare parent layout",
+          "section(string $name)": "Begin content section",
+          "endSection()": "End content section",
+          "yield(string $name)": "Output section content",
+          "include(string $partial, array $data)": "Include partial template",
+          "escape(string $content)": "HTML escape output",
+          "asset(string $path)": "Generate asset URL with cache busting"
+        }
+      },
+
+      "Database": {
+        "description": "PDO wrapper providing a clean interface for database operations with automatic connection management, query building, transaction support, and prepared statement handling. Designed for MySQL with graceful degradation for shared hosting limitations.",
+        "responsibilities": [
+          "Connection management with lazy loading",
+          "Prepared statement execution",
+          "Transaction support (begin, commit, rollback)",
+          "Query building for SELECT, INSERT, UPDATE, DELETE",
+          "Error handling with detailed logging",
+          "Connection pooling simulation for shared hosting"
+        ],
+        "methods": {
+          "connection()": "Get PDO connection instance",
+          "query(string $sql, array $params)": "Execute query",
+          "select(string $sql, array $params)": "Select rows",
+          "selectOne(string $sql, array $params)": "Select single row",
+          "insert(string $table, array $data)": "Insert record",
+          "update(string $table, array $data, array $where)": "Update records",
+          "delete(string $table, array $where)": "Delete records",
+          "transaction(Closure $callback)": "Execute in transaction",
+          "lastInsertId()": "Get last insert ID",
+          "table(string $name)": "Begin query builder chain"
+        }
+      },
+
+      "Request": {
+        "description": "HTTP request abstraction providing access to request data, headers, files, and metadata. Handles input sanitization, file upload processing, and request validation.",
+        "responsibilities": [
+          "HTTP method and path access",
+          "Query string and body parameter access",
+          "File upload handling",
+          "Header access and content negotiation",
+          "Input validation and sanitization",
+          "Request state management"
+        ],
+        "properties": {
+          "method": "HTTP method (GET, POST, PUT, DELETE)",
+          "path": "Request path without query string",
+          "query": "Query parameters array",
+          "body": "Request body (parsed JSON or form data)",
+          "headers": "Request headers array",
+          "files": "Uploaded files array",
+          "ip": "Client IP address"
+        },
+        "methods": {
+          "input(string $key = null, $default = null)": "Get input value",
+          "query(string $key = null, $default = null)": "Get query parameter",
+          "file(string $key)": "Get uploaded file",
+          "header(string $key, $default = null)": "Get header value",
+          "has(string $key)": "Check if input exists",
+          "filled(string $key)": "Check if input exists and is not empty",
+          "validate(array $rules)": "Validate request",
+          "isMethod(string $method)": "Check request method",
+          "expectsJson()": "Check if JSON response expected",
+          "wantsJson()": "Check if client accepts JSON"
+        }
+      },
+
+      "Response": {
+        "description": "HTTP response builder supporting multiple content types, status codes, headers, and cookies. Provides convenient methods for common response types.",
+        "responsibilities": [
+          "Response content management",
+          "Status code handling",
+          "Header management",
+          "Cookie setting",
+          "Content type negotiation",
+          "Response caching headers"
+        ],
+        "methods": {
+          "make($content, int $status)": "Create response",
+          "json($data, int $status)": "Create JSON response",
+          "view(string $template, array $data, int $status)": "Create view response",
+          "redirect(string $url, int $status)": "Create redirect response",
+          "download(string $file, string $name)": "Create file download response",
+          "stream($callback, string $disposition)": "Create streaming response",
+          "header(string $key, string $value)": "Add header",
+          "cookie(string $name, $value, int $minutes)": "Set cookie",
+          "status(int $code)": "Set status code",
+          "send()": "Send response to browser"
+        }
+      }
+    },
+
+    "middleware_pipeline": {
+      "description": "Middleware provides a filtering mechanism for HTTP requests. Each middleware can inspect, modify, or reject requests before they reach the controller. The pipeline processes middleware in order, passing the request through each layer.",
+      "built_in_middleware": [
+        {
+          "name": "AuthMiddleware",
+          "description": "Checks user authentication status, redirects unauthenticated users to login page or returns 401 for API requests"
+        },
+        {
+          "name": "GuestMiddleware",
+          "description": "Restricts access to unauthenticated users only, useful for login and register pages"
+        },
+        {
+          "name": "AdminMiddleware",
+          "description": "Requires admin role for access, returns 403 for unauthorized users"
+        },
+        {
+          "name": "RateLimitMiddleware",
+          "description": "Limits request rate per IP address with configurable limits and window"
+        },
+        {
+          "name": "CorsMiddleware",
+          "description": "Handles Cross-Origin Resource Sharing headers for API endpoints"
+        },
+        {
+          "name": "CsrfMiddleware",
+          "description": "Validates CSRF token for POST, PUT, DELETE requests"
+        },
+        {
+          "name": "SanitizeMiddleware",
+          "description": "Sanitizes input data to prevent XSS and injection attacks"
+        },
+        {
+          "name": "LoggingMiddleware",
+          "description": "Logs request details for debugging and analytics"
+        },
+        {
+          "name": "MaintenanceMiddleware",
+          "description": "Shows maintenance page when application is in maintenance mode"
+        }
+      ],
+      "pipeline_flow": "Request → Middleware 1 → Middleware 2 → ... → Controller → Middleware N (response) → Response"
+    }
+  },
+
+  "api_system": {
+    "title": "RESTful API System",
+    "description": "The API system provides RESTful endpoints for programmatic access to DGLab services. Built with versioning, authentication, rate limiting, and comprehensive documentation. The API follows JSON:API specification conventions for consistent response structure.",
+
+    "versioning": {
+      "strategy": "URL-based versioning (/api/v1/, /api/v2/)",
+      "description": "Major version changes introduce breaking changes and get new version prefix. Minor version changes are backward compatible and don't require version increment.",
+      "current_version": "v1",
+      "deprecation_policy": "Deprecated endpoints return warning header, removed after 6 months"
+    },
+
+    "authentication": {
+      "type": "Token-based",
+      "description": "API tokens are generated per user and can be scoped to specific permissions. Tokens are passed via Authorization header using Bearer scheme.",
+      "header": "Authorization: Bearer {token}",
+      "token_types": [
+        {
+          "type": "Personal Access Token",
+          "description": "Long-lived tokens for personal API access, user-controlled"
+        },
+        {
+          "type": "Service Token",
+          "description": "Server-to-server authentication with expanded permissions"
+        }
+      ]
+    },
+
+    "rate_limiting": {
+      "default_limits": {
+        "anonymous": "60 requests per minute",
+        "authenticated": "300 requests per minute",
+        "service": "1000 requests per minute"
+      },
+      "headers": [
+        "X-RateLimit-Limit: Maximum requests per window",
+        "X-RateLimit-Remaining: Remaining requests in current window",
+        "X-RateLimit-Reset: Unix timestamp when window resets"
+      ],
+      "exceeded_response": {
+        "status": 429,
+        "message": "Rate limit exceeded. Please retry after {seconds} seconds."
+      }
+    },
+
+    "response_format": {
+      "success": {
+        "structure": {
+          "success": "boolean - always true for success",
+          "data": "object|array - response payload",
+          "meta": "object - pagination, totals, metadata (optional)"
+        }
+      },
+      "error": {
+        "structure": {
+          "success": "boolean - always false for errors",
+          "error": {
+            "code": "string - error code",
+            "message": "string - human-readable message",
+            "details": "array - validation errors or additional info (optional)"
+          }
+        }
+      }
+    },
+
+    "endpoints": {
+      "tools": [
+        {
+          "method": "GET",
+          "path": "/api/v1/tools",
+          "description": "List all available tools with metadata"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/tools/{id}",
+          "description": "Get specific tool details and capabilities"
+        }
+      ],
+      "epub_font_changer": [
+        {
+          "method": "POST",
+          "path": "/api/v1/epub/font-change",
+          "description": "Change fonts in uploaded Epub file",
+          "request": {
+            "file": "Epub file (multipart/form-data)",
+            "fonts": "Array of font definitions",
+            "options": "Processing options (embed, subset, etc.)"
+          },
+          "response": {
+            "download_url": "URL to download processed file",
+            "changes": "List of font changes applied",
+            "validation": "Epub 3 validation results"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/epub/fonts",
+          "description": "List available fonts for embedding"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/epub/analyze",
+          "description": "Analyze Epub structure and existing fonts"
+        }
+      ],
+      "jobs": [
+        {
+          "method": "GET",
+          "path": "/api/v1/jobs/{id}",
+          "description": "Get job status for async operations"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/jobs/{id}",
+          "description": "Cancel running job"
+        }
+      ]
+    }
+  },
+
+  "chunking_system": {
+    "title": "File Chunking System",
+    "description": "The chunking system enables processing of large files that would otherwise exceed PHP memory limits or execution time constraints on shared hosting. Files are processed in configurable chunks with progress tracking and resumable operations.",
+
+    "architecture": {
+      "ChunkProcessor": {
+        "description": "Main processor class that coordinates chunked file operations. Implements the Strategy pattern to adapt processing based on file type and operation requirements.",
+        "features": [
+          "Configurable chunk size based on available memory",
+          "Progress callback support for UI updates",
+          "Pause, resume, and cancel operations",
+          "Automatic memory management",
+          "Error recovery and retry logic"
+        ],
+        "methods": {
+          "process(string $file, array $options)": "Start chunked processing",
+          "pause()": "Pause current operation",
+          "resume()": "Resume paused operation",
+          "cancel()": "Cancel operation and cleanup",
+          "getProgress()": "Get current progress percentage",
+          "getStatus()": "Get detailed status information"
+        }
+      },
+
+      "ChunkStorage": {
+        "description": "Manages temporary storage for chunk data and processing state. Handles cleanup of orphaned chunks and provides atomic operations for chunk assembly.",
+        "features": [
+          "Chunk file management",
+          "State persistence across requests",
+          "Atomic chunk assembly",
+          "Automatic cleanup of expired chunks",
+          "Storage quota management"
+        ]
+      }
+    },
+
+    "upload_chunking": {
+      "description": "Large file uploads are chunked on the client side and reassembled on the server. This approach avoids PHP upload limits and provides progress feedback.",
+      "process": [
+        "1. Client requests upload session with file metadata",
+        "2. Server creates upload session and returns chunk size",
+        "3. Client uploads chunks sequentially with progress",
+        "4. Server validates and stores each chunk",
+        "5. Client signals upload completion",
+        "6. Server assembles chunks and validates complete file"
+      ],
+      "features": [
+        "Resumable uploads across sessions",
+        "Checksum validation per chunk",
+        "Parallel chunk upload support",
+        "Automatic chunk size optimization"
+      ]
+    },
+
+    "processing_chunking": {
+      "description": "File processing operations use chunking to handle large files within memory constraints. The processor streams through the file in chunks, maintaining state between iterations.",
+      "supported_operations": [
+        "ZIP file extraction and creation",
+        "XML parsing and modification",
+        "Font file processing",
+        "Image manipulation",
+        "Text processing and encoding"
+      ],
+      "memory_strategy": {
+        "available_memory": "Detected from PHP memory_limit",
+        "chunk_size": "Calculated as 50% of available memory",
+        "buffer_size": "8KB for streaming operations",
+        "gc_threshold": "Trigger garbage collection at 75% memory usage"
+      }
+    }
+  },
+
+  "asset_bundling": {
+    "title": "Asset Bundling System",
+    "description": "The asset bundling system compiles, optimizes, and bundles CSS and JavaScript assets for production. Designed for shared hosting environments without Node.js access, it provides PHP-based compilation with optional external build tools for development.",
+
+    "scss_processing": {
+      "description": "SCSS files are compiled to CSS using a PHP-based SCSS parser. Variables, mixins, and functions are resolved at compile time. The output is minified and combined into bundle files.",
+      "features": [
+        "Variable resolution and substitution",
+        "Mixin expansion and inclusion",
+        "@import flattening and inlining",
+        "Source map generation (development)",
+        "Autoprefixer for browser compatibility",
+        "CSS minification and optimization"
+      ],
+      "compilation_process": [
+        "1. Parse SCSS files into AST",
+        "2. Resolve imports and dependencies",
+        "3. Evaluate variables and mixins",
+        "4. Generate CSS output",
+        "5. Apply autoprefixer for vendor prefixes",
+        "6. Minify CSS (remove whitespace, comments)",
+        "7. Generate source map (if enabled)",
+        "8. Write bundle file with cache-busting hash"
+      ]
+    },
+
+    "javascript_processing": {
+      "description": "JavaScript files are concatenated and minified. ES6+ syntax can be transpiled for older browser support using PHP-based transformers or pre-built bundles.",
+      "features": [
+        "File concatenation in dependency order",
+        "Comment and whitespace removal",
+        "Variable name shortening (optional)",
+        "Dead code elimination",
+        "Source map generation",
+        "Module bundling (IIFE wrapping)"
+      ]
+    },
+
+    "bundle_management": {
+      "manifest": {
+        "description": "A manifest.json file maps logical bundle names to their physical files with cache-busting hashes. This enables automatic cache invalidation when assets change.",
+        "structure": {
+          "css/app.css": "css/app.a1b2c3d4.css",
+          "js/app.js": "js/app.e5f6g7h8.js",
+          "css/tool-epub.css": "css/tool-epub.i9j0k1l2.css"
+        }
+      },
+
+      "helper_function": {
+        "name": "asset()",
+        "description": "Template helper that resolves bundle names to versioned filenames using the manifest",
+        "usage": "<link href=\"<?= asset('css/app.css') ?>\" rel=\"stylesheet\">",
+        "output": "<link href=\"/css/app.a1b2c3d4.css\" rel=\"stylesheet\">"
+      }
+    },
+
+    "cache_strategy": {
+      "description": "Assets use aggressive caching with cache-busting hashes in filenames. This allows long cache expiration times while ensuring users receive updated assets immediately.",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Expires": "One year from request"
+      },
+      "invalidation": "Filename hash changes force browser to fetch new version"
+    }
+  },
+
+  "pwa_features": {
+    "title": "Progressive Web Application Features",
+    "description": "DGLab implements full PWA capabilities including offline support, installability, and background processing. The service worker handles caching strategies and offline fallbacks.",
+
+    "manifest": {
+      "name": "DGLab - Digital Laboratory Tools",
+      "short_name": "DGLab",
+      "description": "A collection of digital document processing tools",
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#1a1a2e",
+      "theme_color": "#4a90d9",
+      "orientation": "any",
+      "icons": [
+        { "src": "/images/icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
+        { "src": "/images/icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
+        { "src": "/images/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+        { "src": "/images/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+        { "src": "/images/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+        { "src": "/images/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/images/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+        { "src": "/images/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+      ],
+      "categories": ["utilities", "productivity"],
+      "screenshots": [
+        { "src": "/images/screenshots/desktop.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide" },
+        { "src": "/images/screenshots/mobile.png", "sizes": "750x1334", "type": "image/png", "form_factor": "narrow" }
+      ]
+    },
+
+    "service_worker": {
+      "caching_strategies": {
+        "cache_first": {
+          "description": "For static assets that rarely change (images, fonts)",
+          "strategy": "Serve from cache, update in background"
+        },
+        "network_first": {
+          "description": "For dynamic content that needs freshness",
+          "strategy": "Try network, fall back to cache"
+        },
+        "stale_while_revalidate": {
+          "description": "For content that can be slightly stale",
+          "strategy": "Serve from cache, update in background"
+        }
+      },
+      "offline_support": {
+        "offline_page": "/offline.html",
+        "cached_routes": [
+          "/",
+          "/tools",
+          "/epub-font-changer",
+          "/css/app.css",
+          "/js/app.js"
+        ],
+        "offline_features": [
+          "Access previously visited pages",
+          "View cached tool results",
+          "Queue operations for sync when online"
+        ]
+      },
+      "background_sync": {
+        "description": "Background sync enables offline operations to be processed when connectivity is restored",
+        "supported_operations": [
+          "File uploads queued while offline",
+          "Processing jobs scheduled without connection",
+          "Form submissions deferred until online"
+        ]
+      }
+    },
+
+    "installability": {
+      "trigger": "beforeinstallprompt event captured and shown via custom UI",
+      "requirements": [
+        "Valid manifest.json with required fields",
+        "Service worker registered and active",
+        "Site served over HTTPS (InfinityFree provides this)",
+        "User engagement heuristic met (time on site, interactions)",
+        "No existing install prompt dismissed recently"
+      ]
+    }
+  },
+
+  "tools_system": {
+    "title": "Modular Tools System",
+    "description": "The tools system provides a standardized architecture for adding new functionality to DGLab. Each tool is a self-contained module with its own routes, controllers, views, services, and dependencies. The framework auto-discovers tools and integrates them seamlessly.",
+
+    "ToolInterface": {
+      "description": "Contract that all tools must implement, defining the lifecycle methods and metadata accessors.",
+      "methods": {
+        "getId()": "Returns unique tool identifier (slug)",
+        "getName()": "Returns human-readable tool name",
+        "getDescription()": "Returns tool description for UI and API",
+        "getIcon()": "Returns icon class or SVG for UI",
+        "getVersion()": "Returns tool version string",
+        "registerRoutes(Router $router)": "Register tool-specific routes",
+        "registerServices(Container $container)": "Register tool services",
+        "boot()": "Initialize tool after registration",
+        "getPermissions()": "Return required permissions array",
+        "getDependencies()": "Return required PHP extensions"
+      }
+    },
+
+    "ToolManager": {
+      "description": "Manages tool discovery, registration, and lifecycle. Scans the services directory for tool implementations and integrates them with the framework.",
+      "responsibilities": [
+        "Discover tools in services directory",
+        "Validate tool implementations",
+        "Register tool routes and services",
+        "Manage tool activation/deactivation",
+        "Provide tool listing for UI and API"
+      ],
+      "methods": {
+        "discover()": "Scan for tool implementations",
+        "register(ToolInterface $tool)": "Register tool instance",
+        "getTool(string $id)": "Get tool by ID",
+        "getTools()": "Get all registered tools",
+        "hasTool(string $id)": "Check if tool exists",
+        "bootTools()": "Initialize all registered tools"
+      }
+    },
+
+    "tool_structure": {
+      "description": "Each tool follows a consistent directory structure within the services directory.",
+      "structure": {
+        "ToolName/": {
+          "ToolNameTool.php": "Main tool class implementing ToolInterface",
+          "Controllers/": "Tool-specific controllers",
+          "Models/": "Tool-specific models",
+          "Views/": "Tool-specific view templates",
+          "Services/": "Tool-specific business logic",
+          "routes.php": "Route definitions (alternative to registerRoutes)",
+          "config.php": "Tool configuration"
+        }
+      }
+    },
+
+    "extensibility": {
+      "description": "Adding a new tool requires minimal boilerplate. The framework handles integration automatically once the tool class is created.",
+      "steps_to_add_tool": [
+        "1. Create directory in services/ with tool name",
+        "2. Create main tool class implementing ToolInterface",
+        "3. Define routes and controllers",
+        "4. Create views and assets",
+        "5. Tool is auto-discovered and integrated"
+      ],
+      "hooks": [
+        "tool.registered - Fired when tool is registered",
+        "tool.booted - Fired when tool is initialized",
+        "tool.activated - Fired when tool is activated",
+        "tool.deactivated - Fired when tool is deactivated"
+      ]
+    }
+  },
+
+  "epub_font_changer": {
+    "title": "Epub Font Changer Tool",
+    "description": "The first implemented tool in DGLab, providing comprehensive font modification for Epub files with full Epub 3 compliance validation. Handles complex font embedding, subsetting, and CSS modification while maintaining document integrity.",
+
+    "features": {
+      "font_operations": [
+        "Replace existing fonts with user-selected fonts",
+        "Embed new fonts into Epub package",
+        "Subset fonts to reduce file size",
+        "Convert font formats for compatibility",
+        "Extract existing fonts for analysis"
+      ],
+      "css_handling": [
+        "Parse and modify CSS font declarations",
+        "Update @font-face rules",
+        "Modify font-family references in styles",
+        "Preserve CSS formatting and comments",
+        "Handle inline styles in HTML content"
+      ],
+      "validation": [
+        "Epub 3.2 specification compliance checking",
+        "Font embedding requirements validation",
+        "CSS syntax validation",
+        "File structure verification",
+        "OPF manifest integrity check"
+      ],
+      "output": [
+        "Valid Epub 3.2 output file",
+        "Detailed change report",
+        "Font usage analysis",
+        "Error and warning summary",
+        "Download link with expiration"
+      ]
+    },
+
+    "architecture": {
+      "EpubFontChangerTool": {
+        "description": "Main tool class implementing ToolInterface, orchestrates font change operations",
+        "dependencies": [
+          "EpubHandler - Epub file manipulation",
+          "FontManager - Font file processing",
+          "CssHandler - CSS parsing and modification",
+          "EpubValidator - Epub 3 compliance checking"
+        ]
+      },
+      "EpubHandler": {
+        "description": "Handles Epub file operations including extraction, modification, and repackaging",
+        "methods": {
+          "extract(string $file)": "Extract Epub to working directory",
+          "getOpfPath()": "Get path to OPF file",
+          "getManifest()": "Parse OPF manifest",
+          "getSpine()": "Parse OPF spine",
+          "getContentDocuments()": "Get all content documents",
+          "addFile(string $path, string $content, string $mimeType)": "Add file to package",
+          "removeFile(string $path)": "Remove file from package",
+          "repackage(string $outputPath)": "Create Epub from working directory"
+        }
+      },
+      "FontManager": {
+        "description": "Manages font files including conversion, subsetting, and analysis",
+        "methods": {
+          "analyzeFont(string $file)": "Get font metadata and metrics",
+          "convertFormat(string $file, string $format)": "Convert between font formats",
+          "subsetFont(string $file, string $chars)": "Create font subset",
+          "getSupportedFormats()": "List supported font formats",
+          "getCssFontFace(array $font)": "Generate @font-face CSS"
+        }
+      },
+      "CssHandler": {
+        "description": "Parses and modifies CSS within Epub content",
+        "methods": {
+          "parse(string $css)": "Parse CSS into object model",
+          "findFontDeclarations()": "Find all font-related declarations",
+          "replaceFont(string $oldFont, string $newFont)": "Replace font references",
+          "addFontFace(array $font)": "Add @font-face rule",
+          "render()": "Render CSS back to string"
+        }
+      },
+      "EpubValidator": {
+        "description": "Validates Epub 3 compliance",
+        "checks": [
+          "Container structure (META-INF/container.xml)",
+          "OPF file validity (package, metadata, manifest, spine)",
+          "Navigation document (nav.xhtml)",
+          "Content document validity (XHTML5)",
+          "Media type declarations",
+          "Font obfuscation compliance",
+          "Unique identifier and UUID"
+        ]
+      }
+    },
+
+    "processing_workflow": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "Upload and Validation",
+          "description": "User uploads Epub file. System validates file structure and extracts to working directory."
+        },
+        {
+          "step": 2,
+          "name": "Analysis",
+          "description": "Analyze existing fonts, CSS declarations, and content documents. Build font usage map."
+        },
+        {
+          "step": 3,
+          "name": "Font Processing",
+          "description": "Process new fonts (convert format, subset if requested). Generate @font-face rules."
+        },
+        {
+          "step": 4,
+          "name": "CSS Modification",
+          "description": "Update CSS files with new font declarations. Modify font-family references in content."
+        },
+        {
+          "step": 5,
+          "name": "Package Update",
+          "description": "Add font files to Epub package. Update OPF manifest with font items."
+        },
+        {
+          "step": 6,
+          "name": "Validation",
+          "description": "Run Epub 3 validation checks. Generate report of any issues."
+        },
+        {
+          "step": 7,
+          "name": "Packaging",
+          "description": "Repackage Epub with changes. Store for download with expiration."
+        }
+      ]
+    },
+
+    "api_endpoints": {
+      "POST /api/v1/epub/font-change": {
+        "request": {
+          "file": "Epub file (multipart/form-data)",
+          "fonts": [
+            {
+              "original": "Original font name to replace",
+              "replacement": "Replacement font file or name",
+              "embed": "Boolean - embed font in Epub",
+              "subset": "Boolean - create font subset"
+            }
+          ],
+          "options": {
+            "validate_output": "Boolean - run Epub 3 validation",
+            "preserve_original": "Boolean - keep original fonts"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "job_id": "Unique job identifier for async operations",
+            "download_url": "URL to download processed file",
+            "changes": [
+              {
+                "type": "font_replaced",
+                "from": "Old Font",
+                "to": "New Font",
+                "files_affected": 12
+              }
+            ],
+            "validation": {
+              "valid": true,
+              "warnings": [],
+              "errors": []
+            },
+            "file_size": {
+              "original": 1024000,
+              "processed": 980000,
+              "difference": -44000
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "database_schema": {
+    "title": "MySQL Database Schema",
+    "description": "Database schema supporting user management, job tracking, file storage, and tool configuration. Designed for efficient queries on shared hosting with proper indexing.",
+
+    "tables": {
+      "users": {
+        "description": "User accounts with authentication data",
+        "columns": {
+          "id": "BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT",
+          "email": "VARCHAR(255) UNIQUE NOT NULL",
+          "password_hash": "VARCHAR(255) NOT NULL",
+          "name": "VARCHAR(255)",
+          "role": "ENUM('user', 'admin') DEFAULT 'user'",
+          "api_token": "VARCHAR(64) UNIQUE",
+          "email_verified_at": "TIMESTAMP NULL",
+          "remember_token": "VARCHAR(100)",
+          "preferences": "JSON",
+          "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "updated_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+        },
+        "indexes": ["email", "api_token"]
+      },
+
+      "jobs": {
+        "description": "Async job tracking for long-running operations",
+        "columns": {
+          "id": "BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT",
+          "user_id": "BIGINT UNSIGNED",
+          "tool_id": "VARCHAR(100) NOT NULL",
+          "status": "ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'pending'",
+          "progress": "INT DEFAULT 0",
+          "input_file": "VARCHAR(255)",
+          "output_file": "VARCHAR(255)",
+          "options": "JSON",
+          "result": "JSON",
+          "error_message": "TEXT",
+          "started_at": "TIMESTAMP NULL",
+          "completed_at": "TIMESTAMP NULL",
+          "expires_at": "TIMESTAMP NULL",
+          "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        },
+        "indexes": ["user_id", "status", "tool_id"]
+      },
+
+      "files": {
+        "description": "Uploaded and generated file metadata",
+        "columns": {
+          "id": "BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT",
+          "user_id": "BIGINT UNSIGNED",
+          "job_id": "BIGINT UNSIGNED",
+          "type": "ENUM('input', 'output', 'temporary')",
+          "original_name": "VARCHAR(255)",
+          "stored_name": "VARCHAR(255)",
+          "mime_type": "VARCHAR(100)",
+          "size": "BIGINT UNSIGNED",
+          "hash": "VARCHAR(64)",
+          "expires_at": "TIMESTAMP NULL",
+          "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        },
+        "indexes": ["user_id", "job_id", "hash"]
+      },
+
+      "cache": {
+        "description": "Application cache storage",
+        "columns": {
+          "key": "VARCHAR(255) PRIMARY KEY",
+          "value": "LONGTEXT",
+          "expiration": "INT UNSIGNED"
+        }
+      },
+
+      "sessions": {
+        "description": "User session storage",
+        "columns": {
+          "id": "VARCHAR(255) PRIMARY KEY",
+          "user_id": "BIGINT UNSIGNED",
+          "ip_address": "VARCHAR(45)",
+          "user_agent": "TEXT",
+          "payload": "TEXT",
+          "last_activity": "INT UNSIGNED"
+        },
+        "indexes": ["user_id", "last_activity"]
+      },
+
+      "rate_limits": {
+        "description": "Rate limiting counters",
+        "columns": {
+          "key": "VARCHAR(255) PRIMARY KEY",
+          "count": "INT UNSIGNED DEFAULT 0",
+          "reset_at": "INT UNSIGNED"
+        }
+      },
+
+      "tool_settings": {
+        "description": "Per-user tool configuration",
+        "columns": {
+          "id": "BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT",
+          "user_id": "BIGINT UNSIGNED",
+          "tool_id": "VARCHAR(100) NOT NULL",
+          "settings": "JSON",
+          "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "updated_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+        },
+        "indexes": ["user_id", "tool_id"],
+        "unique": ["user_id", "tool_id"]
+      }
+    }
+  },
+
+  "security_measures": {
+    "title": "Security Implementation",
+    "description": "Comprehensive security measures protecting against common web vulnerabilities while maintaining usability on shared hosting.",
+
+    "csrf_protection": {
+      "description": "Cross-Site Request Forgery protection using token-based validation",
+      "implementation": [
+        "Token generated per session",
+        "Token included in forms via hidden field",
+        "Token validated on POST/PUT/DELETE requests",
+        "Token regenerated on authentication state change"
+      ]
+    },
+
+    "xss_prevention": {
+      "description": "Cross-Site Scripting prevention through output escaping and content security",
+      "implementation": [
+        "Automatic HTML escaping in templates",
+        "Content Security Policy headers",
+        "Input sanitization middleware",
+        "HTTP-only and Secure cookie flags"
+      ]
+    },
+
+    "sql_injection": {
+      "description": "SQL Injection prevention through prepared statements",
+      "implementation": [
+        "PDO prepared statements for all queries",
+        "Parameter binding with type hints",
+        "Query builder escaping",
+        "No raw SQL without explicit whitelist"
+      ]
+    },
+
+    "file_upload": {
+      "description": "Secure file upload handling",
+      "implementation": [
+        "MIME type validation",
+        "File extension whitelist",
+        "Maximum file size enforcement",
+        "Virus scanning integration (when available)",
+        "Random filename generation",
+        "Storage outside web root when possible"
+      ]
+    },
+
+    "authentication": {
+      "description": "Secure authentication implementation",
+      "implementation": [
+        "Password hashing with bcrypt (cost 12)",
+        "Rate limiting on login attempts",
+        "Account lockout after failed attempts",
+        "Secure password reset flow",
+        "Remember me with secure tokens"
+      ]
+    },
+
+    "headers": {
+      "description": "Security headers applied to all responses",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+        "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+      }
+    }
+  },
+
+  "deployment": {
+    "title": "InfinityFree Deployment Configuration",
+    "description": "Specific configurations and optimizations for InfinityFree hosting environment.",
+
+    "requirements": {
+      "php_version": "8.0 or higher (check with phpinfo)",
+      "mysql_version": "5.7 or MariaDB 10.2",
+      "required_extensions": ["pdo", "pdo_mysql", "json", "mbstring", "zip", "xml", "gd"],
+      "upload_limit": "10MB default (configurable via .htaccess)",
+      "execution_time": "30 seconds default (configurable via .htaccess)"
+    },
+
+    "htaccess_configuration": {
+      "rewrite_rules": "Enable clean URLs with mod_rewrite",
+      "php_settings": "Override PHP settings for upload limits and execution time",
+      "security_headers": "Add security headers not available in PHP",
+      "caching": "Enable browser caching for static assets",
+      "compression": "Enable gzip compression for text-based assets"
+    },
+
+    "environment_setup": {
+      "steps": [
+        "1. Create MySQL database via InfinityFree control panel",
+        "2. Note database credentials (host, name, user, password)",
+        "3. Upload all files to htdocs directory",
+        "4. Copy .env.example to .env and configure",
+        "5. Run database migrations via /install endpoint",
+        "6. Create admin user via installation wizard",
+        "7. Remove or protect /install endpoint",
+        "8. Configure cron jobs for cleanup (via external cron service)"
+      ]
+    },
+
+    "limitations_workarounds": {
+      "no_ssh": "All administrative tasks via web interface or external cron services",
+      "no_composer": "Dependencies included in distribution, no runtime composer needed",
+      "no_nodejs": "Assets pre-compiled, PHP-based build process for development",
+      "execution_timeout": "Chunking system for long-running operations",
+      "memory_limit": "Stream processing for large files",
+      "email_limitation": "Use external SMTP service for notifications"
+    }
+  },
+
+  "future_tools": {
+    "title": "Planned Future Tools",
+    "description": "The modular architecture enables easy addition of new tools. Planned tools include document conversion, image processing, and text manipulation utilities.",
+
+    "planned": [
+      {
+        "name": "PDF Toolkit",
+        "description": "PDF manipulation including merge, split, rotate, watermark, and page extraction",
+        "dependencies": ["smalot/pdfparser", "fpdf", "fpdi"]
+      },
+      {
+        "name": "Image Processor",
+        "description": "Image resizing, format conversion, compression, and watermarking",
+        "dependencies": ["gd extension", "exif extension"]
+      },
+      {
+        "name": "Text Tools",
+        "description": "Text encoding conversion, line ending normalization, and format detection",
+        "dependencies": ["mbstring extension", "iconv extension"]
+      },
+      {
+        "name": "Archive Manager",
+        "description": "Archive extraction, creation, and conversion between formats",
+        "dependencies": ["zip extension", "phar extension"]
+      },
+      {
+        "name": "Metadata Editor",
+        "description": "View and edit metadata for various file types (EXIF, ID3, PDF)",
+        "dependencies": ["exif extension", "getid3 library"]
+      }
+    ]
+  },
+
+  "documentation": {
+    "title": "Documentation Standards",
+    "description": "Comprehensive inline and external documentation following PHPDoc standards and industry best practices.",
+
+    "inline_documentation": {
+      "class_level": "Every class has a docblock describing purpose, dependencies, and usage examples",
+      "method_level": "Every method has docblock with @param, @return, @throws, and usage notes",
+      "property_level": "Every property has docblock with @var and description",
+      "inline_comments": "Complex logic explained with inline comments, focusing on WHY not WHAT"
+    },
+
+    "external_documentation": {
+      "README.md": "Project overview, quick start, and installation guide",
+      "API.md": "API documentation with examples and response formats",
+      "TOOLS.md": "Tool development guide for adding new tools",
+      "DEPLOYMENT.md": "Step-by-step deployment instructions",
+      "CHANGELOG.md": "Version history with changes and migration notes"
+    }
+  }
+}
