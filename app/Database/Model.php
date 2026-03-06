@@ -88,7 +88,7 @@ abstract class Model
     /**
      * Constructor
      */
-    public function __construct(array $attributes = [], bool $exists = false)
+    final public function __construct(array $attributes = [], bool $exists = false)
     {
         if ($exists) {
             $this->attributes = $attributes;
