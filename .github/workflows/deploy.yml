@@ -36,6 +36,9 @@ jobs:
     - name: Run Tests
       run: composer run test
 
+    - name: Install production dependencies
+      run: composer install --no-dev --optimize-autoloader
+
     - name: FTP Deploy
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -57,3 +60,9 @@ jobs:
           README.md
           .gitignore
           .github/**
+          docs/**
+          cli/**
+          composer.json
+          composer.lock
+          CI.log
+          AGENTS.md
