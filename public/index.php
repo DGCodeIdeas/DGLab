@@ -59,6 +59,10 @@ $app->singleton(ServiceRegistry::class, function () {
     return new ServiceRegistry();
 });
 
+$app->singleton(\DGLab\Services\AssetService::class, function () {
+    return new \DGLab\Services\AssetService();
+});
+
 $app->singleton(\DGLab\Core\View::class, function () {
     return new \DGLab\Core\View();
 });

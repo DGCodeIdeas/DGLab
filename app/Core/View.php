@@ -203,17 +203,12 @@ class View
      */
     public function asset(string $path): string
     {
-        $manifestPath = Application::getInstance()->getBasePath() . '/public/assets/manifest.json';
-        
-        if (file_exists($manifestPath)) {
-            $manifest = json_decode(file_get_contents($manifestPath), true);
-            
-            if (isset($manifest[$path])) {
-                return '/assets/' . $manifest[$path];
-            }
+        try {
+            $assetService = Application::getInstance()->get(\DGLab\Services\AssetService::class);
+            return $assetService->getAssetUrl($path);
+        } catch (\Exception $e) {
+            return '/assets/' . ltrim($path, '/');
         }
-        
-        return '/assets/' . ltrim($path, '/');
     }
 
     /**
