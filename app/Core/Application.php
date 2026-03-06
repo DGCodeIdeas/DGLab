@@ -1,16 +1,17 @@
 <?php
+
 /**
  * DGLab Application Container
- * 
+ *
  * A PSR-11 compliant dependency injection container implementing the singleton pattern.
  * Provides autowiring, service providers, and alias support for flexible dependency management.
- * 
+ *
  * Architecture Decisions:
  * - Singleton pattern ensures single container instance across application lifecycle
  * - Lazy instantiation via closures reduces memory footprint
  * - Autowiring via reflection eliminates manual binding for most classes
  * - Service provider pattern allows modular bootstrapping
- * 
+ *
  * @package DGLab\Core
  */
 
@@ -23,7 +24,7 @@ use ReflectionParameter;
 
 /**
  * Class Application
- * 
+ *
  * Main dependency injection container for the DGLab application.
  * Implements PSR-11 ContainerInterface for interoperability.
  */
@@ -33,40 +34,40 @@ class Application implements ContainerInterface
      * Singleton instance
      */
     private static ?self $instance = null;
-    
+
     /**
      * Registered bindings
-     * 
+     *
      * @var array<string, callable|object|string>
      */
     private array $bindings = [];
-    
+
     /**
      * Singleton instances
-     * 
+     *
      * @var array<string, object>
      */
     private array $singletons = [];
-    
+
     /**
      * Aliases for bindings
-     * 
+     *
      * @var array<string, string>
      */
     private array $aliases = [];
-    
+
     /**
      * Service providers
-     * 
+     *
      * @var array<ServiceProviderInterface>
      */
     private array $providers = [];
-    
+
     /**
      * Whether providers have been booted
      */
     private bool $booted = false;
-    
+
     /**
      * Configuration cache
      */
@@ -85,9 +86,9 @@ class Application implements ContainerInterface
 
     /**
      * Get the singleton instance
-     * 
+     *
      * Thread-safe singleton implementation using double-checked locking pattern.
-     * 
+     *
      * @return self The application container instance
      */
     public static function getInstance(): self
@@ -95,7 +96,7 @@ class Application implements ContainerInterface
         if (self::$instance === null) {
             self::$instance = new self();
         }
-        
+
         return self::$instance;
     }
 
@@ -117,12 +118,12 @@ class Application implements ContainerInterface
 
     /**
      * Register a binding in the container
-     * 
+     *
      * The binding can be:
      * - A closure that returns the instance
      * - A class name string for autowiring
      * - An existing object instance
-     * 
+     *
      * @param string $abstract The abstract type or identifier
      * @param callable|object|string|null $concrete The concrete implementation
      * @return $this For method chaining
@@ -130,20 +131,20 @@ class Application implements ContainerInterface
     public function bind(string $abstract, callable|object|string|null $concrete = null): self
     {
         $this->bindings[$abstract] = $concrete ?? $abstract;
-        
+
         // Remove any existing singleton instance
         unset($this->singletons[$abstract]);
-        
+
         return $this;
     }
 
     /**
      * Register a singleton binding
-     * 
+     *
      * Singletons are instantiated once and the same instance is returned
      * on subsequent calls. This is ideal for services like database connections,
      * loggers, and configuration managers.
-     * 
+     *
      * @param string $abstract The abstract type or identifier
      * @param callable|object|string|null $concrete The concrete implementation
      * @return $this For method chaining
@@ -151,21 +152,21 @@ class Application implements ContainerInterface
     public function singleton(string $abstract, callable|object|string|null $concrete = null): self
     {
         $this->bindings[$abstract] = $concrete ?? $abstract;
-        
+
         // Mark as singleton by pre-initializing with null
         if (!isset($this->singletons[$abstract])) {
             $this->singletons[$abstract] = null;
         }
-        
+
         return $this;
     }
 
     /**
      * Register an alias for an abstract type
-     * 
+     *
      * Aliases allow multiple interfaces to resolve to the same implementation.
      * Example: $app->alias(DatabaseInterface::class, MySQLDatabase::class);
-     * 
+     *
      * @param string $abstract The target abstract type
      * @param string $alias The alias to register
      * @return $this For method chaining
@@ -173,16 +174,16 @@ class Application implements ContainerInterface
     public function alias(string $abstract, string $alias): self
     {
         $this->aliases[$alias] = $abstract;
-        
+
         return $this;
     }
 
     /**
      * Register a service provider
-     * 
+     *
      * Service providers encapsulate the logic for registering and bootstrapping
      * related services. They are lazily booted when first needed.
-     * 
+     *
      * @param ServiceProviderInterface|string $provider The provider instance or class name
      * @return $this For method chaining
      */
@@ -191,26 +192,26 @@ class Application implements ContainerInterface
         if (is_string($provider)) {
             $provider = $this->get($provider);
         }
-        
+
         $this->providers[] = $provider;
-        
+
         // Register immediately
         $provider->register($this);
-        
+
         // Boot if already booted
         if ($this->booted) {
             $provider->boot($this);
         }
-        
+
         return $this;
     }
 
     /**
      * Boot all registered service providers
-     * 
+     *
      * This method should be called after all providers are registered.
      * It triggers the boot() method on each provider.
-     * 
+     *
      * @return $this For method chaining
      */
     public function boot(): self
@@ -218,59 +219,59 @@ class Application implements ContainerInterface
         if ($this->booted) {
             return $this;
         }
-        
+
         foreach ($this->providers as $provider) {
             $provider->boot($this);
         }
-        
+
         $this->booted = true;
-        
+
         return $this;
     }
 
     /**
      * Get an instance from the container
-     * 
+     *
      * PSR-11 compliant method for retrieving services. Supports:
      * - Aliased types
      * - Singleton instances
      * - Factory bindings
      * - Autowiring via reflection
-     * 
+     *
      * @param string $id The identifier of the entry
      * @return object The resolved instance
-     * @throws NotFoundExceptionInterface No entry was found for this identifier
-     * @throws ContainerExceptionInterface Error while retrieving the entry
+     * @throws \Psr\Container\NotFoundExceptionInterface No entry was found for this identifier
+     * @throws \Psr\Container\ContainerExceptionInterface Error while retrieving the entry
      */
     public function get(string $id): object
     {
         // Resolve alias
         $abstract = $this->aliases[$id] ?? $id;
-        
+
         // Check for existing singleton instance
         if (isset($this->singletons[$abstract]) && $this->singletons[$abstract] !== null) {
             return $this->singletons[$abstract];
         }
-        
+
         // Get the concrete implementation
         $concrete = $this->bindings[$abstract] ?? $abstract;
-        
+
         // Build the instance
         $instance = $this->build($concrete);
-        
+
         // Store singleton instance if applicable
         if (array_key_exists($abstract, $this->singletons)) {
             $this->singletons[$abstract] = $instance;
         }
-        
+
         return $instance;
     }
 
     /**
      * Check if the container can return an entry for the given identifier
-     * 
+     *
      * PSR-11 compliant method for checking service availability.
-     * 
+     *
      * @param string $id The identifier of the entry to look for
      * @return bool Whether the container can resolve the identifier
      */
@@ -280,34 +281,34 @@ class Application implements ContainerInterface
         if (isset($this->aliases[$id])) {
             return true;
         }
-        
+
         // Check if it's bound
         if (isset($this->bindings[$id])) {
             return true;
         }
-        
+
         // Check if it's a singleton
         if (isset($this->singletons[$id])) {
             return true;
         }
-        
+
         // Check if it's an instantiable class
         if (class_exists($id)) {
             $reflection = new ReflectionClass($id);
             return $reflection->isInstantiable();
         }
-        
+
         return false;
     }
 
     /**
      * Build an instance from a concrete specification
-     * 
+     *
      * Handles:
      * - Closure factories
      * - Existing objects
      * - Class names with autowiring
-     * 
+     *
      * @param callable|object|string $concrete The concrete specification
      * @return object The built instance
      * @throws \RuntimeException If the concrete cannot be built
@@ -318,26 +319,26 @@ class Application implements ContainerInterface
         if ($concrete instanceof \Closure) {
             return $concrete($this);
         }
-        
+
         // If it's already an object, return it
         if (is_object($concrete)) {
             return $concrete;
         }
-        
+
         // If it's a string (class name), autowire it
         if (is_string($concrete)) {
             return $this->autowire($concrete);
         }
-        
+
         throw new \RuntimeException("Unable to build concrete of type: " . gettype($concrete));
     }
 
     /**
      * Autowire a class using reflection
-     * 
+     *
      * Automatically resolves constructor dependencies by type-hint.
      * Supports recursive resolution for nested dependencies.
-     * 
+     *
      * @param string $className The class to autowire
      * @return object The instantiated class
      * @throws \RuntimeException If autowiring fails
@@ -346,24 +347,23 @@ class Application implements ContainerInterface
     {
         try {
             $reflection = new ReflectionClass($className);
-            
+
             if (!$reflection->isInstantiable()) {
                 throw new \RuntimeException("Class {$className} is not instantiable");
             }
-            
+
             $constructor = $reflection->getConstructor();
-            
+
             // No constructor, simple instantiation
             if ($constructor === null) {
                 return $reflection->newInstance();
             }
-            
+
             // Resolve constructor parameters
             $parameters = $constructor->getParameters();
             $dependencies = $this->resolveDependencies($parameters);
-            
+
             return $reflection->newInstanceArgs($dependencies);
-            
         } catch (ReflectionException $e) {
             throw new \RuntimeException(
                 "Failed to autowire class {$className}: " . $e->getMessage(),
@@ -375,7 +375,7 @@ class Application implements ContainerInterface
 
     /**
      * Resolve an array of reflection parameters
-     * 
+     *
      * @param array<ReflectionParameter> $parameters The parameters to resolve
      * @return array The resolved dependencies
      * @throws \RuntimeException If a required parameter cannot be resolved
@@ -383,57 +383,59 @@ class Application implements ContainerInterface
     private function resolveDependencies(array $parameters): array
     {
         $dependencies = [];
-        
+
         foreach ($parameters as $parameter) {
             $dependency = $this->resolveParameter($parameter);
-            
+
             if ($dependency === null && !$parameter->isOptional()) {
+                $declaringClass = $parameter->getDeclaringClass()?->getName();
+                $declaringFunction = $parameter->getDeclaringFunction()->getName();
                 throw new \RuntimeException(
                     "Cannot resolve required parameter \${$parameter->getName()} " .
-                    "in {$parameter->getDeclaringClass()?->getName()}::{$parameter->getDeclaringFunction()->getName()}()"
+                    "in {$declaringClass}::{$declaringFunction}()"
                 );
             }
-            
+
             $dependencies[] = $dependency;
         }
-        
+
         return $dependencies;
     }
 
     /**
      * Resolve a single reflection parameter
-     * 
+     *
      * @param ReflectionParameter $parameter The parameter to resolve
      * @return mixed The resolved value, or null if not resolvable
      */
     private function resolveParameter(ReflectionParameter $parameter): mixed
     {
         $type = $parameter->getType();
-        
+
         // Handle typed parameters
-        if ($type !== null && !$type->isBuiltin()) {
+        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
             $typeName = $type->getName();
-            
+
             // Check if we can resolve this type
             if ($this->has($typeName)) {
                 return $this->get($typeName);
             }
         }
-        
+
         // Handle default values
         if ($parameter->isDefaultValueAvailable()) {
             return $parameter->getDefaultValue();
         }
-        
+
         return null;
     }
 
     /**
      * Call a method with dependency injection
-     * 
+     *
      * Allows calling any method with automatic resolution of type-hinted parameters.
      * Useful for controller actions and event handlers.
-     * 
+     *
      * @param callable|array $callback The method to call
      * @param array $parameters Additional parameters to pass
      * @return mixed The method result
@@ -446,42 +448,42 @@ class Application implements ContainerInterface
         } else {
             $reflection = new \ReflectionFunction($callback);
         }
-        
+
         $dependencies = [];
-        
+
         foreach ($reflection->getParameters() as $parameter) {
             $name = $parameter->getName();
-            
+
             // Use provided parameter if available
             if (array_key_exists($name, $parameters)) {
                 $dependencies[] = $parameters[$name];
                 continue;
             }
-            
+
             // Try to resolve via container
             $resolved = $this->resolveParameter($parameter);
             if ($resolved !== null) {
                 $dependencies[] = $resolved;
                 continue;
             }
-            
+
             // Use positional parameter if available
             if (array_key_exists($parameter->getPosition(), $parameters)) {
                 $dependencies[] = $parameters[$parameter->getPosition()];
                 continue;
             }
-            
+
             throw new \RuntimeException("Unable to resolve parameter \${$name}");
         }
-        
+
         return $reflection->invokeArgs($dependencies);
     }
 
     /**
      * Get configuration value
-     * 
+     *
      * Lazy-loads configuration files on first access.
-     * 
+     *
      * @param string $key Dot-notation config key (e.g., 'app.name')
      * @param mixed $default Default value if key not found
      * @return mixed The configuration value
@@ -489,38 +491,38 @@ class Application implements ContainerInterface
     public function config(string $key, mixed $default = null): mixed
     {
         [$file, $path] = explode('.', $key, 2) + [null, null];
-        
+
         // Load config file if not cached
         if (!isset($this->config[$file])) {
             $configPath = $this->getBasePath() . "/config/{$file}.php";
-            
+
             if (!file_exists($configPath)) {
                 return $default;
             }
-            
+
             $this->config[$file] = require $configPath;
         }
-        
+
         // Navigate the config array
         $value = $this->config[$file];
-        
+
         if ($path === null) {
             return $value;
         }
-        
+
         foreach (explode('.', $path) as $segment) {
             if (!is_array($value) || !array_key_exists($segment, $value)) {
                 return $default;
             }
             $value = $value[$segment];
         }
-        
+
         return $value;
     }
 
     /**
      * Get the base application path
-     * 
+     *
      * @return string The base path
      */
     public function getBasePath(): string
@@ -530,10 +532,10 @@ class Application implements ContainerInterface
 
     /**
      * Flush the container (for testing)
-     * 
+     *
      * Clears all bindings, singletons, and resets the instance.
      * Use with caution - primarily for testing purposes.
-     * 
+     *
      * @return void
      */
     public static function flush(): void
@@ -546,39 +548,7 @@ class Application implements ContainerInterface
             self::$instance->config = [];
             self::$instance->booted = false;
         }
-        
+
         self::$instance = null;
     }
-}
-
-/**
- * Service Provider Interface
- * 
- * Service providers encapsulate the registration and bootstrapping logic
- * for related services. They are the primary mechanism for extending
- * the application with new functionality.
- */
-interface ServiceProviderInterface
-{
-    /**
-     * Register services in the container
-     * 
-     * This method is called immediately when the provider is registered.
-     * Use it to bind services to the container.
-     * 
-     * @param Application $app The application container
-     * @return void
-     */
-    public function register(Application $app): void;
-    
-    /**
-     * Boot the service provider
-     * 
-     * This method is called after all providers have been registered.
-     * Use it for initialization that depends on other services.
-     * 
-     * @param Application $app The application container
-     * @return void
-     */
-    public function boot(Application $app): void;
 }

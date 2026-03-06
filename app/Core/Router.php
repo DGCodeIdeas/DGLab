@@ -1,24 +1,27 @@
 <?php
+
 /**
  * DGLab HTTP Router
- * 
+ *
  * A high-performance regex-based router supporting RESTful methods,
  * route groups, named routes, and middleware pipelines.
- * 
+ *
  * Architecture Decisions:
  * - Regex-based matching is faster than iterative string comparison
  * - Compiled route cache for production environments
  * - Middleware pipeline follows PSR-15 style
  * - Named routes enable URL generation without hardcoding
- * 
+ *
  * @package DGLab\Core
  */
 
 namespace DGLab\Core;
 
+use DGLab\Core\Exceptions\RouteNotFoundException;
+
 /**
  * Class Router
- * 
+ *
  * Handles HTTP request routing with support for:
  * - Static and dynamic routes
  * - Parameter extraction with type casting
@@ -30,7 +33,7 @@ class Router
 {
     /**
      * Registered routes organized by HTTP method
-     * 
+     *
      * @var array<string, array<Route>>
      */
     private array $routes = [
@@ -42,40 +45,29 @@ class Router
         'OPTIONS' => [],
         'HEAD' => [],
     ];
-    
+
     /**
      * Named routes for URL generation
-     * 
+     *
      * @var array<string, Route>
      */
     private array $namedRoutes = [];
-    
+
     /**
      * Route group stack
-     * 
+     *
      * @var array<array>
      */
     private array $groupStack = [];
-    
-    /**
-     * Compiled regex patterns for each method
-     * 
-     * @var array<string, string>
-     */
-    private array $compiledPatterns = [];
-    
-    /**
-     * Whether patterns need recompilation
-     */
-    private bool $patternsDirty = true;
-    
+
+
     /**
      * Global middleware stack
-     * 
+     *
      * @var array<string>
      */
     private array $globalMiddleware = [];
-    
+
     /**
      * Current route being processed
      */
@@ -83,7 +75,7 @@ class Router
 
     /**
      * Register a GET route
-     * 
+     *
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
      * @return Route The created route
@@ -95,7 +87,7 @@ class Router
 
     /**
      * Register a POST route
-     * 
+     *
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
      * @return Route The created route
@@ -107,7 +99,7 @@ class Router
 
     /**
      * Register a PUT route
-     * 
+     *
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
      * @return Route The created route
@@ -119,7 +111,7 @@ class Router
 
     /**
      * Register a PATCH route
-     * 
+     *
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
      * @return Route The created route
@@ -131,7 +123,7 @@ class Router
 
     /**
      * Register a DELETE route
-     * 
+     *
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
      * @return Route The created route
@@ -143,7 +135,7 @@ class Router
 
     /**
      * Register a route for multiple methods
-     * 
+     *
      * @param array<string> $methods The HTTP methods
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
@@ -152,17 +144,17 @@ class Router
     public function match(array $methods, string $pattern, callable|array|string $handler): Route
     {
         $route = null;
-        
+
         foreach ($methods as $method) {
             $route = $this->addRoute($method, $pattern, $handler);
         }
-        
+
         return $route;
     }
 
     /**
      * Register a route for all methods
-     * 
+     *
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
      * @return void
@@ -176,14 +168,14 @@ class Router
 
     /**
      * Create a route group
-     * 
+     *
      * Groups allow shared prefixes, middleware, and namespaces.
-     * 
+     *
      * Example:
      * $router->group(['prefix' => 'api', 'middleware' => ['auth']], function($router) {
      *     $router->get('/users', [UserController::class, 'index']);
      * });
-     * 
+     *
      * @param array $attributes Group attributes
      * @param callable $callback Group definition callback
      * @return void
@@ -195,19 +187,19 @@ class Router
             $parent = end($this->groupStack);
             $attributes = $this->mergeGroupAttributes($parent, $attributes);
         }
-        
+
         $this->groupStack[] = $attributes;
-        
+
         // Execute callback with this router
         $callback($this);
-        
+
         // Pop the group
         array_pop($this->groupStack);
     }
 
     /**
      * Add a route to the registry
-     * 
+     *
      * @param string $method The HTTP method
      * @param string $pattern The URL pattern
      * @param callable|array|string $handler The route handler
@@ -218,19 +210,18 @@ class Router
         // Apply group attributes
         $pattern = $this->applyGroupPrefix($pattern);
         $middleware = $this->getGroupMiddleware();
-        
+
         // Create the route
         $route = new Route($method, $pattern, $handler);
-        
+
         // Apply middleware from group
         foreach ($middleware as $m) {
             $route->middleware($m);
         }
-        
+
         // Store the route
         $this->routes[$method][] = $route;
-        $this->patternsDirty = true;
-        
+
         return $route;
     }
 
@@ -240,16 +231,16 @@ class Router
     private function applyGroupPrefix(string $pattern): string
     {
         if (empty($this->groupStack)) {
-            return $pattern;
+            return '/' . ltrim($pattern, '/');
         }
-        
+
         $prefix = '';
         foreach ($this->groupStack as $group) {
             if (isset($group['prefix'])) {
                 $prefix .= '/' . trim($group['prefix'], '/');
             }
         }
-        
+
         return $prefix . '/' . ltrim($pattern, '/');
     }
 
@@ -259,13 +250,13 @@ class Router
     private function getGroupMiddleware(): array
     {
         $middleware = [];
-        
+
         foreach ($this->groupStack as $group) {
             if (isset($group['middleware'])) {
                 $middleware = array_merge($middleware, (array) $group['middleware']);
             }
         }
-        
+
         return $middleware;
     }
 
@@ -283,27 +274,27 @@ class Router
         } elseif (isset($parent['middleware'])) {
             $child['middleware'] = $parent['middleware'];
         }
-        
+
         // Merge prefix
         if (isset($parent['prefix']) && isset($child['prefix'])) {
             $child['prefix'] = trim($parent['prefix'], '/') . '/' . trim($child['prefix'], '/');
         } elseif (isset($parent['prefix'])) {
             $child['prefix'] = $parent['prefix'];
         }
-        
+
         // Merge namespace
         if (isset($parent['namespace']) && isset($child['namespace'])) {
             $child['namespace'] = trim($parent['namespace'], '\\') . '\\' . trim($child['namespace'], '\\');
         } elseif (isset($parent['namespace'])) {
             $child['namespace'] = $parent['namespace'];
         }
-        
+
         return $child;
     }
 
     /**
      * Dispatch a request to the appropriate handler
-     * 
+     *
      * @param Request $request The incoming request
      * @return mixed The handler response
      * @throws RouteNotFoundException If no matching route
@@ -312,22 +303,22 @@ class Router
     {
         $method = $request->getMethod();
         $path = $request->getPath();
-        
+
         // Find matching route
         $route = $this->matchRoute($method, $path);
-        
+
         if ($route === null) {
             throw new RouteNotFoundException("No route found for {$method} {$path}");
         }
-        
+
         $this->currentRoute = $route;
-        
+
         // Extract parameters
         $params = $this->extractParameters($route, $path);
-        
+
         // Merge with request parameters
         $request = $request->withRouteParams($params);
-        
+
         // Execute middleware pipeline
         return $this->runMiddleware($route, $request);
     }
@@ -338,19 +329,19 @@ class Router
     private function matchRoute(string $method, string $path): ?Route
     {
         $path = '/' . trim($path, '/');
-        
+
         // Check method exists
         if (!isset($this->routes[$method])) {
             return null;
         }
-        
+
         // Try each route
         foreach ($this->routes[$method] as $route) {
             if ($this->routeMatches($route, $path)) {
                 return $route;
             }
         }
-        
+
         return null;
     }
 
@@ -360,8 +351,8 @@ class Router
     private function routeMatches(Route $route, string $path): bool
     {
         $pattern = $this->compileRoutePattern($route->getPattern());
-        
-        return (bool) preg_match($pattern, $path);
+
+        return (bool) preg_match($pattern, $path, $matches);
     }
 
     /**
@@ -373,24 +364,29 @@ class Router
         // {param} -> (?P<param>[^/]+)
         // {param:\d+} -> (?P<param>\d+)
         // {param?} -> (?P<param>[^/]+)?
-        
+
         $pattern = preg_replace_callback(
             '/\{(\w+)(?::([^}]+))?\}(\?)?/',
             function ($matches) {
                 $name = $matches[1];
                 $regex = $matches[2] ?? '[^/]+';
                 $optional = isset($matches[3]) && $matches[3] === '?';
-                
-                return $optional 
-                    ? '(?:/(?P<' . $name . '>' . $regex . '))?' 
-                    : '/(?P<' . $name . '>' . $regex . ')';
+
+                if ($optional) {
+                    return '(?P<' . $name . '>' . $regex . ')?';
+                }
+
+                return '(?P<' . $name . '>' . $regex . ')';
             },
             $pattern
         );
-        
+
         // Handle wildcards
         $pattern = str_replace('*', '.*', $pattern);
-        
+
+        // Ensure leading slash
+        $pattern = '/' . ltrim($pattern, '/');
+
         return '#^' . $pattern . '$#';
     }
 
@@ -400,9 +396,9 @@ class Router
     private function extractParameters(Route $route, string $path): array
     {
         $pattern = $this->compileRoutePattern($route->getPattern());
-        
+
         preg_match($pattern, $path, $matches);
-        
+
         // Filter named captures only
         $params = [];
         foreach ($matches as $key => $value) {
@@ -410,7 +406,7 @@ class Router
                 $params[$key] = $this->castParameter($value);
             }
         }
-        
+
         return $params;
     }
 
@@ -423,12 +419,12 @@ class Router
         if (preg_match('/^-?\d+$/', $value)) {
             return (int) $value;
         }
-        
+
         // Float
         if (preg_match('/^-?\d+\.\d+$/', $value)) {
             return (float) $value;
         }
-        
+
         // Boolean strings
         if (strtolower($value) === 'true') {
             return true;
@@ -436,7 +432,7 @@ class Router
         if (strtolower($value) === 'false') {
             return false;
         }
-        
+
         return $value;
     }
 
@@ -449,19 +445,19 @@ class Router
             $this->globalMiddleware,
             $route->getMiddleware()
         );
-        
+
         // Start with the handler
         $next = function ($request) use ($route) {
             return $this->executeHandler($route->getHandler(), $request);
         };
-        
+
         // Wrap with middleware (in reverse order)
         foreach (array_reverse($middleware) as $m) {
             $next = function ($request) use ($m, $next) {
                 return $this->executeMiddleware($m, $request, $next);
             };
         }
-        
+
         return $next($request);
     }
 
@@ -471,7 +467,7 @@ class Router
     private function executeMiddleware(string $middleware, Request $request, callable $next): mixed
     {
         $instance = Application::getInstance()->get($middleware);
-        
+
         return $instance->handle($request, $next);
     }
 
@@ -483,32 +479,46 @@ class Router
         // Controller action
         if (is_array($handler)) {
             [$controller, $method] = $handler;
-            $instance = is_string($controller) 
-                ? Application::getInstance()->get($controller) 
+            $instance = is_string($controller)
+                ? Application::getInstance()->get($controller)
                 : $controller;
-            
+
             return Application::getInstance()->call([$instance, $method], ['request' => $request]);
         }
-        
+
         // Callable
         return Application::getInstance()->call($handler, ['request' => $request]);
     }
 
     /**
      * Register a named route
-     * 
+     *
      * @param string $name The route name
      * @param Route $route The route to name
      * @return void
      */
     public function name(string $name, Route $route): void
     {
+        // Remove from any existing name
+        foreach ($this->namedRoutes as $n => $r) {
+            if ($r === $route) {
+                unset($this->namedRoutes[$n]);
+            }
+        }
         $this->namedRoutes[$name] = $route;
     }
 
     /**
+     * Get a named route
+     */
+    public function getNamedRoute(string $name): ?Route
+    {
+        return $this->namedRoutes[$name] ?? null;
+    }
+
+    /**
      * Generate a URL for a named route
-     * 
+     *
      * @param string $name The route name
      * @param array $parameters Route parameters
      * @return string The generated URL
@@ -516,45 +526,47 @@ class Router
      */
     public function url(string $name, array $parameters = []): string
     {
-        if (!isset($this->namedRoutes[$name])) {
+        $route = $this->getNamedRoute($name);
+
+        if (!$route) {
             throw new \RuntimeException("Route '{$name}' not found");
         }
-        
-        $pattern = $this->namedRoutes[$name]->getPattern();
-        
+
+        $pattern = $route->getPattern();
+
         // Replace parameters
         $url = preg_replace_callback(
             '/\{(\w+)(?::[^}]+)?\}(\?)?/',
             function ($matches) use (&$parameters) {
                 $name = $matches[1];
                 $optional = isset($matches[2]) && $matches[2] === '?';
-                
+
                 if (isset($parameters[$name])) {
                     $value = $parameters[$name];
                     unset($parameters[$name]);
-                    return '/' . urlencode($value);
+                    return urlencode($value);
                 }
-                
+
                 if ($optional) {
                     return '';
                 }
-                
+
                 throw new \RuntimeException("Missing required parameter '{$name}'");
             },
             $pattern
         );
-        
+
         // Add remaining parameters as query string
         if (!empty($parameters)) {
             $url .= '?' . http_build_query($parameters);
         }
-        
+
         return $url;
     }
 
     /**
      * Add global middleware
-     * 
+     *
      * @param string|array $middleware Middleware class name(s)
      * @return $this
      */
@@ -564,7 +576,7 @@ class Router
             $this->globalMiddleware,
             (array) $middleware
         );
-        
+
         return $this;
     }
 
@@ -594,91 +606,5 @@ class Router
         $this->globalMiddleware = [];
         $this->groupStack = [];
         $this->currentRoute = null;
-        $this->patternsDirty = true;
     }
-}
-
-/**
- * Route class
- * 
- * Represents a single route with its pattern, handler, and metadata.
- */
-class Route
-{
-    private string $method;
-    private string $pattern;
-    private mixed $handler;
-    private array $middleware = [];
-    private ?string $name = null;
-
-    public function __construct(string $method, string $pattern, mixed $handler)
-    {
-        $this->method = $method;
-        $this->pattern = $pattern;
-        $this->handler = $handler;
-    }
-
-    /**
-     * Add middleware to this route
-     */
-    public function middleware(string|array $middleware): self
-    {
-        $this->middleware = array_merge($this->middleware, (array) $middleware);
-        return $this;
-    }
-
-    /**
-     * Name this route
-     */
-    public function name(string $name): self
-    {
-        $this->name = $name;
-        Application::getInstance()->get(Router::class)->name($name, $this);
-        return $this;
-    }
-
-    public function getMethod(): string
-    {
-        return $this->method;
-    }
-
-    public function getPattern(): string
-    {
-        return $this->pattern;
-    }
-
-    public function getHandler(): mixed
-    {
-        return $this->handler;
-    }
-
-    public function getMiddleware(): array
-    {
-        return $this->middleware;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-}
-
-/**
- * Route Not Found Exception
- */
-class RouteNotFoundException extends \Exception {}
-
-/**
- * Middleware Interface (PSR-15 style)
- */
-interface MiddlewareInterface
-{
-    /**
-     * Process an incoming request
-     * 
-     * @param Request $request The request
-     * @param callable $next The next handler
-     * @return Response The response
-     */
-    public function handle(Request $request, callable $next): Response;
 }

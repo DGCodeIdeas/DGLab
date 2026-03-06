@@ -1,9 +1,10 @@
 <?php
+
 /**
  * DGLab Logger
- * 
+ *
  * PSR-3 compliant logging with file and database support.
- * 
+ *
  * @package DGLab\Core
  */
 
@@ -14,7 +15,7 @@ use Psr\Log\LogLevel;
 
 /**
  * Class Logger
- * 
+ *
  * Provides logging functionality with:
  * - PSR-3 compliance
  * - Multiple handlers (file, database)
@@ -42,27 +43,27 @@ class Logger implements LoggerInterface
      * Logs directory
      */
     private string $logPath;
-    
+
     /**
      * Minimum log level
      */
     private int $minLevel;
-    
+
     /**
      * Channel name
      */
     private string $channel;
-    
+
     /**
      * Database connection for structured logging
      */
     private ?\DGLab\Database\Connection $db = null;
-    
+
     /**
      * Whether to log to database
      */
     private bool $useDatabase = false;
-    
+
     /**
      * Error handler registered
      */
@@ -79,7 +80,7 @@ class Logger implements LoggerInterface
         $this->logPath = $logPath ?? Application::getInstance()->getBasePath() . '/storage/logs';
         $this->minLevel = self::LEVELS[$minLevel] ?? 100;
         $this->channel = $channel;
-        
+
         if (!is_dir($this->logPath)) {
             mkdir($this->logPath, 0755, true);
         }
@@ -100,16 +101,16 @@ class Logger implements LoggerInterface
     public function log($level, string|\Stringable $message, array $context = []): void
     {
         $levelValue = self::LEVELS[$level] ?? 100;
-        
+
         if ($levelValue < $this->minLevel) {
             return;
         }
-        
+
         $record = $this->createRecord($level, (string) $message, $context);
-        
+
         // Write to file
         $this->writeToFile($record);
-        
+
         // Write to database if enabled
         if ($this->useDatabase && $levelValue >= self::LEVELS[LogLevel::WARNING]) {
             $this->writeToDatabase($record);
@@ -187,7 +188,7 @@ class Logger implements LoggerInterface
     {
         // Interpolate message
         $message = $this->interpolate($message, $context);
-        
+
         return [
             'datetime' => new \DateTimeImmutable(),
             'channel' => $this->channel,
@@ -208,7 +209,7 @@ class Logger implements LoggerInterface
     private function interpolate(string $message, array $context): string
     {
         $replacements = [];
-        
+
         foreach ($context as $key => $val) {
             if (is_null($val) || is_scalar($val) || (is_object($val) && method_exists($val, '__toString'))) {
                 $replacements['{' . $key . '}'] = $val;
@@ -218,7 +219,7 @@ class Logger implements LoggerInterface
                 $replacements['{' . $key . '}'] = '[' . gettype($val) . ']';
             }
         }
-        
+
         return strtr($message, $replacements);
     }
 
@@ -228,7 +229,7 @@ class Logger implements LoggerInterface
     private function writeToFile(array $record): void
     {
         $filename = $this->logPath . '/' . $this->channel . '-' . date('Y-m-d') . '.log';
-        
+
         $line = sprintf(
             "[%s] %s.%s: %s %s\n",
             $record['datetime']->format('Y-m-d H:i:s.u'),
@@ -237,7 +238,7 @@ class Logger implements LoggerInterface
             $record['message'],
             !empty($record['context']) ? json_encode($record['context']) : ''
         );
-        
+
         file_put_contents($filename, $line, FILE_APPEND | LOCK_EX);
     }
 
@@ -249,7 +250,7 @@ class Logger implements LoggerInterface
         if ($this->db === null) {
             return;
         }
-        
+
         try {
             $this->db->insert(
                 "INSERT INTO service_logs (service_id, level, message, context, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -274,7 +275,7 @@ class Logger implements LoggerInterface
         if ($this->errorHandlerRegistered) {
             return;
         }
-        
+
         set_error_handler(function ($level, $message, $file, $line) {
             $levelMap = [
                 E_WARNING => LogLevel::WARNING,
@@ -284,17 +285,17 @@ class Logger implements LoggerInterface
                 E_USER_WARNING => LogLevel::WARNING,
                 E_USER_NOTICE => LogLevel::NOTICE,
             ];
-            
+
             $logLevel = $levelMap[$level] ?? LogLevel::ERROR;
-            
+
             $this->log($logLevel, $message, [
                 'file' => $file,
                 'line' => $line,
             ]);
-            
+
             return false;
         });
-        
+
         set_exception_handler(function (\Throwable $e) {
             $this->critical($e->getMessage(), [
                 'file' => $e->getFile(),
@@ -302,7 +303,7 @@ class Logger implements LoggerInterface
                 'trace' => $e->getTraceAsString(),
             ]);
         });
-        
+
         $this->errorHandlerRegistered = true;
     }
 
@@ -312,24 +313,24 @@ class Logger implements LoggerInterface
     public function getRecent(int $lines = 100): array
     {
         $filename = $this->logPath . '/' . $this->channel . '-' . date('Y-m-d') . '.log';
-        
+
         if (!file_exists($filename)) {
             return [];
         }
-        
+
         $file = new \SplFileObject($filename, 'r');
         $file->seek(PHP_INT_MAX);
         $totalLines = $file->key();
-        
+
         $startLine = max(0, $totalLines - $lines);
         $file->seek($startLine);
-        
+
         $logs = [];
         while (!$file->eof()) {
             $logs[] = $file->current();
             $file->next();
         }
-        
+
         return $logs;
     }
 
@@ -340,17 +341,17 @@ class Logger implements LoggerInterface
     {
         $count = 0;
         $files = glob($this->logPath . '/*.log');
-        
+
         foreach ($files as $file) {
             $mtime = filemtime($file);
             $age = (time() - $mtime) / 86400;
-            
+
             if ($age > $maxDays) {
                 unlink($file);
                 $count++;
             }
         }
-        
+
         return $count;
     }
 
@@ -361,11 +362,11 @@ class Logger implements LoggerInterface
     {
         $files = glob($this->logPath . '/*.log');
         $totalSize = 0;
-        
+
         foreach ($files as $file) {
             $totalSize += filesize($file);
         }
-        
+
         return [
             'files' => count($files),
             'size_bytes' => $totalSize,
@@ -380,12 +381,12 @@ class Logger implements LoggerInterface
     {
         $units = ['B', 'KB', 'MB', 'GB'];
         $unitIndex = 0;
-        
+
         while ($bytes > 1024 && $unitIndex < count($units) - 1) {
             $bytes /= 1024;
             $unitIndex++;
         }
-        
+
         return round($bytes, 2) . ' ' . $units[$unitIndex];
     }
 }

@@ -1,11 +1,12 @@
 <?php
+
 /**
  * DGLab Chunked Service Interface
- * 
+ *
  * Extends ServiceInterface for services that support chunked processing.
  * Chunked processing is used for large files that need to be processed
  * in parts to manage memory and provide progress feedback.
- * 
+ *
  * @package DGLab\Services\Contracts
  */
 
@@ -13,10 +14,10 @@ namespace DGLab\Services\Contracts;
 
 /**
  * Interface ChunkedServiceInterface
- * 
+ *
  * Services implementing this interface can process large inputs
  * in chunks, providing better memory management and progress tracking.
- * 
+ *
  * Implementation Requirements:
  * - initializeChunkedProcess() must create a session and return session ID
  * - processChunk() must handle a single chunk and update progress
@@ -27,13 +28,13 @@ interface ChunkedServiceInterface extends ServiceInterface
 {
     /**
      * Initialize a chunked processing session
-     * 
+     *
      * Called before any chunks are uploaded. Should:
      * - Validate the overall request
      * - Create a session record
      * - Allocate temporary storage
      * - Return session information
-     * 
+     *
      * @param array $metadata Session metadata (file info, options, etc.)
      * @return array Session data including:
      *   - session_id: string Unique session identifier
@@ -45,13 +46,13 @@ interface ChunkedServiceInterface extends ServiceInterface
 
     /**
      * Process a single chunk
-     * 
+     *
      * Called for each chunk uploaded. Should:
      * - Validate the chunk
      * - Store the chunk data
      * - Update progress
      * - Return current status
-     * 
+     *
      * @param string $sessionId The session identifier
      * @param int $chunkIndex The chunk index (0-based)
      * @param string $chunkData The chunk data (binary)
@@ -66,13 +67,13 @@ interface ChunkedServiceInterface extends ServiceInterface
 
     /**
      * Finalize the chunked process
-     * 
+     *
      * Called when all chunks are uploaded. Should:
      * - Assemble all chunks
      * - Perform final processing
      * - Clean up temporary storage
      * - Return final results
-     * 
+     *
      * @param string $sessionId The session identifier
      * @return array Final processing results
      * @throws \Exception If finalization fails
@@ -81,12 +82,12 @@ interface ChunkedServiceInterface extends ServiceInterface
 
     /**
      * Cancel a chunked process
-     * 
+     *
      * Called when the user cancels or session expires. Should:
      * - Clean up all temporary resources
      * - Delete session record
      * - Release any locks
-     * 
+     *
      * @param string $sessionId The session identifier
      * @return bool True if cancellation was successful
      */
@@ -94,7 +95,7 @@ interface ChunkedServiceInterface extends ServiceInterface
 
     /**
      * Get the status of a chunked process
-     * 
+     *
      * @param string $sessionId The session identifier
      * @return array Status data including:
      *   - status: string Current status (active, completed, expired, cancelled)
@@ -108,27 +109,27 @@ interface ChunkedServiceInterface extends ServiceInterface
 
     /**
      * Get recommended chunk size
-     * 
+     *
      * Returns the recommended chunk size in bytes for this service.
-     * 
+     *
      * @return int Chunk size in bytes (default: 1MB)
      */
     public function getChunkSize(): int;
 
     /**
      * Get maximum file size
-     * 
+     *
      * Returns the maximum allowed file size in bytes.
-     * 
+     *
      * @return int Maximum file size in bytes
      */
     public function getMaxFileSize(): int;
 
     /**
      * Check if a chunk is valid
-     * 
+     *
      * Validates a chunk before processing.
-     * 
+     *
      * @param string $sessionId The session identifier
      * @param int $chunkIndex The chunk index
      * @param string $chunkData The chunk data

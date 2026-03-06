@@ -1,9 +1,10 @@
 <?php
+
 /**
  * DGLab Cache System
- * 
+ *
  * Multi-layer caching with file and memory support.
- * 
+ *
  * @package DGLab\Core
  */
 
@@ -11,7 +12,7 @@ namespace DGLab\Core;
 
 /**
  * Class Cache
- * 
+ *
  * Provides caching functionality with:
  * - File-based caching
  * - In-memory caching (APCu)
@@ -25,17 +26,17 @@ class Cache
      * Cache directory
      */
     private string $cachePath;
-    
+
     /**
      * Default TTL in seconds
      */
     private int $defaultTtl = 3600;
-    
+
     /**
      * In-memory cache
      */
     private array $memory = [];
-    
+
     /**
      * Whether APCu is available
      */
@@ -48,7 +49,7 @@ class Cache
     {
         $this->cachePath = $cachePath ?? Application::getInstance()->getBasePath() . '/storage/cache';
         $this->hasApcu = extension_loaded('apcu') && ini_get('apc.enabled');
-        
+
         if (!is_dir($this->cachePath)) {
             mkdir($this->cachePath, 0755, true);
         }
@@ -66,7 +67,7 @@ class Cache
             }
             unset($this->memory[$key]);
         }
-        
+
         // Check APCu
         if ($this->hasApcu) {
             $value = apcu_fetch($this->prefix($key), $success);
@@ -74,21 +75,21 @@ class Cache
                 return $value;
             }
         }
-        
+
         // Check file cache
         $file = $this->getCacheFile($key);
-        
+
         if (!file_exists($file)) {
             return $default;
         }
-        
+
         $data = unserialize(file_get_contents($file));
-        
+
         if ($data['expires'] < time()) {
             unlink($file);
             return $default;
         }
-        
+
         return $data['value'];
     }
 
@@ -99,18 +100,18 @@ class Cache
     {
         $ttl = $ttl ?? $this->defaultTtl;
         $expires = time() + $ttl;
-        
+
         // Store in memory
         $this->memory[$key] = [
             'value' => $value,
             'expires' => $expires,
         ];
-        
+
         // Store in APCu
         if ($this->hasApcu) {
             apcu_store($this->prefix($key), $value, $ttl);
         }
-        
+
         // Store in file
         $file = $this->cachePath . '/' . $this->sanitizeKey($key) . '.cache';
         $data = [
@@ -119,7 +120,7 @@ class Cache
             'expires' => $expires,
             'created' => time(),
         ];
-        
+
         return file_put_contents($file, serialize($data), LOCK_EX) !== false;
     }
 
@@ -137,17 +138,17 @@ class Cache
     public function delete(string $key): bool
     {
         unset($this->memory[$key]);
-        
+
         if ($this->hasApcu) {
             apcu_delete($this->prefix($key));
         }
-        
+
         $file = $this->getCacheFile($key);
-        
+
         if (file_exists($file)) {
             return unlink($file);
         }
-        
+
         return true;
     }
 
@@ -167,14 +168,14 @@ class Cache
     public function remember(string $key, callable $callback, ?int $ttl = null): mixed
     {
         $value = $this->get($key);
-        
+
         if ($value !== null) {
             return $value;
         }
-        
+
         $value = $callback();
         $this->set($key, $value, $ttl);
-        
+
         return $value;
     }
 
@@ -211,17 +212,17 @@ class Cache
     public function flush(): bool
     {
         $this->memory = [];
-        
+
         if ($this->hasApcu) {
             apcu_clear_cache();
         }
-        
+
         $files = glob($this->cachePath . '/*.cache');
-        
+
         foreach ($files as $file) {
             unlink($file);
         }
-        
+
         return true;
     }
 
@@ -232,19 +233,19 @@ class Cache
     {
         $count = 0;
         $files = glob($this->cachePath . '/*.cache');
-        
+
         foreach ($files as $file) {
             $data = unserialize(file_get_contents($file));
             if (fnmatch($pattern, $data['key'])) {
                 unlink($file);
                 $count++;
-                
+
                 if ($this->hasApcu) {
                     apcu_delete($this->prefix($data['key']));
                 }
             }
         }
-        
+
         return $count;
     }
 
@@ -256,7 +257,7 @@ class Cache
         $files = glob($this->cachePath . '/*.cache');
         $totalSize = 0;
         $expired = 0;
-        
+
         foreach ($files as $file) {
             $totalSize += filesize($file);
             $data = unserialize(file_get_contents($file));
@@ -264,7 +265,7 @@ class Cache
                 $expired++;
             }
         }
-        
+
         return [
             'files' => count($files),
             'expired' => $expired,
@@ -282,7 +283,7 @@ class Cache
     {
         $count = 0;
         $files = glob($this->cachePath . '/*.cache');
-        
+
         foreach ($files as $file) {
             $data = unserialize(file_get_contents($file));
             if ($data['expires'] < time()) {
@@ -290,7 +291,7 @@ class Cache
                 $count++;
             }
         }
-        
+
         return $count;
     }
 
@@ -325,12 +326,12 @@ class Cache
     {
         $units = ['B', 'KB', 'MB', 'GB'];
         $unitIndex = 0;
-        
+
         while ($bytes > 1024 && $unitIndex < count($units) - 1) {
             $bytes /= 1024;
             $unitIndex++;
         }
-        
+
         return round($bytes, 2) . ' ' . $units[$unitIndex];
     }
 }

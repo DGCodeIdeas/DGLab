@@ -1,9 +1,10 @@
 <?php
+
 /**
  * DGLab Job Model
- * 
+ *
  * Represents an async processing job for services.
- * 
+ *
  * @package DGLab\Database
  */
 
@@ -11,8 +12,17 @@ namespace DGLab\Database;
 
 /**
  * Class Job
- * 
+ *
  * Job model for tracking service processing jobs.
+ *
+ * @property string $service_id
+ * @property string $status
+ * @property array $input_data
+ * @property array $output_data
+ * @property int $progress
+ * @property string|null $message
+ * @property string|null $started_at
+ * @property string|null $completed_at
  */
 class Job extends Model
 {
@@ -20,7 +30,7 @@ class Job extends Model
      * Table name
      */
     protected ?string $table = 'jobs';
-    
+
     /**
      * Fillable attributes
      */
@@ -34,15 +44,15 @@ class Job extends Model
         'started_at',
         'completed_at',
     ];
-    
+
     /**
      * Status constants
      */
-    const STATUS_PENDING = 'pending';
-    const STATUS_PROCESSING = 'processing';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_FAILED = 'failed';
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_FAILED = 'failed';
+    public const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Create a new job
@@ -65,7 +75,7 @@ class Job extends Model
         $this->status = self::STATUS_PROCESSING;
         $this->started_at = date('Y-m-d H:i:s');
         $this->save();
-        
+
         return $this;
     }
 
@@ -80,7 +90,7 @@ class Job extends Model
         $this->message = $message;
         $this->completed_at = date('Y-m-d H:i:s');
         $this->save();
-        
+
         return $this;
     }
 
@@ -93,7 +103,7 @@ class Job extends Model
         $this->message = $message;
         $this->completed_at = date('Y-m-d H:i:s');
         $this->save();
-        
+
         return $this;
     }
 
@@ -106,7 +116,7 @@ class Job extends Model
         $this->message = $message;
         $this->completed_at = date('Y-m-d H:i:s');
         $this->save();
-        
+
         return $this;
     }
 
@@ -116,13 +126,13 @@ class Job extends Model
     public function updateProgress(int $percent, ?string $message = null): self
     {
         $this->progress = min(100, max(0, $percent));
-        
+
         if ($message !== null) {
             $this->message = $message;
         }
-        
+
         $this->save();
-        
+
         return $this;
     }
 
@@ -216,7 +226,7 @@ class Job extends Model
     public static function cleanup(int $days = 30): int
     {
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$days} days"));
-        
+
         return self::query()
             ->where('created_at', '<', $cutoff)
             ->where('status', '!=', self::STATUS_PROCESSING)

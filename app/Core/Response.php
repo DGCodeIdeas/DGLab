@@ -1,10 +1,11 @@
 <?php
+
 /**
  * DGLab HTTP Response
- * 
+ *
  * PSR-7 inspired HTTP response abstraction.
  * Provides immutable modification methods and helper methods for common responses.
- * 
+ *
  * @package DGLab\Core
  */
 
@@ -12,7 +13,7 @@ namespace DGLab\Core;
 
 /**
  * Class Response
- * 
+ *
  * Represents an HTTP response with:
  * - Status code management
  * - Header management
@@ -55,22 +56,22 @@ class Response
      * Response content
      */
     private string $content = '';
-    
+
     /**
      * HTTP status code
      */
     private int $statusCode = 200;
-    
+
     /**
      * Response headers
      */
     private array $headers = [];
-    
+
     /**
      * HTTP version
      */
     private string $version = '1.1';
-    
+
     /**
      * Cookies to set
      */
@@ -92,7 +93,7 @@ class Response
     public static function json(array $data, int $status = 200, array $headers = []): self
     {
         $headers['Content-Type'] = 'application/json';
-        
+
         return new self(json_encode($data), $status, $headers);
     }
 
@@ -102,7 +103,7 @@ class Response
     public static function redirect(string $url, int $status = 302, array $headers = []): self
     {
         $headers['Location'] = $url;
-        
+
         return new self('', $status, $headers);
     }
 
@@ -114,21 +115,24 @@ class Response
         if (!file_exists($file)) {
             throw new \RuntimeException("File not found: {$file}");
         }
-        
+
         $filename = $name ?? basename($file);
         $filesize = filesize($file);
-        $mimeType = mime_content_type($file) ?? 'application/octet-stream';
-        
+        $mimeType = mime_content_type($file);
+        if ($mimeType === false) {
+            $mimeType = 'application/octet-stream';
+        }
+
         $headers = array_merge([
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Content-Length' => $filesize,
             'Cache-Control' => 'no-cache, must-revalidate',
         ], $headers);
-        
+
         $response = new self('', 200, $headers);
         $response->filePath = $file;
-        
+
         return $response;
     }
 
@@ -140,23 +144,26 @@ class Response
         if (!file_exists($file)) {
             throw new \RuntimeException("File not found: {$file}");
         }
-        
+
         $filename = $name ?? basename($file);
         $filesize = filesize($file);
-        $mimeType = mime_content_type($file) ?? 'application/octet-stream';
-        
+        $mimeType = mime_content_type($file);
+        if ($mimeType === false) {
+            $mimeType = 'application/octet-stream';
+        }
+
         $headers = array_merge([
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
             'Accept-Ranges' => 'bytes',
             'Cache-Control' => 'public, max-age=86400',
         ], $headers);
-        
+
         $response = new self('', 200, $headers);
         $response->filePath = $file;
         $response->fileSize = $filesize;
         $response->supportsRange = true;
-        
+
         return $response;
     }
 
@@ -174,7 +181,7 @@ class Response
     public function setStatusCode(int $code): self
     {
         $this->statusCode = $code;
-        
+
         return $this;
     }
 
@@ -200,7 +207,7 @@ class Response
     public function setHeader(string $name, string $value): self
     {
         $this->headers[$name] = $value;
-        
+
         return $this;
     }
 
@@ -212,7 +219,7 @@ class Response
         if (!isset($this->headers[$name])) {
             $this->headers[$name] = $value;
         }
-        
+
         return $this;
     }
 
@@ -238,7 +245,7 @@ class Response
     public function removeHeader(string $name): self
     {
         unset($this->headers[$name]);
-        
+
         return $this;
     }
 
@@ -248,7 +255,7 @@ class Response
     public function setContent(string $content): self
     {
         $this->content = $content;
-        
+
         return $this;
     }
 
@@ -272,23 +279,23 @@ class Response
         } elseif (isset($options['no_cache'])) {
             $this->headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
         }
-        
+
         if (isset($options['max_age'])) {
             $this->headers['Cache-Control'] .= ', max-age=' . $options['max_age'];
         }
-        
+
         if (isset($options['expires'])) {
             $this->headers['Expires'] = gmdate('D, d M Y H:i:s GMT', $options['expires']);
         }
-        
+
         if (isset($options['etag'])) {
             $this->headers['ETag'] = '"' . $options['etag'] . '"';
         }
-        
+
         if (isset($options['last_modified'])) {
             $this->headers['Last-Modified'] = gmdate('D, d M Y H:i:s GMT', $options['last_modified']);
         }
-        
+
         return $this;
     }
 
@@ -302,16 +309,16 @@ class Response
         $headers = $options['headers'] ?? 'Content-Type, Authorization, X-Requested-With';
         $credentials = $options['credentials'] ?? false;
         $maxAge = $options['max_age'] ?? 86400;
-        
+
         $this->headers['Access-Control-Allow-Origin'] = $origin;
         $this->headers['Access-Control-Allow-Methods'] = $methods;
         $this->headers['Access-Control-Allow-Headers'] = $headers;
         $this->headers['Access-Control-Max-Age'] = $maxAge;
-        
+
         if ($credentials) {
             $this->headers['Access-Control-Allow-Credentials'] = 'true';
         }
-        
+
         return $this;
     }
 
@@ -337,7 +344,7 @@ class Response
             'httpOnly' => $httpOnly,
             'sameSite' => $sameSite,
         ];
-        
+
         return $this;
     }
 
@@ -355,7 +362,7 @@ class Response
     public function setProtocolVersion(string $version): self
     {
         $this->version = $version;
-        
+
         return $this;
     }
 
@@ -376,16 +383,16 @@ class Response
         if (headers_sent()) {
             return;
         }
-        
+
         // Send status line
         $phrase = $this->getStatusPhrase();
         header("HTTP/{$this->version} {$this->statusCode} {$phrase}");
-        
+
         // Send headers
         foreach ($this->headers as $name => $value) {
             header("{$name}: {$value}");
         }
-        
+
         // Send cookies
         foreach ($this->cookies as $name => $cookie) {
             $options = [
@@ -395,11 +402,11 @@ class Response
                 'secure' => $cookie['secure'],
                 'httponly' => $cookie['httpOnly'],
             ];
-            
+
             if ($cookie['sameSite'] !== null) {
                 $options['samesite'] = $cookie['sameSite'];
             }
-            
+
             setcookie($name, $cookie['value'], $options);
         }
     }
@@ -414,7 +421,7 @@ class Response
             $this->sendFile();
             return;
         }
-        
+
         echo $this->content;
     }
 
@@ -422,12 +429,12 @@ class Response
      * File path for download/stream
      */
     private ?string $filePath = null;
-    
+
     /**
      * File size for range requests
      */
     private int $fileSize = 0;
-    
+
     /**
      * Whether range requests are supported
      */
@@ -442,41 +449,41 @@ class Response
             readfile($this->filePath);
             return;
         }
-        
+
         // Handle range requests
         $range = $_SERVER['HTTP_RANGE'] ?? null;
-        
+
         if ($range === null) {
             header("Content-Length: {$this->fileSize}");
             readfile($this->filePath);
             return;
         }
-        
+
         // Parse range header
         if (!preg_match('/bytes=(\d*)-(\d*)/', $range, $matches)) {
             header('HTTP/1.1 416 Requested Range Not Satisfiable');
             return;
         }
-        
+
         $start = $matches[1] !== '' ? (int) $matches[1] : 0;
         $end = $matches[2] !== '' ? (int) $matches[2] : $this->fileSize - 1;
-        
+
         // Validate range
         if ($start > $end || $end >= $this->fileSize) {
             header('HTTP/1.1 416 Requested Range Not Satisfiable');
             header("Content-Range: bytes */{$this->fileSize}");
             return;
         }
-        
+
         $length = $end - $start + 1;
-        
+
         header('HTTP/1.1 206 Partial Content');
         header("Content-Length: {$length}");
         header("Content-Range: bytes {$start}-{$end}/{$this->fileSize}");
-        
+
         $fp = fopen($this->filePath, 'rb');
         fseek($fp, $start);
-        
+
         $remaining = $length;
         while ($remaining > 0 && !feof($fp)) {
             $chunkSize = min(8192, $remaining);
@@ -484,7 +491,7 @@ class Response
             $remaining -= $chunkSize;
             flush();
         }
-        
+
         fclose($fp);
     }
 
