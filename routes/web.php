@@ -281,7 +281,7 @@ $router->group(['prefix' => 'api'], function (Router $router) {
 
 // PWA Manifest
 $router->get('/manifest.json', function (Request $request) {
-    $config = Application::getInstance()->config('pwa');
+    $config = Application::getInstance()->config('app.pwa');
     
     $manifest = [
         'name' => $config['name'],
@@ -319,7 +319,7 @@ $router->get('/health', function (Request $request) {
     return Response::json([
         'status' => 'ok',
         'timestamp' => date('c'),
-        'version' => Application::getInstance()->config('version'),
+        'version' => Application::getInstance()->config('app.version'),
     ]);
 });
 
