@@ -1,9 +1,10 @@
 <?php
+
 /**
  * DGLab Font Injection Engine
- * 
+ *
  * Generates and injects @font-face CSS into EPUB documents.
- * 
+ *
  * @package DGLab\Services\EpubFontChanger
  */
 
@@ -11,7 +12,7 @@ namespace DGLab\Services\EpubFontChanger;
 
 /**
  * Class FontInjector
- * 
+ *
  * Font injection engine providing:
  * - @font-face CSS generation
  * - Base64 encoding for embedding
@@ -38,44 +39,46 @@ class FontInjector
         $useBase64 = $options['embed_base64'] ?? false;
         $fontPath = $options['font_path'] ?? 'fonts/';
         $fontDisplay = $options['font_display'] ?? 'swap';
-        
+
         $css = '';
-        
+
         foreach ($fonts as $font) {
             $family = $font['family'];
             $style = $font['style'] ?? 'normal';
             $weight = $font['weight'] ?? '400';
             $files = $font['files'] ?? [];
-            
+
             $css .= "@font-face {\n";
             $css .= "  font-family: '{$family}';\n";
             $css .= "  font-style: {$style};\n";
             $css .= "  font-weight: {$weight};\n";
             $css .= "  font-display: {$fontDisplay};\n";
-            
+
             // Build src list
             $srcList = [];
-            
+
             foreach (['woff2', 'woff', 'ttf', 'otf'] as $format) {
                 if (isset($files[$format])) {
                     if ($useBase64) {
                         $data = base64_encode(file_get_contents($files[$format]));
                         $mime = self::FONT_FORMATS[$format]['mime'];
-                        $srcList[] = "url('data:{$mime};base64,{$data}') format('" . self::FONT_FORMATS[$format]['format'] . "')";
+                        $formatStr = self::FONT_FORMATS[$format]['format'];
+                        $srcList[] = "url('data:{$mime};base64,{$data}') format('{$formatStr}')";
                     } else {
                         $filename = basename($files[$format]);
-                        $srcList[] = "url('{$fontPath}{$filename}') format('" . self::FONT_FORMATS[$format]['format'] . "')";
+                        $formatStr = self::FONT_FORMATS[$format]['format'];
+                        $srcList[] = "url('{$fontPath}{$filename}') format('{$formatStr}')";
                     }
                 }
             }
-            
+
             if (!empty($srcList)) {
                 $css .= "  src: " . implode(',\n       ', $srcList) . ";\n";
             }
-            
+
             $css .= "}\n\n";
         }
-        
+
         return $css;
     }
 
@@ -85,14 +88,14 @@ class FontInjector
     public function injectIntoStylesheet(string $cssPath, string $fontCSS): void
     {
         $existing = '';
-        
+
         if (file_exists($cssPath)) {
             $existing = file_get_contents($cssPath);
         }
-        
+
         // Prepend font CSS at the beginning
         $newContent = $fontCSS . "\n" . $existing;
-        
+
         file_put_contents($cssPath, $newContent);
     }
 
@@ -104,16 +107,16 @@ class FontInjector
         if (!file_exists($cssPath)) {
             return;
         }
-        
+
         $css = file_get_contents($cssPath);
-        
+
         // Generate new rules
         $newRules = '';
-        
+
         foreach ($targetElements as $selector => $description) {
             // Check if rule already exists
             $pattern = '/(' . preg_quote($selector, '/') . '\s*\{[^}]*)font-family:[^;]*;/i';
-            
+
             if (preg_match($pattern, $css)) {
                 // Update existing rule
                 $css = preg_replace(
@@ -126,12 +129,12 @@ class FontInjector
                 $newRules .= "{$selector} { font-family: '{$fontFamily}', serif; }\n";
             }
         }
-        
+
         // Append new rules at the end
         if ($newRules) {
             $css .= "\n/* DGLab Font Injection */\n" . $newRules;
         }
-        
+
         file_put_contents($cssPath, $css);
     }
 
@@ -141,7 +144,7 @@ class FontInjector
     public function createFontStylesheet(string $outputPath, array $fonts, array $options = []): void
     {
         $fontCSS = $this->generateFontFaceCSS($fonts, $options);
-        
+
         // Add font-family rules
         $targetElements = $options['target_elements'] ?? [
             'body' => 'Body text',
@@ -152,15 +155,15 @@ class FontInjector
             'h5' => 'Heading 5',
             'h6' => 'Heading 6',
         ];
-        
+
         if (!empty($targetElements) && isset($fonts[0]['family'])) {
             $fontFamily = $fonts[0]['family'];
-            
+
             foreach ($targetElements as $selector => $description) {
                 $fontCSS .= "{$selector} { font-family: '{$fontFamily}', serif; }\n";
             }
         }
-        
+
         file_put_contents($outputPath, $fontCSS);
     }
 
@@ -172,37 +175,37 @@ class FontInjector
         if (!file_exists($htmlPath)) {
             return;
         }
-        
+
         $html = file_get_contents($htmlPath);
-        
+
         // Check if link already exists
         if (strpos($html, $cssHref) !== false) {
             return;
         }
-        
+
         // Find </head> tag
         $headEndPos = stripos($html, '</head>');
-        
+
         if ($headEndPos === false) {
             // Try to find <body> tag
             $bodyPos = stripos($html, '<body>');
-            
+
             if ($bodyPos === false) {
                 // Prepend to beginning
                 $html = '<link rel="stylesheet" type="text/css" href="' . $cssHref . '"/>' . "\n" . $html;
             } else {
                 // Insert before body
-                $html = substr($html, 0, $bodyPos) . 
+                $html = substr($html, 0, $bodyPos) .
                         '<link rel="stylesheet" type="text/css" href="' . $cssHref . '"/>' . "\n" .
                         substr($html, $bodyPos);
             }
         } else {
             // Insert before </head>
-            $html = substr($html, 0, $headEndPos) . 
+            $html = substr($html, 0, $headEndPos) .
                     '  <link rel="stylesheet" type="text/css" href="' . $cssHref . '"/>' . "\n" .
                     substr($html, $headEndPos);
         }
-        
+
         file_put_contents($htmlPath, $html);
     }
 
@@ -214,14 +217,14 @@ class FontInjector
         if (!file_exists($htmlPath)) {
             return;
         }
-        
+
         $html = file_get_contents($htmlPath);
-        
+
         // Find </head> tag
         $headEndPos = stripos($html, '</head>');
-        
+
         $styleTag = "\n<style type=\"text/css\">\n" . $css . "</style>\n";
-        
+
         if ($headEndPos === false) {
             // Prepend to beginning
             $html = $styleTag . $html;
@@ -229,7 +232,7 @@ class FontInjector
             // Insert before </head>
             $html = substr($html, 0, $headEndPos) . $styleTag . substr($html, $headEndPos);
         }
-        
+
         file_put_contents($htmlPath, $html);
     }
 
@@ -239,25 +242,25 @@ class FontInjector
     public function copyFontFiles(array $fonts, string $destination): array
     {
         $copied = [];
-        
+
         if (!is_dir($destination)) {
             mkdir($destination, 0755, true);
         }
-        
+
         foreach ($fonts as $font) {
             $files = $font['files'] ?? [];
-            
+
             foreach ($files as $format => $sourcePath) {
                 if (file_exists($sourcePath)) {
                     $filename = basename($sourcePath);
                     $destPath = $destination . '/' . $filename;
-                    
+
                     copy($sourcePath, $destPath);
                     $copied[] = $destPath;
                 }
             }
         }
-        
+
         return $copied;
     }
 
@@ -272,10 +275,10 @@ class FontInjector
             'extension' => strtolower(pathinfo($fontPath, PATHINFO_EXTENSION)),
             'size' => filesize($fontPath),
         ];
-        
+
         // Try to extract more info if possible
         // This is a simplified version - could be enhanced with font parsing libraries
-        
+
         return $info;
     }
 
@@ -285,11 +288,11 @@ class FontInjector
     public function generateElementFontCSS(array $elements, string $fontFamily): string
     {
         $css = '';
-        
+
         foreach ($elements as $selector) {
             $css .= "{$selector} { font-family: '{$fontFamily}', serif; }\n";
         }
-        
+
         return $css;
     }
 
@@ -301,14 +304,14 @@ class FontInjector
         $fallbackList = implode(', ', array_map(function ($f) {
             return strpos($f, ' ') !== false ? "'{$f}'" : $f;
         }, $fallbacks));
-        
+
         // Replace font-family declarations to add fallbacks
         $css = preg_replace(
             '/(font-family:\s*\'[^\']+\')/',
             '$1, ' . $fallbackList,
             $css
         );
-        
+
         return $css;
     }
 }

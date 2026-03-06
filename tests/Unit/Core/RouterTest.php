@@ -7,7 +7,7 @@ namespace DGLab\Tests\Unit\Core;
 
 use DGLab\Core\Request;
 use DGLab\Core\Response;
-use DGLab\Core\RouteNotFoundException;
+use DGLab\Core\Exceptions\RouteNotFoundException;
 use DGLab\Core\Router;
 use DGLab\Tests\TestCase;
 
@@ -79,10 +79,10 @@ class RouterTest extends TestCase
     
     public function testNamedRoute(): void
     {
-        $route = $this->router->get('/user/{id}', fn() => new Response('OK'));
-        $route->name('user.show');
+        $router = \DGLab\Core\Application::getInstance()->get(\DGLab\Core\Router::class);
+        $router->get('/user/{id}', fn() => new Response('OK'))->name('user.show');
         
-        $url = $this->router->url('user.show', ['id' => 123]);
+        $url = $router->url('user.show', ['id' => 123]);
         
         $this->assertEquals('/user/123', $url);
     }

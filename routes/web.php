@@ -130,7 +130,7 @@ $router->group(['prefix' => 'api'], function (Router $router) {
             $service->validate($request->json() ?? $request->all());
             
             return Response::json(['valid' => true]);
-        } catch (\DGLab\Core\ValidationException $e) {
+        } catch (\DGLab\Core\Exceptions\ValidationException $e) {
             return Response::json(['valid' => false, 'errors' => $e->getErrors()], 422);
         }
     });

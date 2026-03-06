@@ -1,10 +1,11 @@
 <?php
+
 /**
  * DGLab Base Controller
- * 
+ *
  * Abstract base class for all application controllers.
  * Provides common functionality and helper methods for request handling.
- * 
+ *
  * @package DGLab\Core
  */
 
@@ -12,7 +13,7 @@ namespace DGLab\Core;
 
 /**
  * Class Controller
- * 
+ *
  * Base controller providing:
  * - Request/Response property injection
  * - Helper methods for common responses
@@ -26,17 +27,17 @@ abstract class Controller
      * The current request
      */
     protected Request $request;
-    
+
     /**
      * The response instance
      */
     protected Response $response;
-    
+
     /**
      * Application container
      */
     protected Application $app;
-    
+
     /**
      * Middleware to apply to controller actions
      */
@@ -56,7 +57,7 @@ abstract class Controller
     public function setRequest(Request $request): self
     {
         $this->request = $request;
-        
+
         return $this;
     }
 
@@ -74,7 +75,7 @@ abstract class Controller
     public function setResponse(Response $response): self
     {
         $this->response = $response;
-        
+
         return $this;
     }
 
@@ -101,7 +102,7 @@ abstract class Controller
     {
         $view = $this->app->get(View::class);
         $content = $view->render($template, $data);
-        
+
         return new Response($content, $status);
     }
 
@@ -120,7 +121,7 @@ abstract class Controller
     {
         $router = $this->app->get(Router::class);
         $url = $router->url($name, $parameters);
-        
+
         return $this->redirect($url, $status);
     }
 
@@ -154,7 +155,7 @@ abstract class Controller
     protected function validate(array $rules): array
     {
         $validator = new Validator($this->request);
-        
+
         return $validator->validate($rules);
     }
 
@@ -164,7 +165,7 @@ abstract class Controller
     protected function middleware(string|array $middleware): self
     {
         $this->middleware = array_merge($this->middleware, (array) $middleware);
-        
+
         return $this;
     }
 
@@ -221,10 +222,10 @@ abstract class Controller
             unset($_SESSION['flash']);
             return $flash;
         }
-        
+
         $message = $_SESSION['flash'][$type] ?? null;
         unset($_SESSION['flash'][$type]);
-        
+
         return $message;
     }
 
@@ -260,7 +261,7 @@ abstract class Controller
         if (!isset($_SESSION['_csrf_token'])) {
             $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
         }
-        
+
         return $_SESSION['_csrf_token'];
     }
 
@@ -270,7 +271,7 @@ abstract class Controller
     protected function csrfField(): string
     {
         $token = $this->csrfToken();
-        
+
         return '<input type="hidden" name="_token" value="' . htmlspecialchars($token) . '">';
     }
 
@@ -298,175 +299,5 @@ abstract class Controller
     protected function afterAction(string $action, mixed $result): void
     {
         // Override in child classes
-    }
-}
-
-/**
- * Simple Validator class
- */
-class Validator
-{
-    private Request $request;
-    private array $errors = [];
-
-    public function __construct(Request $request)
-    {
-        $this->request = $request;
-    }
-
-    /**
-     * Validate input against rules
-     */
-    public function validate(array $rules): array
-    {
-        $data = [];
-        
-        foreach ($rules as $field => $ruleSet) {
-            $rules = explode('|', $ruleSet);
-            $value = $this->request->input($field);
-            
-            foreach ($rules as $rule) {
-                if (!$this->checkRule($field, $value, $rule)) {
-                    break;
-                }
-            }
-            
-            $data[$field] = $value;
-        }
-        
-        if (!empty($this->errors)) {
-            throw new ValidationException($this->errors);
-        }
-        
-        return $data;
-    }
-
-    /**
-     * Check a single validation rule
-     */
-    private function checkRule(string $field, mixed $value, string $rule): bool
-    {
-        // Parse rule with parameters
-        if (strpos($rule, ':') !== false) {
-            [$ruleName, $param] = explode(':', $rule, 2);
-        } else {
-            $ruleName = $rule;
-            $param = null;
-        }
-        
-        switch ($ruleName) {
-            case 'required':
-                if ($value === null || $value === '' || $value === []) {
-                    $this->errors[$field] = "The {$field} field is required.";
-                    return false;
-                }
-                break;
-                
-            case 'email':
-                if ($value !== null && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                    $this->errors[$field] = "The {$field} must be a valid email address.";
-                    return false;
-                }
-                break;
-                
-            case 'min':
-                if ($value !== null) {
-                    if (is_string($value) && strlen($value) < (int) $param) {
-                        $this->errors[$field] = "The {$field} must be at least {$param} characters.";
-                        return false;
-                    }
-                    if (is_numeric($value) && $value < (int) $param) {
-                        $this->errors[$field] = "The {$field} must be at least {$param}.";
-                        return false;
-                    }
-                }
-                break;
-                
-            case 'max':
-                if ($value !== null) {
-                    if (is_string($value) && strlen($value) > (int) $param) {
-                        $this->errors[$field] = "The {$field} must not exceed {$param} characters.";
-                        return false;
-                    }
-                    if (is_numeric($value) && $value > (int) $param) {
-                        $this->errors[$field] = "The {$field} must not exceed {$param}.";
-                        return false;
-                    }
-                }
-                break;
-                
-            case 'numeric':
-                if ($value !== null && !is_numeric($value)) {
-                    $this->errors[$field] = "The {$field} must be a number.";
-                    return false;
-                }
-                break;
-                
-            case 'integer':
-                if ($value !== null && !filter_var($value, FILTER_VALIDATE_INT)) {
-                    $this->errors[$field] = "The {$field} must be an integer.";
-                    return false;
-                }
-                break;
-                
-            case 'in':
-                if ($value !== null) {
-                    $allowed = explode(',', $param);
-                    if (!in_array($value, $allowed, true)) {
-                        $this->errors[$field] = "The {$field} must be one of: {$param}.";
-                        return false;
-                    }
-                }
-                break;
-                
-            case 'file':
-                $file = $this->request->file($field);
-                if ($file === null || !$file->isValid()) {
-                    $this->errors[$field] = "The {$field} must be a valid file.";
-                    return false;
-                }
-                break;
-                
-            case 'mimes':
-                $file = $this->request->file($field);
-                if ($file !== null && $file->isValid()) {
-                    $allowed = explode(',', $param);
-                    $ext = strtolower($file->getClientOriginalExtension());
-                    if (!in_array($ext, $allowed, true)) {
-                        $this->errors[$field] = "The {$field} must be a file of type: {$param}.";
-                        return false;
-                    }
-                }
-                break;
-        }
-        
-        return true;
-    }
-
-    /**
-     * Get validation errors
-     */
-    public function errors(): array
-    {
-        return $this->errors;
-    }
-}
-
-/**
- * Validation Exception
- */
-class ValidationException extends \Exception
-{
-    private array $errors;
-
-    public function __construct(array $errors)
-    {
-        parent::__construct('Validation failed');
-        $this->errors = $errors;
-    }
-
-    public function getErrors(): array
-    {
-        return $this->errors;
     }
 }

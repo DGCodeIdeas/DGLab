@@ -83,7 +83,7 @@ try {
     } else {
         echo $response;
     }
-} catch (\DGLab\Core\RouteNotFoundException $e) {
+} catch (\DGLab\Core\Exceptions\RouteNotFoundException $e) {
     http_response_code(404);
     if ($request->expectsJson()) {
         header('Content-Type: application/json');

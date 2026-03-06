@@ -1,10 +1,11 @@
 <?php
+
 /**
  * DGLab View Component
- * 
+ *
  * Simple PHP-based templating system with layout support.
  * Can be extended to use Twig or other template engines.
- * 
+ *
  * @package DGLab\Core
  */
 
@@ -12,7 +13,7 @@ namespace DGLab\Core;
 
 /**
  * Class View
- * 
+ *
  * Provides template rendering with:
  * - Layout support
  * - Partial includes
@@ -25,31 +26,27 @@ class View
      * Views directory
      */
     private string $viewPath;
-    
+
     /**
      * Layout directory
      */
     private string $layoutPath;
-    
+
     /**
      * Shared data across all views
      */
     private array $shared = [];
-    
+
     /**
      * Section content
      */
     private array $sections = [];
-    
+
     /**
      * Current section being captured
      */
     private ?string $currentSection = null;
-    
-    /**
-     * Cache compiled views
-     */
-    private array $cache = [];
+
 
     /**
      * Constructor
@@ -68,31 +65,31 @@ class View
     {
         // Merge shared data
         $data = array_merge($this->shared, $data);
-        
+
         // Extract data for view
         extract($data);
-        
+
         // Start output buffering
         ob_start();
-        
+
         // Include the view file
         $viewFile = $this->viewPath . '/' . $this->normalizePath($template) . '.php';
-        
+
         if (!file_exists($viewFile)) {
             throw new \RuntimeException("View not found: {$template}");
         }
-        
+
         include $viewFile;
-        
+
         // Get content
         $content = ob_get_clean();
-        
+
         // Wrap in layout if specified
         if ($layout !== null) {
             $this->sections['content'] = $content;
             $content = $this->renderLayout($layout, $data);
         }
-        
+
         return $content;
     }
 
@@ -102,17 +99,17 @@ class View
     private function renderLayout(string $layout, array $data): string
     {
         extract($data);
-        
+
         ob_start();
-        
+
         $layoutFile = $this->layoutPath . '/' . $this->normalizePath($layout) . '.php';
-        
+
         if (!file_exists($layoutFile)) {
             throw new \RuntimeException("Layout not found: {$layout}");
         }
-        
+
         include $layoutFile;
-        
+
         return ob_get_clean();
     }
 
@@ -122,13 +119,13 @@ class View
     public function partial(string $name, array $data = []): void
     {
         extract($data);
-        
+
         $partialFile = $this->viewPath . '/partials/' . $this->normalizePath($name) . '.php';
-        
+
         if (!file_exists($partialFile)) {
             throw new \RuntimeException("Partial not found: {$name}");
         }
-        
+
         include $partialFile;
     }
 
@@ -149,7 +146,7 @@ class View
         if ($this->currentSection === null) {
             throw new \RuntimeException('No section started');
         }
-        
+
         $this->sections[$this->currentSection] = ob_get_clean();
         $this->currentSection = null;
     }
@@ -193,7 +190,7 @@ class View
     {
         // Remove any .. to prevent directory traversal
         $path = str_replace('..', '', $path);
-        
+
         // Remove leading/trailing slashes
         return trim($path, '/');
     }
@@ -217,7 +214,7 @@ class View
     public function route(string $name, array $parameters = []): string
     {
         $router = Application::getInstance()->get(Router::class);
-        
+
         return $router->url($name, $parameters);
     }
 
@@ -269,7 +266,7 @@ class View
         if (!isset($_SESSION['_csrf_token'])) {
             $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
         }
-        
+
         return $_SESSION['_csrf_token'];
     }
 

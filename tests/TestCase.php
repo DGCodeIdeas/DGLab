@@ -32,6 +32,7 @@ abstract class TestCase extends BaseTestCase
     {
         // Clean up
         Application::flush();
+        \DGLab\Database\Model::clearConnection();
         
         parent::tearDown();
     }
@@ -41,6 +42,8 @@ abstract class TestCase extends BaseTestCase
      */
     protected function registerTestServices(): void
     {
+        $this->app->singleton(\DGLab\Core\Router::class);
+
         // Override with test implementations
         $this->app->singleton(\DGLab\Database\Connection::class, function () {
             return new \DGLab\Database\Connection([

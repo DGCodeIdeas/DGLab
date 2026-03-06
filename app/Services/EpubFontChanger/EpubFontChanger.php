@@ -1,23 +1,24 @@
 <?php
+
 /**
  * DGLab EPUB Font Changer Service
- * 
+ *
  * Main service implementation for changing fonts in EPUB files.
- * 
+ *
  * @package DGLab\Services\EpubFontChanger
  */
 
 namespace DGLab\Services\EpubFontChanger;
 
 use DGLab\Core\Application;
-use DGLab\Core\ValidationException;
+use DGLab\Core\Exceptions\ValidationException;
 use DGLab\Database\UploadChunk;
 use DGLab\Services\BaseService;
 use DGLab\Services\Contracts\ChunkedServiceInterface;
 
 /**
  * Class EpubFontChanger
- * 
+ *
  * EPUB Font Changer service providing:
  * - Font injection into EPUB files
  * - Multiple font family support
@@ -30,41 +31,38 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
      * Service ID
      */
     private const SERVICE_ID = 'epub-font-changer';
-    
+
     /**
      * Service name
      */
     private const SERVICE_NAME = 'EPUB Font Changer';
-    
+
     /**
      * Service description
      */
-    private const SERVICE_DESCRIPTION = 'Change fonts in EPUB e-books with open-source font families including OpenDyslexic, Merriweather, and Fira Sans.';
-    
+    private const SERVICE_DESCRIPTION = 'Change fonts in EPUB e-books with open-source font families ' .
+                                        'including OpenDyslexic, Merriweather, and Fira Sans.';
+
     /**
      * Service icon
      */
     private const SERVICE_ICON = 'fa-book';
-    
+
     /**
      * EPUB Parser
      */
     private ?EpubParser $parser = null;
-    
+
     /**
      * Font Injector
      */
     private ?FontInjector $injector = null;
-    
+
     /**
      * Repackager
      */
     private ?Repackager $repackager = null;
-    
-    /**
-     * Active sessions
-     */
-    private array $sessions = [];
+
 
     /**
      * Constructor
@@ -72,7 +70,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function __construct()
     {
         parent::__construct();
-        
+
         $this->parser = new EpubParser();
         $this->injector = new FontInjector();
         $this->repackager = new Repackager();
@@ -162,100 +160,100 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function process(array $input, ?callable $progressCallback = null): array
     {
         $this->reportProgress($progressCallback, 0, 'Starting EPUB font change');
-        
+
         // Get file path
         $filePath = $input['file'];
-        
+
         if (!file_exists($filePath)) {
             throw new \RuntimeException('EPUB file not found');
         }
-        
+
         // Validate file type
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-        
+
         if ($extension !== 'epub') {
             throw new ValidationException(['file' => 'File must be an EPUB']);
         }
-        
+
         // Get options
         $fontId = $input['font'] ?? 'merriweather';
         $targetElements = $input['target_elements'] ?? ['body'];
         $embedBase64 = $input['embed_base64'] ?? false;
-        
+
         $this->reportProgress($progressCallback, 5, 'Extracting EPUB');
-        
+
         // Extract EPUB
         $extractPath = $this->createTempDir('epub_extract');
-        
+
         if (!$this->parser->load($filePath, $extractPath)) {
             throw new \RuntimeException('Failed to parse EPUB: ' . implode(', ', $this->parser->getErrors()));
         }
-        
+
         $this->reportProgress($progressCallback, 20, 'EPUB extracted');
-        
+
         // Validate EPUB
         if (!$this->parser->isValid()) {
             throw new \RuntimeException('Invalid EPUB: ' . implode(', ', $this->parser->getErrors()));
         }
-        
+
         $this->reportProgress($progressCallback, 25, 'EPUB validated');
-        
+
         // Get font configuration
         $fontConfig = $this->getFontConfig($fontId);
-        
+
         if ($fontConfig === null) {
             throw new \RuntimeException('Unknown font: ' . $fontId);
         }
-        
+
         $this->reportProgress($progressCallback, 30, 'Preparing font assets');
-        
+
         // Prepare fonts
         $fontsPath = $extractPath . '/fonts';
         mkdir($fontsPath, 0755, true);
-        
+
         $fonts = $this->prepareFonts($fontConfig, $fontsPath);
-        
+
         $this->reportProgress($progressCallback, 40, 'Fonts prepared');
-        
+
         // Generate font CSS
         $this->reportProgress($progressCallback, 50, 'Generating CSS');
-        
+
         $fontCSS = $this->injector->generateFontFaceCSS($fonts, [
             'font_path' => 'fonts/',
             'embed_base64' => $embedBase64,
         ]);
-        
+
         // Add element rules
         $elementSelectors = array_map(function ($e) {
             return $e === 'body' ? 'body, p' : $e;
         }, $targetElements);
-        
+
         foreach ($elementSelectors as $selector) {
             $fontCSS .= "{$selector} { font-family: '" . $fontConfig['family'] . "', serif; }\n";
         }
-        
+
         $this->reportProgress($progressCallback, 60, 'Injecting CSS');
-        
+
         // Inject CSS into HTML files
         $htmlFiles = $this->parser->getHtmlFiles();
-        
+
         foreach ($htmlFiles as $htmlFile) {
             $this->injector->injectCssIntoHtml($htmlFile['full-path'], $fontCSS);
         }
-        
+
         $this->reportProgress($progressCallback, 70, 'CSS injected');
-        
+
         // Update OPF manifest
         $opfDir = $this->parser->getOpfDir();
         $fontPrefix = $opfDir ? $opfDir . '/fonts/' : 'fonts/';
-        
+
         $manifestUpdates = [];
-        
+
         foreach ($fonts as $font) {
             foreach ($font['files'] as $format => $filePath) {
                 $filename = basename($filePath);
                 $mediaType = $this->getFontMediaType($format);
-                
+
                 $manifestUpdates[] = [
                     'id' => 'font-' . $fontId . '-' . $format,
                     'href' => $fontPrefix . $filename,
@@ -263,14 +261,14 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
                 ];
             }
         }
-        
+
         $this->reportProgress($progressCallback, 80, 'Repackaging EPUB');
-        
+
         // Repackage
         $outputDir = Application::getInstance()->getBasePath() . '/storage/uploads/temp';
         $outputName = $this->generateOutputFilename($filePath, $fontId);
         $outputPath = $outputDir . '/' . $outputName;
-        
+
         $this->repackager
             ->setSource($extractPath)
             ->setOutput($outputPath)
@@ -280,22 +278,22 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
                 $this->reportProgress($progressCallback, $adjustedPercent, $message);
             })
             ->create();
-        
+
         $this->reportProgress($progressCallback, 95, 'Validating output');
-        
+
         // Validate output
         if (!$this->repackager->validateOutput()) {
             throw new \RuntimeException('Output EPUB validation failed');
         }
-        
+
         $this->reportProgress($progressCallback, 100, 'Complete');
-        
+
         // Get metadata
         $metadata = $this->parser->getMetadata();
-        
+
         // Cleanup
         $this->parser->cleanup();
-        
+
         return [
             'success' => true,
             'download_url' => '/api/download/' . basename($outputPath),
@@ -324,7 +322,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function estimateTime(array $input): int
     {
         $fileSize = $input['file_size'] ?? 0;
-        
+
         // Rough estimate: 1MB takes ~3 seconds
         return (int) max(5, ($fileSize / 1048576) * 3);
     }
@@ -349,7 +347,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
             $this->getChunkSize(),
             $metadata
         );
-        
+
         return [
             'session_id' => $session->session_id,
             'chunk_size' => $this->getChunkSize(),
@@ -365,28 +363,28 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function processChunk(string $sessionId, int $chunkIndex, string $chunkData): array
     {
         $session = UploadChunk::findBySessionId($sessionId);
-        
+
         if ($session === null) {
             throw new \RuntimeException('Session not found');
         }
-        
+
         if ($session->isExpired()) {
             throw new \RuntimeException('Session expired');
         }
-        
+
         // Save chunk
         $chunkDir = Application::getInstance()->getBasePath() . '/storage/uploads/chunks/' . $sessionId;
-        
+
         if (!is_dir($chunkDir)) {
             mkdir($chunkDir, 0755, true);
         }
-        
+
         $chunkPath = $chunkDir . '/chunk_' . $chunkIndex;
         file_put_contents($chunkPath, $chunkData);
-        
+
         // Record chunk
         $session->recordChunk($chunkIndex, $chunkPath);
-        
+
         return [
             'success' => true,
             'progress' => $session->getProgress(),
@@ -402,40 +400,40 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function finalizeChunkedProcess(string $sessionId): array
     {
         $session = UploadChunk::findBySessionId($sessionId);
-        
+
         if ($session === null) {
             throw new \RuntimeException('Session not found');
         }
-        
+
         if (!$session->isComplete()) {
             throw new \RuntimeException('Upload incomplete');
         }
-        
+
         // Reassemble file
         $tempDir = Application::getInstance()->getBasePath() . '/storage/uploads/temp';
         $outputPath = $tempDir . '/' . $session->filename;
-        
+
         if (!$session->reassemble($outputPath)) {
             throw new \RuntimeException('Failed to reassemble file');
         }
-        
+
         // Get metadata
         $metadata = $session->metadata ?? [];
-        
+
         // Process the file
         $result = $this->process(array_merge($metadata, [
             'file' => $outputPath,
         ]));
-        
+
         // Cleanup session
         $session->cleanupChunks();
         $session->markExpired();
-        
+
         // Remove reassembled file
         if (file_exists($outputPath)) {
             unlink($outputPath);
         }
-        
+
         return $result;
     }
 
@@ -445,13 +443,13 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function cancelChunkedProcess(string $sessionId): bool
     {
         $session = UploadChunk::findBySessionId($sessionId);
-        
+
         if ($session === null) {
             return false;
         }
-        
+
         $session->markCancelled();
-        
+
         return true;
     }
 
@@ -461,11 +459,11 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function getChunkedStatus(string $sessionId): array
     {
         $session = UploadChunk::findBySessionId($sessionId);
-        
+
         if ($session === null) {
             throw new \RuntimeException('Session not found');
         }
-        
+
         return [
             'status' => $session->status,
             'progress' => $session->getProgress(),
@@ -498,24 +496,24 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     public function isChunkValid(string $sessionId, int $chunkIndex, string $chunkData): bool
     {
         $session = UploadChunk::findBySessionId($sessionId);
-        
+
         if ($session === null) {
             return false;
         }
-        
+
         // Check chunk index is valid
         if ($chunkIndex < 0 || $chunkIndex >= $session->total_chunks) {
             return false;
         }
-        
+
         // Check chunk size
         $expectedSize = strlen($chunkData);
         $maxSize = $session->chunk_size * 1.1; // Allow 10% overhead
-        
+
         if ($expectedSize > $maxSize) {
             return false;
         }
-        
+
         return true;
     }
 
@@ -525,7 +523,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     private function getFontConfig(string $fontId): ?array
     {
         $fonts = $this->config['fonts'] ?? [];
-        
+
         return $fonts[$fontId] ?? null;
     }
 
@@ -536,17 +534,17 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     {
         $fontsPath = $this->config('default_fonts_path');
         $family = $fontConfig['family'];
-        
+
         $fonts = [];
-        
+
         // Regular
         if (isset($fontConfig['files']['regular'])) {
             $sourcePath = $fontsPath . '/' . $fontConfig['files']['regular'];
             $destPath = $outputPath . '/' . basename($sourcePath);
-            
+
             if (file_exists($sourcePath)) {
                 copy($sourcePath, $destPath);
-                
+
                 $fonts[] = [
                     'family' => $family,
                     'style' => 'normal',
@@ -555,7 +553,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
                 ];
             }
         }
-        
+
         return $fonts;
     }
 
@@ -565,19 +563,19 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     private function getFontFiles(array $fontConfig, string $fontsPath, string $outputPath): array
     {
         $files = [];
-        
+
         foreach ($fontConfig['files'] as $variant => $filename) {
             $sourcePath = $fontsPath . '/' . $filename;
             $destPath = $outputPath . '/' . basename($sourcePath);
-            
+
             if (file_exists($sourcePath)) {
                 copy($sourcePath, $destPath);
-                
+
                 $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
                 $files[$extension] = $destPath;
             }
         }
-        
+
         return $files;
     }
 
@@ -592,7 +590,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
             'ttf' => 'font/ttf',
             'otf' => 'font/otf',
         ];
-        
+
         return $types[$format] ?? 'application/octet-stream';
     }
 
@@ -602,14 +600,14 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     private function generateOutputFilename(string $inputPath, string $fontId): string
     {
         $basename = pathinfo($inputPath, PATHINFO_FILENAME);
-        
+
         return $basename . '-' . $fontId . '.epub';
     }
 
     /**
      * Report progress
      */
-    private function reportProgress(?callable $callback, int $percent, string $message): void
+    protected function reportProgress(?callable $callback, int $percent, ?string $message = null): void
     {
         if ($callback !== null) {
             $callback($percent, $message);

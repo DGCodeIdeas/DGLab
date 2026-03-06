@@ -1,9 +1,10 @@
 <?php
+
 /**
  * DGLab Upload Chunk Model
- * 
+ *
  * Represents a chunked upload session.
- * 
+ *
  * @package DGLab\Database
  */
 
@@ -11,8 +12,20 @@ namespace DGLab\Database;
 
 /**
  * Class UploadChunk
- * 
+ *
  * Model for tracking chunked upload sessions.
+ *
+ * @property string $session_id
+ * @property string $service_id
+ * @property string $filename
+ * @property int $file_size
+ * @property int $chunk_size
+ * @property int $total_chunks
+ * @property int $received_chunks
+ * @property array $chunks
+ * @property array $metadata
+ * @property string $status
+ * @property string $expires_at
  */
 class UploadChunk extends Model
 {
@@ -20,7 +33,7 @@ class UploadChunk extends Model
      * Table name
      */
     protected ?string $table = 'upload_chunks';
-    
+
     /**
      * Fillable attributes
      */
@@ -37,14 +50,14 @@ class UploadChunk extends Model
         'status',
         'expires_at',
     ];
-    
+
     /**
      * Status constants
      */
-    const STATUS_ACTIVE = 'active';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_EXPIRED = 'expired';
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_EXPIRED = 'expired';
+    public const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Create a new upload session
@@ -58,7 +71,7 @@ class UploadChunk extends Model
     ): self {
         $sessionId = bin2hex(random_bytes(32));
         $totalChunks = (int) ceil($fileSize / $chunkSize);
-        
+
         return self::create([
             'session_id' => $sessionId,
             'service_id' => $serviceId,
@@ -84,17 +97,17 @@ class UploadChunk extends Model
             'path' => $chunkPath,
             'received_at' => date('Y-m-d H:i:s'),
         ];
-        
+
         $this->chunks = $chunks;
         $this->received_chunks = count($chunks);
-        
+
         // Check if all chunks received
         if ($this->received_chunks >= $this->total_chunks) {
             $this->status = self::STATUS_COMPLETED;
         }
-        
+
         $this->save();
-        
+
         return $this;
     }
 
@@ -104,7 +117,7 @@ class UploadChunk extends Model
     public function hasChunk(int $chunkIndex): bool
     {
         $chunks = $this->chunks ?? [];
-        
+
         return isset($chunks[$chunkIndex]);
     }
 
@@ -115,13 +128,13 @@ class UploadChunk extends Model
     {
         $chunks = $this->chunks ?? [];
         $missing = [];
-        
+
         for ($i = 0; $i < $this->total_chunks; $i++) {
             if (!isset($chunks[$i])) {
                 $missing[] = $i;
             }
         }
-        
+
         return $missing;
     }
 
@@ -140,10 +153,10 @@ class UploadChunk extends Model
     {
         $this->status = self::STATUS_EXPIRED;
         $this->save();
-        
+
         // Clean up chunk files
         $this->cleanupChunks();
-        
+
         return $this;
     }
 
@@ -154,10 +167,10 @@ class UploadChunk extends Model
     {
         $this->status = self::STATUS_CANCELLED;
         $this->save();
-        
+
         // Clean up chunk files
         $this->cleanupChunks();
-        
+
         return $this;
     }
 
@@ -167,13 +180,13 @@ class UploadChunk extends Model
     public function cleanupChunks(): void
     {
         $chunks = $this->chunks ?? [];
-        
+
         foreach ($chunks as $chunk) {
             if (isset($chunk['path']) && file_exists($chunk['path'])) {
                 unlink($chunk['path']);
             }
         }
-        
+
         $this->chunks = [];
         $this->save();
     }
@@ -202,30 +215,30 @@ class UploadChunk extends Model
         if (!$this->isComplete()) {
             return false;
         }
-        
+
         $chunks = $this->chunks ?? [];
-        
+
         // Sort chunks by index
         ksort($chunks);
-        
+
         $output = fopen($outputPath, 'wb');
-        
+
         if (!$output) {
             return false;
         }
-        
+
         foreach ($chunks as $chunk) {
             if (!isset($chunk['path']) || !file_exists($chunk['path'])) {
                 fclose($output);
                 return false;
             }
-            
+
             $data = file_get_contents($chunk['path']);
             fwrite($output, $data);
         }
-        
+
         fclose($output);
-        
+
         return true;
     }
 
@@ -234,7 +247,9 @@ class UploadChunk extends Model
      */
     public static function findBySessionId(string $sessionId): ?self
     {
-        return self::query()->where('session_id', $sessionId)->first();
+        /** @var self|null $model */
+        $model = self::query()->where('session_id', $sessionId)->first();
+        return $model;
     }
 
     /**
@@ -265,11 +280,11 @@ class UploadChunk extends Model
     public static function cleanupExpired(): int
     {
         $expired = self::expired();
-        
+
         foreach ($expired as $session) {
             $session->markExpired();
         }
-        
+
         return count($expired);
     }
 
@@ -280,7 +295,7 @@ class UploadChunk extends Model
     {
         $this->expires_at = date('Y-m-d H:i:s', strtotime("+{$hours} hours"));
         $this->save();
-        
+
         return $this;
     }
 }
