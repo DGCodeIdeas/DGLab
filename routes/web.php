@@ -324,7 +324,7 @@ $router->get('/health', function (Request $request) {
 });
 
 // Assets Route
-$router->get('/assets/{type}/{file}', function (Request $request) {
+$router->get('/assets/{type:css|js}/{file}', function (Request $request) {
     $type = $request->route('type');
     $file = $request->route('file');
     $assetService = Application::getInstance()->get(\DGLab\Services\AssetService::class);
