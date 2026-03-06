@@ -84,6 +84,58 @@ try {
         echo $response;
     }
 } catch (\DGLab\Core\Exceptions\RouteNotFoundException $e) {
+    // Fallback: Check if it's a physical file in the public directory
+    $path = $request->getPath();
+    $publicPath = realpath(__DIR__);
+    $filePath = realpath($publicPath . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR));
+
+    if ($filePath && strpos($filePath, $publicPath . DIRECTORY_SEPARATOR) === 0 && is_file($filePath)) {
+        // Security: Do not serve .php files
+        if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
+            throw $e;
+        }
+
+        // Improved MIME type detection
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        $mimeTypes = [
+            'css'  => 'text/css',
+            'js'   => 'application/javascript',
+            'json' => 'application/json',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif'  => 'image/gif',
+            'svg'  => 'image/svg+xml',
+            'ico'  => 'image/x-icon',
+            'woff' => 'font/woff',
+            'woff2'=> 'font/woff2',
+            'ttf'  => 'font/ttf',
+            'otf'  => 'font/otf',
+        ];
+
+        $mimeType = $mimeTypes[$extension] ?? (mime_content_type($filePath) ?: 'application/octet-stream');
+
+        // Caching headers
+        $lastModified = filemtime($filePath);
+        $etag = md5_file($filePath);
+
+        header("Content-Type: {$mimeType}");
+        header("Content-Length: " . filesize($filePath));
+        header("Last-Modified: " . gmdate("D, d M Y H:i:s", $lastModified) . " GMT");
+        header("ETag: \"{$etag}\"");
+        header("Cache-Control: public, max-age=31536000");
+
+        // Check If-None-Match or If-Modified-Since
+        if ((isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH'], '"') === $etag) ||
+            (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $lastModified)) {
+            http_response_code(304);
+            exit;
+        }
+
+        readfile($filePath);
+        exit;
+    }
+
     http_response_code(404);
     if ($request->expectsJson()) {
         header('Content-Type: application/json');
