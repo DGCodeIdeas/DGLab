@@ -29,13 +29,13 @@
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="<?= $this->asset('css/bootstrap.min.css') ?>" rel="stylesheet">
     
     <!-- Font Awesome -->
-    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/css/all.min.css" rel="stylesheet" integrity="sha384-BY+fdrpOd3gfeRvTSMT+VUZmA728cfF9Z2G42xpaRkUGu2i3DyzpTURDo5A6CaLK" crossorigin="anonymous">
+    <link href="<?= $this->asset('css/all.min.css') ?>" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="<?= $this->asset('css/app.css') ?>">
+    <link rel="stylesheet" href="<?= $this->asset('app.css') ?>">
     
     <!-- Critical CSS (inline) -->
     <style>
@@ -100,13 +100,13 @@
     
     <!-- Scripts -->
     <!-- jQuery -->
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE9d3BKbwAOX8scrL4c5iiT6wIIAqgHvgJYcJdKhdj4w7b" crossorigin="anonymous"></script>
+    <script src="<?= $this->asset('js/jquery.min.js') ?>"></script>
     
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="<?= $this->asset('js/bootstrap.bundle.min.js') ?>"></script>
     
     <!-- Application Scripts -->
-    <script src="<?= $this->asset('js/app.js') ?>"></script>
+    <script src="<?= $this->asset('app.js') ?>"></script>
     
     <!-- Service Worker Registration -->
     <script>

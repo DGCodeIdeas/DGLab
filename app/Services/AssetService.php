@@ -17,8 +17,8 @@ class AssetService extends BaseService
         parent::__construct();
         $app = Application::getInstance();
         $this->cachePath = $app->getBasePath() . '/storage/cache/assets';
-        $this->scssPath = $app->getBasePath() . '/resources/scss';
-        $this->jsPath = $app->getBasePath() . '/resources/js';
+        $this->scssPath = realpath($app->getBasePath() . '/resources/scss');
+        $this->jsPath = realpath($app->getBasePath() . '/resources/js');
 
         if (!is_dir($this->cachePath)) {
             mkdir($this->cachePath, 0755, true);
@@ -86,7 +86,19 @@ class AssetService extends BaseService
             : $this->jsPath . '/' . $path;
 
         if (!file_exists($sourcePath)) {
-            return '/assets/' . $path;
+            // Check for .scss fallback if .css was requested
+            if ($extension === 'css' && file_exists(str_replace('.css', '.scss', $sourcePath))) {
+                $sourcePath = str_replace('.css', '.scss', $sourcePath);
+            } else {
+                // Check if it exists in public/assets
+                $publicPath = Application::getInstance()->getBasePath() . '/public/assets/' . $path;
+                if (file_exists($publicPath)) {
+                    $mtime = filemtime($publicPath);
+                    $hash = substr(md5((string)$mtime), 0, 8);
+                    return '/assets/' . $path . '?v=' . $hash;
+                }
+                return '/assets/' . $path;
+            }
         }
 
         // Use file modification time for better performance
@@ -96,7 +108,10 @@ class AssetService extends BaseService
 
         $urlPath = ($dirname !== '.') ? str_replace('/', '.', $dirname) . '.' : '';
 
-        return "/assets/{$type}/{$urlPath}{$filename}.{$hash}.{$type}";
+        // If it's already a .css file in scss folder, we still want to serve it through serveAsset for minification
+        $filenameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+        return "/assets/{$type}/{$urlPath}{$filenameWithoutExt}.{$hash}.{$type}";
     }
 
     public function serveAsset(string $type, string $file): void
@@ -104,6 +119,48 @@ class AssetService extends BaseService
         // Strictly validate the file format to prevent path traversal
         // Allow dots in the filename for subdirectories and multiple extensions
         if (!preg_match('/^([a-zA-Z0-9._-]+)\.([a-f0-9]{8})\.(css|js)$/', $file, $matches)) {
+            // Check if it exists in public/assets (e.g. for internalized libraries)
+            $publicPath = Application::getInstance()->getBasePath() . '/public/assets/' . ($type === 'css' ? 'css/' : 'js/') . $file;
+            if (file_exists($publicPath)) {
+                $this->output($publicPath, $type);
+                return;
+            }
+
+            // Support for compiled assets without hash (for SW or direct access)
+            if (preg_match('/^([a-zA-Z0-9._-]+)\.(css|js)$/', $file, $matches)) {
+                $fullFilename = $matches[1];
+                $ext = $matches[2];
+
+                // Try to find the source
+                $parts = explode('.', $fullFilename);
+                $filename = array_pop($parts);
+                $path = implode('/', $parts);
+
+                $sourceFile = ($type === 'css') ? "{$filename}.scss" : "{$filename}.js";
+                $sourcePath = ($type === 'css') ? $this->scssPath . '/' : $this->jsPath . '/';
+                if ($path !== '') {
+                    $sourcePath .= $path . '/';
+                }
+                $sourcePath .= $sourceFile;
+
+                if ($type === 'css' && !file_exists($sourcePath)) {
+                    $sourcePath = str_replace('.scss', '.css', $sourcePath);
+                }
+
+                if (file_exists($sourcePath)) {
+                    $hash = substr(md5((string)filemtime($sourcePath)), 0, 8);
+                    $cacheName = str_replace('/', '.', ($path !== '' ? $path . '/' : '') . $filename);
+                    $cacheFile = "{$this->cachePath}/{$cacheName}.{$hash}.{$ext}";
+
+                    if (!file_exists($cacheFile)) {
+                        $this->compile($sourcePath, $cacheFile, $type);
+                    }
+
+                    $this->output($cacheFile, $type);
+                    return;
+                }
+            }
+
             header("HTTP/1.0 400 Bad Request");
             echo "Invalid asset format";
             return;
