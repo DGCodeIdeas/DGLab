@@ -286,6 +286,7 @@ $router->get('/manifest.json', function (Request $request) {
     $manifest = [
         'name' => $config['name'],
         'short_name' => $config['short_name'],
+        'description' => 'Digital Lab Tools - A collection of web-based utilities for file processing',
         'start_url' => $config['start_url'],
         'display' => $config['display'],
         'background_color' => $config['background_color'],
@@ -293,6 +294,9 @@ $router->get('/manifest.json', function (Request $request) {
         'orientation' => $config['orientation'],
         'scope' => $config['scope'],
         'icons' => $config['icons'],
+        'lang' => 'en',
+        'dir' => 'ltr',
+        'categories' => ['productivity', 'utilities'],
     ];
     
     return Response::json($manifest);

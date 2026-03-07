@@ -16,7 +16,10 @@ const APP_SHELL = [
     '/manifest.json',
     '/assets/css/app.css',
     '/assets/js/app.js',
-    '/assets/js/vendor.js',
+    '/assets/css/bootstrap.min.css',
+    '/assets/js/bootstrap.bundle.min.js',
+    '/assets/css/all.min.css',
+    '/assets/js/jquery.min.js',
     '/offline.html'
 ];
 

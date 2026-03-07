@@ -37,8 +37,8 @@ class AssetServiceTest extends IntegrationTestCase
         try {
             $url = $assetService->getAssetUrl('test.scss');
 
-            // Should be in format /assets/css/test.scss.{hash}.css
-            $this->assertMatchesRegularExpression('/^\/assets\/css\/test\.scss\.[a-f0-9]{8}\.css$/', $url);
+            // Should be in format /assets/css/test.{hash}.css
+            $this->assertMatchesRegularExpression('/^\/assets\/css\/test\.[a-f0-9]{8}\.css$/', $url);
         } finally {
             if (file_exists($dummyFile)) {
                 unlink($dummyFile);
