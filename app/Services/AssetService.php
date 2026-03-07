@@ -120,7 +120,8 @@ class AssetService extends BaseService
         // Allow dots in the filename for subdirectories and multiple extensions
         if (!preg_match('/^([a-zA-Z0-9._-]+)\.([a-f0-9]{8})\.(css|js)$/', $file, $matches)) {
             // Check if it exists in public/assets (e.g. for internalized libraries)
-            $publicPath = Application::getInstance()->getBasePath() . '/public/assets/' . ($type === 'css' ? 'css/' : 'js/') . $file;
+            $subPath = ($type === 'css' ? 'css/' : 'js/') . $file;
+            $publicPath = Application::getInstance()->getBasePath() . '/public/assets/' . $subPath;
             if (file_exists($publicPath)) {
                 $this->output($publicPath, $type);
                 return;
