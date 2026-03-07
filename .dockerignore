@@ -1,0 +1,8 @@
+.git
+.github
+vendor
+storage/cache/assets/*
+.env
+CI.log
+php_server.log
+DGLab.zip

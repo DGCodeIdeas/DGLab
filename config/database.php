@@ -1,15 +1,13 @@
 <?php
 /**
  * DGLab Database Configuration
- * 
- * Configuration for MySQL database connections optimized for shared hosting.
  */
 
 return [
     /**
      * Default Database Connection
      */
-    'default' => 'mysql',
+    'default' => $_ENV['DB_CONNECTION'] ?? 'mysql',
     
     /**
      * Database Connections
@@ -29,16 +27,38 @@ return [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::ATTR_PERSISTENT => true, // Use persistent connections
+                PDO::ATTR_PERSISTENT => true,
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
                 PDO::MYSQL_ATTR_COMPRESS => true,
             ],
         ],
         
+        'pgsql' => [
+            'driver' => 'pgsql',
+            'host' => $_ENV['DB_HOST'] ?? 'localhost',
+            'port' => (int) ($_ENV['DB_PORT'] ?? 5432),
+            'database' => $_ENV['DB_DATABASE'] ?? 'dglab_pwa',
+            'username' => $_ENV['DB_USERNAME'] ?? 'root',
+            'password' => $_ENV['DB_PASSWORD'] ?? '',
+            'charset' => 'utf8',
+            'prefix' => '',
+            'options' => [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ],
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
-            'database' => dirname(__DIR__) . '/storage/database.sqlite',
+            'database' => $_ENV['DB_DATABASE'] ?? dirname(__DIR__) . '/storage/database.sqlite',
             'prefix' => '',
+        ],
+
+        'kafka' => [
+            'driver' => 'kafka',
+            'brokers' => $_ENV['KAFKA_BROKERS'] ?? 'localhost:9092',
+            'group_id' => $_ENV['KAFKA_GROUP_ID'] ?? 'dglab_pwa',
         ],
     ],
     
