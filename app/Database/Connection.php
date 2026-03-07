@@ -89,10 +89,21 @@ class Connection
      */
     private function connect(): void
     {
-        $config = $this->config['connections'][$this->config['default']] ?? $this->config['connections']['mysql'];
+        $default = $_ENV['DB_CONNECTION'] ?? $this->config['default'];
+        $config = $this->config['connections'][$default] ?? $this->config['connections']['mysql'];
 
         if ($config['driver'] === 'sqlite') {
             $dsn = sprintf('sqlite:%s', $config['database']);
+        } elseif ($config['driver'] === 'pgsql') {
+            $dsn = sprintf(
+                'pgsql:host=%s;port=%s;dbname=%s',
+                $config['host'] ?? 'localhost',
+                $config['port'] ?? '5432',
+                $config['database']
+            );
+        } elseif ($config['driver'] === 'kafka') {
+            // Simulated Kafka "driver" via environment for now
+            throw new \RuntimeException("Kafka driver is not yet implemented for PDO.");
         } else {
             $dsn = sprintf(
                 '%s:host=%s;port=%s;dbname=%s;charset=%s',
