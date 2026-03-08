@@ -11,6 +11,7 @@ class AssetService extends BaseService
     private string $cachePath;
     private string $scssPath;
     private string $jsPath;
+    private string $fontsPath;
 
     public function __construct()
     {
@@ -19,6 +20,7 @@ class AssetService extends BaseService
         $this->cachePath = $app->getBasePath() . '/storage/cache/assets';
         $this->scssPath = realpath($app->getBasePath() . '/resources/scss');
         $this->jsPath = realpath($app->getBasePath() . '/resources/js');
+        $this->fontsPath = realpath($app->getBasePath() . '/resources/fonts/webfonts');
 
         if (!is_dir($this->cachePath)) {
             mkdir($this->cachePath, 0755, true);
@@ -80,6 +82,16 @@ class AssetService extends BaseService
         $extension = pathinfo($path, PATHINFO_EXTENSION);
         $dirname = pathinfo($path, PATHINFO_DIRNAME);
         $filename = pathinfo($path, PATHINFO_BASENAME);
+        $filenameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+        if (in_array($extension, ['woff2', 'ttf', 'woff', 'otf'])) {
+            $relativeFontPath = (str_starts_with($path, 'webfonts/')) ? substr($path, 9) : $path;
+            $sourcePath = $this->fontsPath . '/' . $relativeFontPath;
+            if (file_exists($sourcePath)) {
+                $hash = substr(md5_file($sourcePath), 0, 8);
+                return "/assets/webfonts/{$filenameWithoutExt}.{$hash}.{$extension}";
+            }
+        }
 
         $sourcePath = ($extension === 'scss' || $extension === 'css')
             ? $this->scssPath . '/' . $path
@@ -109,18 +121,38 @@ class AssetService extends BaseService
 
         $urlPath = ($dirname !== '.') ? str_replace('/', '.', $dirname) . '.' : '';
 
-        // If it's already a .css file in scss folder, we still want to serve it through serveAsset for minification
-        $filenameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
-
         return "/assets/{$type}/{$urlPath}{$filenameWithoutExt}.{$hash}.{$type}";
     }
 
     public function serveAsset(string $type, string $file): void
     {
-        // Strictly validate the file format to prevent path traversal
-        // Allow dots in the filename for subdirectories and multiple extensions
+        if ($type === 'webfonts') {
+            if (preg_match('/^([a-zA-Z0-9._-]+)\.([a-f0-9]{8})\.(woff2|ttf|woff|otf)$/', $file, $matches)) {
+                $filename = $matches[1];
+                $ext = $matches[3];
+                $sourcePath = $this->fontsPath . '/' . $filename . '.' . $ext;
+                if (file_exists($sourcePath)) {
+                    $this->output($sourcePath, 'webfonts');
+                    return;
+                }
+            }
+
+            if (preg_match('/^([a-zA-Z0-9._-]+)\.(woff2|ttf|woff|otf)$/', $file, $matches)) {
+                $filename = $matches[1];
+                $ext = $matches[2];
+                $sourcePath = $this->fontsPath . '/' . $filename . '.' . $ext;
+                if (file_exists($sourcePath)) {
+                    $this->output($sourcePath, 'webfonts');
+                    return;
+                }
+            }
+
+            header("HTTP/1.0 404 Not Found");
+            echo "Font not found";
+            return;
+        }
+
         if (!preg_match('/^([a-zA-Z0-9._-]+)\.([a-f0-9]{8})\.(css|js|js\.map)$/', $file, $matches)) {
-            // Check if it exists in public/assets (e.g. for internalized libraries)
             $subPath = ($type === 'css' ? 'css/' : 'js/') . $file;
             $publicPath = Application::getInstance()->getBasePath() . '/public/assets/' . $subPath;
             if (file_exists($publicPath)) {
@@ -128,12 +160,10 @@ class AssetService extends BaseService
                 return;
             }
 
-            // Support for compiled assets without hash (for SW or direct access)
             if (preg_match('/^([a-zA-Z0-9._-]+)\.(css|js)$/', $file, $matches)) {
                 $fullFilename = $matches[1];
                 $ext = $matches[2];
 
-                // Try to find the source
                 $parts = explode('.', $fullFilename);
                 $filename = array_pop($parts);
                 $path = implode('/', $parts);
@@ -182,7 +212,6 @@ class AssetService extends BaseService
             return;
         }
 
-        // Reconstruct the path from dots
         $parts = explode('.', $fullFilename);
         $filename = array_pop($parts);
         $path = implode('/', $parts);
@@ -194,7 +223,6 @@ class AssetService extends BaseService
         }
         $sourcePath .= $sourceFile;
 
-        // Fallback for .css files in scss folder
         if ($type === 'css' && !file_exists($sourcePath)) {
             $sourcePath = str_replace('.scss', '.css', $sourcePath);
         }
@@ -237,7 +265,7 @@ class AssetService extends BaseService
         } catch (\Exception $e) {
             header("HTTP/1.0 500 Internal Server Error");
             echo "Compilation failed";
-            exit;
+            return;
         }
     }
 
@@ -245,6 +273,15 @@ class AssetService extends BaseService
     {
         if (str_ends_with($file, '.map')) {
             $mimeType = 'application/json';
+        } elseif ($type === 'webfonts') {
+            $extension = pathinfo($file, PATHINFO_EXTENSION);
+            $mimeTypes = [
+                'woff2' => 'font/woff2',
+                'woff' => 'font/woff',
+                'ttf' => 'font/ttf',
+                'otf' => 'font/otf'
+            ];
+            $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
         } else {
             $mimeType = ($type === 'css') ? 'text/css' : 'application/javascript';
         }
@@ -253,6 +290,6 @@ class AssetService extends BaseService
         header("ETag: " . md5_file($file));
 
         readfile($file);
-        exit;
+        return;
     }
 }
