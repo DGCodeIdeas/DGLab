@@ -1,4 +1,3 @@
-<?php $this->section('content') ?>
 
 <!-- Hero Section -->
 <section class="hero-section">
@@ -179,4 +178,3 @@
     </div>
 </section>
 
-<?php $this->endSection() ?>

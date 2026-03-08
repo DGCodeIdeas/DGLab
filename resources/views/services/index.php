@@ -1,4 +1,3 @@
-<?php $this->section('content') ?>
 
 <!-- Page Header -->
 <section class="bg-primary text-white py-5">
@@ -102,4 +101,3 @@
     </div>
 </section>
 
-<?php $this->endSection() ?>

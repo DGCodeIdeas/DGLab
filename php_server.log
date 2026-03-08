@@ -1,3 +1,121 @@
-[Sat Mar  7 19:47:40 2026] PHP 8.3.6 Development Server (http://localhost:8000) started
-[Sat Mar  7 19:47:42 2026] [::1]:35392 Accepted
-[Sat Mar  7 19:47:42 2026] [::1]:35392 Closing
+[Sat Mar  7 23:38:39 2026] PHP 8.3.6 Development Server (http://localhost:8000) started
+[Sat Mar  7 23:38:58 2026] [::1]:35506 Accepted
+[Sat Mar  7 23:38:58 2026] [::1]:35506 Closing
+[Sat Mar  7 23:38:58 2026] [::1]:35510 Accepted
+[Sat Mar  7 23:38:58 2026] [::1]:35524 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:35510 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:35534 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:35524 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:35538 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:35534 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:35538 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45006 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45008 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45006 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45008 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45014 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45014 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45016 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45022 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45034 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45016 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45022 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45034 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45044 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45044 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45052 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45068 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45080 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45052 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45068 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45080 Closing
+[Sat Mar  7 23:38:59 2026] [::1]:45084 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45092 Accepted
+[Sat Mar  7 23:38:59 2026] [::1]:45102 Accepted
+[Sat Mar  7 23:39:04 2026] [::1]:45084 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:04 2026] [::1]:45084 Closing
+[Sat Mar  7 23:39:04 2026] [::1]:45092 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:04 2026] [::1]:45092 Closing
+[Sat Mar  7 23:39:04 2026] [::1]:45102 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:04 2026] [::1]:45102 Closing
+[Sat Mar  7 23:39:09 2026] [::1]:56364 Accepted
+[Sat Mar  7 23:39:09 2026] [::1]:56364 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56366 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56366 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56368 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56376 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56382 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56398 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56368 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56376 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56382 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56398 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56400 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56402 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56400 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56402 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56418 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56418 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56434 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56450 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56462 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56434 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56450 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56462 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56478 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56484 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56478 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56488 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56484 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56488 Closing
+[Sat Mar  7 23:39:17 2026] [::1]:56500 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56512 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56520 Accepted
+[Sat Mar  7 23:39:17 2026] [::1]:56532 Accepted
+[Sat Mar  7 23:39:20 2026] [::1]:56500 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:20 2026] [::1]:56500 Closing
+[Sat Mar  7 23:39:20 2026] [::1]:56512 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:20 2026] [::1]:56512 Closing
+[Sat Mar  7 23:39:20 2026] [::1]:56520 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:20 2026] [::1]:56520 Closing
+[Sat Mar  7 23:39:20 2026] [::1]:56532 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:20 2026] [::1]:56532 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44094 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44094 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44102 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44102 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44104 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44116 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44126 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44104 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44116 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44126 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44142 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44150 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44142 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44150 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44154 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44154 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44164 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44176 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44180 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44164 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44176 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44180 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44188 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44188 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44198 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44208 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44220 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44198 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44208 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44220 Closing
+[Sat Mar  7 23:39:39 2026] [::1]:44236 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44242 Accepted
+[Sat Mar  7 23:39:39 2026] [::1]:44256 Accepted
+[Sat Mar  7 23:39:42 2026] [::1]:44236 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:42 2026] [::1]:44236 Closing
+[Sat Mar  7 23:39:42 2026] [::1]:44242 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:42 2026] [::1]:44242 Closing
+[Sat Mar  7 23:39:42 2026] [::1]:44256 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sat Mar  7 23:39:42 2026] [::1]:44256 Closing

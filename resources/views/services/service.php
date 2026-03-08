@@ -1,4 +1,3 @@
-<?php $this->section('content') ?>
 
 <!-- Page Header -->
 <section class="bg-primary text-white py-4">
@@ -366,4 +365,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php $this->endSection() ?>

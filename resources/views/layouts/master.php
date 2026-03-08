@@ -28,11 +28,8 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     
-    <!-- Bootstrap CSS -->
-    <link href="<?= $this->asset('css/bootstrap.min.css') ?>" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link href="<?= $this->asset('css/all.min.css') ?>" rel="stylesheet">
+    <!-- Vendor CSS -->
+    <link href="<?= $this->asset('vendor.css') ?>" rel="stylesheet">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= $this->asset('app.css') ?>">
@@ -99,11 +96,8 @@
     </div>
     
     <!-- Scripts -->
-    <!-- jQuery -->
-    <script src="<?= $this->asset('js/jquery.min.js') ?>"></script>
-    
-    <!-- Bootstrap JS -->
-    <script src="<?= $this->asset('js/bootstrap.bundle.min.js') ?>"></script>
+    <!-- Vendor Scripts -->
+    <script src="<?= $this->asset('vendor.js') ?>"></script>
     
     <!-- Application Scripts -->
     <script src="<?= $this->asset('app.js') ?>"></script>
