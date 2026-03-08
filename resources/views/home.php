@@ -12,30 +12,30 @@
                 </p>
                 <div class="d-flex flex-wrap gap-3">
                     <a href="/services" class="btn btn-light btn-lg px-4">
-                        <i class="fas fa-rocket me-2"></i> Get Started
+                        <i class="bi bi-rocket-takeoff me-2"></i> Get Started
                     </a>
                     <a href="/docs" class="btn btn-outline-light btn-lg px-4">
-                        <i class="fas fa-book me-2"></i> Documentation
+                        <i class="bi bi-book me-2"></i> Documentation
                     </a>
                 </div>
                 
                 <!-- Feature badges -->
                 <div class="mt-4 d-flex flex-wrap gap-2">
                     <span class="badge bg-white bg-opacity-25">
-                        <i class="fas fa-bolt me-1"></i> Fast Processing
+                        <i class="bi bi-lightning-charge me-1"></i> Fast Processing
                     </span>
                     <span class="badge bg-white bg-opacity-25">
-                        <i class="fas fa-shield-alt me-1"></i> Privacy First
+                        <i class="bi bi-shield-shaded me-1"></i> Privacy First
                     </span>
                     <span class="badge bg-white bg-opacity-25">
-                        <i class="fas fa-wifi me-1"></i> Works Offline
+                        <i class="bi bi-wifi me-1"></i> Works Offline
                     </span>
                 </div>
             </div>
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="text-center">
                     <div class="bg-white bg-opacity-10 rounded-4 p-5">
-                        <i class="fas fa-flask display-1 opacity-50"></i>
+                        <i class="bi bi-flask display-1 opacity-50"></i>
                     </div>
                 </div>
             </div>
@@ -57,7 +57,7 @@
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="fas fa-bolt text-primary fa-2x"></i>
+                            <i class="bi bi-lightning-charge text-primary fs-2"></i>
                         </div>
                         <h5 class="card-title">Lightning Fast</h5>
                         <p class="card-text text-muted">
@@ -72,7 +72,7 @@
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="fas fa-shield-alt text-success fa-2x"></i>
+                            <i class="bi bi-shield-shaded text-success fs-2"></i>
                         </div>
                         <h5 class="card-title">Privacy First</h5>
                         <p class="card-text text-muted">
@@ -87,7 +87,7 @@
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
                         <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="fas fa-wifi text-info fa-2x"></i>
+                            <i class="bi bi-wifi text-info fs-2"></i>
                         </div>
                         <h5 class="card-title">Works Offline</h5>
                         <p class="card-text text-muted">
@@ -109,7 +109,7 @@
                 <p class="text-muted mb-0">Tools to enhance your digital content</p>
             </div>
             <a href="/services" class="btn btn-primary">
-                View All <i class="fas fa-arrow-right ms-1"></i>
+                View All <i class="bi bi-arrow-right ms-1"></i>
             </a>
         </div>
         
@@ -120,7 +120,7 @@
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center mb-3">
                             <div class="bg-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                                <i class="fas fa-book text-primary"></i>
+                                <i class="bi bi-book text-primary"></i>
                             </div>
                             <div>
                                 <h5 class="card-title mb-0">EPUB Font Changer</h5>
@@ -131,7 +131,7 @@
                             Change fonts in EPUB e-books with open-source font families including OpenDyslexic, Merriweather, and Fira Sans.
                         </p>
                         <a href="/services/epub-font-changer" class="btn btn-outline-primary btn-sm">
-                            Try it <i class="fas fa-arrow-right ms-1"></i>
+                            Try it <i class="bi bi-arrow-right ms-1"></i>
                         </a>
                     </div>
                 </div>
@@ -142,14 +142,14 @@
                 <div class="card h-100 border-2 border-dashed border-secondary border-opacity-25">
                     <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center text-center">
                         <div class="bg-secondary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="fas fa-plus text-secondary"></i>
+                            <i class="bi bi-plus text-secondary"></i>
                         </div>
                         <h5 class="card-title">More Coming Soon</h5>
                         <p class="card-text text-muted">
                             New services are being developed. Have a suggestion?
                         </p>
                         <a href="https://github.com/dglab/pwa/issues" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
-                            <i class="fab fa-github me-1"></i> Request Feature
+                            <i class="bi bi-github me-1"></i> Request Feature
                         </a>
                     </div>
                 </div>
@@ -168,10 +168,10 @@
             </p>
             <div class="d-flex flex-wrap justify-content-center gap-3">
                 <a href="/services" class="btn btn-light btn-lg">
-                    <i class="fas fa-rocket me-2"></i> Explore Services
+                    <i class="bi bi-rocket-takeoff me-2"></i> Explore Services
                 </a>
                 <a href="/docs" class="btn btn-outline-light btn-lg">
-                    <i class="fas fa-book me-2"></i> Read Docs
+                    <i class="bi bi-book me-2"></i> Read Docs
                 </a>
             </div>
         </div>

@@ -6,7 +6,7 @@
             <div class="col-lg-4 col-md-6">
                 <div class="mb-3">
                     <span class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
-                        <i class="fas fa-flask text-white"></i>
+                        <i class="bi bi-flask text-white"></i>
                     </span>
                     <span class="h5 mb-0">DGLab</span>
                 </div>
@@ -15,13 +15,13 @@
                 </p>
                 <div class="social-links">
                     <a href="https://github.com/dglab/pwa" class="text-muted me-3" target="_blank" rel="noopener" aria-label="GitHub">
-                        <i class="fab fa-github fa-lg"></i>
+                        <i class="bi bi-github fs-4"></i>
                     </a>
                     <a href="#" class="text-muted me-3" aria-label="Twitter">
-                        <i class="fab fa-twitter fa-lg"></i>
+                        <i class="bi bi-twitter fs-4"></i>
                     </a>
                     <a href="#" class="text-muted" aria-label="Discord">
-                        <i class="fab fa-discord fa-lg"></i>
+                        <i class="bi bi-discord fs-4"></i>
                     </a>
                 </div>
             </div>
@@ -85,7 +85,7 @@
             </div>
             <div class="col-md-6 text-center text-md-end">
                 <p class="mb-0 text-muted">
-                    <small>Made with <i class="fas fa-heart text-danger"></i> for the community</small>
+                    <small>Made with <i class="bi bi-heart-fill text-danger"></i> for the community</small>
                 </p>
             </div>
         </div>

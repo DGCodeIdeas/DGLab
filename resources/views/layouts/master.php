@@ -65,7 +65,7 @@
             .js-only { display: none !important; }
         </style>
         <div class="alert alert-warning text-center m-0 rounded-0">
-            <i class="fas fa-exclamation-triangle me-2"></i>
+            <i class="bi bi-exclamation-triangle me-2"></i>
             JavaScript is required for full functionality. Please enable JavaScript in your browser.
         </div>
     </noscript>

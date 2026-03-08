@@ -46,7 +46,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
     /**
      * Service icon
      */
-    private const SERVICE_ICON = 'fa-book';
+    private const SERVICE_ICON = 'bi bi-book';
 
     /**
      * EPUB Parser

@@ -173,10 +173,10 @@ const DGLab = {
         }
         
         const icons = {
-            success: 'check-circle',
-            error: 'exclamation-circle',
-            warning: 'exclamation-triangle',
-            info: 'info-circle'
+            success: 'check-circle-fill',
+            error: 'exclamation-circle-fill',
+            warning: 'exclamation-triangle-fill',
+            info: 'info-circle-fill'
         };
         
         const toast = document.createElement('div');
@@ -186,7 +186,7 @@ const DGLab = {
         toast.innerHTML = `
             <div class="d-flex">
                 <div class="toast-body">
-                    <i class="fas fa-${icons[type]} me-2"></i>${message}
+                    <i class="bi bi-${icons[type]} me-2"></i>${message}
                 </div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
             </div>
