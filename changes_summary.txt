@@ -1,0 +1,9 @@
+Summary of changes:
+1. Internalized Font Awesome 5 (v5.15.4) Free webfonts into resources/fonts/webfonts/.
+2. Extended AssetService.php to:
+   - Serve webfonts from the new resources directory.
+   - Support both hashed filenames (for direct getAssetUrl use) and non-hashed filenames (for relative CSS references).
+   - Set correct MIME types for woff2, ttf, woff, and otf.
+3. Updated routes/web.php to include the /assets/webfonts/{file} route.
+4. Refactored fontawesome.scss to remove Font Awesome 6 references and ensure it strictly uses Font Awesome 5 naming and paths.
+5. Verified that icons are correctly rendered on the home page via Playwright screenshot.

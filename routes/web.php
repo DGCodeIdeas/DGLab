@@ -334,3 +334,10 @@ $router->get('/assets/{type:css|js}/{file}', function (Request $request) {
     $assetService = Application::getInstance()->get(\DGLab\Services\AssetService::class);
     $assetService->serveAsset($type, $file);
 });
+
+// Webfonts Route
+$router->get('/assets/webfonts/{file}', function (Request $request) {
+    $file = $request->route('file');
+    $assetService = Application::getInstance()->get(\DGLab\Services\AssetService::class);
+    $assetService->serveAsset('webfonts', $file);
+});
