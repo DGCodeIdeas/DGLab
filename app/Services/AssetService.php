@@ -101,9 +101,10 @@ class AssetService extends BaseService
             }
         }
 
-        // Use file modification time for better performance
-        $mtime = filemtime($sourcePath);
-        $hash = substr(md5((string)$mtime), 0, 8);
+        // Use content hash for JS to ensure build-time stability
+        $hash = ($extension === 'js')
+            ? substr(md5_file($sourcePath), 0, 8)
+            : substr(md5((string)filemtime($sourcePath)), 0, 8);
         $type = ($extension === 'scss' || $extension === 'css') ? 'css' : 'js';
 
         $urlPath = ($dirname !== '.') ? str_replace('/', '.', $dirname) . '.' : '';
@@ -118,7 +119,7 @@ class AssetService extends BaseService
     {
         // Strictly validate the file format to prevent path traversal
         // Allow dots in the filename for subdirectories and multiple extensions
-        if (!preg_match('/^([a-zA-Z0-9._-]+)\.([a-f0-9]{8})\.(css|js)$/', $file, $matches)) {
+        if (!preg_match('/^([a-zA-Z0-9._-]+)\.([a-f0-9]{8})\.(css|js|js\.map)$/', $file, $matches)) {
             // Check if it exists in public/assets (e.g. for internalized libraries)
             $subPath = ($type === 'css' ? 'css/' : 'js/') . $file;
             $publicPath = Application::getInstance()->getBasePath() . '/public/assets/' . $subPath;
@@ -171,6 +172,10 @@ class AssetService extends BaseService
         $hash = $matches[2];
         $ext = $matches[3];
 
+        if ($ext === 'js.map') {
+            $type = 'js';
+        }
+
         if (!in_array($type, ['css', 'js'], true)) {
             header("HTTP/1.0 400 Bad Request");
             echo "Invalid asset type";
@@ -210,7 +215,7 @@ class AssetService extends BaseService
         $this->output($cacheFile, $type);
     }
 
-    private function compile(string $sourcePath, string $cacheFile, string $type): void
+    protected function compile(string $sourcePath, string $cacheFile, string $type): void
     {
         try {
             if (!is_dir(dirname($cacheFile))) {
@@ -238,7 +243,11 @@ class AssetService extends BaseService
 
     private function output(string $file, string $type): void
     {
-        $mimeType = ($type === 'css') ? 'text/css' : 'application/javascript';
+        if (str_ends_with($file, '.map')) {
+            $mimeType = 'application/json';
+        } else {
+            $mimeType = ($type === 'css') ? 'text/css' : 'application/javascript';
+        }
         header("Content-Type: {$mimeType}");
         header("Cache-Control: public, max-age=31536000, immutable");
         header("ETag: " . md5_file($file));
