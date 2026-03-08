@@ -9,6 +9,8 @@ use DGLab\Core\Application;
 use DGLab\Core\Request;
 use DGLab\Core\Response;
 use DGLab\Core\Router;
+use DGLab\Controllers\AdminController;
+
 
 /** @var Router $router */
 $router = Application::getInstance()->get(Router::class);
@@ -279,6 +281,12 @@ $router->group(['prefix' => 'api'], function (Router $router) {
     })->name('download');
 });
 
+
+// Admin Routes
+$router->get('/admin', [AdminController::class, 'index'])->middleware(\DGLab\Core\Middleware\AdminAuthMiddleware::class);
+$router->get('/admin/jobs', [AdminController::class, 'jobs'])->middleware(\DGLab\Core\Middleware\AdminAuthMiddleware::class);
+$router->get('/admin/logs', [AdminController::class, 'logs'])->middleware(\DGLab\Core\Middleware\AdminAuthMiddleware::class);
+
 // PWA Manifest
 $router->get('/manifest.json', function (Request $request) {
     $config = Application::getInstance()->config('app.pwa');
@@ -320,11 +328,29 @@ $router->get('/sw.js', function (Request $request) {
 
 // Health check
 $router->get('/health', function (Request $request) {
-    return Response::json([
+    $app = Application::getInstance();
+    $db = $app->get(\DGLab\Database\Connection::class);
+
+    $health = [
         'status' => 'ok',
         'timestamp' => date('c'),
-        'version' => Application::getInstance()->config('app.version'),
-    ]);
+        'version' => $app->config('app.version'),
+        'services' => [
+            'database' => $db->ping() ? 'up' : 'down',
+            'disk' => disk_free_space('/') > 100 * 1024 * 1024 ? 'ok' : 'low', // 100MB threshold
+            'memory' => [
+                'usage' => memory_get_usage(true),
+                'peak' => memory_get_peak_usage(true),
+            ]
+        ]
+    ];
+
+    if ($health['services']['database'] !== 'up') {
+        $health['status'] = 'error';
+        return Response::json($health, 503);
+    }
+
+    return Response::json($health);
 });
 
 // Assets Route

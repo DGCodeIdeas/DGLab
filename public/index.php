@@ -149,6 +149,6 @@ try {
         header('Content-Type: application/json');
         echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
     } else {
-        echo '<h1>500 Internal Server Error</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
+        error_log($e->getMessage() . "\n" . $e->getTraceAsString()); echo '<h1>500 Internal Server Error</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
     }
 }

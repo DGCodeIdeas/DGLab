@@ -33,7 +33,12 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li>
-                            <a class="dropdown-item" href="/docs">
+                                                    <li>
+                            <a class="dropdown-item text-primary fw-bold" href="/admin">
+                                <i class="fas fa-shield-alt me-2"></i> Admin Panel
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="/docs">
                                 <i class="fas fa-book me-2"></i> Documentation
                             </a>
                         </li>
