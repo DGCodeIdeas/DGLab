@@ -21,6 +21,10 @@ abstract class IntegrationTestCase extends TestCase
         $_ENV['APP_NAME'] = 'DGLab';
         $_ENV['APP_ENV'] = 'testing';
         $_ENV['APP_DEBUG'] = 'true';
+        $_ENV['DB_HOST'] = 'localhost';
+        $_ENV['DB_DATABASE'] = ':memory:';
+        $_ENV['DB_USERNAME'] = 'sa';
+        $_ENV['DB_PASSWORD'] = 'secret';
         $_SERVER['REQUEST_URI'] = '/';
 
         $this->app->singleton(\DGLab\Database\Connection::class, function () {
