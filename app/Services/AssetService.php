@@ -44,7 +44,7 @@ class AssetService extends BaseService
 
     public function getIcon(): string
     {
-        return 'fas fa-file-code';
+        return 'bi bi-file-earmark-code';
     }
 
     public function getInputSchema(): array

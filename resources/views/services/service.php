@@ -11,7 +11,7 @@
         </nav>
         <div class="d-flex align-items-center">
             <div class="bg-white bg-opacity-25 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 64px; height: 64px;">
-                <i class="fas <?= htmlspecialchars($service->getIcon()) ?> fa-2x"></i>
+                <i class="fas <?= htmlspecialchars($service->getIcon()) ?> fs-2"></i>
             </div>
             <div>
                 <h1 class="h3 fw-bold mb-1"><?= htmlspecialchars($service->getName()) ?></h1>
@@ -29,7 +29,7 @@
             <div class="col-lg-8">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white py-3">
-                        <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload Your File</h5>
+                        <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Upload Your File</h5>
                     </div>
                     <div class="card-body p-4">
                         <form id="service-form" action="/api/services/<?= htmlspecialchars($service->getId()) ?>/process" method="POST" enctype="multipart/form-data">
@@ -39,28 +39,28 @@
                             <div class="mb-4">
                                 <label for="file" class="form-label fw-semibold">EPUB File</label>
                                 <div class="upload-zone border border-2 border-dashed rounded-3 p-5 text-center" id="drop-zone">
-                                    <i class="fas fa-cloud-upload-alt text-muted display-4 mb-3"></i>
+                                    <i class="bi bi-cloud-upload text-muted display-4 mb-3"></i>
                                     <p class="mb-2">Drag and drop your EPUB file here</p>
                                     <p class="text-muted small mb-3">or</p>
                                     <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file').click()">
-                                        <i class="fas fa-folder-open me-2"></i> Browse Files
+                                        <i class="bi bi-folder2-open me-2"></i> Browse Files
                                     </button>
                                     <input type="file" class="d-none" id="file" name="file" accept=".epub,application/epub+zip" required>
                                     <p class="text-muted small mt-3 mb-0">
-                                        <i class="fas fa-info-circle me-1"></i> Maximum file size: 100MB
+                                        <i class="bi bi-info-circle me-1"></i> Maximum file size: 100MB
                                     </p>
                                 </div>
                                 
                                 <!-- File Info -->
                                 <div id="file-info" class="d-none mt-3">
                                     <div class="d-flex align-items-center bg-light rounded-3 p-3">
-                                        <i class="fas fa-file-alt text-primary fa-2x me-3"></i>
+                                        <i class="bi bi-file-earmark-text text-primary fs-2 me-3"></i>
                                         <div class="flex-grow-1">
                                             <p class="mb-0 fw-semibold" id="file-name"></p>
                                             <p class="mb-0 text-muted small" id="file-size"></p>
                                         </div>
                                         <button type="button" class="btn btn-link text-danger" id="remove-file">
-                                            <i class="fas fa-times"></i>
+                                            <i class="bi bi-x-lg"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -140,7 +140,7 @@
                             <!-- Submit Button -->
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
-                                    <i class="fas fa-magic me-2"></i> Change Font
+                                    <i class="bi bi-magic me-2"></i> Change Font
                                 </button>
                             </div>
                         </form>
@@ -159,12 +159,12 @@
                         <!-- Result (hidden initially) -->
                         <div id="result-container" class="d-none mt-4">
                             <div class="alert alert-success">
-                                <i class="fas fa-check-circle me-2"></i>
+                                <i class="bi bi-check-circle-fill me-2"></i>
                                 <strong>Success!</strong> Your file has been processed.
                             </div>
                             <div class="d-grid">
                                 <a href="#" class="btn btn-success btn-lg" id="download-link" download>
-                                    <i class="fas fa-download me-2"></i> Download EPUB
+                                    <i class="bi bi-download me-2"></i> Download EPUB
                                 </a>
                             </div>
                         </div>
@@ -172,7 +172,7 @@
                         <!-- Error (hidden initially) -->
                         <div id="error-container" class="d-none mt-4">
                             <div class="alert alert-danger">
-                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <i class="bi bi-exclamation-circle me-2"></i>
                                 <strong>Error!</strong> <span id="error-message"></span>
                             </div>
                         </div>
@@ -185,7 +185,7 @@
                 <!-- Info Card -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white py-3">
-                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>About This Service</h5>
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>About This Service</h5>
                     </div>
                     <div class="card-body">
                         <p class="mb-3">
@@ -193,16 +193,16 @@
                         </p>
                         <ul class="list-unstyled mb-0">
                             <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i> Supports EPUB 2 and 3
+                                <i class="bi bi-check-lg text-success me-2"></i> Supports EPUB 2 and 3
                             </li>
                             <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i> Chunked upload for large files
+                                <i class="bi bi-check-lg text-success me-2"></i> Chunked upload for large files
                             </li>
                             <li class="mb-2">
-                                <i class="fas fa-check text-success me-2"></i> Open source fonts (OFL licensed)
+                                <i class="bi bi-check-lg text-success me-2"></i> Open source fonts (OFL licensed)
                             </li>
                             <li class="mb-0">
-                                <i class="fas fa-check text-success me-2"></i> Preserves original formatting
+                                <i class="bi bi-check-lg text-success me-2"></i> Preserves original formatting
                             </li>
                         </ul>
                     </div>
@@ -211,7 +211,7 @@
                 <!-- Fonts Info Card -->
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white py-3">
-                        <h5 class="mb-0"><i class="fas fa-font me-2"></i>Available Fonts</h5>
+                        <h5 class="mb-0"><i class="bi bi-type me-2"></i>Available Fonts</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
