@@ -20,7 +20,7 @@ class AssetObfuscationTest extends IntegrationTestCase
         }
 
         $this->testJsFile = Application::getInstance()->getBasePath() . '/resources/js/test-obf.js';
-        file_put_contents($this->testJsFile, "function longVariableName(paramOne, paramTwo) { console.log(paramOne + paramTwo); }");
+        file_put_contents($this->testJsFile, "function longVariableName(paramOne, paramTwo) { console.log(paramOne + paramTwo); } longVariableName(1, 2);");
     }
 
     protected function tearDown(): void
