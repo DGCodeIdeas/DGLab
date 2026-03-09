@@ -9,7 +9,7 @@
  */
 
 // DGLab Global Namespace
-const DGLab = {
+const DGLab = window.DGLab = {
     version: '1.0.0',
     config: {
         apiBase: '/api',
