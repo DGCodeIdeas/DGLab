@@ -1,6 +1,6 @@
-const { minify } = require('terser');
-const fs = require('fs');
+const webpack = require('webpack');
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
 const args = process.argv.slice(2);
 if (args.length < 2) {
@@ -8,33 +8,52 @@ if (args.length < 2) {
     process.exit(1);
 }
 
-const sourcePath = args[0];
-const outputPath = args[1];
-const sourceCode = fs.readFileSync(sourcePath, 'utf8');
+const sourcePath = path.resolve(args[0]);
+const outputPath = path.resolve(args[1]);
+const outputDir = path.dirname(outputPath);
+const outputFilename = path.basename(outputPath);
 
-async function run() {
-    try {
-        const options = {
-            compress: true,
-            mangle: true,
-            sourceMap: {
-                filename: path.basename(outputPath),
-                url: path.basename(outputPath) + '.map'
-            }
-        };
+const config = {
+    mode: 'production',
+    entry: sourcePath,
+    output: {
+        path: outputDir,
+        filename: outputFilename,
+        clean: false,
+    },
+    optimization: {
+        minimize: true,
+        minimizer: [
+            new TerserPlugin({
+                extractComments: false,
+                terserOptions: {
+                    mangle: {
+                        toplevel: true,
+                    },
+                    compress: true,
+                },
+            }),
+        ],
+    },
+    devtool: 'source-map',
+};
 
-        const result = await minify(sourceCode, options);
-
-        fs.writeFileSync(outputPath, result.code);
-        if (result.map) {
-            fs.writeFileSync(outputPath + '.map', result.map);
-        }
-
-        console.log(`Successfully obfuscated ${sourcePath}`);
-    } catch (err) {
-        console.error(`Error obfuscating ${sourcePath}:`, err);
+webpack(config, (err, stats) => {
+    if (err) {
+        console.error('Webpack error:', err);
         process.exit(1);
     }
-}
 
-run();
+    const info = stats.toJson();
+
+    if (stats.hasErrors()) {
+        console.error('Compilation errors:', info.errors);
+        process.exit(1);
+    }
+
+    if (stats.hasWarnings()) {
+        console.warn('Compilation warnings:', info.warnings);
+    }
+
+    console.log('Successfully compiled ' + sourcePath + ' to ' + outputPath + ' using Webpack');
+});

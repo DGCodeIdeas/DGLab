@@ -1,6 +1,7 @@
-/vendor/
-/.env
+/node_modules
+/vendor
 /storage/cache/*
-/storage/logs/*.log
-/storage/uploads/temp/*
-/public/assets/*
+.env
+php_server.log
+php_test.log
+CI.log
