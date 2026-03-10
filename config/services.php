@@ -14,9 +14,7 @@ return [
      */
     'services' => [
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
-        // Add new services here following the same pattern
-        // 'image-resizer' => \DGLab\Services\ImageResizer\ImageResizer::class,
-        // 'pdf-converter' => \DGLab\Services\PdfConverter\PdfConverter::class,
+        'webpack' => \DGLab\Services\AssetPacker\WebpackService::class,
     ],
     
     /**
@@ -88,6 +86,28 @@ return [
             'blockquote' => 'Blockquotes',
             'code' => 'Code blocks',
             'pre' => 'Preformatted text',
+        ],
+    ],
+
+    /**
+     * Webpack Asset Bundler Configuration
+     */
+    'webpack' => [
+        'entries' => [
+            'app' => 'resources/js/app.js',
+            'vendor' => 'resources/js/vendor.js',
+        ],
+        'output' => [
+            'path' => 'public/assets',
+            'filename' => '[name].[hash].js',
+        ],
+        'optimization' => [
+            'minify' => true,
+            'mangle' => true,
+            'source_map' => true,
+        ],
+        'aliases' => [
+            '@' => 'resources/js',
         ],
     ],
 ];

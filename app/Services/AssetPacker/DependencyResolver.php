@@ -65,12 +65,14 @@ class DependencyResolver implements DependencyResolverInterface
         // We order them carefully:
         // 1. Comments (to skip everything in them)
         // 2. Import from (matches import ... from path)
-        // 3. Dynamic Import (matches import(path))
-        // 4. Require (matches require(path))
-        // 5. Import only (matches import path)
-        // 6. Standalone strings (to skip them and avoid matching their content)
+        // 3. Export from (matches export ... from path)
+        // 4. Dynamic Import (matches import(path))
+        // 5. Require (matches require(path))
+        // 6. Import only (matches import path)
+        // 7. Standalone strings (to skip them and avoid matching their content)
         $pattern = '/\/\/[^\n]*|\/\*.*?\*\/|' .
             '(?P<if>\bimport\s+(?:[^"\']+\s+from\s+)(?P<q1>[\'"])(?P<p1>[^\'"]+)(?P=q1))|' .
+            '(?P<ef>\bexport\s+(?:[^"\']+\s+from\s+)(?P<q5>[\'"])(?P<p5>[^\'"]+)(?P=q5))|' .
             '(?P<di>\bimport\(\s*(?P<q3>[\'"])(?P<p3>[^\'"]+)(?P=q3)\s*\))|' .
             '(?P<re>\brequire\(\s*(?P<q2>[\'"])(?P<p2>[^\'"]+)(?P=q2)\s*\))|' .
             '(?P<io>\bimport\s+(?P<q4>[\'"])(?P<p4>[^\'"]+)(?P=q4))|' .
@@ -82,6 +84,8 @@ class DependencyResolver implements DependencyResolverInterface
             foreach ($matches as $match) {
                 if (!empty($match['p1'])) {
                     $dependencies[] = $match['p1'];
+                } elseif (!empty($match['p5'])) {
+                    $dependencies[] = $match['p5'];
                 } elseif (!empty($match['p2'])) {
                     $dependencies[] = $match['p2'];
                 } elseif (!empty($match['p3'])) {
@@ -97,7 +101,9 @@ class DependencyResolver implements DependencyResolverInterface
 
     private function normalizePath(string $path, ?string $currentDir = null): string
     {
-        if (str_starts_with($path, './') || str_starts_with($path, '../')) {
+        if (str_starts_with($path, '@/')) {
+            $path = $this->basePath . DIRECTORY_SEPARATOR . substr($path, 2);
+        } elseif (str_starts_with($path, './') || str_starts_with($path, '../')) {
             $dir = $currentDir ?? $this->basePath;
             $path = $dir . DIRECTORY_SEPARATOR . $path;
         } elseif (!str_starts_with($path, DIRECTORY_SEPARATOR) && !preg_match('/^[a-zA-Z]:\\\\/', $path)) {
