@@ -265,7 +265,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
         $this->reportProgress($progressCallback, 80, 'Repackaging EPUB');
 
         // Repackage
-        $outputDir = Application::getInstance()->getBasePath() . '/storage/uploads/temp';
+        $outputDir = Application::getInstance()->config('app.upload.temp_path');
         $outputName = $this->generateOutputFilename($filePath, $fontId);
         $outputPath = $outputDir . '/' . $outputName;
 
@@ -373,7 +373,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
         }
 
         // Save chunk
-        $chunkDir = Application::getInstance()->getBasePath() . '/storage/uploads/chunks/' . $sessionId;
+        $chunkDir = Application::getInstance()->config('app.upload.chunks_path') . '/' . $sessionId;
 
         if (!is_dir($chunkDir)) {
             mkdir($chunkDir, 0755, true);
@@ -410,7 +410,7 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
         }
 
         // Reassemble file
-        $tempDir = Application::getInstance()->getBasePath() . '/storage/uploads/temp';
+        $tempDir = Application::getInstance()->config('app.upload.temp_path');
         $outputPath = $tempDir . '/' . $session->filename;
 
         if (!$session->reassemble($outputPath)) {

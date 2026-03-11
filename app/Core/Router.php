@@ -403,7 +403,7 @@ class Router
         $params = [];
         foreach ($matches as $key => $value) {
             if (is_string($key)) {
-                $params[$key] = $this->castParameter($value);
+                $params[$key] = $this->castParameter(urldecode($value));
             }
         }
 

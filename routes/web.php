@@ -98,41 +98,24 @@ $router->group(['prefix' => 'api'], function (Router $router) {
 
         try {
             $input = $request->all();
-
-            // Handle file upload
             $file = $request->file('file');
-            if ($file !== null && $file->isValid()) {
-                $tempPath = sys_get_temp_dir() . '/' . uniqid() . '_' . $file->getClientOriginalName();
-                $file->move(dirname($tempPath), basename($tempPath));
-                $input['file'] = $tempPath;
+
+            if ($file) {
+                $tempPath = Application::getInstance()->config('app.upload.temp_path');
+                if (!is_dir($tempPath)) {
+                    mkdir($tempPath, 0777, true);
+                }
+
+                $filename = uniqid() . '_' . $file->getClientOriginalName();
+                $file->move($tempPath, $filename);
+                $input['file'] = $tempPath . '/' . $filename;
             }
 
-            $result = $service->process($input, function ($percent, $message) {
-                // Progress callback - could be used for WebSocket updates
-            });
+            $result = $service->process($input);
 
             return Response::json($result);
         } catch (\Exception $e) {
             return Response::json(['error' => $e->getMessage()], 500);
-        }
-    });
-
-    // Validate service input
-    $router->post('/services/{id}/validate', function (Request $request) {
-        $serviceId = $request->route('id');
-        $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-        $service = $registry->get($serviceId);
-
-        if ($service === null) {
-            return Response::json(['error' => 'Service not found'], 404);
-        }
-
-        try {
-            $service->validate($request->json() ?? $request->all());
-
-            return Response::json(['valid' => true]);
-        } catch (\DGLab\Core\Exceptions\ValidationException $e) {
-            return Response::json(['valid' => false, 'errors' => $e->getErrors()], 422);
         }
     });
 
@@ -269,11 +252,32 @@ $router->group(['prefix' => 'api'], function (Router $router) {
 
     // Download endpoint
     $router->get('/download/{filename}', function (Request $request) {
-        $filename = basename($request->route('filename'));
-        $filePath = Application::getInstance()->getBasePath() . '/storage/uploads/temp/' . $filename;
+        $filename = $request->route('filename');
+        $tempPath = Application::getInstance()->config('app.upload.temp_path');
+
+        // Ensure we handle encoded filenames properly
+        $decodedFilename = urldecode($filename);
+        $filePath = $tempPath . '/' . $decodedFilename;
 
         if (!file_exists($filePath)) {
-            return Response::json(['error' => 'File not found'], 404);
+            // Fallback: try original if somehow it was literal
+            $filePath = $tempPath . '/' . $filename;
+        }
+
+        if (!file_exists($filePath)) {
+            // Log failure for debugging in production logs
+            error_log("Download failed: File not found at $filePath");
+
+            $errorResponse = ['error' => 'File not found'];
+            if (Application::getInstance()->config('app.debug')) {
+                $errorResponse['debug'] = [
+                    'filename' => $filename,
+                    'decoded' => $decodedFilename,
+                    'full_path' => $filePath
+                ];
+            }
+
+            return Response::json($errorResponse, 404);
         }
 
         return Response::download($filePath);
