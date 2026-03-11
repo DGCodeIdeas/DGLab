@@ -14,6 +14,7 @@ return [
      */
     'services' => [
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
+        'webpack' => \DGLab\Services\AssetPacker\WebpackService::class,
         'novel-to-manga-script' => \DGLab\Services\NovelToMangaScript\NovelToMangaScript::class,
         // Add new services here following the same pattern
         // 'image-resizer' => \DGLab\Services\ImageResizer\ImageResizer::class,
@@ -93,6 +94,26 @@ return [
     ],
 
     /**
+     * Webpack Asset Bundler Configuration
+     */
+    'webpack' => [
+        'entries' => [
+            'app' => 'resources/js/app.js',
+            'vendor' => 'resources/js/vendor.js',
+        ],
+        'output' => [
+            'path' => 'public/assets',
+            'filename' => '[name].[hash].js',
+        ],
+        'optimization' => [
+            'minify' => true,
+            'mangle' => true,
+            'source_map' => true,
+        ],
+        'aliases' => [
+            '@' => 'resources/js',
+          
+    /*
      * NovelToMangaScript Service Configuration
      */
     'novel-to-manga-script' => [

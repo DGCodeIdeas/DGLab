@@ -140,4 +140,29 @@ class DependencyResolverTest extends TestCase
         $this->assertContains($this->tempDir . DIRECTORY_SEPARATOR . 'dynamic-import.js', $resolved);
         $this->assertEquals($this->tempDir . DIRECTORY_SEPARATOR . 'app.js', end($resolved));
     }
+
+    public function testExportFromSyntax(): void
+    {
+        file_put_contents($this->tempDir . '/app.js', "export { something } from './module';");
+        file_put_contents($this->tempDir . '/module.js', "console.log('module');");
+
+        $resolved = $this->resolver->resolve($this->tempDir . '/app.js');
+
+        $this->assertCount(2, $resolved);
+        $this->assertEquals($this->tempDir . DIRECTORY_SEPARATOR . 'module.js', $resolved[0]);
+        $this->assertEquals($this->tempDir . DIRECTORY_SEPARATOR . 'app.js', $resolved[1]);
+    }
+
+    public function testPathAlias(): void
+    {
+        mkdir($this->tempDir . '/components');
+        file_put_contents($this->tempDir . '/app.js', "import '@/components/button';");
+        file_put_contents($this->tempDir . '/components/button.js', "console.log('button');");
+
+        $resolved = $this->resolver->resolve($this->tempDir . '/app.js');
+
+        $this->assertCount(2, $resolved);
+        $this->assertEquals($this->tempDir . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'button.js', $resolved[0]);
+        $this->assertEquals($this->tempDir . DIRECTORY_SEPARATOR . 'app.js', $resolved[1]);
+    }
 }

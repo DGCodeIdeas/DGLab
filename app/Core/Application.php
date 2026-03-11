@@ -36,6 +36,11 @@ class Application implements ContainerInterface
     private static ?self $instance = null;
 
     /**
+     * Base path
+     */
+    private ?string $basePath = null;
+
+    /**
      * Registered bindings
      *
      * @var array<string, callable|object|string>
@@ -76,8 +81,9 @@ class Application implements ContainerInterface
     /**
      * Private constructor for singleton pattern
      */
-    private function __construct()
+    private function __construct(?string $basePath = null)
     {
+        $this->basePath = $basePath;
         // Self-register the container
         $this->singletons[self::class] = $this;
         $this->singletons[ContainerInterface::class] = $this;
@@ -89,130 +95,53 @@ class Application implements ContainerInterface
      *
      * Thread-safe singleton implementation using double-checked locking pattern.
      *
+     * @param string|null $basePath Optional base path to initialize with
      * @return self The application container instance
      */
-    public static function getInstance(): self
+    public static function getInstance(?string $basePath = null): self
     {
         if (self::$instance === null) {
-            self::$instance = new self();
+            self::$instance = new self($basePath);
+        } elseif ($basePath !== null) {
+            self::$instance->basePath = $basePath;
         }
 
         return self::$instance;
     }
 
     /**
-     * Prevent cloning (singleton enforcement)
-     */
-    private function __clone()
-    {
-        throw new \RuntimeException('Cannot clone singleton Application container');
-    }
-
-    /**
-     * Prevent unserialization (singleton enforcement)
-     */
-    public function __wakeup()
-    {
-        throw new \RuntimeException('Cannot unserialize singleton Application container');
-    }
-
-    /**
-     * Register a binding in the container
+     * Register a binding
      *
-     * The binding can be:
-     * - A closure that returns the instance
-     * - A class name string for autowiring
-     * - An existing object instance
-     *
-     * @param string $abstract The abstract type or identifier
-     * @param callable|object|string|null $concrete The concrete implementation
-     * @return $this For method chaining
+     * @param string $abstract
+     * @param callable|string|null $concrete
+     * @param bool $shared
+     * @return void
      */
-    public function bind(string $abstract, callable|object|string|null $concrete = null): self
+    public function bind(string $abstract, $concrete = null, bool $shared = false): void
     {
         $this->bindings[$abstract] = $concrete ?? $abstract;
 
-        // Remove any existing singleton instance
-        unset($this->singletons[$abstract]);
-
-        return $this;
+        if ($shared) {
+            $this->singletons[$abstract] = null;
+        }
     }
 
     /**
      * Register a singleton binding
      *
-     * Singletons are instantiated once and the same instance is returned
-     * on subsequent calls. This is ideal for services like database connections,
-     * loggers, and configuration managers.
-     *
-     * @param string $abstract The abstract type or identifier
-     * @param callable|object|string|null $concrete The concrete implementation
-     * @return $this For method chaining
+     * @param string $abstract
+     * @param callable|string|null $concrete
+     * @return void
      */
-    public function singleton(string $abstract, callable|object|string|null $concrete = null): self
+    public function singleton(string $abstract, $concrete = null): void
     {
-        $this->bindings[$abstract] = $concrete ?? $abstract;
-
-        // Mark as singleton by pre-initializing with null
-        if (!isset($this->singletons[$abstract])) {
-            $this->singletons[$abstract] = null;
-        }
-
-        return $this;
+        $this->bind($abstract, $concrete, true);
     }
 
     /**
-     * Register an alias for an abstract type
+     * Boot the application providers
      *
-     * Aliases allow multiple interfaces to resolve to the same implementation.
-     * Example: $app->alias(DatabaseInterface::class, MySQLDatabase::class);
-     *
-     * @param string $abstract The target abstract type
-     * @param string $alias The alias to register
-     * @return $this For method chaining
-     */
-    public function alias(string $abstract, string $alias): self
-    {
-        $this->aliases[$alias] = $abstract;
-
-        return $this;
-    }
-
-    /**
-     * Register a service provider
-     *
-     * Service providers encapsulate the logic for registering and bootstrapping
-     * related services. They are lazily booted when first needed.
-     *
-     * @param ServiceProviderInterface|string $provider The provider instance or class name
-     * @return $this For method chaining
-     */
-    public function register(ServiceProviderInterface|string $provider): self
-    {
-        if (is_string($provider)) {
-            $provider = $this->get($provider);
-        }
-
-        $this->providers[] = $provider;
-
-        // Register immediately
-        $provider->register($this);
-
-        // Boot if already booted
-        if ($this->booted) {
-            $provider->boot($this);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Boot all registered service providers
-     *
-     * This method should be called after all providers are registered.
-     * It triggers the boot() method on each provider.
-     *
-     * @return $this For method chaining
+     * @return self
      */
     public function boot(): self
     {
@@ -221,7 +150,9 @@ class Application implements ContainerInterface
         }
 
         foreach ($this->providers as $provider) {
-            $provider->boot($this);
+            if (method_exists($provider, 'boot')) {
+                $this->call([$provider, 'boot']);
+            }
         }
 
         $this->booted = true;
@@ -527,7 +458,7 @@ class Application implements ContainerInterface
      */
     public function getBasePath(): string
     {
-        return dirname(__DIR__, 2);
+        return $this->basePath ?? dirname(__DIR__, 2);
     }
 
     /**
