@@ -14,6 +14,7 @@ return [
      */
     'services' => [
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
+        'novel-to-manga-script' => \DGLab\Services\NovelToMangaScript\NovelToMangaScript::class,
         // Add new services here following the same pattern
         // 'image-resizer' => \DGLab\Services\ImageResizer\ImageResizer::class,
         // 'pdf-converter' => \DGLab\Services\PdfConverter\PdfConverter::class,
@@ -88,6 +89,48 @@ return [
             'blockquote' => 'Blockquotes',
             'code' => 'Code blocks',
             'pre' => 'Preformatted text',
+        ],
+    ],
+
+    /**
+     * NovelToMangaScript Service Configuration
+     */
+    'novel-to-manga-script' => [
+        'max_file_size' => 10485760, // 10MB for text files
+        'allowed_extensions' => ['txt', 'epub', 'pdf', 'docx', 'md'],
+        'allowed_mime_types' => [
+            'text/plain',
+            'application/epub+zip',
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/markdown',
+        ],
+        'max_chapters_per_batch' => 10,
+        'max_tokens_per_chapter' => 100000,
+        'default_output_format' => 'json',
+        'supported_output_formats' => ['json', 'fountain', 'fdx', 'markdown'],
+        'temp_processing_path' => __DIR__ . '/../storage/uploads/temp/manga-script',
+        
+        // AI Provider Settings (references llm_unified.php)
+        'llm_config' => 'llm_unified',
+        'default_routing_strategy' => 'intelligent', // intelligent, round_robin, priority, failover
+        'enable_fallback' => true,
+        'max_retries' => 3,
+        'retry_delay_ms' => 1000,
+        
+        // Pipeline Settings
+        'pipeline' => [
+            'stages' => ['parse', 'analyze', 'segment', 'visualize', 'format'],
+            'parallel_stages' => ['analyze', 'segment'],
+            'cache_intermediate' => true,
+            'cache_ttl' => 3600,
+        ],
+        
+        // Output Templates
+        'templates' => [
+            'panel_description' => 'Visual description for manga panel generation',
+            'dialogue_format' => 'Manga-style dialogue with speaker identification',
+            'action_format' => 'Concise action descriptions for visual adaptation',
         ],
     ],
 ];
