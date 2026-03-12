@@ -30,4 +30,17 @@ return [
     'encryption' => [
         'key' => $_ENV['DOWNLOAD_SIGNING_KEY'] ?? '32-char-encryption-key-for-test!',
     ],
+
+    /**
+     * Cleanup Settings
+     */
+    'cleanup' => [
+        'threshold' => 86400, // 24 hours in seconds
+        'exclude' => [
+            '/\.keep/',
+            '/logo\.png/',
+            '/favicon\.ico/',
+        ],
+        'temp_path' => dirname(__DIR__) . '/storage/uploads/temp',
+    ],
 ];

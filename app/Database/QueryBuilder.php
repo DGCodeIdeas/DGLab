@@ -76,6 +76,24 @@ class QueryBuilder
         return $this;
     }
 
+    /**
+     * Add a raw where clause to the query.
+     */
+    public function whereRaw(string $sql, array $bindings = []): self
+    {
+        $this->wheres[] = [
+            'column' => '',
+            'operator' => '',
+            'value' => $sql,
+            'boolean' => 'AND',
+            'is_raw_full' => true,
+        ];
+
+        $this->bindings = array_merge($this->bindings, $bindings);
+
+        return $this;
+    }
+
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
         $this->orderBy = "`{$column}` {$direction}";
@@ -157,9 +175,7 @@ class QueryBuilder
             $sql .= $this->buildWheres();
         }
 
-        $bindings = array_merge($bindings, $this->bindings);
-
-        return Model::getConnection()->update($sql, $bindings);
+        return Model::getConnection()->update($sql, array_merge($bindings, $this->bindings));
     }
 
     private function buildSelect(): string
@@ -214,7 +230,9 @@ class QueryBuilder
         foreach ($this->wheres as $i => $where) {
             $boolean = $i === 0 ? 'WHERE' : $where['boolean'];
 
-            if (isset($where['raw']) && $where['raw']) {
+            if (isset($where['is_raw_full']) && $where['is_raw_full']) {
+                $sql .= " {$boolean} {$where['value']}";
+            } elseif (isset($where['raw']) && $where['raw']) {
                 $sql .= " {$boolean} `{$where['column']}` {$where['operator']} {$where['value']}";
             } else {
                 $sql .= " {$boolean} `{$where['column']}` {$where['operator']} ?";

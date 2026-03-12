@@ -14,6 +14,7 @@ namespace DGLab\Database;
  * @property string|null $ip_address
  * @property bool $enforce_ip
  * @property string|null $user_agent
+ * @property bool $is_permanent
  */
 class DownloadToken extends Model
 {
@@ -35,6 +36,7 @@ class DownloadToken extends Model
         'ip_address',
         'enforce_ip',
         'user_agent',
+        'is_permanent',
     ];
 
     /**
@@ -55,7 +57,7 @@ class DownloadToken extends Model
         }
 
         /** @var static $model */
-        if ($model->use_count >= $model->max_uses) {
+        if ($model->getAttribute('use_count') >= $model->getAttribute('max_uses')) {
             return null;
         }
 
@@ -67,7 +69,7 @@ class DownloadToken extends Model
      */
     public function incrementUse(): bool
     {
-        $this->setAttribute('use_count', $this->getAttribute('use_count') + 1);
+        $this->setAttribute('use_count', (int)$this->getAttribute('use_count') + 1);
         return $this->save();
     }
 
@@ -84,6 +86,6 @@ class DownloadToken extends Model
      */
     public function isConsumed(): bool
     {
-        return $this->getAttribute('use_count') >= $this->getAttribute('max_uses');
+        return (int)$this->getAttribute('use_count') >= (int)$this->getAttribute('max_uses');
     }
 }

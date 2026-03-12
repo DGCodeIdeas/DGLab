@@ -9,6 +9,7 @@ use DGLab\Core\Response;
 use DGLab\Controllers\DownloadController;
 use DGLab\Database\Connection;
 use CreateDownloadTokensTable;
+use AddIsPermanentToDownloadTokens;
 
 class DownloadSecurityTest extends IntegrationTestCase
 {
@@ -47,6 +48,12 @@ class DownloadSecurityTest extends IntegrationTestCase
             }
             $migration = new CreateDownloadTokensTable(self::$persistentDb);
             $migration->up();
+
+            if (!class_exists('AddIsPermanentToDownloadTokens')) {
+                require_once __DIR__ . '/../../database/migrations/2024_01_01_000005_add_is_permanent_to_download_tokens.php';
+            }
+            $migration2 = new AddIsPermanentToDownloadTokens(self::$persistentDb);
+            $migration2->up();
         }
 
         // Inject the persistent connection into the application and Model

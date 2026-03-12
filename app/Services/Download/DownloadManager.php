@@ -197,8 +197,13 @@ class DownloadManager implements DownloadServiceInterface
     /**
      * Generate a database-backed temporary download token
      */
-    public function generateTemporaryToken(string $path, int $minutes = 60, int $maxUses = 1, bool $enforceIp = true): string
-    {
+    public function generateTemporaryToken(
+        string $path,
+        int $minutes = 60,
+        int $maxUses = 1,
+        bool $enforceIp = true,
+        bool $isPermanent = false
+    ): string {
         $token = bin2hex(random_bytes(32));
         $expiresAt = (new DateTime())->modify("+{$minutes} minutes");
 
@@ -212,6 +217,7 @@ class DownloadManager implements DownloadServiceInterface
             'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
             'enforce_ip' => $enforceIp ? 1 : 0,
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            'is_permanent' => $isPermanent ? 1 : 0,
         ]);
 
         return $token;
