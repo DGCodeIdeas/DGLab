@@ -13,6 +13,7 @@ return [
      * Format: 'service_id' => ServiceClass::class
      */
     'services' => [
+        'download-service' => \DGLab\Services\Download\DownloadService::class,
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
         'webpack' => \DGLab\Services\AssetPacker\WebpackService::class,
         'novel-to-manga-script' => \DGLab\Services\NovelToMangaScript\NovelToMangaScript::class,
