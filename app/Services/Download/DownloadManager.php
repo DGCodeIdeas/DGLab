@@ -11,6 +11,7 @@ use DGLab\Services\Download\Drivers\LocalDriver;
 use DGLab\Services\Encryption\EncryptionService;
 use DateTime;
 use RuntimeException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Download Manager (Foundational Core Service)
@@ -39,6 +40,11 @@ class DownloadManager implements DownloadServiceInterface
      * Encryption Service
      */
     private ?EncryptionService $encryption = null;
+
+    /**
+     * Logger instance
+     */
+    private ?LoggerInterface $logger = null;
 
     /**
      * Constructor (Private for singleton)
@@ -75,11 +81,17 @@ class DownloadManager implements DownloadServiceInterface
     {
         $app = Application::getInstance();
 
+        // Initialize Logger
+        if ($app->has(LoggerInterface::class)) {
+            $this->logger = $app->get(LoggerInterface::class);
+        }
+
         // Load configurations
         $downloadConfig = $app->config('download');
         $filesystemConfig = $app->config('filesystems');
 
         if (!$downloadConfig || !$filesystemConfig) {
+            $this->log('warning', 'Download service configuration missing.');
             return;
         }
 
@@ -92,11 +104,13 @@ class DownloadManager implements DownloadServiceInterface
 
             $diskConfig = $filesystemConfig['disks'][$disk] ?? null;
             if (!$diskConfig) {
+                $this->log('error', "Disk configuration [{$disk}] for driver [{$name}] not found.");
                 continue;
             }
 
             if ($driverClass === LocalDriver::class) {
                 $this->registerDriver($name, new LocalDriver($diskConfig['root']));
+                $this->log('debug', "Registered local storage driver [{$name}] with root: " . $diskConfig['root']);
             }
         }
 
@@ -104,6 +118,8 @@ class DownloadManager implements DownloadServiceInterface
         $encryptionKey = $downloadConfig['encryption']['key'] ?? null;
         if ($encryptionKey && strlen($encryptionKey) === 32) {
             $this->encryption = new EncryptionService($encryptionKey);
+        } else {
+            $this->log('critical', 'Encryption key for DownloadService is missing or invalid.');
         }
     }
 
@@ -123,6 +139,7 @@ class DownloadManager implements DownloadServiceInterface
         $name = $name ?: $this->defaultDriver;
 
         if (!isset($this->drivers[$name])) {
+            $this->log('error', "Storage driver [{$name}] requested but not registered.");
             throw new RuntimeException("Storage driver [{$name}] is not registered.");
         }
 
@@ -137,6 +154,7 @@ class DownloadManager implements DownloadServiceInterface
         $driver = $this->driver($driverName);
 
         if (!$driver->has($path)) {
+            $this->log('warning', "File not found during download: {$path} on driver: " . ($driverName ?: $this->defaultDriver));
             throw new \DGLab\Services\Download\Exceptions\FileNotFoundException("File not found at path: {$path}");
         }
 
@@ -153,6 +171,7 @@ class DownloadManager implements DownloadServiceInterface
         $driver = $this->driver($driverName);
 
         if (!$driver->has($path)) {
+            $this->log('warning', "File not found during stream: {$path} on driver: " . ($driverName ?: $this->defaultDriver));
             throw new \DGLab\Services\Download\Exceptions\FileNotFoundException("File not found at path: {$path}");
         }
 
@@ -220,6 +239,8 @@ class DownloadManager implements DownloadServiceInterface
             'is_permanent' => $isPermanent ? 1 : 0,
         ]);
 
+        $this->log('debug', "Generated temporary download token for: {$path}");
+
         return $token;
     }
 
@@ -229,5 +250,16 @@ class DownloadManager implements DownloadServiceInterface
     public function decryptSignature(string $signature): ?array
     {
         return $this->encryption ? $this->encryption->decrypt($signature) : null;
+    }
+
+    /**
+     * Internal logging helper
+     */
+    private function log(string $level, string $message, array $context = []): void
+    {
+        if ($this->logger) {
+            $context['service'] = 'download';
+            $this->logger->log($level, $message, $context);
+        }
     }
 }

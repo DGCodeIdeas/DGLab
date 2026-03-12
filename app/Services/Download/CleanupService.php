@@ -5,6 +5,7 @@ namespace DGLab\Services\Download;
 use DGLab\Core\Application;
 use DGLab\Database\DownloadToken;
 use Exception;
+use Psr\Log\LoggerInterface;
 
 /**
  * Download Cleanup Service
@@ -25,12 +26,21 @@ class CleanupService
     private array $config;
 
     /**
+     * Logger instance
+     */
+    private ?LoggerInterface $logger = null;
+
+    /**
      * Constructor
      */
     public function __construct()
     {
         $this->app = Application::getInstance();
         $this->config = $this->app->config('download.cleanup', []);
+
+        if ($this->app->has(LoggerInterface::class)) {
+            $this->logger = $this->app->get(LoggerInterface::class);
+        }
     }
 
     /**
@@ -49,11 +59,15 @@ class CleanupService
             'errors' => [],
         ];
 
+        $this->log('info', 'Starting Download Service cleanup...' . ($dryRun ? ' [DRY RUN]' : ''));
+
         // 1. Clean up expired/consumed tokens and their files
         $this->cleanupTokens($dryRun, $stats);
 
         // 2. Clean up orphaned files in temp directory
         $this->cleanupOrphanedFiles($dryRun, $stats);
+
+        $this->log('info', "Cleanup completed. Tokens: {$stats['tokens_deleted']}, Files: {$stats['files_deleted']}, Reclaimed: {$stats['space_reclaimed']} bytes");
 
         return $stats;
     }
@@ -93,6 +107,7 @@ class CleanupService
                         }
                         $stats['files_deleted']++;
                         $stats['space_reclaimed'] += $size;
+                        $this->log('debug', "Deleted physical file: {$filePath}");
                     }
                 }
 
@@ -102,7 +117,9 @@ class CleanupService
                 }
                 $stats['tokens_deleted']++;
             } catch (Exception $e) {
-                $stats['errors'][] = "Failed to clean token {$token->id}: " . $e->getMessage();
+                $msg = "Failed to clean token {$token->id}: " . $e->getMessage();
+                $stats['errors'][] = $msg;
+                $this->log('error', $msg);
             }
         }
     }
@@ -146,6 +163,7 @@ class CleanupService
                 }
                 $stats['orphaned_files_deleted']++;
                 $stats['space_reclaimed'] += $size;
+                $this->log('debug', "Deleted orphaned file: " . basename($file));
             }
         }
     }
@@ -183,5 +201,16 @@ class CleanupService
     {
         // Future implementation:
         // $this->app->get(EventDispatcherService::class)->dispatch($event, $data);
+    }
+
+    /**
+     * Internal logging helper
+     */
+    private function log(string $level, string $message, array $context = []): void
+    {
+        if ($this->logger) {
+            $context['service'] = 'download-cleanup';
+            $this->logger->log($level, $message, $context);
+        }
     }
 }
