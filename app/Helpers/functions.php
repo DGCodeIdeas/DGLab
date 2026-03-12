@@ -9,6 +9,7 @@
 use DGLab\Core\Application;
 use DGLab\Core\Response;
 use DGLab\Core\View;
+use DGLab\Services\Download\Download;
 
 /**
  * Get the application instance
@@ -21,8 +22,14 @@ function app(): Application
 /**
  * Get a config value
  */
-function config(string $key, mixed $default = null): mixed
+function config(string|array $key, mixed $default = null): mixed
 {
+    if (is_array($key)) {
+        foreach ($key as $k => $v) {
+            Application::getInstance()->setConfig($k, $v);
+        }
+        return null;
+    }
     return Application::getInstance()->config($key, $default);
 }
 
@@ -323,4 +330,12 @@ function clear_cache(?string $pattern = null): void
             unlink($file);
         }
     }
+}
+
+/**
+ * Download a file via DownloadManager
+ */
+function download(string $path, ?string $name = null, array $headers = [], ?string $driver = null): Response
+{
+    return Download::file($path, $name, $headers, $driver);
 }

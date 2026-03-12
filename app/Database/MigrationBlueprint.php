@@ -19,7 +19,12 @@ class MigrationBlueprint
 
     public function id(): self
     {
-        $this->columns[] = '`id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY';
+        $isSqlite = ($_ENV['DB_DATABASE'] ?? '') === ':memory:' || strpos($_ENV['DB_CONNECTION'] ?? '', 'sqlite') !== false;
+        if ($isSqlite) {
+            $this->columns[] = '`id` INTEGER PRIMARY KEY AUTOINCREMENT';
+        } else {
+            $this->columns[] = '`id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY';
+        }
         return $this;
     }
 
@@ -70,7 +75,7 @@ class MigrationBlueprint
     public function timestamps(): self
     {
         $this->columns[] = '`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
-        $this->columns[] = '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
+        $this->columns[] = '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
         return $this;
     }
 
@@ -102,8 +107,17 @@ class MigrationBlueprint
         return $this;
     }
 
-    public function unique(string|array $columns, ?string $name = null): self
+    public function unique(string|array $columns = [], ?string $name = null): self
     {
+        if (empty($columns)) {
+            if (empty($this->columns)) {
+                return $this;
+            }
+            $lastIndex = count($this->columns) - 1;
+            $this->columns[$lastIndex] .= " UNIQUE";
+            return $this;
+        }
+
         $columns = (array) $columns;
         $name = $name ?? $this->table . '_' . implode('_', $columns) . '_unique';
 
@@ -124,13 +138,74 @@ class MigrationBlueprint
         return $this;
     }
 
+    /**
+     * Set a default value for the last added column
+     */
+    public function default(mixed $value): self
+    {
+        if (empty($this->columns)) {
+            return $this;
+        }
+
+        $lastIndex = count($this->columns) - 1;
+
+        if (is_string($value)) {
+            $value = "'{$value}'";
+        } elseif (is_bool($value)) {
+            $value = $value ? '1' : '0';
+        }
+
+        $this->columns[$lastIndex] .= " DEFAULT {$value}";
+
+        return $this;
+    }
+
+    /**
+     * Set the last added column as nullable
+     */
+    public function nullable(): self
+    {
+        if (empty($this->columns)) {
+            return $this;
+        }
+
+        $lastIndex = count($this->columns) - 1;
+        $this->columns[$lastIndex] .= " NULL";
+
+        return $this;
+    }
+
     public function toSql(): string
     {
+        $isSqlite = ($_ENV['DB_DATABASE'] ?? '') === ':memory:' || strpos($_ENV['DB_CONNECTION'] ?? '', 'sqlite') !== false;
+
+        if ($isSqlite) {
+             $parts = array_merge($this->columns, $this->indexes, $this->foreignKeys);
+             $parts = array_map(function ($p) {
+                 $p = str_replace('ON UPDATE CURRENT_TIMESTAMP', '', $p);
+                 // Filter out MySQL specific attributes if any left
+                 return $p;
+             }, $parts);
+
+             // Filter out INDEX lines for SQLite inside CREATE TABLE
+             $parts = array_filter($parts, function ($p) {
+                 return strpos($p, 'INDEX') === false;
+             });
+
+             return "CREATE TABLE `{$this->table}` (\n    " . implode(",\n    ", $parts) . "\n)";
+        }
+
         $parts = array_merge($this->columns, $this->indexes, $this->foreignKeys);
 
-        $sql = "CREATE TABLE `{$this->table}` (\n    " . implode(",\n    ", $parts) .
-               "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        // Ensure updated_at has ON UPDATE for MySQL
+        $parts = array_map(function ($p) {
+            if (strpos($p, '`updated_at`') !== false && strpos($p, 'ON UPDATE') === false) {
+                return str_replace('CURRENT_TIMESTAMP', 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', $p);
+            }
+            return $p;
+        }, $parts);
 
-        return $sql;
+        return "CREATE TABLE `{$this->table}` (\n    " . implode(",\n    ", $parts) .
+               "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     }
 }

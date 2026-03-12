@@ -1,23 +1,17 @@
 <?php
 
 /**
- * DGLab Application Container
+ * DGLab Core Application
  *
- * A PSR-11 compliant dependency injection container implementing the singleton pattern.
- * Provides autowiring, service providers, and alias support for flexible dependency management.
- *
- * Architecture Decisions:
- * - Singleton pattern ensures single container instance across application lifecycle
- * - Lazy instantiation via closures reduces memory footprint
- * - Autowiring via reflection eliminates manual binding for most classes
- * - Service provider pattern allows modular bootstrapping
+ * The foundational core of the DGLab framework.
+ * Implements PSR-11 container and coordinates service lifecycle.
  *
  * @package DGLab\Core
  */
 
 namespace DGLab\Core;
 
-use Psr\Container\ContainerInterface;
+use DGLab\Core\Exceptions\RouteNotFoundException;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionParameter;
@@ -25,15 +19,18 @@ use ReflectionParameter;
 /**
  * Class Application
  *
- * Main dependency injection container for the DGLab application.
- * Implements PSR-11 ContainerInterface for interoperability.
+ * Primary application container responsible for:
+ * - Service registration and resolution (DI)
+ * - Configuration management
+ * - Application bootstrapping
+ * - Core component orchestration
  */
-class Application implements ContainerInterface
+class Application implements \Psr\Container\ContainerInterface
 {
     /**
      * Singleton instance
      */
-    private static ?self $instance = null;
+    private static ?Application $instance = null;
 
     /**
      * Base path
@@ -41,121 +38,92 @@ class Application implements ContainerInterface
     private ?string $basePath = null;
 
     /**
-     * Registered bindings
-     *
-     * @var array<string, callable|object|string>
+     * Service bindings
      */
     private array $bindings = [];
 
     /**
      * Singleton instances
-     *
-     * @var array<string, object>
      */
     private array $singletons = [];
 
     /**
-     * Aliases for bindings
-     *
-     * @var array<string, string>
+     * Service aliases
      */
     private array $aliases = [];
 
     /**
      * Service providers
-     *
-     * @var array<ServiceProviderInterface>
      */
     private array $providers = [];
 
     /**
-     * Whether providers have been booted
-     */
-    private bool $booted = false;
-
-    /**
-     * Configuration cache
+     * Loaded configuration
      */
     private array $config = [];
 
     /**
-     * Private constructor for singleton pattern
+     * Booted flag
+     */
+    private bool $booted = false;
+
+    /**
+     * Constructor (Private for singleton)
      */
     private function __construct(?string $basePath = null)
     {
         $this->basePath = $basePath;
-        // Self-register the container
-        $this->singletons[self::class] = $this;
-        $this->singletons[ContainerInterface::class] = $this;
-        $this->singletons[static::class] = $this;
     }
 
     /**
-     * Get the singleton instance
+     * Get the application instance
      *
-     * Thread-safe singleton implementation using double-checked locking pattern.
-     *
-     * @param string|null $basePath Optional base path to initialize with
-     * @return self The application container instance
+     * @param string|null $basePath Application root directory
+     * @return Application
      */
     public static function getInstance(?string $basePath = null): self
     {
         if (self::$instance === null) {
             self::$instance = new self($basePath);
-        } elseif ($basePath !== null) {
-            self::$instance->basePath = $basePath;
         }
 
         return self::$instance;
     }
 
     /**
-     * Register a binding
-     *
-     * @param string $abstract
-     * @param callable|string|null $concrete
-     * @param bool $shared
-     * @return void
+     * Register a singleton binding
      */
-    public function bind(string $abstract, $concrete = null, bool $shared = false): void
+    public function singleton(string $abstract, callable|object|string|null $concrete = null): self
     {
-        $this->bindings[$abstract] = $concrete ?? $abstract;
+        $this->bind($abstract, $concrete, true);
+
+        return $this;
+    }
+
+    /**
+     * Register a service binding
+     */
+    public function bind(string $abstract, callable|object|string|null $concrete = null, bool $shared = false): self
+    {
+        if ($concrete === null) {
+            $concrete = $abstract;
+        }
+
+        $this->bindings[$abstract] = $concrete;
 
         if ($shared) {
             $this->singletons[$abstract] = null;
         }
+
+        return $this;
     }
 
     /**
-     * Register a singleton binding
-     *
-     * @param string $abstract
-     * @param callable|string|null $concrete
-     * @return void
+     * Register an alias for an abstract type
      */
-    public function singleton(string $abstract, $concrete = null): void
+    public function alias(string $abstract, string $alias): self
     {
-        $this->bind($abstract, $concrete, true);
-    }
-
-    /**
-     * Boot the application providers
-     *
-     * @return self
-     */
-    public function boot(): self
-    {
-        if ($this->booted) {
-            return $this;
-        }
-
-        foreach ($this->providers as $provider) {
-            if (method_exists($provider, 'boot')) {
-                $this->call([$provider, 'boot']);
-            }
-        }
-
-        $this->booted = true;
+        $this->aliases[$alias] = $abstract;
 
         return $this;
     }
@@ -449,6 +417,38 @@ class Application implements ContainerInterface
         }
 
         return $value;
+    }
+
+    /**
+     * Set a configuration value at runtime (primarily for testing)
+     */
+    public function setConfig(string $key, mixed $value): void
+    {
+        [$file, $path] = explode('.', $key, 2) + [null, null];
+
+        if (!isset($this->config[$file])) {
+            $configPath = $this->getBasePath() . "/config/{$file}.php";
+            if (file_exists($configPath)) {
+                $this->config[$file] = require $configPath;
+            } else {
+                $this->config[$file] = [];
+            }
+        }
+
+        if ($path === null) {
+            $this->config[$file] = $value;
+            return;
+        }
+
+        $target = &$this->config[$file];
+        foreach (explode('.', $path) as $segment) {
+            if (!isset($target[$segment]) || !is_array($target[$segment])) {
+                $target[$segment] = [];
+            }
+            $target = &$target[$segment];
+        }
+
+        $target = $value;
     }
 
     /**

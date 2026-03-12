@@ -11,6 +11,7 @@
 
 namespace DGLab\Database;
 
+use DGLab\Core\Application;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -28,6 +29,11 @@ use PDOStatement;
  */
 class Connection
 {
+    /**
+     * Singleton instance
+     */
+    private static ?Connection $instance = null;
+
     /**
      * PDO instance
      */
@@ -70,6 +76,32 @@ class Connection
             'multiplier' => 2,
         ];
         $this->logging = $config['logging']['enabled'] ?? false;
+
+        if (self::$instance === null) {
+            self::$instance = $this;
+        }
+    }
+
+    /**
+     * Get instance (Singleton)
+     */
+    public static function getInstance(): ?self
+    {
+        if (self::$instance === null) {
+            $app = Application::getInstance();
+            if ($app->has(self::class)) {
+                self::$instance = $app->get(self::class);
+            }
+        }
+        return self::$instance;
+    }
+
+    /**
+     * Set instance
+     */
+    public static function setInstance(Connection $instance): void
+    {
+        self::$instance = $instance;
     }
 
     /**
@@ -98,24 +130,24 @@ class Connection
             $dsn = sprintf(
                 'pgsql:host=%s;port=%s;dbname=%s',
                 $config['host'] ?? 'localhost',
-                $config['port'] ?? '5432',
+                $config['port'] ?? 5432,
                 $config['database']
             );
-        } elseif ($config['driver'] === 'kafka') {
-            // Simulated Kafka "driver" via environment for now
-            throw new \RuntimeException("Kafka driver is not yet implemented for PDO.");
         } else {
             $dsn = sprintf(
-                '%s:host=%s;port=%s;dbname=%s;charset=%s',
-                $config['driver'],
+                'mysql:host=%s;port=%s;dbname=%s;charset=%s',
                 $config['host'] ?? 'localhost',
-                $config['port'] ?? '3306',
+                $config['port'] ?? 3306,
                 $config['database'],
                 $config['charset'] ?? 'utf8mb4'
             );
         }
 
-        $options = $config['options'] ?? [];
+        $options = array_merge([
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ], $config['options'] ?? []);
 
         try {
             $this->pdo = new PDO(
@@ -221,13 +253,11 @@ class Connection
      */
     public function beginTransaction(): bool
     {
-        if ($this->transactionLevel === 0) {
-            $this->executeWithRetry(function () {
-                return $this->getPdo()->beginTransaction();
-            });
-        }
-
         $this->transactionLevel++;
+
+        if ($this->transactionLevel === 1) {
+            return $this->getPdo()->beginTransaction();
+        }
 
         return true;
     }
@@ -237,13 +267,15 @@ class Connection
      */
     public function commit(): bool
     {
-        if ($this->transactionLevel === 1) {
-            $this->executeWithRetry(function () {
-                return $this->getPdo()->commit();
-            });
+        if ($this->transactionLevel === 0) {
+            return false;
         }
 
-        $this->transactionLevel = max(0, $this->transactionLevel - 1);
+        $this->transactionLevel--;
+
+        if ($this->transactionLevel === 0) {
+            return $this->getPdo()->commit();
+        }
 
         return true;
     }
@@ -253,58 +285,13 @@ class Connection
      */
     public function rollBack(): bool
     {
-        if ($this->transactionLevel === 1) {
-            $this->executeWithRetry(function () {
-                return $this->getPdo()->rollBack();
-            });
+        if ($this->transactionLevel === 0) {
+            return false;
         }
 
-        $this->transactionLevel = max(0, $this->transactionLevel - 1);
+        $this->transactionLevel = 0;
 
-        return true;
-    }
-
-    /**
-     * Execute a callback within a transaction
-     */
-    public function transaction(callable $callback, int $attempts = 1): mixed
-    {
-        for ($currentAttempt = 1; $currentAttempt <= $attempts; $currentAttempt++) {
-            $this->beginTransaction();
-
-            try {
-                $result = $callback($this);
-                $this->commit();
-
-                return $result;
-            } catch (\Exception $e) {
-                $this->rollBack();
-
-                if ($currentAttempt === $attempts) {
-                    throw $e;
-                }
-
-                // Check if it's a deadlock
-                if (!$this->isDeadlock($e)) {
-                    throw $e;
-                }
-
-                usleep(50000 * $currentAttempt); // Exponential backoff
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Check if exception is a deadlock
-     */
-    private function isDeadlock(\Exception $e): bool
-    {
-        $message = $e->getMessage();
-
-        return strpos($message, 'Deadlock found') !== false ||
-               strpos($message, 'Lock wait timeout') !== false;
+        return $this->getPdo()->rollBack();
     }
 
     /**
@@ -349,10 +336,10 @@ class Connection
     private function isGoneAway(PDOException $e): bool
     {
         $message = $e->getMessage();
-        $code = $e->getCode();
+        $code = (string)$e->getCode();
 
         // MySQL error codes for "gone away"
-        $goneAwayCodes = [2006, 2013];
+        $goneAwayCodes = ['2006', '2013'];
 
         return in_array($code, $goneAwayCodes, true) ||
                stripos($message, 'gone away') !== false ||
@@ -371,6 +358,14 @@ class Connection
 
         // Retry connection issues and deadlocks
         return $this->isGoneAway($e) || $this->isDeadlock($e);
+    }
+
+    /**
+     * Check if exception indicates a deadlock
+     */
+    private function isDeadlock(PDOException $e): bool
+    {
+        return $e->getCode() === '40001' || stripos($e->getMessage(), 'deadlock') !== false;
     }
 
     /**
@@ -423,43 +418,12 @@ class Connection
     }
 
     /**
-     * Clear query log
+     * Get the database driver name
      */
-    public function flushQueryLog(): void
+    public function getDriver(): string
     {
-        $this->queryLog = [];
-    }
-
-    /**
-     * Check if in transaction
-     */
-    public function inTransaction(): bool
-    {
-        return $this->transactionLevel > 0;
-    }
-
-    /**
-     * Get transaction level
-     */
-    public function transactionLevel(): int
-    {
-        return $this->transactionLevel;
-    }
-
-    /**
-     * Quote a value for SQL
-     */
-    public function quote(string $value): string
-    {
-        return $this->getPdo()->quote($value);
-    }
-
-    /**
-     * Prepare a statement
-     */
-    public function prepare(string $sql): PDOStatement
-    {
-        return $this->getPdo()->prepare($sql);
+        $default = $_ENV['DB_CONNECTION'] ?? $this->config['default'];
+        return $this->config['connections'][$default]['driver'] ?? 'mysql';
     }
 
     /**

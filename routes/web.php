@@ -1,56 +1,19 @@
 <?php
 
-/**
- * DGLab PWA - Web Routes
- *
- * Application route definitions.
- */
-
-use DGLab\Core\Application;
+use DGLab\Core\Router;
 use DGLab\Core\Request;
 use DGLab\Core\Response;
-use DGLab\Core\Router;
+use DGLab\Core\Application;
 
 /** @var Router $router */
-$router = Application::getInstance()->get(Router::class);
 
-// Home page
+// Home Route
 $router->get('/', function (Request $request) {
-    $view = Application::getInstance()->get(\DGLab\Core\View::class);
-
-    return new Response($view->render('home', [
-        'title' => 'DGLab - Digital Lab Tools',
-    ]));
-});
-
-// Service listing page
-$router->get('/services', function (Request $request) {
     $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-    $view = Application::getInstance()->get(\DGLab\Core\View::class);
+    $services = $registry->all();
 
-    return new Response($view->render('services/index', [
-        'title' => 'Services - DGLab',
-        'services' => $registry->all(),
-    ]));
-});
-
-// Individual service page
-$router->get('/services/{id}', function (Request $request) {
-    $serviceId = $request->route('id');
-    $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-    $service = $registry->get($serviceId);
-
-    if ($service === null) {
-        return Response::json(['error' => 'Service not found'], 404);
-    }
-
-    $view = Application::getInstance()->get(\DGLab\Core\View::class);
-
-    return new Response($view->render('services/service', [
-        'title' => $service->getName() . ' - DGLab',
-        'service' => $service,
-    ]));
-});
+    return view('home', ['services' => $services]);
+})->name('home');
 
 // API Routes
 $router->group(['prefix' => 'api'], function (Router $router) {
@@ -58,81 +21,40 @@ $router->group(['prefix' => 'api'], function (Router $router) {
     // Service discovery
     $router->get('/services', function (Request $request) {
         $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-
-        return Response::json([
-            'services' => $registry->all(),
-        ]);
+        return Response::json($registry->all());
     });
 
-    // Get service details
+    // Service detail
     $router->get('/services/{id}', function (Request $request) {
-        $serviceId = $request->route('id');
+        $id = $request->route('id');
         $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-        $service = $registry->get($serviceId);
+        $service = $registry->get($id);
 
         if ($service === null) {
             return Response::json(['error' => 'Service not found'], 404);
         }
 
-        return Response::json([
-            'id' => $service->getId(),
-            'name' => $service->getName(),
-            'description' => $service->getDescription(),
-            'icon' => $service->getIcon(),
-            'supports_chunking' => $service->supportsChunking(),
-            'input_schema' => $service->getInputSchema(),
-            'config' => $service->getConfig(),
-            'metadata' => $service->getMetadata(),
-        ]);
+        return Response::json($service->getMetadata());
     });
 
-    // Process service (direct)
+    // Process service request
     $router->post('/services/{id}/process', function (Request $request) {
-        $serviceId = $request->route('id');
+        $id = $request->route('id');
         $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-        $service = $registry->get($serviceId);
+        $service = $registry->get($id);
 
         if ($service === null) {
             return Response::json(['error' => 'Service not found'], 404);
         }
 
         try {
-            $input = $request->all();
-
-            // Handle file upload
-            $file = $request->file('file');
-            if ($file !== null && $file->isValid()) {
-                $tempPath = sys_get_temp_dir() . '/' . uniqid() . '_' . $file->getClientOriginalName();
-                $file->move(dirname($tempPath), basename($tempPath));
-                $input['file'] = $tempPath;
-            }
-
-            $result = $service->process($input, function ($percent, $message) {
-                // Progress callback - could be used for WebSocket updates
-            });
-
+            $input = $service->validate($request->all());
+            $result = $service->process($input);
             return Response::json($result);
+        } catch (\DGLab\Core\Exceptions\ValidationException $e) {
+            return Response::json(['error' => $e->getMessage(), 'errors' => $e->getErrors()], 422);
         } catch (\Exception $e) {
             return Response::json(['error' => $e->getMessage()], 500);
-        }
-    });
-
-    // Validate service input
-    $router->post('/services/{id}/validate', function (Request $request) {
-        $serviceId = $request->route('id');
-        $registry = Application::getInstance()->get(\DGLab\Services\ServiceRegistry::class);
-        $service = $registry->get($serviceId);
-
-        if ($service === null) {
-            return Response::json(['error' => 'Service not found'], 404);
-        }
-
-        try {
-            $service->validate($request->json() ?? $request->all());
-
-            return Response::json(['valid' => true]);
-        } catch (\DGLab\Core\Exceptions\ValidationException $e) {
-            return Response::json(['valid' => false, 'errors' => $e->getErrors()], 422);
         }
     });
 
@@ -267,17 +189,8 @@ $router->group(['prefix' => 'api'], function (Router $router) {
         });
     });
 
-    // Download endpoint
-    $router->get('/download/{filename}', function (Request $request) {
-        $filename = basename($request->route('filename'));
-        $filePath = Application::getInstance()->getBasePath() . '/storage/uploads/temp/' . $filename;
-
-        if (!file_exists($filePath)) {
-            return Response::json(['error' => 'File not found'], 404);
-        }
-
-        return Response::download($filePath);
-    })->name('download');
+    // Legacy Download endpoint (now handled by DownloadController)
+    $router->get('/download/{filename}', [\DGLab\Controllers\DownloadController::class, 'legacyDownload'])->name('download');
 });
 
 // PWA Manifest
@@ -417,3 +330,7 @@ $router->get('/assets/webfonts/{file}', function (Request $request) {
     $assetService = Application::getInstance()->get(\DGLab\Services\AssetService::class);
     $assetService->serveAsset('webfonts', $file);
 });
+
+// Download Routes (Phase 2 & 5)
+$router->get('/s/{signature}', [\DGLab\Controllers\DownloadController::class, 'signedDownload']);
+$router->get('/dl/{token}', [\DGLab\Controllers\DownloadController::class, 'tokenDownload']);

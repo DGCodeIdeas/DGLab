@@ -127,6 +127,7 @@ abstract class Controller
 
     /**
      * Return a file download response
+     * @deprecated Use Download::file() or DownloadManager::download()
      */
     protected function download(string $file, ?string $name = null, array $headers = []): Response
     {
@@ -135,6 +136,7 @@ abstract class Controller
 
     /**
      * Return a file stream response
+     * @deprecated Use DownloadManager::stream()
      */
     protected function stream(string $file, ?string $name = null, array $headers = []): Response
     {
