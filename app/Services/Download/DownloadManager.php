@@ -4,10 +4,11 @@ namespace DGLab\Services\Download;
 
 use DGLab\Core\Application;
 use DGLab\Core\Response;
+use DGLab\Database\DownloadToken;
 use DGLab\Services\Download\Contracts\DownloadServiceInterface;
 use DGLab\Services\Download\Contracts\StorageDriverInterface;
 use DGLab\Services\Download\Drivers\LocalDriver;
-use DGLab\Services\Download\Exceptions\StorageException;
+use DGLab\Services\Encryption\EncryptionService;
 use DateTime;
 use RuntimeException;
 
@@ -35,6 +36,11 @@ class DownloadManager implements DownloadServiceInterface
     private ?string $defaultDriver = null;
 
     /**
+     * Encryption Service
+     */
+    private ?EncryptionService $encryption = null;
+
+    /**
      * Constructor (Private for singleton)
      */
     private function __construct()
@@ -52,6 +58,14 @@ class DownloadManager implements DownloadServiceInterface
         }
 
         return self::$instance;
+    }
+
+    /**
+     * Reset the singleton instance (primarily for testing)
+     */
+    public static function reset(): void
+    {
+        self::$instance = null;
     }
 
     /**
@@ -84,7 +98,12 @@ class DownloadManager implements DownloadServiceInterface
             if ($driverClass === LocalDriver::class) {
                 $this->registerDriver($name, new LocalDriver($diskConfig['root']));
             }
-            // Add other driver factory logic here as needed
+        }
+
+        // Initialize Encryption
+        $encryptionKey = $downloadConfig['encryption']['key'] ?? null;
+        if ($encryptionKey && strlen($encryptionKey) === 32) {
+            $this->encryption = new EncryptionService($encryptionKey);
         }
     }
 
@@ -113,9 +132,9 @@ class DownloadManager implements DownloadServiceInterface
     /**
      * @inheritDoc
      */
-    public function download(string $path, ?string $name = null, array $headers = []): Response
+    public function download(string $path, ?string $name = null, array $headers = [], ?string $driverName = null): Response
     {
-        $driver = $this->driver();
+        $driver = $this->driver($driverName);
 
         if (!$driver->has($path)) {
             throw new \DGLab\Services\Download\Exceptions\FileNotFoundException("File not found at path: {$path}");
@@ -129,9 +148,9 @@ class DownloadManager implements DownloadServiceInterface
     /**
      * @inheritDoc
      */
-    public function stream(string $path, ?string $name = null): Response
+    public function stream(string $path, ?string $name = null, ?string $driverName = null): Response
     {
-        $driver = $this->driver();
+        $driver = $this->driver($driverName);
 
         if (!$driver->has($path)) {
             throw new \DGLab\Services\Download\Exceptions\FileNotFoundException("File not found at path: {$path}");
@@ -145,9 +164,9 @@ class DownloadManager implements DownloadServiceInterface
     /**
      * @inheritDoc
      */
-    public function exists(string $path): bool
+    public function exists(string $path, ?string $driverName = null): bool
     {
-        return $this->driver()->has($path);
+        return $this->driver($driverName)->has($path);
     }
 
     /**
@@ -155,8 +174,54 @@ class DownloadManager implements DownloadServiceInterface
      */
     public function getUrl(string $path, ?DateTime $expiration = null): string
     {
-        // Phase 2: Implement signed URL logic
+        if (!$this->encryption) {
+            throw new RuntimeException("Encryption service not initialized or invalid key.");
+        }
+
+        $expiration = $expiration ?: (new DateTime())->modify('+1 hour');
+
+        $payload = [
+            'path' => $path,
+            'driver' => $this->defaultDriver,
+            'expires' => $expiration->getTimestamp(),
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+            'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+        ];
+
+        $signature = $this->encryption->encrypt($payload);
         $baseUrl = Application::getInstance()->config('app.url');
-        return rtrim($baseUrl, '/') . '/download/' . ltrim($path, '/');
+
+        return rtrim($baseUrl, '/') . '/s/' . $signature;
+    }
+
+    /**
+     * Generate a database-backed temporary download token
+     */
+    public function generateTemporaryToken(string $path, int $minutes = 60, int $maxUses = 1, bool $enforceIp = true): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = (new DateTime())->modify("+{$minutes} minutes");
+
+        DownloadToken::create([
+            'token' => hash('sha256', $token),
+            'file_path' => $path,
+            'driver' => $this->defaultDriver,
+            'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
+            'max_uses' => $maxUses,
+            'use_count' => 0,
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+            'enforce_ip' => $enforceIp ? 1 : 0,
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+        ]);
+
+        return $token;
+    }
+
+    /**
+     * Decrypt a signed URL signature
+     */
+    public function decryptSignature(string $signature): ?array
+    {
+        return $this->encryption ? $this->encryption->decrypt($signature) : null;
     }
 }
