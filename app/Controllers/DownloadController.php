@@ -96,8 +96,10 @@ class DownloadController extends Controller
         $driver = (string)$downloadToken->getAttribute('driver');
 
         // Enforce IP if required
-        if ($downloadToken->getAttribute('enforce_ip') &&
-            $downloadToken->getAttribute('ip_address') !== ($request->getClientIp() ?: '')) {
+        if (
+            $downloadToken->getAttribute('enforce_ip') &&
+            $downloadToken->getAttribute('ip_address') !== ($request->getClientIp() ?: '')
+        ) {
             $this->audit->record($path, $driver, 403, $startTime, 'Unauthorized IP.');
             return Response::json(['error' => 'Unauthorized IP address.'], 403);
         }
@@ -114,6 +116,29 @@ class DownloadController extends Controller
         } catch (\Exception $e) {
             $this->audit->record($path, $driver, 404, $startTime, $e->getMessage());
             return Response::json(['error' => $e->getMessage()], 404);
+        }
+    }
+
+    /**
+     * Handle legacy download routes
+     *
+     * Route: /download/{filename} (now mapped to temp driver)
+     */
+    public function legacyDownload(Request $request): Response
+    {
+        $startTime = $this->audit->startTimer();
+        $filename = basename((string)$request->route('filename'));
+
+        $manager = DownloadManager::getInstance();
+        try {
+            // Using 'temp' driver for legacy /storage/uploads/temp access
+            $response = $manager->download($filename, null, [], 'temp');
+            $this->addDebugHeaders($response, 'temp', $filename, $startTime);
+            $this->audit->record($filename, 'temp', 200, $startTime, 'Legacy access');
+            return $response;
+        } catch (\Exception $e) {
+            $this->audit->record($filename, 'temp', 404, $startTime, $e->getMessage());
+            return Response::json(['error' => 'File not found'], 404);
         }
     }
 

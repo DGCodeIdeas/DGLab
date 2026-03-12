@@ -14,6 +14,14 @@ return [
             'driver' => \DGLab\Services\Download\Drivers\LocalDriver::class,
             'disk' => 'local',
         ],
+        'temp' => [
+            'driver' => \DGLab\Services\Download\Drivers\LocalDriver::class,
+            'disk' => 'temp',
+        ],
+        'public' => [
+            'driver' => \DGLab\Services\Download\Drivers\LocalDriver::class,
+            'disk' => 'public',
+        ],
     ],
 
     /**

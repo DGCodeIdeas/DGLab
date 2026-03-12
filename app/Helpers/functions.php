@@ -9,6 +9,7 @@
 use DGLab\Core\Application;
 use DGLab\Core\Response;
 use DGLab\Core\View;
+use DGLab\Services\Download\Download;
 
 /**
  * Get the application instance
@@ -329,4 +330,12 @@ function clear_cache(?string $pattern = null): void
             unlink($file);
         }
     }
+}
+
+/**
+ * Download a file via DownloadManager
+ */
+function download(string $path, ?string $name = null, array $headers = [], ?string $driver = null): Response
+{
+    return Download::file($path, $name, $headers, $driver);
 }

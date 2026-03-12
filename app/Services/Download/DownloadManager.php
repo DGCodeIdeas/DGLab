@@ -191,17 +191,18 @@ class DownloadManager implements DownloadServiceInterface
     /**
      * @inheritDoc
      */
-    public function getUrl(string $path, ?DateTime $expiration = null): string
+    public function getUrl(string $path, ?DateTime $expiration = null, ?string $driverName = null): string
     {
         if (!$this->encryption) {
             throw new RuntimeException("Encryption service not initialized or invalid key.");
         }
 
+        $driverName = $driverName ?: $this->defaultDriver;
         $expiration = $expiration ?: (new DateTime())->modify('+1 hour');
 
         $payload = [
             'path' => $path,
-            'driver' => $this->defaultDriver,
+            'driver' => $driverName,
             'expires' => $expiration->getTimestamp(),
             'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
             'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null,
@@ -221,15 +222,17 @@ class DownloadManager implements DownloadServiceInterface
         int $minutes = 60,
         int $maxUses = 1,
         bool $enforceIp = true,
-        bool $isPermanent = false
+        bool $isPermanent = false,
+        ?string $driverName = null
     ): string {
+        $driverName = $driverName ?: $this->defaultDriver;
         $token = bin2hex(random_bytes(32));
         $expiresAt = (new DateTime())->modify("+{$minutes} minutes");
 
         DownloadToken::create([
             'token' => hash('sha256', $token),
             'file_path' => $path,
-            'driver' => $this->defaultDriver,
+            'driver' => $driverName,
             'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
             'max_uses' => $maxUses,
             'use_count' => 0,
@@ -239,7 +242,7 @@ class DownloadManager implements DownloadServiceInterface
             'is_permanent' => $isPermanent ? 1 : 0,
         ]);
 
-        $this->log('debug', "Generated temporary download token for: {$path}");
+        $this->log('debug', "Generated temporary download token for: {$path} (Driver: {$driverName})");
 
         return $token;
     }
