@@ -5,7 +5,9 @@ namespace DGLab\Core;
 use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Core\Contracts\EventDriverInterface;
 use DGLab\Core\Contracts\EventInterface;
+use DGLab\Core\Contracts\EventSubscriberInterface;
 use DGLab\Core\EventDrivers\SyncDriver;
+use DGLab\Core\Utils\PatternMatcher;
 
 /**
  * Class EventDispatcher
@@ -20,12 +22,12 @@ class EventDispatcher implements DispatcherInterface
     protected Application $app;
 
     /**
-     * @var array Registered listeners grouped by event class.
+     * @var array Registered listeners grouped by event class/pattern.
      */
     protected array $listeners = [];
 
     /**
-     * @var array Cached sorted listeners.
+     * @var array Cached sorted listeners for specific events.
      */
     protected array $sorted = [];
 
@@ -61,8 +63,7 @@ class EventDispatcher implements DispatcherInterface
      */
     public function dispatch(EventInterface $event): EventInterface
     {
-        $eventClass = get_class($event);
-        $listeners = $this->getListeners($eventClass);
+        $listeners = $this->getListenersForEvent($event);
 
         if (empty($listeners)) {
             return $event;
@@ -76,53 +77,90 @@ class EventDispatcher implements DispatcherInterface
     /**
      * @inheritDoc
      */
-    public function listen(string $eventClass, $listener, int $priority = 0): void
+    public function listen(string $eventClassOrPattern, $listener, int $priority = 0): void
     {
-        $this->listeners[$eventClass][$priority][] = $listener;
-        unset($this->sorted[$eventClass]);
+        $this->listeners[$eventClassOrPattern][$priority][] = $listener;
+
+        // Clear all cached sorted listeners since a new wildcard might match anything
+        $this->sorted = [];
+    }
+
+    /**
+     * Register an event subscriber.
+     *
+     * @param EventSubscriberInterface $subscriber
+     * @return void
+     */
+    public function addSubscriber(EventSubscriberInterface $subscriber): void
+    {
+        $subscriber->subscribe($this);
     }
 
     /**
      * @inheritDoc
      */
-    public function removeListener(string $eventClass, $listener): void
+    public function removeListener(string $eventClassOrPattern, $listener): void
     {
-        if (!isset($this->listeners[$eventClass])) {
+        if (!isset($this->listeners[$eventClassOrPattern])) {
             return;
         }
 
-        foreach ($this->listeners[$eventClass] as $priority => &$listeners) {
+        foreach ($this->listeners[$eventClassOrPattern] as $priority => &$listeners) {
             foreach ($listeners as $index => $registeredListener) {
                 if ($registeredListener === $listener) {
                     unset($listeners[$index]);
-                    unset($this->sorted[$eventClass]);
+                    $this->sorted = [];
                 }
             }
         }
     }
 
     /**
-     * Get sorted listeners for a specific event class.
+     * Get sorted listeners for a specific event.
      *
-     * @param string $eventClass
+     * @param EventInterface $event
      * @return array
      */
-    public function getListeners(string $eventClass): array
+    public function getListenersForEvent(EventInterface $event): array
     {
-        if (isset($this->sorted[$eventClass])) {
-            return $this->sorted[$eventClass];
+        $eventClass = get_class($event);
+        $eventAlias = $event->getAlias();
+        $cacheKey = $eventClass . ':' . $eventAlias;
+
+        if (isset($this->sorted[$cacheKey])) {
+            return $this->sorted[$cacheKey];
         }
 
-        return $this->sorted[$eventClass] = $this->sortListeners($eventClass);
+        $allMatching = [];
+
+        foreach ($this->listeners as $pattern => $priorities) {
+            if ($pattern === $eventClass || $pattern === $eventAlias || PatternMatcher::matches($pattern, $eventAlias)) {
+                foreach ($priorities as $priority => $listeners) {
+                    foreach ($listeners as $listener) {
+                        $allMatching[$priority][] = $listener;
+                    }
+                }
+            }
+        }
+
+        if (empty($allMatching)) {
+            return $this->sorted[$cacheKey] = [];
+        }
+
+        // Sort by priority (higher first)
+        krsort($allMatching);
+
+        return $this->sorted[$cacheKey] = array_merge(...$allMatching);
     }
 
     /**
-     * Sort listeners by priority.
+     * Legacy method for getting listeners by class name only.
      *
      * @param string $eventClass
      * @return array
+     * @deprecated Use getListenersForEvent instead.
      */
-    protected function sortListeners(string $eventClass): array
+    public function getListeners(string $eventClass): array
     {
         $listeners = $this->listeners[$eventClass] ?? [];
 
@@ -130,7 +168,6 @@ class EventDispatcher implements DispatcherInterface
             return [];
         }
 
-        // Sort by priority (higher first)
         krsort($listeners);
 
         return array_merge(...$listeners);

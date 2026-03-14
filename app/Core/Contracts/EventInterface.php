@@ -9,4 +9,10 @@ namespace DGLab\Core\Contracts;
  */
 interface EventInterface
 {
+    /**
+     * Get the unique alias for the event.
+     *
+     * @return string
+     */
+    public function getAlias(): string;
 }
