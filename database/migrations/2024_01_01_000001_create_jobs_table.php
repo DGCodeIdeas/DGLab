@@ -19,22 +19,40 @@ class CreateJobsTable implements MigrationInterface
 
     public function up(): void
     {
-        $sql = "CREATE TABLE IF NOT EXISTS `jobs` (
-            `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            `service_id` VARCHAR(100) NOT NULL,
-            `status` ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
-            `input_data` JSON,
-            `output_data` JSON,
-            `progress` TINYINT UNSIGNED DEFAULT 0,
-            `message` TEXT,
-            `started_at` TIMESTAMP NULL,
-            `completed_at` TIMESTAMP NULL,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX `idx_service_status` (`service_id`, `status`),
-            INDEX `idx_status` (`status`),
-            INDEX `idx_created_at` (`created_at`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $driver = $this->db->getDriver();
+
+        if ($driver === 'sqlite') {
+            $sql = "CREATE TABLE IF NOT EXISTS `jobs` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                `service_id` VARCHAR(100) NOT NULL,
+                `status` TEXT DEFAULT 'pending',
+                `input_data` TEXT,
+                `output_data` TEXT,
+                `progress` INTEGER DEFAULT 0,
+                `message` TEXT,
+                `started_at` DATETIME,
+                `completed_at` DATETIME,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            )";
+        } else {
+            $sql = "CREATE TABLE IF NOT EXISTS `jobs` (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `service_id` VARCHAR(100) NOT NULL,
+                `status` ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
+                `input_data` JSON,
+                `output_data` JSON,
+                `progress` TINYINT UNSIGNED DEFAULT 0,
+                `message` TEXT,
+                `started_at` TIMESTAMP NULL,
+                `completed_at` TIMESTAMP NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX `idx_service_status` (`service_id`, `status`),
+                INDEX `idx_status` (`status`),
+                INDEX `idx_created_at` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        }
         
         $this->db->statement($sql);
     }
