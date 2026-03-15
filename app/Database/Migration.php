@@ -53,13 +53,25 @@ class Migration
      */
     private function createMigrationsTable(): void
     {
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->table} (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            migration VARCHAR(255) NOT NULL,
-            batch INT NOT NULL,
-            executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_migration (migration)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $driver = $this->db->getDriver();
+
+        if ($driver === 'sqlite') {
+            $sql = "CREATE TABLE IF NOT EXISTS {$this->table} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                migration VARCHAR(255) NOT NULL,
+                batch INT NOT NULL,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (migration)
+            )";
+        } else {
+            $sql = "CREATE TABLE IF NOT EXISTS {$this->table} (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                migration VARCHAR(255) NOT NULL,
+                batch INT NOT NULL,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_migration (migration)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        }
 
         $this->db->statement($sql);
     }
@@ -231,10 +243,22 @@ class Migration
 
         $instance = new $class($this->db);
 
-        $this->db->transaction(function () use ($instance, $migration, $batch) {
+        // SQLite doesn't support nested transactions well in some versions/drivers
+        // but Connection class handles transaction levels.
+        if ($this->db->getDriver() === 'sqlite') {
             $instance->up();
             $this->logMigration($migration, $batch);
-        });
+        } else {
+            $this->db->query("START TRANSACTION"); // Manual to avoid issues if Connection logic is complex
+            try {
+                $instance->up();
+                $this->logMigration($migration, $batch);
+                $this->db->query("COMMIT");
+            } catch (\Exception $e) {
+                $this->db->query("ROLLBACK");
+                throw $e;
+            }
+        }
     }
 
     /**
@@ -258,10 +282,20 @@ class Migration
 
         $instance = new $class($this->db);
 
-        $this->db->transaction(function () use ($instance, $migration) {
+        if ($this->db->getDriver() === 'sqlite') {
             $instance->down();
             $this->removeMigration($migration);
-        });
+        } else {
+            $this->db->query("START TRANSACTION");
+            try {
+                $instance->down();
+                $this->removeMigration($migration);
+                $this->db->query("COMMIT");
+            } catch (\Exception $e) {
+                $this->db->query("ROLLBACK");
+                throw $e;
+            }
+        }
     }
 
     /**

@@ -11,6 +11,8 @@
 
 namespace DGLab\Core;
 
+use DGLab\Core\EventDispatcher;
+use DGLab\Core\EventAuditService;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 use ReflectionClass;
 use ReflectionException;
@@ -73,6 +75,26 @@ class Application implements \Psr\Container\ContainerInterface
     private function __construct(?string $basePath = null)
     {
         $this->basePath = $basePath;
+        // Self-bind the application instance
+        $this->singletons[self::class] = $this;
+        $this->singletons[\Psr\Container\ContainerInterface::class] = $this;
+
+        $this->registerCoreServices();
+    }
+
+    /**
+     * Register foundational core services.
+     */
+    private function registerCoreServices(): void
+    {
+        $this->singleton(EventAuditService::class, function () {
+            return new EventAuditService($this->get(\DGLab\Database\Connection::class));
+        });
+
+        $this->singleton(EventDispatcher::class, function () {
+            return new EventDispatcher($this);
+        });
+        $this->alias(EventDispatcher::class, 'events');
     }
 
     /**
@@ -152,7 +174,6 @@ class Application implements \Psr\Container\ContainerInterface
             return $this->singletons[$abstract];
         }
 
-        // Get the concrete implementation
         $concrete = $this->bindings[$abstract] ?? $abstract;
 
         // Build the instance
@@ -375,6 +396,9 @@ class Application implements \Psr\Container\ContainerInterface
             throw new \RuntimeException("Unable to resolve parameter \${$name}");
         }
 
+        if ($reflection instanceof \ReflectionMethod) {
+            return $reflection->invoke($class, ...$dependencies);
+        }
         return $reflection->invokeArgs($dependencies);
     }
 
