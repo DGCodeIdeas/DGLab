@@ -12,6 +12,7 @@
 namespace DGLab\Core;
 
 use DGLab\Core\EventDispatcher;
+use DGLab\Core\EventAuditService;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 use ReflectionClass;
 use ReflectionException;
@@ -86,6 +87,10 @@ class Application implements \Psr\Container\ContainerInterface
      */
     private function registerCoreServices(): void
     {
+        $this->singleton(EventAuditService::class, function () {
+            return new EventAuditService($this->get(\DGLab\Database\Connection::class));
+        });
+
         $this->singleton(EventDispatcher::class, function () {
             return new EventDispatcher($this);
         });

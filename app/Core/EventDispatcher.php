@@ -70,6 +70,14 @@ class EventDispatcher implements DispatcherInterface
      */
     public function dispatch(EventInterface $event): EventInterface
     {
+        $auditService = $this->app->has(EventAuditService::class) ? $this->app->get(EventAuditService::class) : null;
+        $auditId = $auditService ? $auditService->logDispatch($event) : null;
+
+        if ($this->app->config('app.debug')) {
+            $logger = $this->app->get(Logger::class);
+            $logger->debug("Event Dispatched: " . $event->getAlias() . " (ID: " . ($auditService ? $auditService->getDispatchId() : 'N/A') . ")");
+        }
+
         $listeners = $this->getListenersForEvent($event);
 
         if (empty($listeners)) {
@@ -89,12 +97,12 @@ class EventDispatcher implements DispatcherInterface
 
         // Execute sync listeners
         if (!empty($sync)) {
-            $this->defaultDriver->handle($sync, $event);
+            $this->defaultDriver->handle($sync, $event, $auditId);
         }
 
         // Defer async listeners
         if (!empty($async)) {
-            $this->queueDriver->handle($async, $event);
+            $this->queueDriver->handle($async, $event, $auditId);
         }
 
         return $event;

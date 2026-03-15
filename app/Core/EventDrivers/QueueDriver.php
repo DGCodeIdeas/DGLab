@@ -5,6 +5,7 @@ namespace DGLab\Core\EventDrivers;
 use DGLab\Core\Application;
 use DGLab\Core\Contracts\EventDriverInterface;
 use DGLab\Core\Contracts\EventInterface;
+use DGLab\Core\EventAuditService;
 use DGLab\Database\Connection;
 
 /**
@@ -38,10 +39,28 @@ class QueueDriver implements EventDriverInterface
     /**
      * @inheritDoc
      */
-    public function handle(array $listeners, EventInterface $event): void
+    public function handle(array $listeners, EventInterface $event, ?int $auditId = null): void
     {
+        $auditService = $this->app->has(EventAuditService::class) ? $this->app->get(EventAuditService::class) : null;
+
         foreach ($listeners as $listener) {
-            $this->queue($listener, $event);
+            $start = microtime(true);
+            try {
+                $this->queue($listener, $event, $auditId);
+
+                if ($auditService && $auditId) {
+                    $latency = (int) ((microtime(true) - $start) * 1000);
+                    $listenerName = is_string($listener) ? $listener : 'Closure';
+                    $auditService->logExecution($auditId, $listenerName, 'queue', 'success', $latency);
+                }
+            } catch (\Throwable $e) {
+                if ($auditService && $auditId) {
+                    $latency = (int) ((microtime(true) - $start) * 1000);
+                    $listenerName = is_string($listener) ? $listener : 'Closure';
+                    $auditService->logExecution($auditId, $listenerName, 'queue', 'failed', $latency, $e->getMessage());
+                }
+                throw $e;
+            }
         }
     }
 
@@ -50,13 +69,15 @@ class QueueDriver implements EventDriverInterface
      *
      * @param callable|string $listener
      * @param EventInterface $event
+     * @param int|null $auditId
      * @return void
      */
-    protected function queue($listener, EventInterface $event): void
+    protected function queue($listener, EventInterface $event, ?int $auditId = null): void
     {
         $payload = [
             'event' => serialize($event),
             'listener' => $this->serializeListener($listener),
+            'audit_id' => $auditId,
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
@@ -89,7 +110,7 @@ class QueueDriver implements EventDriverInterface
         }
 
         if ($listener instanceof \Closure) {
-            throw new \RuntimeException("Closures cannot be handled asynchronously in Phase 3. Please use a class-based listener.");
+            throw new \RuntimeException("Closures cannot be handled asynchronously. Please use a class-based listener.");
         }
 
         throw new \RuntimeException("Unsupported listener type for async execution.");

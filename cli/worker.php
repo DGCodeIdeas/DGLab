@@ -2,7 +2,7 @@
 /**
  * DGLab Event Worker
  *
- * Processes asynchronous events from the database queue.
+ * Processes asynchronous events from the database queue with retry logic.
  *
  * Usage:
  *   php cli/worker.php [--once] [--sleep=3]
@@ -11,12 +11,13 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use DGLab\Core\Application;
+use DGLab\Core\EventAuditService;
 use DGLab\Database\Connection;
 
 // Initialize Application
 $app = Application::getInstance();
 
-// Load environment (consistent with migrate.php)
+// Load environment
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -42,11 +43,16 @@ foreach ($argv as $arg) {
     }
 }
 
+// Load Event config
+$eventConfig = $app->config('events');
+$retryLimit = $eventConfig['queue']['retry_limit'] ?? 3;
+$retryDelay = $eventConfig['queue']['retry_delay'] ?? 60;
+
 echo "DGLab Event Worker started...\n";
 
 while (true) {
     $job = $db->selectOne(
-        "SELECT * FROM event_queue WHERE status = 'pending' AND (available_at IS NULL OR available_at <= ?) ORDER BY id LIMIT 1",
+        "SELECT * FROM event_queue WHERE status IN ('pending', 'retrying') AND (available_at IS NULL OR available_at <= ?) ORDER BY id LIMIT 1",
         [date('Y-m-d H:i:s')]
     );
 
@@ -61,8 +67,12 @@ while (true) {
 
     echo "Processing event: {$job['event_alias']} (ID: {$job['id']})...\n";
 
+    $start = microtime(true);
+    $payload = json_decode($job['payload'], true);
+    $auditId = $payload['audit_id'] ?? null;
+    $auditService = $app->get(EventAuditService::class);
+
     try {
-        $payload = json_decode($job['payload'], true);
         $event = unserialize($payload['event']);
         $listenerStr = $payload['listener'];
 
@@ -79,14 +89,46 @@ while (true) {
             "UPDATE event_queue SET status = 'completed', updated_at = ? WHERE id = ?",
             [date('Y-m-d H:i:s'), $job['id']]
         );
+
+        if ($auditId) {
+            $latency = (int) ((microtime(true) - $start) * 1000);
+            $auditService->logExecution($auditId, $payload['listener'], 'worker', 'success', $latency);
+        }
+
         echo "  ✓ Completed.\n";
 
     } catch (\Throwable $e) {
-        echo "  ✗ Failed: " . $e->getMessage() . "\n";
-        $db->update(
-            "UPDATE event_queue SET status = 'failed', error = ?, attempts = attempts + 1, updated_at = ? WHERE id = ?",
-            [$e->getMessage(), date('Y-m-d H:i:s'), $job['id']]
-        );
+        $attempts = $job['attempts'] + 1;
+        $latency = (int) ((microtime(true) - $start) * 1000);
+
+        if ($attempts < $retryLimit) {
+            // Schedule retry with exponential backoff
+            $backoff = $retryDelay * pow(2, $attempts - 1);
+            $availableAt = date('Y-m-d H:i:s', time() + $backoff);
+
+            $db->update(
+                "UPDATE event_queue SET status = 'retrying', attempts = ?, available_at = ?, error = ?, updated_at = ? WHERE id = ?",
+                [$attempts, $availableAt, $e->getMessage(), date('Y-m-d H:i:s'), $job['id']]
+            );
+
+            if ($auditId) {
+                $auditService->logExecution($auditId, $payload['listener'], 'worker', 'retrying', $latency, $e->getMessage(), $e->getTraceAsString());
+            }
+
+            echo "  ✗ Failed (Attempt $attempts). Scheduled retry at $availableAt.\n";
+        } else {
+            // Move to Dead Letter (failed)
+            $db->update(
+                "UPDATE event_queue SET status = 'failed', attempts = ?, error = ?, updated_at = ? WHERE id = ?",
+                [$attempts, $e->getMessage(), date('Y-m-d H:i:s'), $job['id']]
+            );
+
+            if ($auditId) {
+                $auditService->logExecution($auditId, $payload['listener'], 'worker', 'dead_letter', $latency, $e->getMessage(), $e->getTraceAsString());
+            }
+
+            echo "  ✗ Failed (Final Attempt). Moved to dead letter.\n";
+        }
     }
 
     if ($once) break;

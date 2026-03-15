@@ -14,7 +14,8 @@ interface EventDriverInterface
      *
      * @param array $listeners
      * @param EventInterface $event
+     * @param int|null $auditId Optional audit entry ID.
      * @return void
      */
-    public function handle(array $listeners, EventInterface $event): void;
+    public function handle(array $listeners, EventInterface $event, ?int $auditId = null): void;
 }
