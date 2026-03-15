@@ -6,6 +6,7 @@ use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Core\Contracts\EventDriverInterface;
 use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\Contracts\EventSubscriberInterface;
+use DGLab\Core\EventDrivers\QueueDriver;
 use DGLab\Core\EventDrivers\SyncDriver;
 use DGLab\Core\Utils\PatternMatcher;
 
@@ -37,6 +38,11 @@ class EventDispatcher implements DispatcherInterface
     protected EventDriverInterface $defaultDriver;
 
     /**
+     * @var QueueDriver The queue driver for async events.
+     */
+    protected QueueDriver $queueDriver;
+
+    /**
      * EventDispatcher constructor.
      *
      * @param Application $app
@@ -44,18 +50,19 @@ class EventDispatcher implements DispatcherInterface
     public function __construct(Application $app)
     {
         $this->app = $app;
-        $this->initializeDefaultDriver();
+        $this->initializeDrivers();
     }
 
     /**
-     * Initialize the default driver from configuration.
+     * Initialize the drivers.
      *
      * @return void
      */
-    protected function initializeDefaultDriver(): void
+    protected function initializeDrivers(): void
     {
         $driverClass = $this->app->config('events.default_driver', SyncDriver::class);
         $this->defaultDriver = $this->app->get($driverClass);
+        $this->queueDriver = $this->app->get(QueueDriver::class);
     }
 
     /**
@@ -69,7 +76,26 @@ class EventDispatcher implements DispatcherInterface
             return $event;
         }
 
-        $this->defaultDriver->handle($listeners, $event);
+        $sync = [];
+        $async = [];
+
+        foreach ($listeners as $listenerData) {
+            if ($listenerData['async']) {
+                $async[] = $listenerData['listener'];
+            } else {
+                $sync[] = $listenerData['listener'];
+            }
+        }
+
+        // Execute sync listeners
+        if (!empty($sync)) {
+            $this->defaultDriver->handle($sync, $event);
+        }
+
+        // Defer async listeners
+        if (!empty($async)) {
+            $this->queueDriver->handle($async, $event);
+        }
 
         return $event;
     }
@@ -77,11 +103,13 @@ class EventDispatcher implements DispatcherInterface
     /**
      * @inheritDoc
      */
-    public function listen(string $eventClassOrPattern, $listener, int $priority = 0): void
+    public function listen(string $eventClassOrPattern, $listener, int $priority = 0, bool $async = false): void
     {
-        $this->listeners[$eventClassOrPattern][$priority][] = $listener;
+        $this->listeners[$eventClassOrPattern][$priority][] = [
+            'listener' => $listener,
+            'async' => $async
+        ];
 
-        // Clear all cached sorted listeners since a new wildcard might match anything
         $this->sorted = [];
     }
 
@@ -107,7 +135,7 @@ class EventDispatcher implements DispatcherInterface
 
         foreach ($this->listeners[$eventClassOrPattern] as $priority => &$listeners) {
             foreach ($listeners as $index => $registeredListener) {
-                if ($registeredListener === $listener) {
+                if ($registeredListener['listener'] === $listener) {
                     unset($listeners[$index]);
                     $this->sorted = [];
                 }
@@ -136,8 +164,8 @@ class EventDispatcher implements DispatcherInterface
         foreach ($this->listeners as $pattern => $priorities) {
             if ($pattern === $eventClass || $pattern === $eventAlias || PatternMatcher::matches($pattern, $eventAlias)) {
                 foreach ($priorities as $priority => $listeners) {
-                    foreach ($listeners as $listener) {
-                        $allMatching[$priority][] = $listener;
+                    foreach ($listeners as $listenerData) {
+                        $allMatching[$priority][] = $listenerData;
                     }
                 }
             }
@@ -147,7 +175,6 @@ class EventDispatcher implements DispatcherInterface
             return $this->sorted[$cacheKey] = [];
         }
 
-        // Sort by priority (higher first)
         krsort($allMatching);
 
         return $this->sorted[$cacheKey] = array_merge(...$allMatching);
@@ -170,6 +197,7 @@ class EventDispatcher implements DispatcherInterface
 
         krsort($listeners);
 
-        return array_merge(...$listeners);
+        $merged = array_merge(...$listeners);
+        return array_column($merged, 'listener');
     }
 }

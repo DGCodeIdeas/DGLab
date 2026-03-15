@@ -6,20 +6,21 @@ use DGLab\Core\Application;
 use DGLab\Core\BaseEvent;
 use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\EventDispatcher;
+use DGLab\Database\Connection;
 use PHPUnit\Framework\TestCase;
 
 class TestEvent extends BaseEvent {}
 class StoppableTestEvent extends BaseEvent {}
 
 class TestListener {
-    public static $called = 0;
+    public static int $called = 0;
     public function handle(EventInterface $event) {
         self::$called++;
     }
 }
 
 class DependencyListener {
-    public static $injected = null;
+    public static ?Application $injected = null;
     public function __construct(Application $app) {
         self::$injected = $app;
     }
@@ -37,6 +38,11 @@ class EventDispatcherTest extends TestCase
     {
         Application::flush();
         $this->app = Application::getInstance();
+
+        // Mock Connection for QueueDriver
+        $db = $this->createMock(Connection::class);
+        $this->app->singleton(Connection::class, $db);
+
         $this->dispatcher = $this->app->get(EventDispatcher::class);
         TestListener::$called = 0;
         DependencyListener::$injected = null;
@@ -97,9 +103,9 @@ class EventDispatcherTest extends TestCase
     {
         $listener = function() {};
         $this->dispatcher->listen(TestEvent::class, $listener);
-        $this->assertCount(1, $this->dispatcher->getListeners(TestEvent::class));
+        $this->assertCount(1, $this->dispatcher->getListenersForEvent(new TestEvent()));
 
         $this->dispatcher->removeListener(TestEvent::class, $listener);
-        $this->assertCount(0, $this->dispatcher->getListeners(TestEvent::class));
+        $this->assertCount(0, $this->dispatcher->getListenersForEvent(new TestEvent()));
     }
 }

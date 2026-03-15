@@ -8,6 +8,7 @@ use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\Contracts\EventSubscriberInterface;
 use DGLab\Core\EventDispatcher;
+use DGLab\Database\Connection;
 use PHPUnit\Framework\TestCase;
 
 class UserLoginEvent extends BaseEvent {}
@@ -36,6 +37,11 @@ class EventDispatcherPhase2Test extends TestCase
     {
         Application::flush();
         $this->app = Application::getInstance();
+
+        // Mock Connection for QueueDriver
+        $db = $this->createMock(Connection::class);
+        $this->app->singleton(Connection::class, $db);
+
         $this->dispatcher = $this->app->get(EventDispatcher::class);
         TestSubscriber::$called = 0;
     }

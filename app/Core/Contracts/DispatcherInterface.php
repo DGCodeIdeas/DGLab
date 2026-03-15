@@ -20,19 +20,20 @@ interface DispatcherInterface
     /**
      * Register a listener for a specific event.
      *
-     * @param string $eventClass
+     * @param string $eventClassOrPattern
      * @param callable|string $listener
      * @param int $priority
+     * @param bool $async
      * @return void
      */
-    public function listen(string $eventClass, $listener, int $priority = 0): void;
+    public function listen(string $eventClassOrPattern, $listener, int $priority = 0, bool $async = false): void;
 
     /**
      * Remove a listener from a specific event.
      *
-     * @param string $eventClass
+     * @param string $eventClassOrPattern
      * @param callable|string $listener
      * @return void
      */
-    public function removeListener(string $eventClass, $listener): void;
+    public function removeListener(string $eventClassOrPattern, $listener): void;
 }

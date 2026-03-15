@@ -13,8 +13,16 @@ return [
     'default_driver' => SyncDriver::class,
 
     /**
+     * Queue settings for asynchronous events.
+     */
+    'queue' => [
+        'table' => 'event_queue',
+        'retry_limit' => 3,
+        'retry_delay' => 60, // seconds
+    ],
+
+    /**
      * Optional: Map specific events to specific drivers.
-     * This will be implemented in Phase 3.
      */
     'map' => [
         // 'UserRegistered' => QueueDriver::class,
