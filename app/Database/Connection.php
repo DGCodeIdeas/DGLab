@@ -382,6 +382,16 @@ class Connection
      */
     private function logQuery(string $sql, array $bindings): void
     {
+        $time = microtime(true);
+
+        // Emit QueryExecuted event
+        event(new \DGLab\Events\Database\QueryExecuted(
+            $sql,
+            $bindings,
+            $time,
+            $this->getDriver()
+        ));
+
         if (!$this->logging) {
             return;
         }
@@ -389,7 +399,7 @@ class Connection
         $this->queryLog[] = [
             'sql' => $sql,
             'bindings' => $bindings,
-            'time' => microtime(true),
+            'time' => $time,
         ];
     }
 
