@@ -3,115 +3,38 @@
 namespace DGLab\Models;
 
 use DGLab\Database\Model;
+use DGLab\Core\Application;
+use DGLab\Services\Auth\AuthorizationService;
+use DGLab\Services\Auth\Gate;
 
-/**
- * User Model
- *
- * Represents a global identity in the system.
- */
 class User extends Model
 {
-    /**
-     * The table associated with the model.
-     *
-     * @var string|null
-     */
     protected ?string $table = 'users';
+    protected array $fillable = ['uuid', 'email', 'username', 'phone_number', 'password_hash', 'password_algo', 'display_name', 'avatar_url', 'status', 'mfa_enabled', 'last_login_at'];
+    protected array $guarded = ['id', 'password_hash'];
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    protected array $fillable = [
-        'uuid',
-        'email',
-        'username',
-        'phone_number',
-        'password_hash',
-        'password_algo',
-        'display_name',
-        'avatar_url',
-        'status',
-        'mfa_enabled',
-        'last_login_at',
-    ];
+    public function can(string $permission, array $arguments = []): bool
+    {
+        if (empty($arguments)) {
+            return Application::getInstance()->get(AuthorizationService::class)->can($this, $permission);
+        }
+        return Application::getInstance()->get(Gate::class)->check($permission, array_merge([$this], $arguments));
+    }
 
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
-    protected array $guarded = [
-        'id',
-        'password_hash',
-    ];
+    public function hasRole(string $role): bool
+    {
+        return Application::getInstance()->get(AuthorizationService::class)->hasRole($this, $role);
+    }
 
-    /**
-     * User status constants
-     */
-    public const STATUS_ACTIVE = 'active';
-    public const STATUS_SUSPENDED = 'suspended';
-    public const STATUS_PENDING_VERIFICATION = 'pending_verification';
-
-    /**
-     * Check if user is active
-     *
-     * @return bool
-     */
     public function isActive(): bool
     {
-        return $this->status === self::STATUS_ACTIVE && (!isset($this->attributes['deleted_at']) || $this->attributes['deleted_at'] === null);
+        return $this->status === 'active' && (!isset($this->attributes['deleted_at']) || $this->attributes['deleted_at'] === null);
     }
 
-    /**
-     * Check if user has MFA enabled
-     *
-     * @return bool
-     */
-    public function hasMfa(): bool
-    {
-        return (bool) $this->mfa_enabled;
-    }
-
-    /**
-     * Get the password hash
-     *
-     * @return string
-     */
-    public function getAuthPassword(): string
-    {
-        return $this->password_hash;
-    }
-
-    /**
-     * Overriding delete to support soft deletes if column exists
-     */
     public function delete(): bool
     {
-        if (!$this->exists) {
-            return false;
-        }
-
-        $now = date($this->dateFormat);
-        $this->attributes['deleted_at'] = $now;
-
-        return $this->update();
-    }
-
-    /**
-     * Restore a soft-deleted model
-     *
-     * @return bool
-     */
-    public function restore(): bool
-    {
-        if (!$this->exists) {
-            return false;
-        }
-
-        $this->attributes['deleted_at'] = null;
-
+        if (!$this->exists) return false;
+        $this->attributes['deleted_at'] = date($this->dateFormat);
         return $this->update();
     }
 }
