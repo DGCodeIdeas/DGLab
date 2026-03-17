@@ -5,6 +5,9 @@ namespace DGLab\Services\Auth;
 use DGLab\Core\Application;
 use DGLab\Services\Auth\Contracts\AuthGuardInterface;
 use InvalidArgumentException;
+use DGLab\Events\Auth\UserLoggedIn;
+use DGLab\Events\Auth\LoginFailed;
+use DGLab\Events\Auth\UserLoggedOut;
 
 class AuthManager
 {
@@ -27,6 +30,43 @@ class AuthManager
     public function user() { return $this->guard()->user(); }
     public function id() { return $this->guard()->id(); }
     public function check() { return $this->guard()->check(); }
+
+    public function attempt(array $credentials = [], bool $remember = false): bool
+    {
+        $guard = $this->guard();
+        if (method_exists($guard, 'attempt')) {
+            $success = $guard->attempt($credentials, $remember);
+            if ($success) {
+                $this->onLoginSuccess($guard->user());
+            } else {
+                $this->onLoginFailure($credentials['login'] ?? 'unknown');
+            }
+            return $success;
+        }
+        return false;
+    }
+
+    protected function onLoginSuccess($user): void
+    {
+        $this->app->get(AuthAuditService::class)->log('login.success', $user);
+        event(new UserLoggedIn($user));
+    }
+
+    protected function onLoginFailure(string $identifier): void
+    {
+        $this->app->get(AuthAuditService::class)->log('login.failed', null, $identifier);
+        event(new LoginFailed($identifier));
+    }
+
+    public function logout(): void
+    {
+        $user = $this->user();
+        if ($user) {
+            $this->app->get(AuthAuditService::class)->log('logout', $user);
+            event(new UserLoggedOut($user));
+        }
+        $this->guard()->logout();
+    }
 
     public function can(string $ability, array $arguments = [])
     {

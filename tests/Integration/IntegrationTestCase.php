@@ -5,6 +5,7 @@ namespace DGLab\Tests\Integration;
 use DGLab\Core\Application;
 use DGLab\Core\Router;
 use DGLab\Tests\TestCase;
+use DGLab\Database\Connection;
 
 abstract class IntegrationTestCase extends TestCase
 {
@@ -12,48 +13,30 @@ abstract class IntegrationTestCase extends TestCase
     {
         parent::setUp();
 
-        // Mock some environment variables and SERVER variables for the view layer
-        $_ENV['PWA_NAME'] = 'DGLab';
-        $_ENV['PWA_SHORT_NAME'] = 'DGLab';
-        $_ENV['PWA_THEME_COLOR'] = '#0d6efd';
-        $_ENV['PWA_BACKGROUND_COLOR'] = '#ffffff';
-        $_ENV['PWA_DISPLAY'] = 'standalone';
-        $_ENV['APP_NAME'] = 'DGLab';
-        $_ENV['APP_ENV'] = 'testing';
-        $_ENV['APP_DEBUG'] = 'true';
-        $_ENV['DB_HOST'] = 'localhost';
+        $_ENV['DB_CONNECTION'] = 'sqlite';
         $_ENV['DB_DATABASE'] = ':memory:';
-        $_ENV['DB_USERNAME'] = 'sa';
-        $_ENV['DB_PASSWORD'] = 'secret';
-        $_SERVER['REQUEST_URI'] = '/';
 
-        $this->app->singleton(\DGLab\Database\Connection::class, function () {
-            return new \DGLab\Database\Connection([
-                'default' => 'sqlite',
-                'connections' => [
-                    'sqlite' => [
-                        'driver' => 'sqlite',
-                        'database' => ':memory:',
-                    ],
+        $config = [
+            'default' => 'sqlite',
+            'connections' => [
+                'sqlite' => [
+                    'driver' => 'sqlite',
+                    'database' => ':memory:',
                 ],
-            ]);
-        });
+            ],
+        ];
 
-        // Register core services if not already registered in parent
-        $this->app->singleton(\DGLab\Services\ServiceRegistry::class, function () {
-            return new \DGLab\Services\ServiceRegistry();
-        });
+        $db = new Connection($config);
+        $this->app->singleton(Connection::class, fn() => $db);
+        Connection::setInstance($db);
 
-        $this->app->singleton(\DGLab\Services\AssetService::class, function () {
-            return new \DGLab\Services\AssetService();
-        });
+        $this->app->loadConfig(__DIR__ . '/../../config');
+        $this->app->singleton(Router::class);
+    }
 
-        $this->app->singleton(\DGLab\Core\View::class, function () {
-            return new \DGLab\Core\View();
-        });
-
-        // Register routes
-        $router = $this->app->get(Router::class);
-        require __DIR__ . '/../../routes/web.php';
+    protected function tearDown(): void
+    {
+        Connection::clearInstance();
+        parent::tearDown();
     }
 }
