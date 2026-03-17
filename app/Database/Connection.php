@@ -48,6 +48,7 @@ class Connection
      * Query log
      */
     private array $queryLog = [];
+    private bool $isLoggingQuery = false;
 
     /**
      * Whether logging is enabled
@@ -382,25 +383,32 @@ class Connection
      */
     private function logQuery(string $sql, array $bindings): void
     {
-        $time = microtime(true);
-
-        // Emit QueryExecuted event
-        event(new \DGLab\Events\Database\QueryExecuted(
-            $sql,
-            $bindings,
-            $time,
-            $this->getDriver()
-        ));
-
-        if (!$this->logging) {
+        if ($this->isLoggingQuery) {
             return;
         }
 
-        $this->queryLog[] = [
-            'sql' => $sql,
-            'bindings' => $bindings,
-            'time' => $time,
-        ];
+        $this->isLoggingQuery = true;
+        $time = microtime(true);
+
+        try {
+            // Emit QueryExecuted event
+            event(new \DGLab\Events\Database\QueryExecuted(
+                $sql,
+                $bindings,
+                $time,
+                $this->getDriver()
+            ));
+
+            if ($this->logging) {
+                $this->queryLog[] = [
+                    'sql' => $sql,
+                    'bindings' => $bindings,
+                    'time' => $time,
+                ];
+            }
+        } finally {
+            $this->isLoggingQuery = false;
+        }
     }
 
     /**
