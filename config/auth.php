@@ -42,5 +42,7 @@ return [
         'key_name' => 'auth_jwt',
         'ttl' => 60,
     ],
+    'ip_whitelist' => [],
+    'ip_blacklist' => [],
     'key_storage_path' => dirname(__DIR__) . '/storage/keys',
 ];
