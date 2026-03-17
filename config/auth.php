@@ -1,16 +1,29 @@
 <?php
-
 return [
-    /*
-    |--------------------------------------------------------------------------
-    | Password Hashing Settings
-    |--------------------------------------------------------------------------
-    |
-    | These settings control how passwords are hashed using the Argon2id
-    | algorithm. Sensible defaults are provided, but can be adjusted based
-    | on server resources and security requirements.
-    |
-    */
+    'defaults' => [
+        'guard' => 'web',
+        'provider' => 'users',
+    ],
+    'guards' => [
+        'web' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'api' => [
+            'driver' => 'token',
+            'provider' => 'users',
+        ],
+        'jwt' => [
+            'driver' => 'jwt',
+            'provider' => 'users',
+        ],
+    ],
+    'providers' => [
+        'users' => [
+            'driver' => 'database',
+            'model' => \DGLab\Models\User::class,
+        ],
+    ],
     'hashing' => [
         'driver' => 'argon2id',
         'argon2id' => [
@@ -19,18 +32,15 @@ return [
             'threads' => PASSWORD_ARGON2_DEFAULT_THREADS,
         ],
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Identity Validation Rules
-    |--------------------------------------------------------------------------
-    |
-    | Regular expression patterns for validating different user identifiers.
-    |
-    */
     'validation' => [
         'username' => '/^[a-zA-Z0-9_-]{3,100}$/',
         'phone' => '/^\+?[0-9]{7,20}$/',
-        // Email uses PHP's filter_var(FILTER_VALIDATE_EMAIL)
     ],
+    'jwt' => [
+        'secret' => $_ENV['JWT_SECRET'] ?? 'base64:7vG6jR9uK8vN3bL1vC7vG6jR9uK8vN3b',
+        'algo' => 'HS256',
+        'key_name' => 'auth_jwt',
+        'ttl' => 60,
+    ],
+    'key_storage_path' => dirname(__DIR__) . '/storage/keys',
 ];
