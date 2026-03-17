@@ -32,6 +32,13 @@ class AuditService
     ): void {
         $latency = $startTime ? (int)((microtime(true) - $startTime) * 1000) : 0;
 
+        // Emit events based on status
+        if ($statusCode >= 400) {
+            event(new \DGLab\Events\Download\DownloadFailed($path, $driver, $statusCode, $errorMessage ?? 'Unknown error'));
+        } else {
+            event(new \DGLab\Events\Download\FileDownloaded($path, $driver, $statusCode, (float)$latency, $bytes));
+        }
+
         try {
             DownloadAuditLog::create([
                 'file_path' => $path,

@@ -319,8 +319,18 @@ class Router
         // Merge with request parameters
         $request = $request->withRouteParams($params);
 
+        // Emit RouteMatched event
+        event(new \DGLab\Events\Routing\RouteMatched($route, $request));
+
         // Execute middleware pipeline
-        return $this->runMiddleware($route, $request);
+        $response = $this->runMiddleware($route, $request);
+
+        // Emit RequestHandled event if response is a Response object
+        if ($response instanceof \DGLab\Core\Response) {
+            event(new \DGLab\Events\Routing\RequestHandled($request, $response));
+        }
+
+        return $response;
     }
 
     /**

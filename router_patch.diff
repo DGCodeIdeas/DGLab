@@ -1,0 +1,73 @@
+<<<<<<< SEARCH
+    /**
+     * Dispatch a request to the appropriate handler
+     *
+     * @param Request $request The incoming request
+     * @return mixed The handler response
+     * @throws RouteNotFoundException If no matching route
+     */
+    public function dispatch(Request $request): mixed
+    {
+        $method = $request->getMethod();
+        $path = $request->getPath();
+
+        // Find matching route
+        $route = $this->matchRoute($method, $path);
+
+        if ($route === null) {
+            throw new RouteNotFoundException("No route found for {$method} {$path}");
+        }
+
+        $this->currentRoute = $route;
+
+        // Extract parameters
+        $params = $this->extractParameters($route, $path);
+
+        // Merge with request parameters
+        $request = $request->withRouteParams($params);
+
+        // Execute middleware pipeline
+        return $this->runMiddleware($route, $request);
+    }
+=======
+    /**
+     * Dispatch a request to the appropriate handler
+     *
+     * @param Request $request The incoming request
+     * @return mixed The handler response
+     * @throws RouteNotFoundException If no matching route
+     */
+    public function dispatch(Request $request): mixed
+    {
+        $method = $request->getMethod();
+        $path = $request->getPath();
+
+        // Find matching route
+        $route = $this->matchRoute($method, $path);
+
+        if ($route === null) {
+            throw new RouteNotFoundException("No route found for {$method} {$path}");
+        }
+
+        $this->currentRoute = $route;
+
+        // Extract parameters
+        $params = $this->extractParameters($route, $path);
+
+        // Merge with request parameters
+        $request = $request->withRouteParams($params);
+
+        // Emit RouteMatched event
+        event(new \DGLab\Events\Routing\RouteMatched($route, $request));
+
+        // Execute middleware pipeline
+        $response = $this->runMiddleware($route, $request);
+
+        // Emit RequestHandled event if response is a Response object
+        if ($response instanceof \DGLab\Core\Response) {
+            event(new \DGLab\Events\Routing\RequestHandled($request, $response));
+        }
+
+        return $response;
+    }
+>>>>>>> REPLACE

@@ -339,3 +339,11 @@ function download(string $path, ?string $name = null, array $headers = [], ?stri
 {
     return Download::file($path, $name, $headers, $driver);
 }
+
+/**
+ * Dispatch an event.
+ */
+function event(\DGLab\Core\Contracts\EventInterface $event): void
+{
+    \DGLab\Facades\Event::dispatch($event);
+}
