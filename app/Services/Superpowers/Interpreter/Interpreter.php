@@ -14,6 +14,9 @@ use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
 use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 use DGLab\Services\Superpowers\Runtime\StateContainer;
 use DGLab\Services\Superpowers\Runtime\CleanupManager;
@@ -25,20 +28,16 @@ use DGLab\Services\Superpowers\Runtime\CleanupManager;
  */
 class Interpreter
 {
-    /**
-     * @var StateContainer
-     */
     private StateContainer $state;
-
-    /**
-     * @var ExpressionTranspiler
-     */
     private ExpressionTranspiler $transpiler;
+    private ?string $extendedLayout = null;
+    private View $view;
 
-    public function __construct()
+    public function __construct(View $view)
     {
         $this->transpiler = new ExpressionTranspiler();
         $this->state = new StateContainer();
+        $this->view = $view;
     }
 
     /**
@@ -51,23 +50,30 @@ class Interpreter
     public function interpret(array $ast, array $initialData = []): string
     {
         $this->state->merge($initialData);
+        $this->extendedLayout = null;
 
-        // Phase 4: Prioritized Lifecycle execution
-        $this->executeLifecycle($ast, [SetupNode::class, MountNode::class]);
+        // Prioritized execution
+        $this->executeLifecycle($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
 
         $output = '';
         foreach ($ast as $node) {
             $output .= $this->evaluate($node);
         }
 
-        // We capture rendered output of the hooks but usually they are for side effects.
-        // If they echo, it will be lost unless we buffer it.
         ob_start();
         $this->executeLifecycle($ast, [RenderedNode::class]);
         $output .= ob_get_clean();
 
-        // Cleanup registration
         $this->registerCleanup($ast);
+
+        if ($this->extendedLayout) {
+             if (!$this->view->hasSection('content')) {
+                 $this->view->section('content');
+                 echo $output;
+                 $this->view->endSection();
+             }
+             return $this->view->render($this->extendedLayout, $this->state->all(), null);
+        }
 
         return $output;
     }
@@ -77,7 +83,11 @@ class Interpreter
         foreach ($nodes as $node) {
             foreach ($types as $type) {
                 if ($node instanceof $type) {
-                    $this->executeCode($node->code);
+                    if ($node instanceof ExtendsNode) {
+                        $this->extendedLayout = $node->layout;
+                    } else {
+                        $this->executeCode($node->code);
+                    }
                 }
             }
             if (isset($node->children)) {
@@ -92,10 +102,13 @@ class Interpreter
             if ($node instanceof CleanupNode) {
                 $code = $node->code;
                 $state = clone $this->state;
-                CleanupManager::getInstance()->register(function() use ($code, $state) {
+                $view = $this->view;
+                CleanupManager::getInstance()->register(function() use ($code, $state, $view) {
                     $scope = $state->all();
-                    extract($scope);
-                    eval($code);
+                    (function() use ($code, $scope) {
+                        extract($scope);
+                        eval($code);
+                    })->call($view);
                 });
             }
             if (isset($node->children)) {
@@ -110,7 +123,7 @@ class Interpreter
             return $node->content;
         }
 
-        if ($node instanceof SetupNode || $node instanceof MountNode || $node instanceof RenderedNode || $node instanceof CleanupNode) {
+        if ($node instanceof SetupNode || $node instanceof MountNode || $node instanceof RenderedNode || $node instanceof CleanupNode || $node instanceof ExtendsNode) {
             return '';
         }
 
@@ -130,19 +143,35 @@ class Interpreter
              return $this->evaluateNodes($node->children);
         }
 
+        if ($node instanceof SectionNode) {
+            $this->view->section($node->name);
+            echo $this->evaluateNodes($node->children);
+            $this->view->endSection();
+            return '';
+        }
+
+        if ($node instanceof YieldNode) {
+            ob_start();
+            $this->view->yield($node->name, $node->default ?? '');
+            return ob_get_clean();
+        }
+
         return '';
     }
 
     private function executeCode(string $code): void
     {
         $scope = $this->state->all();
-        extract($scope);
-        eval($code);
+        $view = $this->view;
+        $callback = (function() use ($code, $scope) {
+            extract($scope);
+            eval($code);
+            return get_defined_vars();
+        });
 
-        // Update state with newly defined variables
-        $newScope = get_defined_vars();
-        unset($newScope['code'], $newScope['this'], $newScope['scope']);
-        $this->state->merge($newScope);
+        $vars = $callback->call($view);
+        unset($vars['code'], $vars['this'], $vars['scope'], $vars['view'], $vars['callback']);
+        $this->state->merge($vars);
     }
 
     private function evaluateExpression(ExpressionNode $node): string
@@ -173,7 +202,6 @@ class Interpreter
 
                 foreach ($items as $key => $item) {
                     $originalState = clone $this->state;
-
                     if (strpos($as, '=>') !== false) {
                          [$keyName, $valName] = array_map(function($s) { return trim($s, '$ '); }, explode('=>', $as));
                          $this->state->set($keyName, $key);
@@ -181,7 +209,6 @@ class Interpreter
                     } else {
                         $this->state->set(trim($as, '$ '), $item);
                     }
-
                     $output .= $this->evaluateNodes($node->children);
                     $this->state = $originalState;
                 }
@@ -212,8 +239,15 @@ class Interpreter
         $props['slot'] = $this->evaluateNodes($defaultSlotChildren);
         $props = array_merge($props, $namedSlots);
 
-        $view = Application::getInstance()->get(View::class);
-        return $view->render("components/{$node->tagName}", $props, null);
+        $tagName = $node->tagName;
+        if (str_starts_with($tagName, 'layout:')) {
+            $tagName = 'layouts/' . substr($tagName, 7);
+        } else {
+            // Support dots for nested components: ui.button -> components/ui/button
+            $tagName = 'components/' . str_replace('.', '/', $tagName);
+        }
+
+        return $this->view->render($tagName, $props, null);
     }
 
     private function evaluateNodes(array $nodes): string
@@ -230,8 +264,13 @@ class Interpreter
         $this->transpiler->validate($code);
         $transpiled = $this->transpiler->transpile($code);
 
+        $view = $this->view;
         $scope = $this->state->all();
-        extract($scope);
-        return eval("return {$transpiled};");
+        $callback = (function() use ($transpiled, $scope) {
+            extract($scope);
+            return eval("return {$transpiled};");
+        });
+
+        return $callback->call($view);
     }
 }

@@ -68,8 +68,8 @@ class View
         $this->layoutPath = $basePath . '/resources/views/layouts';
 
         // Register default engines
-        $this->registerEngine('php', new PhpEngine());
-        $this->registerEngine('super.php', new SuperpowersEngine());
+        $this->registerEngine('php', new PhpEngine($this));
+        $this->registerEngine('super.php', new SuperpowersEngine($this));
     }
 
     /**
@@ -85,22 +85,19 @@ class View
      */
     public function render(string $template, array $data = [], ?string $layout = 'master'): string
     {
-        // Merge shared data
         $data = array_merge($this->shared, $data);
 
-        // Find the view file and appropriate engine
         [$viewFile, $engine] = $this->resolveView($template);
 
-        // Render the view using the engine
         $content = $engine->render($viewFile, $data);
 
-        // Wrap in layout if specified
         if ($layout !== null) {
-            $this->sections['content'] = $content;
-            $content = $this->renderLayout($layout, $data);
+            if (!$this->hasSection('content')) {
+                $this->sections['content'] = $content;
+                $content = $this->renderLayout($layout, $data);
+            }
         }
 
-        // Run global cleanup after full render cycle
         CleanupManager::getInstance()->cleanup();
 
         return $content;
@@ -118,12 +115,12 @@ class View
             $directory = $this->viewPath;
         }
 
-        $basePath = $directory . '/' . $this->normalizePath($template);
+        // Dot notation handled here
+        $normalizedTemplate = str_replace('.', '/', $this->normalizePath($template));
+        $basePath = $directory . '/' . $normalizedTemplate;
 
-        // Check for engines in order (prioritize super.php)
         $extensions = array_keys($this->engines);
 
-        // Ensure super.php is checked first if registered
         usort($extensions, function($a, $b) {
             if ($a === 'super.php') return -1;
             if ($b === 'super.php') return 1;
@@ -137,7 +134,44 @@ class View
             }
         }
 
-        throw new \RuntimeException("View not found: {$template}");
+        if ($directory === $this->viewPath) {
+             $layoutTemplate = $normalizedTemplate;
+             if (strpos($layoutTemplate, 'layouts/') === 0) {
+                 $layoutTemplate = substr($layoutTemplate, 8);
+             }
+
+             $layoutBasePath = $this->layoutPath . '/' . $layoutTemplate;
+             foreach ($extensions as $ext) {
+                 $file = $layoutBasePath . '.' . $ext;
+                 if (file_exists($file)) {
+                     return [$file, $this->engines[$ext]];
+                 }
+             }
+
+             // Support components/ folder when in viewPath
+             $componentTemplate = $normalizedTemplate;
+             if (strpos($componentTemplate, 'components/') === 0) {
+                 $componentTemplate = substr($componentTemplate, 11);
+             }
+             $componentBasePath = $this->viewPath . '/components/' . $componentTemplate;
+             foreach ($extensions as $ext) {
+                 $file = $componentBasePath . '.' . $ext;
+                 if (file_exists($file)) {
+                     return [$file, $this->engines[$ext]];
+                 }
+             }
+
+             // Also try just appending $normalizedTemplate to components/
+             $componentBasePath = $this->viewPath . '/components/' . $normalizedTemplate;
+             foreach ($extensions as $ext) {
+                 $file = $componentBasePath . '.' . $ext;
+                 if (file_exists($file)) {
+                     return [$file, $this->engines[$ext]];
+                 }
+             }
+        }
+
+        throw new \RuntimeException("View not found: {$template} at {$basePath}");
     }
 
     /**
@@ -185,7 +219,11 @@ class View
      */
     public function yield(string $name, string $default = ''): void
     {
-        echo $this->sections[$name] ?? $default;
+        if (isset($this->sections[$name])) {
+            echo $this->sections[$name];
+        } else {
+            echo $default;
+        }
     }
 
     /**
@@ -217,10 +255,7 @@ class View
      */
     private function normalizePath(string $path): string
     {
-        // Remove any .. to prevent directory traversal
         $path = str_replace('..', '', $path);
-
-        // Remove leading/trailing slashes
         return trim($path, '/');
     }
 

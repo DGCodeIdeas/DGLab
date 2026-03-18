@@ -77,3 +77,23 @@ Implemented advanced lifecycle hooks and component-local state management.
 -   Added `test_lifecycle_hooks()` to `SuperpowersTest.php`.
 -   Verified scope isolation with manual integration tests.
 -   All 10 tests pass.
+
+# Phase 5: Advanced Layouts
+
+## Overview
+Implemented component-based layout model and legacy layout migration support.
+
+## Changes
+1.  **Component Layouts**: Support for `<s:layout:NAME>` syntax which maps to `resources/views/layouts/NAME.super.php`.
+2.  **Legacy Bridge**: Implemented `@extends`, `@section`, and `@yield` directives in SuperPHP.
+3.  **Dotted Resolution**: Enhanced component resolution to support nested folders using dots (e.g. `<s:ui.button>` -> `components/ui/button.super.php`).
+4.  **Self-Layouting Detection**: Updated `View::render()` to detect if a view has already performed its own layout wrapping, preventing double-rendering.
+5.  **View Instance Injection**: Lexer/Parser blocks and expressions now have access to the current `View` instance via `$this` for advanced logic.
+6.  **Resolution Priority**: `.super.php` files are prioritized over `.php` files in all resolution paths.
+
+## Verification
+-   Updated `tests/Unit/Services/Superpowers/SuperpowersTest.php` with:
+    -   `test_component_based_layout()`
+    -   `test_legacy_layout_extends()`
+    -   `test_dotted_component_resolution()`
+-   All 13 tests pass.

@@ -13,6 +13,9 @@ use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
 use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
 
 /**
  * Class Parser
@@ -84,14 +87,14 @@ class Parser
         }
     }
 
-    private function parseDirective(): DirectiveNode
+    private function parseDirective(): Node
     {
         $token = $this->advance();
 
         $name = '';
         $expression = null;
 
-        if (preg_match('/^@([a-zA-Z]+)(?:\s*\((.*)\))?/s', $token->value, $matches)) {
+        if (preg_match('/^@([a-zA-Z0-9]+)(?:\s*\((.*)\))?/s', $token->value, $matches)) {
             $name = $matches[1];
             if (isset($matches[2]) && $matches[2] !== '') {
                  $expression = trim($matches[2]);
@@ -100,9 +103,27 @@ class Parser
              $name = ltrim($token->value, '@');
         }
 
+        if ($name === 'section') {
+            $sectionName = trim($expression, "'\"");
+            $node = new SectionNode($sectionName, $token->line);
+            $node->children = $this->parseUntilDirective('@endsection');
+            return $node;
+        }
+
+        if ($name === 'yield') {
+             $parts = array_map('trim', explode(',', $expression));
+             $yieldName = trim($parts[0], "'\"");
+             $default = isset($parts[1]) ? trim($parts[1], "'\"") : null;
+             return new YieldNode($yieldName, $default, $token->line);
+        }
+
+        if ($name === 'extends') {
+            $layout = trim($expression, "'\"");
+            return new ExtendsNode($layout, $token->line);
+        }
+
         $node = new DirectiveNode($name, $expression, $token->line);
 
-        // Check if this directive is a block starter
         if ($this->isBlockDirective($name)) {
             $terminator = '@end' . $name;
             $node->children = $this->parseUntilDirective($terminator);
@@ -116,24 +137,30 @@ class Parser
         $token = $this->advance();
         $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
 
-        preg_match('/^<s:([a-zA-Z0-9\-\.]+)\s*([^>]*?)(\/?)>/s', $token->value, $matches);
-        $tagName = $matches[1];
-        $propsString = $matches[2] ?? '';
+        // Match tag name and the rest of the tag. Use a more permissive regex.
+        if (preg_match('/^<s:([a-zA-Z0-9\-\.\:]+)/s', $token->value, $matches)) {
+             $fullTagName = $matches[1];
+             $propsString = substr($token->value, strlen($fullTagName) + 3); // +3 for "<s:"
+             $propsString = rtrim($propsString, ' />');
+        } else {
+             throw new \RuntimeException("Invalid component tag: {$token->value}");
+        }
+
         $props = $this->parseProps($propsString);
 
-        if ($tagName === 'slot') {
+        if ($fullTagName === 'slot') {
             $name = $props['name']['value'] ?? 'default';
             $node = new SlotNode($name, $token->line);
             if (!$isSelfClosing) {
-                $node->children = $this->parseUntilComponentClose($tagName);
+                $node->children = $this->parseUntilComponentClose($fullTagName);
             }
             return $node;
         }
 
-        $node = new ComponentNode($tagName, $props, $token->line);
+        $node = new ComponentNode($fullTagName, $props, $token->line);
 
         if (!$isSelfClosing) {
-            $node->children = $this->parseUntilComponentClose($tagName);
+            $node->children = $this->parseUntilComponentClose($fullTagName);
         }
 
         return $node;
@@ -142,7 +169,6 @@ class Parser
     private function parseProps(string $propsString): array
     {
         $props = [];
-        // Matches: name="value", :name="$dynamic", name
         preg_match_all('/(?<dynamic>:)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $propsString, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
@@ -173,7 +199,7 @@ class Parser
         while (!$this->isAtEnd()) {
             $token = $this->peek();
             if ($token->type === Token::T_DIRECTIVE && str_starts_with($token->value, $terminator)) {
-                $this->advance(); // Consume @end...
+                $this->advance();
                 return $children;
             }
             $children[] = $this->parseNode();
@@ -187,10 +213,11 @@ class Parser
         while (!$this->isAtEnd()) {
             $token = $this->peek();
             if ($token->type === Token::T_COMPONENT_CLOSE) {
-                preg_match('/^<\/s:([a-zA-Z0-9\-\.]+)\s*>/s', $token->value, $matches);
-                if ($matches[1] === $tagName) {
-                    $this->advance(); // Consume closing tag
-                    return $children;
+                if (preg_match('/^<\/s:([a-zA-Z0-9\-\.\:]+)\s*>/s', $token->value, $matches)) {
+                    if ($matches[1] === $tagName) {
+                        $this->advance();
+                        return $children;
+                    }
                 }
             }
             $children[] = $this->parseNode();

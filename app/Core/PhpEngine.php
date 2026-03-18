@@ -14,6 +14,16 @@ use DGLab\Core\Contracts\ViewEngineInterface;
 class PhpEngine implements ViewEngineInterface
 {
     /**
+     * @var View
+     */
+    private View $view;
+
+    public function __construct(View $view)
+    {
+        $this->view = $view;
+    }
+
+    /**
      * Render the PHP view file.
      *
      * @param string $path
@@ -33,5 +43,37 @@ class PhpEngine implements ViewEngineInterface
         }
 
         return ob_get_clean();
+    }
+
+    /**
+     * Forward calls to the View instance.
+     */
+    public function __call(string $method, array $args): mixed
+    {
+        return call_user_func_array([$this->view, $method], $args);
+    }
+
+    /**
+     * Legacy yield support
+     */
+    public function yield(string $name, string $default = ''): void
+    {
+        $this->view->yield($name, $default);
+    }
+
+    /**
+     * Legacy section support
+     */
+    public function section(string $name): void
+    {
+        $this->view->section($name);
+    }
+
+    /**
+     * Legacy endSection support
+     */
+    public function endSection(): void
+    {
+        $this->view->endSection();
     }
 }

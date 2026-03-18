@@ -16,6 +16,7 @@ class SuperpowersTest extends TestCase
         parent::setUp();
         $this->view = new View();
         @mkdir('resources/views/components', 0777, true);
+        @mkdir('resources/views/layouts', 0777, true);
     }
 
     public function test_basic_rendering()
@@ -94,6 +95,31 @@ class SuperpowersTest extends TestCase
         $this->assertStringContainsString('<div>2</div>', $output);
     }
 
+    public function test_component_based_layout()
+    {
+        file_put_contents('resources/views/layouts/app.super.php', "<html><body>{!! \$slot !!}</body></html>");
+        file_put_contents('resources/views/home.super.php', "<s:layout:app>Welcome</s:layout:app>");
+        $output = $this->view->render('home', [], null);
+        $this->assertEquals("<html><body>Welcome</body></html>", str_replace(["\n", " "], "", $output));
+    }
+
+    public function test_legacy_layout_extends()
+    {
+        file_put_contents('resources/views/layouts/legacy.php', "START <?php \$this->yield('content'); ?> END");
+        file_put_contents('resources/views/legacy_view.super.php', "@extends('layouts.legacy') @section('content')Hello@endsection");
+        $output = $this->view->render('legacy_view', [], null);
+        $this->assertEquals("START Hello END", trim(str_replace("\n", "", $output)));
+    }
+
+    public function test_dotted_component_resolution()
+    {
+        @mkdir('resources/views/components/ui', 0777, true);
+        file_put_contents('resources/views/components/ui/btn.super.php', "<button>Go</button>");
+        file_put_contents('resources/views/test_dotted.super.php', "<s:ui.btn />");
+        $output = $this->view->render('test_dotted', [], null);
+        $this->assertEquals("<button>Go</button>", $output);
+    }
+
     protected function tearDown(): void
     {
         @unlink('resources/views/test_basic.super.php');
@@ -106,9 +132,12 @@ class SuperpowersTest extends TestCase
         @unlink('resources/views/test_modal.super.php');
         @unlink('resources/views/test_recursive.super.php');
         @unlink('resources/views/test_hooks.super.php');
-        @unlink('resources/views/components/card.super.php');
-        @unlink('resources/views/components/modal.super.php');
-        @unlink('resources/views/components/item.super.php');
+        @unlink('resources/views/home.super.php');
+        @unlink('resources/views/legacy_view.super.php');
+        @unlink('resources/views/test_dotted.super.php');
+        @unlink('resources/views/components/ui/btn.super.php');
+        @unlink('resources/views/layouts/app.super.php');
+        @unlink('resources/views/layouts/legacy.php');
         parent::tearDown();
     }
 }

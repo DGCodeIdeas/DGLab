@@ -40,3 +40,14 @@
 ### State Management
 1.  **State Containers**: Encapsulating component state in a `StateContainer` object rather than a raw array allows for future enhancements like property tracking (reactivity) and controlled merging.
 2.  **Global Managers**: A singleton `CleanupManager` is an effective way to coordinate actions that must happen after the entire view tree has finished rendering, such as closing database connections or clearing temporary state.
+
+## Phase 5: Advanced Layouts
+
+### Layout Architecture
+1.  **Component-Based Layouts**: Using a specialized tag syntax like `<s:layout:master>` allows for a much more declarative layout model where the layout is just a component with slots.
+2.  **Legacy Integration**: Supporting `@extends` and `@section` within the same engine provides a smooth migration path from traditional PHP views.
+3.  **Self-Layouting Detection**: To prevent double-wrapping of layouts, the core `View` class must be aware of whether the engine has already populated the final 'content' section.
+
+### Resolution Logic
+1.  **Directory Mapping**: Transforming `layout:name` to `layouts/name` and `ui.button` to `ui/button` ensures a flexible and organized view structure.
+2.  **Order of Precedence**: Explicitly prioritizing `.super.php` files across all resolution methods (views, layouts, components) ensures the SuperPHP engine takes control when appropriate.
