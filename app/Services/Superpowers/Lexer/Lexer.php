@@ -13,7 +13,9 @@ class Lexer
      * Regex patterns for token identification.
      */
     private const PATTERN_SETUP = '/^~setup\s*\{(.*?)\}/s';
-    // Improved regex for directives with balanced parentheses
+    private const PATTERN_MOUNT = '/^~mount\s*\{(.*?)\}/s';
+    private const PATTERN_RENDERED = '/^~rendered\s*\{(.*?)\}/s';
+    private const PATTERN_CLEANUP = '/^~cleanup\s*\{(.*?)\}/s';
     private const PATTERN_DIRECTIVE = '/^(@[a-zA-Z]+(?:\s*(\((?:[^()]++|(?2))*\)))?)/s';
     private const PATTERN_EXPRESSION_RAW = '/^\{!!\s*(.*?)\s*!!\}/s';
     private const PATTERN_EXPRESSION_ESCAPED = '/^\{\{\s*(.*?)\s*\}\}/s';
@@ -48,7 +50,7 @@ class Lexer
         $this->line = 1;
 
         while ($this->input !== '') {
-            if ($this->matchSetup()) continue;
+            if ($this->matchLifecycle()) continue;
             if ($this->matchExpressionRaw()) continue;
             if ($this->matchExpressionEscaped()) continue;
             if ($this->matchDirective()) continue;
@@ -62,10 +64,25 @@ class Lexer
         return $this->tokens;
     }
 
-    private function matchSetup(): bool
+    private function matchLifecycle(): bool
     {
         if (preg_match(self::PATTERN_SETUP, $this->input, $matches)) {
             $this->pushToken(Token::T_SETUP_BLOCK, $matches[1]);
+            $this->consume($matches[0]);
+            return true;
+        }
+        if (preg_match(self::PATTERN_MOUNT, $this->input, $matches)) {
+            $this->pushToken(Token::T_MOUNT_BLOCK, $matches[1]);
+            $this->consume($matches[0]);
+            return true;
+        }
+        if (preg_match(self::PATTERN_RENDERED, $this->input, $matches)) {
+            $this->pushToken(Token::T_RENDERED_BLOCK, $matches[1]);
+            $this->consume($matches[0]);
+            return true;
+        }
+        if (preg_match(self::PATTERN_CLEANUP, $this->input, $matches)) {
+            $this->pushToken(Token::T_CLEANUP_BLOCK, $matches[1]);
             $this->consume($matches[0]);
             return true;
         }
@@ -135,7 +152,7 @@ class Lexer
     private function matchText(): void
     {
         // Find the next occurrence of any special character that might start a token
-        $specials = ['~setup', '{{', '{!!', '<s:', '</s:', '@'];
+        $specials = ['~setup', '~mount', '~rendered', '~cleanup', '{{', '{!!', '<s:', '</s:', '@'];
         $closestPos = strlen($this->input);
 
         foreach ($specials as $special) {

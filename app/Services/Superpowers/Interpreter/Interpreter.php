@@ -9,9 +9,14 @@ use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
+use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
+use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
+use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
+use DGLab\Services\Superpowers\Runtime\StateContainer;
+use DGLab\Services\Superpowers\Runtime\CleanupManager;
 
 /**
  * Class Interpreter
@@ -21,9 +26,9 @@ use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 class Interpreter
 {
     /**
-     * @var array
+     * @var StateContainer
      */
-    private array $scope = [];
+    private StateContainer $state;
 
     /**
      * @var ExpressionTranspiler
@@ -33,6 +38,7 @@ class Interpreter
     public function __construct()
     {
         $this->transpiler = new ExpressionTranspiler();
+        $this->state = new StateContainer();
     }
 
     /**
@@ -44,14 +50,58 @@ class Interpreter
      */
     public function interpret(array $ast, array $initialData = []): string
     {
-        $this->scope = $initialData;
-        $output = '';
+        $this->state->merge($initialData);
 
+        // Phase 4: Prioritized Lifecycle execution
+        $this->executeLifecycle($ast, [SetupNode::class, MountNode::class]);
+
+        $output = '';
         foreach ($ast as $node) {
             $output .= $this->evaluate($node);
         }
 
+        // We capture rendered output of the hooks but usually they are for side effects.
+        // If they echo, it will be lost unless we buffer it.
+        ob_start();
+        $this->executeLifecycle($ast, [RenderedNode::class]);
+        $output .= ob_get_clean();
+
+        // Cleanup registration
+        $this->registerCleanup($ast);
+
         return $output;
+    }
+
+    private function executeLifecycle(array $nodes, array $types): void
+    {
+        foreach ($nodes as $node) {
+            foreach ($types as $type) {
+                if ($node instanceof $type) {
+                    $this->executeCode($node->code);
+                }
+            }
+            if (isset($node->children)) {
+                $this->executeLifecycle($node->children, $types);
+            }
+        }
+    }
+
+    private function registerCleanup(array $nodes): void
+    {
+        foreach ($nodes as $node) {
+            if ($node instanceof CleanupNode) {
+                $code = $node->code;
+                $state = clone $this->state;
+                CleanupManager::getInstance()->register(function() use ($code, $state) {
+                    $scope = $state->all();
+                    extract($scope);
+                    eval($code);
+                });
+            }
+            if (isset($node->children)) {
+                $this->registerCleanup($node->children);
+            }
+        }
     }
 
     private function evaluate(Node $node): string
@@ -60,8 +110,7 @@ class Interpreter
             return $node->content;
         }
 
-        if ($node instanceof SetupNode) {
-            $this->executeSetup($node->code);
+        if ($node instanceof SetupNode || $node instanceof MountNode || $node instanceof RenderedNode || $node instanceof CleanupNode) {
             return '';
         }
 
@@ -84,15 +133,16 @@ class Interpreter
         return '';
     }
 
-    private function executeSetup(string $code): void
+    private function executeCode(string $code): void
     {
-        extract($this->scope);
+        $scope = $this->state->all();
+        extract($scope);
         eval($code);
 
-        // Update scope with newly defined variables
+        // Update state with newly defined variables
         $newScope = get_defined_vars();
-        unset($newScope['code'], $newScope['this']);
-        $this->scope = array_merge($this->scope, $newScope);
+        unset($newScope['code'], $newScope['this'], $newScope['scope']);
+        $this->state->merge($newScope);
     }
 
     private function evaluateExpression(ExpressionNode $node): string
@@ -122,22 +172,21 @@ class Interpreter
                 }
 
                 foreach ($items as $key => $item) {
-                    // Push local scope
-                    $originalScope = $this->scope;
+                    $originalState = clone $this->state;
+
                     if (strpos($as, '=>') !== false) {
                          [$keyName, $valName] = array_map(function($s) { return trim($s, '$ '); }, explode('=>', $as));
-                         $this->scope[$keyName] = $key;
-                         $this->scope[$valName] = $item;
+                         $this->state->set($keyName, $key);
+                         $this->state->set($valName, $item);
                     } else {
-                        $this->scope[trim($as, '$ ')] = $item;
+                        $this->state->set(trim($as, '$ '), $item);
                     }
 
                     $output .= $this->evaluateNodes($node->children);
-                    $this->scope = $originalScope;
+                    $this->state = $originalState;
                 }
                 return $output;
             default:
-                // Handle non-block directives (like @include) or placeholders
                 return '';
         }
     }
@@ -164,13 +213,7 @@ class Interpreter
         $props = array_merge($props, $namedSlots);
 
         $view = Application::getInstance()->get(View::class);
-
-        // Save current scope because recursion/nesting will override it.
-        $originalScope = $this->scope;
-        $content = $view->render("components/{$node->tagName}", $props, null);
-        $this->scope = $originalScope;
-
-        return $content;
+        return $view->render("components/{$node->tagName}", $props, null);
     }
 
     private function evaluateNodes(array $nodes): string
@@ -184,13 +227,11 @@ class Interpreter
 
     private function evaluatePhp(string $code)
     {
-        // Debug
-        // echo "EVAL PHP: $code\n";
-
         $this->transpiler->validate($code);
         $transpiled = $this->transpiler->transpile($code);
 
-        extract($this->scope);
+        $scope = $this->state->all();
+        extract($scope);
         return eval("return {$transpiled};");
     }
 }

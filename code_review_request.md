@@ -59,3 +59,21 @@ Fully implemented the Component Core, including named slots, dynamic props, and 
     -   `test_components_named_slots()`
     -   `test_recursive_components()`
 -   All 9 tests pass.
+
+# Phase 4: Lifecycle & State
+
+## Overview
+Implemented advanced lifecycle hooks and component-local state management.
+
+## Changes
+1.  **Lifecycle Hooks**: Added support for `~setup`, `~mount`, `~rendered`, and `~cleanup` blocks.
+2.  **State Management**: Introduced `StateContainer` for tracking component-local variables.
+3.  **Prioritized Execution**: The Interpreter now ensures `~setup` and `~mount` blocks are executed before rendering any other content.
+4.  **Scope Isolation**: Components now have fully isolated state, preventing variable leakage between parents and children.
+5.  **Global Cleanup**: Implemented `CleanupManager` to handle post-render cleanup tasks across all rendered components.
+6.  **Buffered Hooks**: `~rendered` hook output is now captured and appended to the final rendered string.
+
+## Verification
+-   Added `test_lifecycle_hooks()` to `SuperpowersTest.php`.
+-   Verified scope isolation with manual integration tests.
+-   All 10 tests pass.

@@ -87,9 +87,15 @@ class SuperpowersTest extends TestCase
         $this->assertEquals("<ul><li>A<ul><li>A1</li></ul></li><li>B</li></ul>", str_replace(["\n", " "], "", $output));
     }
 
+    public function test_lifecycle_hooks()
+    {
+        file_put_contents('resources/views/test_hooks.super.php', "~setup { \$val = 1; } ~mount { \$val++; } <div>{{ \$val }}</div>");
+        $output = $this->view->render('test_hooks', [], null);
+        $this->assertStringContainsString('<div>2</div>', $output);
+    }
+
     protected function tearDown(): void
     {
-        // Recursively remove resources/views for clean state if needed, or just unlink.
         @unlink('resources/views/test_basic.super.php');
         @unlink('resources/views/test_dot.super.php');
         @unlink('resources/views/test_null_dot.super.php');
@@ -99,6 +105,7 @@ class SuperpowersTest extends TestCase
         @unlink('resources/views/test_comp.super.php');
         @unlink('resources/views/test_modal.super.php');
         @unlink('resources/views/test_recursive.super.php');
+        @unlink('resources/views/test_hooks.super.php');
         @unlink('resources/views/components/card.super.php');
         @unlink('resources/views/components/modal.super.php');
         @unlink('resources/views/components/item.super.php');

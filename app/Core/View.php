@@ -12,6 +12,7 @@ namespace DGLab\Core;
 
 use DGLab\Core\Contracts\ViewEngineInterface;
 use DGLab\Services\Superpowers\SuperpowersEngine;
+use DGLab\Services\Superpowers\Runtime\CleanupManager;
 
 /**
  * Class View
@@ -98,6 +99,9 @@ class View
             $this->sections['content'] = $content;
             $content = $this->renderLayout($layout, $data);
         }
+
+        // Run global cleanup after full render cycle
+        CleanupManager::getInstance()->cleanup();
 
         return $content;
     }

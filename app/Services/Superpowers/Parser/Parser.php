@@ -8,6 +8,9 @@ use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
+use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
+use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
+use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 
@@ -60,6 +63,15 @@ class Parser
             case Token::T_SETUP_BLOCK:
                 $this->advance();
                 return new SetupNode($token->value, $token->line);
+            case Token::T_MOUNT_BLOCK:
+                $this->advance();
+                return new MountNode($token->value, $token->line);
+            case Token::T_RENDERED_BLOCK:
+                $this->advance();
+                return new RenderedNode($token->value, $token->line);
+            case Token::T_CLEANUP_BLOCK:
+                $this->advance();
+                return new CleanupNode($token->value, $token->line);
             case Token::T_DIRECTIVE:
                 return $this->parseDirective();
             case Token::T_COMPONENT_OPEN:

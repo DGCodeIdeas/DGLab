@@ -17,6 +17,9 @@ class Token
     public const T_COMPONENT_CLOSE = 'COMPONENT_CLOSE';
     public const T_COMPONENT_SELF_CLOSING = 'COMPONENT_SELF_CLOSING';
     public const T_SETUP_BLOCK = 'SETUP_BLOCK';
+    public const T_MOUNT_BLOCK = 'MOUNT_BLOCK';
+    public const T_RENDERED_BLOCK = 'RENDERED_BLOCK';
+    public const T_CLEANUP_BLOCK = 'CLEANUP_BLOCK';
 
     public string $type;
     public string $value;

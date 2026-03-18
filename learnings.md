@@ -30,3 +30,13 @@
 ### Lexing Balanced Directives
 1.  **Regex Recursion**: Using `(?R)` in PCRE regex allows the Lexer to correctly identify directives with nested parentheses, ensuring the entire directive (including nested function calls) is tokenized together.
 2.  **Expression Extraction**: The Parser must accurately extract the content inside the parentheses for evaluation by the transpiler.
+
+## Phase 4: Lifecycle & State
+
+### Execution Prioritization
+1.  **Lifecycle Ordering**: Separating the "Setup/Mount" phase from the "Render" phase in the Interpreter ensures that data fetching and initialization logic are complete before the template attempts to access variables.
+2.  **Output Buffering**: Lifecycle hooks like `~rendered` may produce output or have side effects; using `ob_start` during their execution allows the engine to capture this output and manage it appropriately.
+
+### State Management
+1.  **State Containers**: Encapsulating component state in a `StateContainer` object rather than a raw array allows for future enhancements like property tracking (reactivity) and controlled merging.
+2.  **Global Managers**: A singleton `CleanupManager` is an effective way to coordinate actions that must happen after the entire view tree has finished rendering, such as closing database connections or clearing temporary state.
