@@ -26,6 +26,25 @@ class SuperpowersTest extends TestCase
         $this->assertEquals('<h1>Hello World</h1>', $output);
     }
 
+    public function test_dot_notation()
+    {
+        $user = [
+            'profile' => (object) [
+                'name' => 'Jules'
+            ]
+        ];
+        file_put_contents('resources/views/test_dot.super.php', '<h1>{{ $user.profile.name }}</h1>');
+        $output = $this->view->render('test_dot', ['user' => $user], null);
+        $this->assertEquals('<h1>Jules</h1>', $output);
+    }
+
+    public function test_null_safe_dot_notation()
+    {
+        file_put_contents('resources/views/test_null_dot.super.php', '<h1>{{ $user.profile.name ?? "Guest" }}</h1>');
+        $output = $this->view->render('test_null_dot', ['user' => null], null);
+        $this->assertEquals('<h1>Guest</h1>', $output);
+    }
+
     public function test_setup_block()
     {
         file_put_contents('resources/views/test_setup.super.php', "~setup { \$name = 'Jules'; }<p>{{ \$name }}</p>");
@@ -40,6 +59,19 @@ class SuperpowersTest extends TestCase
         $this->assertEquals('Yes', $output);
     }
 
+    public function test_foreach_with_dot_notation()
+    {
+        $data = [
+            'users' => [
+                ['name' => 'A'],
+                ['name' => 'B']
+            ]
+        ];
+        file_put_contents('resources/views/test_foreach_dot.super.php', "@foreach(\$data.users as \$u){{ \$u.name }}@endforeach");
+        $output = $this->view->render('test_foreach_dot', ['data' => $data], null);
+        $this->assertEquals('AB', $output);
+    }
+
     public function test_components()
     {
         file_put_contents('resources/views/components/card.super.php', "<div class='card'>{{ \$title }}{!! \$slot !!}</div>");
@@ -51,8 +83,11 @@ class SuperpowersTest extends TestCase
     protected function tearDown(): void
     {
         @unlink('resources/views/test_basic.super.php');
+        @unlink('resources/views/test_dot.super.php');
+        @unlink('resources/views/test_null_dot.super.php');
         @unlink('resources/views/test_setup.super.php');
         @unlink('resources/views/test_directives.super.php');
+        @unlink('resources/views/test_foreach_dot.super.php');
         @unlink('resources/views/test_comp.super.php');
         @unlink('resources/views/components/card.super.php');
         parent::tearDown();

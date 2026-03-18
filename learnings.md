@@ -12,3 +12,11 @@
 2.  **Service Isolation**: New complex services are located in `app/Services/{Name}/`.
 3.  **Naming Conventions**: PSR-4 namespaces should match the directory structure.
 4.  **Testing**: Unit tests for new services should reside in `tests/Unit/Services/{Name}/`.
+
+## Phase 2: Expression Safety & Superpowered Expressions
+
+### Transpilation Strategy
+1.  **Dot Notation vs PHP syntax**: Converting `$user.profile.name` to a runtime access call is a robust way to handle both arrays and objects without complex static analysis during the interpreted phase.
+2.  **Null-Safety**: Implementing null-safe access at every level of the dot-notation chain prevents runtime errors and simplifies views.
+3.  **Unified Access**: A centralized `Runtime::access()` helper ensures consistent behavior for accessing data from different sources (arrays, objects, getters).
+4.  **Syntax Validation**: Using `token_get_all` provides a lightweight way to catch syntax errors in transpiled expressions before execution.

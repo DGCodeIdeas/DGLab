@@ -10,6 +10,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
+use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 
 /**
  * Class Interpreter
@@ -22,6 +23,16 @@ class Interpreter
      * @var array
      */
     private array $scope = [];
+
+    /**
+     * @var ExpressionTranspiler
+     */
+    private ExpressionTranspiler $transpiler;
+
+    public function __construct()
+    {
+        $this->transpiler = new ExpressionTranspiler();
+    }
 
     /**
      * Interpret the AST.
@@ -101,6 +112,10 @@ class Interpreter
                 $as = $matches[2];
                 $output = '';
 
+                if ($items === null || !is_iterable($items)) {
+                    return '';
+                }
+
                 foreach ($items as $key => $item) {
                     // Push local scope
                     $originalScope = $this->scope;
@@ -147,7 +162,10 @@ class Interpreter
 
     private function evaluatePhp(string $code)
     {
+        $this->transpiler->validate($code);
+        $transpiled = $this->transpiler->transpile($code);
+
         extract($this->scope);
-        return eval("return {$code};");
+        return eval("return {$transpiled};");
     }
 }

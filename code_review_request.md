@@ -21,3 +21,23 @@ Implemented Phase 1 (Foundations & Lexer) of the SuperPHP engine, providing a mo
 `app/Services/Superpowers/`
 `app/Core/View.php` (Refactored)
 `app/Core/Contracts/ViewEngineInterface.php` (New)
+
+# Phase 2: Expression Safety & Superpowered Expressions
+
+## Overview
+Enhanced the expression engine with intelligent dot notation, null-safety, and validation.
+
+## Changes
+1.  **ExpressionTranspiler**: Converts `$a.b.c` into `Runtime::access(Runtime::access($a, 'b'), 'c')`.
+2.  **Runtime Helper**: `Runtime::access()` provides unified access to array keys and object properties/methods.
+3.  **Null-Safety**: Dot notation is null-safe at every level, returning `null` instead of triggering errors.
+4.  **Integration**: Updated `Interpreter` to transpile all expressions in `{{ }}`, `{!! !!}`, and directives like `@if` and `@foreach`.
+5.  **Directives**: Enhanced `@foreach` to handle null-safe dot-notation targets.
+6.  **Validation**: Added syntax validation for transpiled expressions before execution.
+
+## Verification
+-   Updated `tests/Unit/Services/Superpowers/SuperpowersTest.php` with:
+    -   `test_dot_notation()`
+    -   `test_null_safe_dot_notation()`
+    -   `test_foreach_with_dot_notation()`
+-   All 7 tests pass.
