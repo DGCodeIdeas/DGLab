@@ -9,6 +9,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 
 /**
  * Class Parser
@@ -74,9 +75,18 @@ class Parser
     private function parseDirective(): DirectiveNode
     {
         $token = $this->advance();
-        preg_match('/^@([a-zA-Z]+)(\(.*\))?/', $token->value, $matches);
-        $name = $matches[1];
-        $expression = isset($matches[2]) ? trim($matches[2], '()') : null;
+
+        $name = '';
+        $expression = null;
+
+        if (preg_match('/^@([a-zA-Z]+)(?:\s*\((.*)\))?/s', $token->value, $matches)) {
+            $name = $matches[1];
+            if (isset($matches[2]) && $matches[2] !== '') {
+                 $expression = trim($matches[2]);
+            }
+        } else {
+             $name = ltrim($token->value, '@');
+        }
 
         $node = new DirectiveNode($name, $expression, $token->line);
 
@@ -89,7 +99,7 @@ class Parser
         return $node;
     }
 
-    private function parseComponent(): ComponentNode
+    private function parseComponent(): Node
     {
         $token = $this->advance();
         $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
@@ -98,6 +108,15 @@ class Parser
         $tagName = $matches[1];
         $propsString = $matches[2] ?? '';
         $props = $this->parseProps($propsString);
+
+        if ($tagName === 'slot') {
+            $name = $props['name']['value'] ?? 'default';
+            $node = new SlotNode($name, $token->line);
+            if (!$isSelfClosing) {
+                $node->children = $this->parseUntilComponentClose($tagName);
+            }
+            return $node;
+        }
 
         $node = new ComponentNode($tagName, $props, $token->line);
 
@@ -118,12 +137,13 @@ class Parser
             $name = $match['name'];
             $isDynamic = !empty($match['dynamic']);
 
-            if (isset($match['value']) && $match['value'] !== '') {
+            $value = '';
+            if (isset($match['value'])) {
                 $value = $match['value'];
-            } elseif (isset($match['unquoted']) && $match['unquoted'] !== '') {
+            } elseif (isset($match['unquoted'])) {
                 $value = $match['unquoted'];
             } else {
-                $value = true;
+                $value = 'true';
             }
 
             $props[$name] = [
@@ -168,7 +188,7 @@ class Parser
 
     private function isBlockDirective(string $name): bool
     {
-        return in_array($name, ['if', 'foreach', 'auth', 'guest', 'section', 'error', 'switch', 'foreach']);
+        return in_array($name, ['if', 'foreach', 'auth', 'guest', 'section', 'error', 'switch']);
     }
 
     private function isAtEnd(): bool

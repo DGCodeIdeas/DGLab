@@ -41,3 +41,21 @@ Enhanced the expression engine with intelligent dot notation, null-safety, and v
     -   `test_null_safe_dot_notation()`
     -   `test_foreach_with_dot_notation()`
 -   All 7 tests pass.
+
+# Phase 3: Component Core
+
+## Overview
+Fully implemented the Component Core, including named slots, dynamic props, and recursive rendering.
+
+## Changes
+1.  **Named Slots**: Introduced `<s:slot name="slotName">` syntax. Named slots are extracted and passed as variables to the component.
+2.  **Default Slot**: Content not wrapped in `<s:slot>` is passed as the `$slot` variable.
+3.  **Balanced Directives**: Improved Lexer and Parser to correctly handle balanced parentheses in directives (e.g., `@if(!empty($children))`).
+4.  **Nesting & Recursion**: Fixed scope management in the Interpreter to support recursive component rendering and deeply nested components.
+5.  **Dynamic Props**: Verified that dynamic props (starting with `:`) are correctly transpiled and evaluated using the Superpowered Expression engine.
+
+## Verification
+-   Updated `tests/Unit/Services/Superpowers/SuperpowersTest.php` with:
+    -   `test_components_named_slots()`
+    -   `test_recursive_components()`
+-   All 9 tests pass.

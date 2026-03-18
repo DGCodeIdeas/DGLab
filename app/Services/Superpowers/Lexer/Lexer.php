@@ -13,7 +13,8 @@ class Lexer
      * Regex patterns for token identification.
      */
     private const PATTERN_SETUP = '/^~setup\s*\{(.*?)\}/s';
-    private const PATTERN_DIRECTIVE = '/^(@[a-zA-Z]+(\(.*\))?)/';
+    // Improved regex for directives with balanced parentheses
+    private const PATTERN_DIRECTIVE = '/^(@[a-zA-Z]+(?:\s*(\((?:[^()]++|(?2))*\)))?)/s';
     private const PATTERN_EXPRESSION_RAW = '/^\{!!\s*(.*?)\s*!!\}/s';
     private const PATTERN_EXPRESSION_ESCAPED = '/^\{\{\s*(.*?)\s*\}\}/s';
     private const PATTERN_COMPONENT_SELF_CLOSING = '/^<s:([a-zA-Z0-9\-\.]+)\s*([^>]*?)\s*\/>/s';

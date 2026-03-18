@@ -20,3 +20,13 @@
 2.  **Null-Safety**: Implementing null-safe access at every level of the dot-notation chain prevents runtime errors and simplifies views.
 3.  **Unified Access**: A centralized `Runtime::access()` helper ensures consistent behavior for accessing data from different sources (arrays, objects, getters).
 4.  **Syntax Validation**: Using `token_get_all` provides a lightweight way to catch syntax errors in transpiled expressions before execution.
+
+## Phase 3: Component Core
+
+### Slot Management
+1.  **Named vs Default Slots**: Separating component children into named slots and a default slot during interpretation allows for flexible component layouts.
+2.  **Scope Management**: In the interpreted phase, saving and restoring the scope during component rendering is critical to support recursion and prevent side effects.
+
+### Lexing Balanced Directives
+1.  **Regex Recursion**: Using `(?R)` in PCRE regex allows the Lexer to correctly identify directives with nested parentheses, ensuring the entire directive (including nested function calls) is tokenized together.
+2.  **Expression Extraction**: The Parser must accurately extract the content inside the parentheses for evaluation by the transpiler.

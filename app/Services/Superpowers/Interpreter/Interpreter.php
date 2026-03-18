@@ -10,6 +10,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 
 /**
@@ -74,6 +75,10 @@ class Interpreter
 
         if ($node instanceof ComponentNode) {
             return $this->evaluateComponent($node);
+        }
+
+        if ($node instanceof SlotNode) {
+             return $this->evaluateNodes($node->children);
         }
 
         return '';
@@ -144,11 +149,28 @@ class Interpreter
             $props[$name] = $prop['dynamic'] ? $this->evaluatePhp($prop['value']) : $prop['value'];
         }
 
-        $slot = $this->evaluateNodes($node->children);
-        $props['slot'] = $slot;
+        $namedSlots = [];
+        $defaultSlotChildren = [];
+
+        foreach ($node->children as $child) {
+            if ($child instanceof SlotNode) {
+                $namedSlots[$child->name] = $this->evaluateNodes($child->children);
+            } else {
+                $defaultSlotChildren[] = $child;
+            }
+        }
+
+        $props['slot'] = $this->evaluateNodes($defaultSlotChildren);
+        $props = array_merge($props, $namedSlots);
 
         $view = Application::getInstance()->get(View::class);
-        return $view->render("components/{$node->tagName}", $props, null);
+
+        // Save current scope because recursion/nesting will override it.
+        $originalScope = $this->scope;
+        $content = $view->render("components/{$node->tagName}", $props, null);
+        $this->scope = $originalScope;
+
+        return $content;
     }
 
     private function evaluateNodes(array $nodes): string
@@ -162,6 +184,9 @@ class Interpreter
 
     private function evaluatePhp(string $code)
     {
+        // Debug
+        // echo "EVAL PHP: $code\n";
+
         $this->transpiler->validate($code);
         $transpiled = $this->transpiler->transpile($code);
 
