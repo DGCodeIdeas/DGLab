@@ -347,3 +347,11 @@ function event(\DGLab\Core\Contracts\EventInterface $event): void
 {
     \DGLab\Facades\Event::dispatch($event);
 }
+
+/**
+ * Get the AuthManager instance or perform auth checks.
+ */
+function auth(): \DGLab\Services\Auth\AuthManager
+{
+    return \DGLab\Core\Application::getInstance()->get(\DGLab\Services\Auth\AuthManager::class);
+}

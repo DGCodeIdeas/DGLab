@@ -285,6 +285,11 @@ class Request
     /**
      * Get a header value
      */
+    public function getServer(string $key, mixed $default = null): mixed
+    {
+        return $this->server[$key] ?? $default;
+    }
+
     public function getHeader(string $name): ?string
     {
         $name = strtoupper(str_replace('-', '_', $name));

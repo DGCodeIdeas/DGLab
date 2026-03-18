@@ -9,6 +9,7 @@ use DGLab\Core\Contracts\EventSubscriberInterface;
 use DGLab\Core\EventDrivers\QueueDriver;
 use DGLab\Core\EventDrivers\SyncDriver;
 use DGLab\Core\Utils\PatternMatcher;
+use PDOException;
 
 /**
  * Class EventDispatcher
@@ -71,7 +72,11 @@ class EventDispatcher implements DispatcherInterface
     public function dispatch(EventInterface $event): EventInterface
     {
         $auditService = $this->app->has(EventAuditService::class) ? $this->app->get(EventAuditService::class) : null;
-        $auditId = $auditService ? $auditService->logDispatch($event) : null;
+        try {
+            $auditId = $auditService ? $auditService->logDispatch($event) : null;
+        } catch (PDOException $e) {
+            $auditId = null;
+        }
 
         if ($this->app->config('app.debug')) {
             $logger = $this->app->get(Logger::class);
