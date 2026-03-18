@@ -3,22 +3,25 @@
 /**
  * DGLab View Component
  *
- * Simple PHP-based templating system with layout support.
- * Can be extended to use Twig or other template engines.
+ * Extensible templating system with support for multiple engines.
  *
  * @package DGLab\Core
  */
 
 namespace DGLab\Core;
 
+use DGLab\Core\Contracts\ViewEngineInterface;
+use DGLab\Services\Superpowers\SuperpowersEngine;
+
 /**
  * Class View
  *
- * Provides template rendering with:
+ * Provides template rendering with support for multiple engines:
  * - Layout support
  * - Partial includes
  * - Data escaping
  * - Section blocks
+ * - Support for .php and .super.php extensions
  */
 class View
 {
@@ -47,6 +50,12 @@ class View
      */
     private ?string $currentSection = null;
 
+    /**
+     * Registered view engines
+     *
+     * @var array<string, ViewEngineInterface>
+     */
+    private array $engines = [];
 
     /**
      * Constructor
@@ -56,6 +65,18 @@ class View
         $basePath = Application::getInstance()->getBasePath();
         $this->viewPath = $basePath . '/resources/views';
         $this->layoutPath = $basePath . '/resources/views/layouts';
+
+        // Register default engines
+        $this->registerEngine('php', new PhpEngine());
+        $this->registerEngine('super.php', new SuperpowersEngine());
+    }
+
+    /**
+     * Register a view engine for a given extension.
+     */
+    public function registerEngine(string $extension, ViewEngineInterface $engine): void
+    {
+        $this->engines[$extension] = $engine;
     }
 
     /**
@@ -66,23 +87,11 @@ class View
         // Merge shared data
         $data = array_merge($this->shared, $data);
 
-        // Extract data for view
-        extract($data);
+        // Find the view file and appropriate engine
+        [$viewFile, $engine] = $this->resolveView($template);
 
-        // Start output buffering
-        ob_start();
-
-        // Include the view file
-        $viewFile = $this->viewPath . '/' . $this->normalizePath($template) . '.php';
-
-        if (!file_exists($viewFile)) {
-            throw new \RuntimeException("View not found: {$template}");
-        }
-
-        include $viewFile;
-
-        // Get content
-        $content = ob_get_clean();
+        // Render the view using the engine
+        $content = $engine->render($viewFile, $data);
 
         // Wrap in layout if specified
         if ($layout !== null) {
@@ -94,23 +103,46 @@ class View
     }
 
     /**
+     * Resolve a view template to its file path and rendering engine.
+     *
+     * @param string $template
+     * @return array{0: string, 1: ViewEngineInterface}
+     */
+    private function resolveView(string $template, string $directory = null): array
+    {
+        if ($directory === null) {
+            $directory = $this->viewPath;
+        }
+
+        $basePath = $directory . '/' . $this->normalizePath($template);
+
+        // Check for engines in order (prioritize super.php)
+        $extensions = array_keys($this->engines);
+
+        // Ensure super.php is checked first if registered
+        usort($extensions, function($a, $b) {
+            if ($a === 'super.php') return -1;
+            if ($b === 'super.php') return 1;
+            return 0;
+        });
+
+        foreach ($extensions as $ext) {
+            $file = $basePath . '.' . $ext;
+            if (file_exists($file)) {
+                return [$file, $this->engines[$ext]];
+            }
+        }
+
+        throw new \RuntimeException("View not found: {$template}");
+    }
+
+    /**
      * Render a layout
      */
     private function renderLayout(string $layout, array $data): string
     {
-        extract($data);
-
-        ob_start();
-
-        $layoutFile = $this->layoutPath . '/' . $this->normalizePath($layout) . '.php';
-
-        if (!file_exists($layoutFile)) {
-            throw new \RuntimeException("Layout not found: {$layout}");
-        }
-
-        include $layoutFile;
-
-        return ob_get_clean();
+        [$layoutFile, $engine] = $this->resolveView($layout, $this->layoutPath);
+        return $engine->render($layoutFile, $data);
     }
 
     /**
@@ -118,15 +150,8 @@ class View
      */
     public function partial(string $name, array $data = []): void
     {
-        extract($data);
-
-        $partialFile = $this->viewPath . '/partials/' . $this->normalizePath($name) . '.php';
-
-        if (!file_exists($partialFile)) {
-            throw new \RuntimeException("Partial not found: {$name}");
-        }
-
-        include $partialFile;
+        [$partialFile, $engine] = $this->resolveView('partials/' . $name, $this->viewPath);
+        echo $engine->render($partialFile, array_merge($this->shared, $data));
     }
 
     /**
