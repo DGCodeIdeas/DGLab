@@ -32,6 +32,11 @@ class SuperpowersEngine implements ViewEngineInterface
         $this->interpreter = new Interpreter($view);
     }
 
+    public function getInterpreter(): Interpreter
+    {
+        return $this->interpreter;
+    }
+
     /**
      * Render the .super.php view file.
      *
@@ -41,8 +46,11 @@ class SuperpowersEngine implements ViewEngineInterface
      */
     public function render(string $path, array $data = []): string
     {
-        $mode = Application::config('superpowers.mode', 'auto');
+        // Track the view name for reactivity
+        $viewName = $this->extractViewName($path);
+        $data['__view'] = $viewName;
 
+        $mode = Application::config('superpowers.mode', 'auto');
         if ($mode === 'auto') {
             $mode = Application::config('app.debug') ? 'interpreted' : 'compiled';
         }
@@ -51,10 +59,30 @@ class SuperpowersEngine implements ViewEngineInterface
             $content = file_get_contents($path);
             $tokens = $this->lexer->tokenize($content);
             $ast = $this->parser->parse($tokens);
-            return $this->interpreter->interpret($ast, $data);
+            $output = $this->interpreter->interpret($ast, $data);
+            return $this->processReactivity($output);
         }
 
-        return $this->renderCompiled($path, $data);
+        return $this->processReactivity($this->renderCompiled($path, $data));
+    }
+
+    private function extractViewName(string $path): string
+    {
+         $viewPath = rtrim(Application::getInstance()->getBasePath(), '/') . '/resources/views/';
+         $name = str_replace($viewPath, '', $path);
+         return str_replace('.super.php', '', $name);
+    }
+
+    private function processReactivity(string $output): string
+    {
+        if (Application::config('superpowers.reactivity.enabled', true) && Application::config('superpowers.reactivity.inject_runtime', true)) {
+            // Only inject if it looks like a full HTML document
+            if (strpos($output, '<body') !== false && strpos($output, 'superpowers.js') === false) {
+                 $script = '<script src="/assets/js/superpowers.js"></script>';
+                 $output = str_replace('</body>', $script . '</body>', $output);
+            }
+        }
+        return $output;
     }
 
     /**
@@ -73,7 +101,6 @@ class SuperpowersEngine implements ViewEngineInterface
 
         $shouldRecompile = !file_exists($compiledFile);
 
-        // Dependency invalidation check
         if (!$shouldRecompile && Application::config('superpowers.check_dependencies', true)) {
             if (file_exists($depsFile)) {
                 $depsJson = file_get_contents($depsFile);
@@ -106,6 +133,10 @@ class SuperpowersEngine implements ViewEngineInterface
         $view = $this->view;
 
         $render = (function() use ($compiledFile, $data) {
+            $__action = $data['__action'] ?? null;
+            $__state = $data['__state'] ?? null;
+            $__view = $data['__view'] ?? null;
+
             extract($data);
             ob_start();
             try {
@@ -117,7 +148,7 @@ class SuperpowersEngine implements ViewEngineInterface
                          echo $content;
                          $this->endSection();
                     }
-                    return $this->render($__extendedLayout, array_merge($data, get_defined_vars()), null);
+                    return $this->render($__extendedLayout, array_merge($data, $this->getEngine()->getInterpreter()->getState()->all()), null);
                 }
             } catch (\Exception $e) {
                 ob_get_clean();

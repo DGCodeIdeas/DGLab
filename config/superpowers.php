@@ -25,4 +25,28 @@ return [
      * If enabled, the engine will check if any included components have changed.
      */
     'check_dependencies' => true,
+
+    /**
+     * Reactivity Settings (Phase 7)
+     */
+    'reactivity' => [
+        'enabled' => true,
+
+        /**
+         * State Storage Mode
+         * 'dom' - Encrypted state is stored in data attributes in the browser.
+         * 'session' - State is stored on the server in the user session.
+         */
+        'storage' => 'dom',
+
+        /**
+         * The route used for action handling.
+         */
+        'action_route' => '/_superpowers/action',
+
+        /**
+         * Automatic injection of JS runtime.
+         */
+        'inject_runtime' => true,
+    ],
 ];

@@ -14,15 +14,14 @@ class SuperpowersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Set environment variables for config
         putenv("SUPERPHP_MODE=interpreted");
 
         $this->view = new View();
 
-        // Manual config overrides
         Application::getInstance()->setConfig('app.debug', true);
         Application::getInstance()->setConfig('superpowers.mode', 'interpreted');
         Application::getInstance()->setConfig('superpowers.cache_path', dirname(__DIR__, 3) . '/storage/cache/views');
+        Application::getInstance()->setConfig('superpowers.reactivity.inject_runtime', false); // Disable for unit tests to avoid noise
 
         @mkdir('resources/views/components', 0777, true);
         @mkdir('resources/views/layouts', 0777, true);

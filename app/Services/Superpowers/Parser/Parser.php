@@ -16,6 +16,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 
 /**
  * Class Parser
@@ -80,6 +81,8 @@ class Parser
             case Token::T_COMPONENT_OPEN:
             case Token::T_COMPONENT_SELF_CLOSING:
                 return $this->parseComponent();
+            case Token::T_REACTIVE_TAG:
+                return $this->parseReactiveTag();
             case Token::T_COMPONENT_CLOSE:
                 throw new \RuntimeException("Unexpected closing tag: {$token->value} at line {$token->line}");
             default:
@@ -137,10 +140,9 @@ class Parser
         $token = $this->advance();
         $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
 
-        // Match tag name and the rest of the tag. Use a more permissive regex.
         if (preg_match('/^<s:([a-zA-Z0-9\-\.\:]+)/s', $token->value, $matches)) {
              $fullTagName = $matches[1];
-             $propsString = substr($token->value, strlen($fullTagName) + 3); // +3 for "<s:"
+             $propsString = substr($token->value, strlen($fullTagName) + 3);
              $propsString = rtrim($propsString, ' />');
         } else {
              throw new \RuntimeException("Invalid component tag: {$token->value}");
@@ -166,14 +168,41 @@ class Parser
         return $node;
     }
 
+    private function parseReactiveTag(): Node
+    {
+        $token = $this->advance();
+        preg_match('/^<([a-zA-Z0-9]+)\s+(.*?)>/s', $token->value, $matches);
+        $tagName = $matches[1];
+        $attributesString = $matches[2];
+
+        $attributes = [];
+        $reactiveAttributes = [];
+
+        preg_match_all('/(?<reactive>@)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $attributesString, $attrMatches, PREG_SET_ORDER);
+
+        foreach ($attrMatches as $match) {
+            $name = $match['name'];
+            $value = $match['value'] ?? ($match['unquoted'] ?? true);
+
+            if (!empty($match['reactive'])) {
+                $reactiveAttributes[$name] = $value;
+            } else {
+                $attributes[$name] = $value;
+            }
+        }
+
+        return new ReactiveNode($tagName, $attributes, $reactiveAttributes, $token->line);
+    }
+
     private function parseProps(string $propsString): array
     {
         $props = [];
-        preg_match_all('/(?<dynamic>:)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $propsString, $matches, PREG_SET_ORDER);
+        preg_match_all('/(?<dynamic>:)?(?<reactive>@)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $propsString, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             $name = $match['name'];
             $isDynamic = !empty($match['dynamic']);
+            $isReactive = !empty($match['reactive']);
 
             $value = '';
             if (isset($match['value'])) {
@@ -186,7 +215,8 @@ class Parser
 
             $props[$name] = [
                 'value' => $value,
-                'dynamic' => $isDynamic
+                'dynamic' => $isDynamic,
+                'reactive' => $isReactive
             ];
         }
 

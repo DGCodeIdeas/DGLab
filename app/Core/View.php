@@ -81,6 +81,14 @@ class View
     }
 
     /**
+     * Get engine for an extension.
+     */
+    public function getEngine(string $extension = 'super.php'): ?ViewEngineInterface
+    {
+        return $this->engines[$extension] ?? null;
+    }
+
+    /**
      * Render a view template
      */
     public function render(string $template, array $data = [], ?string $layout = 'master'): string
@@ -115,7 +123,6 @@ class View
             $directory = $this->viewPath;
         }
 
-        // Dot notation handled here
         $normalizedTemplate = str_replace('.', '/', $this->normalizePath($template));
         $basePath = $directory . '/' . $normalizedTemplate;
 
@@ -148,7 +155,6 @@ class View
                  }
              }
 
-             // Support components/ folder when in viewPath
              $componentTemplate = $normalizedTemplate;
              if (strpos($componentTemplate, 'components/') === 0) {
                  $componentTemplate = substr($componentTemplate, 11);
@@ -161,7 +167,6 @@ class View
                  }
              }
 
-             // Also try just appending $normalizedTemplate to components/
              $componentBasePath = $this->viewPath . '/components/' . $normalizedTemplate;
              foreach ($extensions as $ext) {
                  $file = $componentBasePath . '.' . $ext;

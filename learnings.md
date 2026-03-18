@@ -61,3 +61,11 @@
 
 ### CLI Integration
 1.  **Warm-up Commands**: Providing a way to pre-compile templates during deployment ensures that the first user of a new deployment doesn't experience "cold-start" latency.
+
+## Phase 7: Reactive Bridge
+
+### Reactivity Patterns
+1.  **Event Delegation**: Using a small JS runtime to delegate `@` events to a centralized handler is more efficient than binding listeners to every element.
+2.  **State Hydration**: Encrypting and round-tripping component state in the DOM (hydration) allows the server to remain stateless while providing a stateful developer experience.
+3.  **Reactive Boundaries**: Identifying components or HTML blocks that need reactivity and wrapping them in boundaries simplifies the "Morph" logic (planned for Phase 8).
+4.  **Dynamic Action Dispatch**: Binding `~setup` closures or functions to names allows for a very natural DX when calling PHP from JS.

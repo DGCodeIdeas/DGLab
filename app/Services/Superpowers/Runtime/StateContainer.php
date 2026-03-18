@@ -2,6 +2,9 @@
 
 namespace DGLab\Services\Superpowers\Runtime;
 
+use DGLab\Core\Application;
+use DGLab\Services\Encryption\EncryptionService;
+
 /**
  * Class StateContainer
  *
@@ -9,36 +12,20 @@ namespace DGLab\Services\Superpowers\Runtime;
  */
 class StateContainer
 {
-    /**
-     * @var array
-     */
     private array $data = [];
-
-    /**
-     * @var array
-     */
     private array $tracked = [];
 
-    /**
-     * Set a state value.
-     */
     public function set(string $key, mixed $value): void
     {
         $this->data[$key] = $value;
         $this->tracked[$key] = true;
     }
 
-    /**
-     * Get a state value.
-     */
     public function get(string $key, mixed $default = null): mixed
     {
         return $this->data[$key] ?? $default;
     }
 
-    /**
-     * Merge multiple values into state.
-     */
     public function merge(array $values): void
     {
         foreach ($values as $key => $value) {
@@ -46,19 +33,28 @@ class StateContainer
         }
     }
 
-    /**
-     * Get all tracked state.
-     */
     public function all(): array
     {
         return $this->data;
     }
 
     /**
-     * Check if a key is tracked.
+     * Export encrypted state.
      */
-    public function isTracked(string $key): bool
+    public function export(): string
     {
-        return isset($this->tracked[$key]);
+        $payload = json_encode($this->data);
+        $encryption = Application::getInstance()->get(EncryptionService::class);
+        return $encryption->encrypt($payload);
+    }
+
+    /**
+     * Import encrypted state.
+     */
+    public function import(string $encrypted): void
+    {
+        $encryption = Application::getInstance()->get(EncryptionService::class);
+        $payload = $encryption->decrypt($encrypted);
+        $this->data = json_decode($payload, true) ?: [];
     }
 }

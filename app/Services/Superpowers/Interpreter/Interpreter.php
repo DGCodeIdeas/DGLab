@@ -17,6 +17,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 use DGLab\Services\Superpowers\Runtime\StateContainer;
 use DGLab\Services\Superpowers\Runtime\CleanupManager;
@@ -32,12 +33,19 @@ class Interpreter
     private ExpressionTranspiler $transpiler;
     private ?string $extendedLayout = null;
     private View $view;
+    private bool $isReactive = false;
+    private ?string $currentView = null;
 
     public function __construct(View $view)
     {
         $this->transpiler = new ExpressionTranspiler();
         $this->state = new StateContainer();
         $this->view = $view;
+    }
+
+    public function getState(): StateContainer
+    {
+        return $this->state;
     }
 
     /**
@@ -51,9 +59,21 @@ class Interpreter
     {
         $this->state->merge($initialData);
         $this->extendedLayout = null;
+        $this->currentView = $initialData['__view'] ?? null;
+
+        // Phase 7: Hydration
+        if (isset($initialData['__state'])) {
+             $this->state->import($initialData['__state']);
+        }
 
         // Prioritized execution
         $this->executeLifecycle($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
+
+        // Phase 7: Action Execution
+        if (isset($initialData['__action'])) {
+             $action = $initialData['__action'];
+             $this->executeAction($action);
+        }
 
         $output = '';
         foreach ($ast as $node) {
@@ -66,6 +86,13 @@ class Interpreter
 
         $this->registerCleanup($ast);
 
+        // Phase 7: Reactive Boundary
+        if ($this->isReactive || isset($initialData['__state'])) {
+             $encryptedState = $this->state->export();
+             $viewAttr = $this->currentView ? " s-view=\"{$this->currentView}\"" : "";
+             $output = "<div s-data=\"{$encryptedState}\" s-id=\"" . uniqid() . "\"{$viewAttr}>{$output}</div>";
+        }
+
         if ($this->extendedLayout) {
              if (!$this->view->hasSection('content')) {
                  $this->view->section('content');
@@ -76,6 +103,18 @@ class Interpreter
         }
 
         return $output;
+    }
+
+    private function executeAction(string $action): void
+    {
+        $scope = $this->state->all();
+        if (isset($scope[$action]) && is_callable($scope[$action])) {
+             $scope[$action]();
+             // Re-sync scope
+             foreach ($scope as $k => $v) {
+                  $this->state->set($k, $v);
+             }
+        }
     }
 
     private function executeLifecycle(array $nodes, array $types): void
@@ -156,13 +195,32 @@ class Interpreter
             return ob_get_clean();
         }
 
+        if ($node instanceof ReactiveNode) {
+             return $this->evaluateReactive($node);
+        }
+
         return '';
+    }
+
+    private function evaluateReactive(ReactiveNode $node): string
+    {
+        $this->isReactive = true;
+        $attrs = "";
+        foreach ($node->attributes as $name => $value) {
+            $attrs .= " {$name}=\"{$value}\"";
+        }
+        foreach ($node->reactiveAttributes as $event => $action) {
+            $attrs .= " s-on:{$event}=\"{$action}\"";
+        }
+
+        return "<{$node->tagName}{$attrs}>" . $this->evaluateNodes($node->children) . "</{$node->tagName}>";
     }
 
     private function executeCode(string $code): void
     {
-        $scope = $this->state->all();
         $view = $this->view;
+        $scope = $this->state->all();
+
         $callback = (function() use ($code, $scope) {
             extract($scope);
             eval($code);
@@ -242,9 +300,6 @@ class Interpreter
         $tagName = $node->tagName;
         if (str_starts_with($tagName, 'layout:')) {
             $tagName = 'layouts/' . substr($tagName, 7);
-        } else {
-            // Support dots for nested components: ui.button -> components/ui/button
-            $tagName = 'components/' . str_replace('.', '/', $tagName);
         }
 
         return $this->view->render($tagName, $props, null);

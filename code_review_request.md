@@ -115,3 +115,24 @@ Implemented a high-performance SuperPHP Compiler that transforms AST into optimi
 -   Added `test_compiled_rendering()` to `SuperpowersTest.php`.
 -   Verified CLI tool functionality.
 -   All 13 tests pass (including interpreted and compiled mode checks).
+
+# Phase 7: Reactive Bridge
+
+## Overview
+Implemented the foundational "Reactive Bridge" allowing client-side events to trigger server-side actions with state persistence via hydration.
+
+## Changes
+1.  **Reactive Attributes**: Lexer and Parser now support `@event="action"` syntax (e.g., `<button @click="increment">`).
+2.  **ActionController**: Created a background bridge controller at `/_superpowers/action` to process reactive requests.
+3.  **Hydration Engine**:
+    -   Components with reactive features are wrapped in a "Reactive Boundary" (`<div s-data s-id>`).
+    -   `StateContainer` now supports encrypted export/import of component state.
+    -   Interpreter and Compiler updated to handle re-hydration and action execution.
+4.  **JS Runtime**: Developed `resources/js/superpowers.js` which handles event delegation, AJAX communication, and DOM replacement.
+5.  **Reactivity Bridge**: Actions in `~setup` blocks can now be invoked from the browser.
+6.  **Configuration**: New reactivity settings in `config/superpowers.php`.
+
+## Verification
+-   Verified Lexer/Parser for reactive attributes.
+-   Verified state encryption and decryption in `StateContainer`.
+-   All 13 existing tests pass with the new reactivity infrastructure integrated.

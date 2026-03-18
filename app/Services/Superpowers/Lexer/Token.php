@@ -20,6 +20,7 @@ class Token
     public const T_MOUNT_BLOCK = 'MOUNT_BLOCK';
     public const T_RENDERED_BLOCK = 'RENDERED_BLOCK';
     public const T_CLEANUP_BLOCK = 'CLEANUP_BLOCK';
+    public const T_REACTIVE_TAG = 'REACTIVE_TAG'; // For <button @click="...">
 
     public string $type;
     public string $value;

@@ -16,6 +16,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 
 /**
@@ -28,6 +29,7 @@ class Compiler
     private ExpressionTranspiler $transpiler;
     private array $dependencies = [];
     private bool $inlineExpressions;
+    private bool $isReactive = false;
 
     public function __construct()
     {
@@ -35,27 +37,54 @@ class Compiler
         $this->inlineExpressions = (bool) Application::config('superpowers.inline_expressions', true);
     }
 
-    /**
-     * Compile the AST into a PHP string.
-     *
-     * @param Node[] $ast
-     * @return string
-     */
     public function compile(array $ast): string
     {
         $this->dependencies = [];
+        $this->isReactive = false;
+
+        $body = $this->compileNodes($ast);
+        $lifecycle = $this->compileLifecycle($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
+        $rendered = $this->compileLifecycle($ast, [RenderedNode::class]);
+
         $code = "<?php\n";
         $code .= "// Compiled SuperPHP Template\n";
-        $code .= "// Dependencies: " . json_encode($this->dependencies) . "\n\n";
 
-        // Prioritized blocks (~setup, ~mount, @extends)
-        $code .= $this->compileLifecycle($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
+        $code .= "if (isset(\$__state)) {\n";
+        $code .= "    \$this->getEngine()->getInterpreter()->getState()->import(\$__state);\n";
+        $code .= "}\n";
 
-        // Main content
-        $code .= $this->compileNodes($ast);
+        // Merge initial data into state
+        $code .= "foreach (\$data as \$k => \$v) { if (substr(\$k, 0, 2) !== '__') \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); }\n";
 
-        // Rendered hooks
-        $code .= $this->compileLifecycle($ast, [RenderedNode::class]);
+        $code .= $lifecycle;
+
+        $code .= "if (isset(\$__action)) {\n";
+        $code .= "    \$__scope = \$this->getEngine()->getInterpreter()->getState()->all();\n";
+        $code .= "    if (isset(\$__scope[\$__action]) && is_callable(\$__scope[\$__action])) {\n";
+        $code .= "        \$__scope[\$__action]();\n";
+        $code .= "        foreach (\$__scope as \$k => \$v) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v);\n";
+        $code .= "    }\n";
+        $code .= "}\n";
+
+        $code .= "ob_start();\n";
+        $code .= $body;
+        $code .= "\$__output = ob_get_clean();\n";
+
+        $code .= "ob_start();\n";
+        $code .= $rendered;
+        $code .= "\$__output .= ob_get_clean();\n";
+
+        if ($this->isReactive) {
+             $code .= "\$__encrypted = \$this->getEngine()->getInterpreter()->getState()->export();\n";
+             $code .= "\$__viewAttr = isset(\$__view) ? \" s-view='{\$__view}'\" : \"\";\n";
+             $code .= "echo \"<div s-data='{\$__encrypted}' s-id='\" . uniqid() . \"'{\$__viewAttr}>{\$__output}</div>\";\n";
+        } else {
+             $code .= "echo \$__output;\n";
+        }
+
+        $code .= "if (isset(\$__extendedLayout)) {\n";
+        $code .= "    return \$this->render(\$__extendedLayout, array_merge(\$data, \$this->getEngine()->getInterpreter()->getState()->all()), null);\n";
+        $code .= "}\n";
 
         return $code;
     }
@@ -72,13 +101,14 @@ class Compiler
             foreach ($types as $type) {
                 if ($node instanceof $type) {
                     if ($node instanceof ExtendsNode) {
-                        // We'll handle @extends by setting a flag that View will check,
-                        // or by wrapping at the end. For compiled code, it's easier to set a section.
-                        $code .= "\$this->section('content'); ob_start();\n";
                         $code .= "\$__extendedLayout = '{$node->layout}';\n";
                     } else {
-                        $code .= "// Hook line {$node->line}\n";
+                        // Extract state into local vars for setup/mount blocks
+                        $code .= "extract(\$this->getEngine()->getInterpreter()->getState()->all());\n";
                         $code .= $node->code . "\n";
+                        // Re-save state
+                        $code .= "\$__vars = get_defined_vars();\n";
+                        $code .= "foreach (\$__vars as \$k => \$v) { if (!in_array(\$k, ['this', 'data', 'code', 'vars'])) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); }\n";
                     }
                 }
             }
@@ -111,9 +141,9 @@ class Compiler
         if ($node instanceof ExpressionNode) {
             $transpiled = $this->transpiler->transpile($node->expression);
             if ($node->escaped) {
-                return "echo \DGLab\Core\View::e((string)({$transpiled}));\n";
+                return "echo \DGLab\Core\View::e((string)((function() { \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$transpiled}; })->call(\$this)));\n";
             }
-            return "echo (string)({$transpiled});\n";
+            return "echo (string)((function() { \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$transpiled}; })->call(\$this));\n";
         }
 
         if ($node instanceof DirectiveNode) {
@@ -122,6 +152,10 @@ class Compiler
 
         if ($node instanceof ComponentNode) {
             return $this->compileComponent($node);
+        }
+
+        if ($node instanceof ReactiveNode) {
+             return $this->compileReactive($node);
         }
 
         if ($node instanceof SectionNode) {
@@ -147,15 +181,16 @@ class Compiler
         switch ($node->name) {
             case 'if':
                 $transpiled = $this->transpiler->transpile($node->expression);
-                $code = "if ({$transpiled}):\n";
+                $code = "if ((function(){ \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$transpiled}; })->call(\$this)):\n";
                 $code .= $this->compileNodes($node->children);
                 $code .= "endif;\n";
                 return $code;
             case 'foreach':
                 preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $node->expression, $matches);
-                $items = $this->transpiler->transpile($matches[1]);
+                $itemsExpr = $this->transpiler->transpile($matches[1]);
                 $as = $matches[2];
-                $code = "if (isset({$items}) && is_iterable({$items})): foreach ({$items} as {$as}):\n";
+                $code = "\$__items = (function(){ \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$itemsExpr}; })->call(\$this);\n";
+                $code .= "if (isset(\$__items) && is_iterable(\$__items)): foreach (\$__items as {$as}):\n";
                 $code .= $this->compileNodes($node->children);
                 $code .= "endforeach; endif;\n";
                 return $code;
@@ -170,7 +205,7 @@ class Compiler
         if (str_starts_with($tagName, 'layout:')) {
             $viewName = 'layouts/' . substr($tagName, 7);
         } else {
-            $viewName = 'components/' . str_replace('.', '/', $tagName);
+            $viewName = $tagName;
         }
 
         $this->dependencies[] = $viewName;
@@ -179,7 +214,7 @@ class Compiler
         foreach ($node->props as $name => $prop) {
             if ($prop['dynamic']) {
                 $val = $this->transpiler->transpile($prop['value']);
-                $code .= "\$__props['{$name}'] = {$val};\n";
+                $code .= "\$__props['{$name}'] = (function(){ \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$val}; })->call(\$this);\n";
             } else {
                 $code .= "\$__props['{$name}'] = " . var_export($prop['value'], true) . ";\n";
             }
@@ -191,6 +226,22 @@ class Compiler
 
         $code .= "echo \$this->render('{$viewName}', \$__props, null);\n";
 
+        return $code;
+    }
+
+    private function compileReactive(ReactiveNode $node): string
+    {
+        $this->isReactive = true;
+        $code = "echo '<{$node->tagName}';\n";
+        foreach ($node->attributes as $name => $value) {
+            $code .= "echo ' {$name}=\"'. \DGLab\Core\View::e(" . var_export($value, true) . ") . '\"';\n";
+        }
+        foreach ($node->reactiveAttributes as $event => $action) {
+            $code .= "echo ' s-on:{$event}=\"{$action}\"';\n";
+        }
+        $code .= "echo '>';\n";
+        $code .= $this->compileNodes($node->children);
+        $code .= "echo '</{$node->tagName}>';\n";
         return $code;
     }
 }
