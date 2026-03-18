@@ -14,9 +14,19 @@ class SuperpowersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Set environment variables for config
+        putenv("SUPERPHP_MODE=interpreted");
+
         $this->view = new View();
+
+        // Manual config overrides
+        Application::getInstance()->setConfig('app.debug', true);
+        Application::getInstance()->setConfig('superpowers.mode', 'interpreted');
+        Application::getInstance()->setConfig('superpowers.cache_path', dirname(__DIR__, 3) . '/storage/cache/views');
+
         @mkdir('resources/views/components', 0777, true);
         @mkdir('resources/views/layouts', 0777, true);
+        @mkdir('storage/cache/views', 0777, true);
     }
 
     public function test_basic_rendering()
@@ -111,13 +121,19 @@ class SuperpowersTest extends TestCase
         $this->assertEquals("START Hello END", trim(str_replace("\n", "", $output)));
     }
 
-    public function test_dotted_component_resolution()
+    public function test_compiled_rendering()
     {
-        @mkdir('resources/views/components/ui', 0777, true);
-        file_put_contents('resources/views/components/ui/btn.super.php', "<button>Go</button>");
-        file_put_contents('resources/views/test_dotted.super.php', "<s:ui.btn />");
-        $output = $this->view->render('test_dotted', [], null);
-        $this->assertEquals("<button>Go</button>", $output);
+        Application::getInstance()->setConfig('superpowers.mode', 'compiled');
+        file_put_contents('resources/views/test_compiled.super.php', '<h1>{{ $title }}</h1>');
+
+        $cachePath = Application::config('superpowers.cache_path');
+        @mkdir($cachePath, 0777, true);
+        array_map('unlink', glob("$cachePath/*"));
+
+        $output = $this->view->render('test_compiled', ['title' => 'Compiled'], null);
+        $this->assertEquals('<h1>Compiled</h1>', $output);
+
+        $this->assertNotEmpty(glob("$cachePath/test_compiled.super.php.*.php"));
     }
 
     protected function tearDown(): void
@@ -134,8 +150,10 @@ class SuperpowersTest extends TestCase
         @unlink('resources/views/test_hooks.super.php');
         @unlink('resources/views/home.super.php');
         @unlink('resources/views/legacy_view.super.php');
-        @unlink('resources/views/test_dotted.super.php');
-        @unlink('resources/views/components/ui/btn.super.php');
+        @unlink('resources/views/test_compiled.super.php');
+        @unlink('resources/views/components/card.super.php');
+        @unlink('resources/views/components/modal.super.php');
+        @unlink('resources/views/components/item.super.php');
         @unlink('resources/views/layouts/app.super.php');
         @unlink('resources/views/layouts/legacy.php');
         parent::tearDown();

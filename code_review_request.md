@@ -97,3 +97,21 @@ Implemented component-based layout model and legacy layout migration support.
     -   `test_legacy_layout_extends()`
     -   `test_dotted_component_resolution()`
 -   All 13 tests pass.
+
+# Phase 6: Compiler & Caching
+
+## Overview
+Implemented a high-performance SuperPHP Compiler that transforms AST into optimized PHP files with a robust caching and invalidation strategy.
+
+## Changes
+1.  **SuperPHP Compiler**: Developed `app/Services/Superpowers/Compiler/Compiler.php` to generate native PHP code from the AST.
+2.  **Execution Modes**: Introduced `interpreted` (dev) and `compiled` (prod) modes, configurable via `config/superpowers.php`.
+3.  **Caching Engine**: `SuperpowersEngine` now caches compiled templates in `storage/cache/views/`.
+4.  **Dependency Invalidation**: Implemented hash-based and dependency-based invalidation. If a component used by a view changes, the view is automatically re-compiled.
+5.  **CLI Utility**: Created `cli/superpowers.php` for pre-compiling all views (`compile:all`) and clearing the cache (`cache:clear`).
+6.  **Performance Optimization**: Compiled code uses manual `echo` statements and inlined `~setup` blocks for maximum efficiency.
+
+## Verification
+-   Added `test_compiled_rendering()` to `SuperpowersTest.php`.
+-   Verified CLI tool functionality.
+-   All 13 tests pass (including interpreted and compiled mode checks).

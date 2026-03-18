@@ -51,3 +51,13 @@
 ### Resolution Logic
 1.  **Directory Mapping**: Transforming `layout:name` to `layouts/name` and `ui.button` to `ui/button` ensures a flexible and organized view structure.
 2.  **Order of Precedence**: Explicitly prioritizing `.super.php` files across all resolution methods (views, layouts, components) ensures the SuperPHP engine takes control when appropriate.
+
+## Phase 6: Compiler & Caching
+
+### Compilation Strategy
+1.  **AST to PHP**: Transforming the AST into a single PHP file that can be included by the `View` class significantly reduces overhead compared to recursive AST evaluation.
+2.  **Scope Binding**: Using anonymous functions with `call($view)` to execute compiled code allows for clean scope isolation while maintaining access to the framework's `$this` context.
+3.  **Dependency Metadata**: Storing a list of included components alongside the compiled file is essential for accurate cache invalidation in component-heavy architectures.
+
+### CLI Integration
+1.  **Warm-up Commands**: Providing a way to pre-compile templates during deployment ensures that the first user of a new deployment doesn't experience "cold-start" latency.

@@ -1,1 +1,0 @@
-<div class='modal'><header>{!! $header !!}</header><body>{!! $slot !!}</body></div>

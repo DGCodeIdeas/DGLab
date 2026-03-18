@@ -1,1 +1,0 @@
-<li>{{ $name }}@if(!empty($children))<ul>@foreach($children as $child)<s:item :name="$child.name" :children="$child.children ?? []" />@endforeach</ul>@endif</li>
