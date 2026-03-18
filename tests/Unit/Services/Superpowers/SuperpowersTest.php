@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use DGLab\Core\Application;
 use DGLab\Core\View;
 use DGLab\Services\Superpowers\SuperpowersEngine;
+use DGLab\Services\Encryption\EncryptionService;
 
 class SuperpowersTest extends TestCase
 {
@@ -16,13 +17,21 @@ class SuperpowersTest extends TestCase
         parent::setUp();
         putenv("SUPERPHP_MODE=interpreted");
 
+        $app = Application::getInstance();
+        $app->setConfig('app.debug', true);
+        $app->setConfig('superpowers.mode', 'interpreted');
+        $app->setConfig('superpowers.cache_path', dirname(__DIR__, 3) . '/storage/cache/views');
+        $app->setConfig('superpowers.reactivity.inject_runtime', false);
+
+        // Bind a dummy EncryptionService for tests
+        $app->singleton(EncryptionService::class, function() {
+             return new class {
+                 public function encrypt($v) { return base64_encode($v); }
+                 public function decrypt($v) { return base64_decode($v); }
+             };
+        });
+
         $this->view = new View();
-
-        Application::getInstance()->setConfig('app.debug', true);
-        Application::getInstance()->setConfig('superpowers.mode', 'interpreted');
-        Application::getInstance()->setConfig('superpowers.cache_path', dirname(__DIR__, 3) . '/storage/cache/views');
-        Application::getInstance()->setConfig('superpowers.reactivity.inject_runtime', false); // Disable for unit tests to avoid noise
-
         @mkdir('resources/views/components', 0777, true);
         @mkdir('resources/views/layouts', 0777, true);
         @mkdir('storage/cache/views', 0777, true);
@@ -131,8 +140,17 @@ class SuperpowersTest extends TestCase
 
         $output = $this->view->render('test_compiled', ['title' => 'Compiled'], null);
         $this->assertEquals('<h1>Compiled</h1>', $output);
-
         $this->assertNotEmpty(glob("$cachePath/test_compiled.super.php.*.php"));
+    }
+
+    public function test_reactivity_metadata()
+    {
+        file_put_contents('resources/views/test_reactive.super.php', '<button @click="increment" s-loading.class="busy" s-optimistic="hide:#msg">Click</button><div id="msg">Msg</div>');
+        $output = $this->view->render('test_reactive', [], null);
+        $this->assertStringContainsString('s-on:click="increment"', $output);
+        $this->assertStringContainsString('s-loading.class="busy"', $output);
+        $this->assertStringContainsString('s-optimistic="hide:#msg"', $output);
+        $this->assertStringContainsString('s-data="', $output);
     }
 
     protected function tearDown(): void
@@ -150,6 +168,7 @@ class SuperpowersTest extends TestCase
         @unlink('resources/views/home.super.php');
         @unlink('resources/views/legacy_view.super.php');
         @unlink('resources/views/test_compiled.super.php');
+        @unlink('resources/views/test_reactive.super.php');
         @unlink('resources/views/components/card.super.php');
         @unlink('resources/views/components/modal.super.php');
         @unlink('resources/views/components/item.super.php');

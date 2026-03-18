@@ -69,3 +69,13 @@
 2.  **State Hydration**: Encrypting and round-tripping component state in the DOM (hydration) allows the server to remain stateless while providing a stateful developer experience.
 3.  **Reactive Boundaries**: Identifying components or HTML blocks that need reactivity and wrapping them in boundaries simplifies the "Morph" logic (planned for Phase 8).
 4.  **Dynamic Action Dispatch**: Binding `~setup` closures or functions to names allows for a very natural DX when calling PHP from JS.
+
+## Phase 8: Reactive UI Diffing
+
+### Morphing Logic
+1.  **Attribute Diffing**: Iterating backwards over existing attributes and removing those not present in the new element, then updating or adding new ones, is an effective way to "morph" attributes without a full replacement.
+2.  **Text Node Precision**: Directly updating `textContent` on text nodes prevents unnecessary layout shifts that might occur with `innerHTML`.
+
+### UX Enhancements
+1.  **Loading States**: Tracking the lifecycle of a fetch request and toggling classes/attributes based on `s-loading` metadata provides a professional "app-like" feel with minimal developer effort.
+2.  **Optimistic Patterns**: Even simple "hide/show" optimistic updates significantly improve perceived performance for common actions like closing modals or deleting items.

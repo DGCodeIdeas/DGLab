@@ -136,3 +136,21 @@ Implemented the foundational "Reactive Bridge" allowing client-side events to tr
 -   Verified Lexer/Parser for reactive attributes.
 -   Verified state encryption and decryption in `StateContainer`.
 -   All 13 existing tests pass with the new reactivity infrastructure integrated.
+
+# Phase 8: Reactive UI Diffing
+
+## Overview
+Implemented efficient UI updates via DOM morphing, loading state management, and optimistic UI updates.
+
+## Changes
+1.  **DOM Morphing**: Integrated a recursive morphing algorithm in `superpowers.js`. It now updates only changed attributes and text nodes, preserving DOM state where possible.
+2.  **s-loading Directives**: Added support for `s-loading`, `s-loading.class`, `s-loading.attr`, and `s-loading.target`. Elements can now react visually during background AJAX actions.
+3.  **Optimistic UI**: Implemented `s-optimistic` for immediate client-side feedback (e.g., `hide:#id`, `show:#id`).
+4.  **Attribute Persistence**: Improved Parser to preserve all `s-` prefixed attributes for the JS runtime.
+5.  **Reactive Boundaries**: Refined how the engine identifies and wraps reactive boundaries with encrypted state metadata.
+6.  **Compiler Enhancements**: Updated the compiler to correctly extract state and bind closures in compiled templates, ensuring consistency with the interpreted mode.
+
+## Verification
+-   Added `test_reactivity_metadata()` to `SuperpowersTest.php`.
+-   Verified DOM morphing and loading states with manual JS testing.
+-   All 14 tests pass.

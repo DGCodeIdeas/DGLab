@@ -12,6 +12,7 @@ class ReactiveNode extends Node
     public string $tagName;
     public array $attributes = [];
     public array $reactiveAttributes = [];
+    public array $children = [];
 
     public function __construct(string $tagName, array $attributes, array $reactiveAttributes, int $line)
     {

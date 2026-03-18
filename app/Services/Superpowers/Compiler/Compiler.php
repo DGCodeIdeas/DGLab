@@ -53,7 +53,6 @@ class Compiler
         $code .= "    \$this->getEngine()->getInterpreter()->getState()->import(\$__state);\n";
         $code .= "}\n";
 
-        // Merge initial data into state
         $code .= "foreach (\$data as \$k => \$v) { if (substr(\$k, 0, 2) !== '__') \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); }\n";
 
         $code .= $lifecycle;
@@ -103,10 +102,8 @@ class Compiler
                     if ($node instanceof ExtendsNode) {
                         $code .= "\$__extendedLayout = '{$node->layout}';\n";
                     } else {
-                        // Extract state into local vars for setup/mount blocks
                         $code .= "extract(\$this->getEngine()->getInterpreter()->getState()->all());\n";
                         $code .= $node->code . "\n";
-                        // Re-save state
                         $code .= "\$__vars = get_defined_vars();\n";
                         $code .= "foreach (\$__vars as \$k => \$v) { if (!in_array(\$k, ['this', 'data', 'code', 'vars'])) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); }\n";
                     }
@@ -234,7 +231,7 @@ class Compiler
         $this->isReactive = true;
         $code = "echo '<{$node->tagName}';\n";
         foreach ($node->attributes as $name => $value) {
-            $code .= "echo ' {$name}=\"'. \DGLab\Core\View::e(" . var_export($value, true) . ") . '\"';\n";
+            $code .= "echo ' {$name}=\"'. \DGLab\Core\View::e((string)(" . var_export($value, true) . ")) . '\"';\n";
         }
         foreach ($node->reactiveAttributes as $event => $action) {
             $code .= "echo ' s-on:{$event}=\"{$action}\"';\n";

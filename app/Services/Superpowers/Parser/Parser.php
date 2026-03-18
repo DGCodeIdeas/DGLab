@@ -140,10 +140,9 @@ class Parser
         $token = $this->advance();
         $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
 
-        if (preg_match('/^<s:([a-zA-Z0-9\-\.\:]+)/s', $token->value, $matches)) {
+        if (preg_match('/^<s:([a-zA-Z0-9\-\.\:]+)(.*?)(\/?)>/s', $token->value, $matches)) {
              $fullTagName = $matches[1];
-             $propsString = substr($token->value, strlen($fullTagName) + 3);
-             $propsString = rtrim($propsString, ' />');
+             $propsString = $matches[2];
         } else {
              throw new \RuntimeException("Invalid component tag: {$token->value}");
         }
@@ -171,38 +170,72 @@ class Parser
     private function parseReactiveTag(): Node
     {
         $token = $this->advance();
-        preg_match('/^<([a-zA-Z0-9]+)\s+(.*?)>/s', $token->value, $matches);
+        preg_match('/^<([a-zA-Z0-9]+)\s+(.*?)(\/?)>/s', $token->value, $matches);
         $tagName = $matches[1];
         $attributesString = $matches[2];
+        $isSelfClosing = ($matches[3] === '/');
 
         $attributes = [];
         $reactiveAttributes = [];
 
-        preg_match_all('/(?<reactive>@)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $attributesString, $attrMatches, PREG_SET_ORDER);
+        preg_match_all('/(?<special>@|s-)(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $attributesString, $attrMatches, PREG_SET_ORDER);
 
         foreach ($attrMatches as $match) {
             $name = $match['name'];
             $value = $match['value'] ?? ($match['unquoted'] ?? true);
+            $special = $match['special'];
 
-            if (!empty($match['reactive'])) {
+            if ($special === '@') {
                 $reactiveAttributes[$name] = $value;
             } else {
-                $attributes[$name] = $value;
+                $attributes["s-{$name}"] = $value;
             }
         }
 
-        return new ReactiveNode($tagName, $attributes, $reactiveAttributes, $token->line);
+        $cleanAttributesString = preg_replace('/(@|s-)[a-zA-Z0-9\-\._]+(\s*=\s*(?:"[^"]*"|[^\s>]+))?/', '', $attributesString);
+        preg_match_all('/(?<name>[a-zA-Z0-9\-_]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $cleanAttributesString, $stdMatches, PREG_SET_ORDER);
+        foreach ($stdMatches as $match) {
+             $attributes[$match['name']] = $match['value'] ?? ($match['unquoted'] ?? true);
+        }
+
+        $node = new ReactiveNode($tagName, $attributes, $reactiveAttributes, $token->line);
+        if (!$isSelfClosing) {
+             $node->children = $this->parseUntilTagClose($tagName);
+        }
+
+        return $node;
+    }
+
+    private function parseUntilTagClose(string $tagName): array
+    {
+         $children = [];
+         while (!$this->isAtEnd()) {
+              $token = $this->peek();
+              if ($token->type === Token::T_TEXT && strpos($token->value, "</{$tagName}>") !== false) {
+                   // This is very naive, but for Phase 8 it works for simple cases.
+                   // A better way would be the Lexer recognizing ALL closing tags.
+                   $pos = strpos($token->value, "</{$tagName}>");
+                   if ($pos > 0) {
+                        $children[] = new TextNode(substr($token->value, 0, $pos), $token->line);
+                   }
+                   $token->value = substr($token->value, $pos + strlen("</{$tagName}>"));
+                   if ($token->value === '') $this->advance();
+                   return $children;
+              }
+              $children[] = $this->parseNode();
+         }
+         return $children;
     }
 
     private function parseProps(string $propsString): array
     {
         $props = [];
-        preg_match_all('/(?<dynamic>:)?(?<reactive>@)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $propsString, $matches, PREG_SET_ORDER);
+        preg_match_all('/(?<dynamic>:)?(?<special>@|s-)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $propsString, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             $name = $match['name'];
             $isDynamic = !empty($match['dynamic']);
-            $isReactive = !empty($match['reactive']);
+            $special = $match['special'] ?? '';
 
             $value = '';
             if (isset($match['value'])) {
@@ -216,7 +249,7 @@ class Parser
             $props[$name] = [
                 'value' => $value,
                 'dynamic' => $isDynamic,
-                'reactive' => $isReactive
+                'special' => $special
             ];
         }
 
