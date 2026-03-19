@@ -27,7 +27,9 @@ class VerificationService
             [$token, $type, date('Y-m-d H:i:s')]
         );
 
-        if (!$record) return null;
+        if (!$record) {
+            return null;
+        }
 
         $user = User::find($record['user_id']);
         if ($user) {

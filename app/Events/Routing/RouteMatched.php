@@ -8,5 +8,7 @@ use DGLab\Core\Route;
 
 class RouteMatched extends BaseEvent
 {
-    public function __construct(public Route $route, public Request $request) {}
+    public function __construct(public Route $route, public Request $request)
+    {
+    }
 }

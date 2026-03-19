@@ -193,19 +193,21 @@ class Parser
     private function parseUntilTagClose(string $tagName): array
     {
          $children = [];
-         while ($this->pos < count($this->tokens)) {
-              $token = $this->tokens[$this->pos];
-              if ($token->type === Token::T_TEXT && strpos($token->value, "</{$tagName}>") !== false) {
-                   $pos = strpos($token->value, "</{$tagName}>");
-                   if ($pos > 0) {
-                        $children[] = new TextNode(substr($token->value, 0, $pos), $token->line);
-                   }
-                   $token->value = substr($token->value, $pos + strlen("</{$tagName}>"));
-                   if ($token->value === '') $this->pos++;
-                   return $children;
-              }
-              $children[] = $this->parseNode();
-         }
+        while ($this->pos < count($this->tokens)) {
+             $token = $this->tokens[$this->pos];
+            if ($token->type === Token::T_TEXT && strpos($token->value, "</{$tagName}>") !== false) {
+                 $pos = strpos($token->value, "</{$tagName}>");
+                if ($pos > 0) {
+                    $children[] = new TextNode(substr($token->value, 0, $pos), $token->line);
+                }
+                 $token->value = substr($token->value, $pos + strlen("</{$tagName}>"));
+                if ($token->value === '') {
+                    $this->pos++;
+                }
+                 return $children;
+            }
+             $children[] = $this->parseNode();
+        }
          throw new SyntaxException("Missing </{$tagName}>", null, 0);
     }
 

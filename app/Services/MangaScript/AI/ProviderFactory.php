@@ -24,10 +24,10 @@ use DGLab\Services\MangaScript\AI\Providers\{
 
 /**
  * LLM Provider Factory
- * 
+ *
  * Factory class for creating and managing LLM provider instances.
  * Handles provider registration, instantiation, and configuration.
- * 
+ *
  * @package DGLab\Services\MangaScript\AI
  */
 class ProviderFactory
@@ -50,17 +50,17 @@ class ProviderFactory
         'bedrock' => BedrockProvider::class,
         'azure_openai' => AzureOpenAiProvider::class,
     ];
-    
+
     /**
      * Cached provider instances
      */
     protected array $instances = [];
-    
+
     /**
      * Configuration array
      */
     protected array $config;
-    
+
     /**
      * Constructor
      */
@@ -68,10 +68,10 @@ class ProviderFactory
     {
         $this->config = $config;
     }
-    
+
     /**
      * Create a provider instance
-     * 
+     *
      * @param string $providerId Provider identifier
      * @param string|null $apiKey API key (optional, uses config if not provided)
      * @param array $providerConfig Additional provider configuration
@@ -84,12 +84,12 @@ class ProviderFactory
         array $providerConfig = []
     ): LLMProviderInterface {
         $providerId = strtolower($providerId);
-        
+
         // Check for custom provider
         if (str_starts_with($providerId, 'custom_') || isset($providerConfig['custom'])) {
             return $this->createCustomProvider($providerId, $apiKey, $providerConfig);
         }
-        
+
         // Check if provider is registered
         if (!isset(self::$providers[$providerId])) {
             throw LLMProviderException::providerNotFound(
@@ -97,21 +97,21 @@ class ProviderFactory
                 array_keys(self::$providers)
             );
         }
-        
+
         // Get API key from config if not provided
         if ($apiKey === null) {
             $apiKey = $this->getApiKeyForProvider($providerId);
         }
-        
+
         // Merge configurations
         $config = array_merge(
             $this->config['providers'][$providerId] ?? [],
             $providerConfig
         );
-        
+
         // Create provider instance
         $providerClass = self::$providers[$providerId];
-        
+
         try {
             return new $providerClass($apiKey, $config);
         } catch (\Exception $e) {
@@ -121,10 +121,10 @@ class ProviderFactory
             );
         }
     }
-    
+
     /**
      * Get or create a cached provider instance
-     * 
+     *
      * @param string $providerId Provider identifier
      * @param string|null $apiKey API key
      * @param array $providerConfig Provider configuration
@@ -136,14 +136,14 @@ class ProviderFactory
         array $providerConfig = []
     ): LLMProviderInterface {
         $cacheKey = $this->getCacheKey($providerId, $apiKey, $providerConfig);
-        
+
         if (!isset($this->instances[$cacheKey])) {
             $this->instances[$cacheKey] = $this->create($providerId, $apiKey, $providerConfig);
         }
-        
+
         return $this->instances[$cacheKey];
     }
-    
+
     /**
      * Create a custom provider instance
      */
@@ -158,13 +158,13 @@ class ProviderFactory
                 "Custom provider '{$providerId}' requires an 'endpoint' configuration"
             );
         }
-        
+
         return new CustomProvider($apiKey ?? '', array_merge(
             ['provider_id' => $providerId],
             $providerConfig
         ));
     }
-    
+
     /**
      * Get API key for a provider from configuration
      */
@@ -174,7 +174,7 @@ class ProviderFactory
         if (!empty($this->config['providers'][$providerId]['api_key'])) {
             return $this->config['providers'][$providerId]['api_key'];
         }
-        
+
         // Check environment variables
         $envKeyMap = [
             'openai' => 'OPENAI_API_KEY',
@@ -189,22 +189,22 @@ class ProviderFactory
             'xai' => 'XAI_API_KEY',
             'azure_openai' => 'AZURE_OPENAI_API_KEY',
         ];
-        
+
         if (isset($envKeyMap[$providerId])) {
             $envKey = getenv($envKeyMap[$providerId]);
             if ($envKey !== false && $envKey !== '') {
                 return $envKey;
             }
         }
-        
+
         // For Ollama and Bedrock (uses IAM), no API key required
         if (in_array($providerId, ['ollama', 'bedrock'])) {
             return '';
         }
-        
+
         throw LLMProviderException::missingApiKey($providerId);
     }
-    
+
     /**
      * Generate cache key for provider instance
      */
@@ -212,10 +212,10 @@ class ProviderFactory
     {
         return md5($providerId . ($apiKey ?? '') . json_encode($config));
     }
-    
+
     /**
      * Register a new provider class
-     * 
+     *
      * @param string $providerId Provider identifier
      * @param string $providerClass Fully qualified class name
      */
@@ -226,20 +226,20 @@ class ProviderFactory
                 "Provider class must implement LLMProviderInterface"
             );
         }
-        
+
         self::$providers[strtolower($providerId)] = $providerClass;
     }
-    
+
     /**
      * Get all registered provider identifiers
-     * 
+     *
      * @return array<string>
      */
     public static function getRegisteredProviders(): array
     {
         return array_keys(self::$providers);
     }
-    
+
     /**
      * Check if a provider is registered
      */
@@ -247,7 +247,7 @@ class ProviderFactory
     {
         return isset(self::$providers[strtolower($providerId)]);
     }
-    
+
     /**
      * Get provider class for a provider ID
      */
@@ -255,7 +255,7 @@ class ProviderFactory
     {
         return self::$providers[strtolower($providerId)] ?? null;
     }
-    
+
     /**
      * Clear cached instances
      */
@@ -263,16 +263,16 @@ class ProviderFactory
     {
         $this->instances = [];
     }
-    
+
     /**
      * Get all providers with their availability status
-     * 
+     *
      * @return array<string, array{available: bool, reason: string|null}>
      */
     public function getProviderAvailability(): array
     {
         $availability = [];
-        
+
         foreach (self::$providers as $providerId => $class) {
             try {
                 $apiKey = $this->getApiKeyForProvider($providerId);
@@ -289,20 +289,20 @@ class ProviderFactory
                 ];
             }
         }
-        
+
         return $availability;
     }
-    
+
     /**
      * Create multiple providers at once
-     * 
+     *
      * @param array<string> $providerIds List of provider identifiers
      * @return array<string, LLMProviderInterface>
      */
     public function createMultiple(array $providerIds): array
     {
         $providers = [];
-        
+
         foreach ($providerIds as $providerId) {
             try {
                 $providers[$providerId] = $this->get($providerId);
@@ -311,19 +311,19 @@ class ProviderFactory
                 continue;
             }
         }
-        
+
         return $providers;
     }
-    
+
     /**
      * Get provider capabilities summary
-     * 
+     *
      * @return array<string, array>
      */
     public function getCapabilitiesSummary(): array
     {
         $summary = [];
-        
+
         foreach (self::$providers as $providerId => $class) {
             try {
                 $provider = $this->get($providerId);
@@ -342,7 +342,7 @@ class ProviderFactory
                 ];
             }
         }
-        
+
         return $summary;
     }
 }

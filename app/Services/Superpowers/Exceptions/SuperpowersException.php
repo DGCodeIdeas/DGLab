@@ -16,7 +16,16 @@ class SuperpowersException extends \RuntimeException
         $this->sourceCode = $sourceCode;
     }
 
-    public function getViewPath(): ?string { return $this->viewPath; }
-    public function getViewLine(): ?int { return $this->viewLine; }
-    public function getSourceCode(): ?string { return $this->sourceCode; }
+    public function getViewPath(): ?string
+    {
+        return $this->viewPath;
+    }
+    public function getViewLine(): ?int
+    {
+        return $this->viewLine;
+    }
+    public function getSourceCode(): ?string
+    {
+        return $this->sourceCode;
+    }
 }

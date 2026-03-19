@@ -57,7 +57,9 @@ class UserRepository
         $usernamePattern = config('auth.validation.username', '/^[a-zA-Z0-9_-]{3,100}$/');
         if (preg_match($usernamePattern, $identifier)) {
              $user = User::findBy(['username' => $identifier]);
-             if ($user) return $user;
+            if ($user) {
+                return $user;
+            }
         }
 
         $phonePattern = config('auth.validation.phone', '/^\+?[0-9]{7,20}$/');

@@ -10,7 +10,11 @@ use DGLab\Services\Auth\Gate;
 class User extends Model
 {
     protected ?string $table = 'users';
-    protected array $fillable = ['uuid', 'email', 'username', 'phone_number', 'password_hash', 'password_algo', 'display_name', 'avatar_url', 'status', 'mfa_enabled', 'mfa_secret', 'mfa_backup_codes', 'last_login_at'];
+    protected array $fillable = [
+        'uuid', 'email', 'username', 'phone_number', 'password_hash', 'password_algo',
+        'display_name', 'avatar_url', 'status', 'mfa_enabled', 'mfa_secret',
+        'mfa_backup_codes', 'last_login_at'
+    ];
     protected array $guarded = ['id', 'password_hash'];
 
     public function can(string $permission, array $arguments = []): bool
@@ -28,7 +32,8 @@ class User extends Model
 
     public function isActive(): bool
     {
-        return $this->status === 'active' && (!isset($this->attributes['deleted_at']) || $this->attributes['deleted_at'] === null);
+        return $this->status === 'active' &&
+            (!isset($this->attributes['deleted_at']) || $this->attributes['deleted_at'] === null);
     }
 
     public function hasMfa(): bool
@@ -38,7 +43,9 @@ class User extends Model
 
     public function delete(): bool
     {
-        if (!$this->exists) return false;
+        if (!$this->exists) {
+            return false;
+        }
         $this->attributes['deleted_at'] = date($this->dateFormat);
         return $this->update();
     }

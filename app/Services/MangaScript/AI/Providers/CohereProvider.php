@@ -9,16 +9,16 @@ use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
  * Cohere LLM Provider
- * 
+ *
  * Implements the Cohere API for enterprise-grade language models
  * with strong RAG and embedding capabilities.
- * 
+ *
  * Features:
  * - Command models for generation
  * - Strong multilingual support
  * - Built-in RAG with connectors
  * - Document grounding for factual responses
- * 
+ *
  * @package DGLab\Services\MangaScript\AI\Providers
  */
 class CohereProvider extends AbstractLLMProvider
@@ -27,17 +27,17 @@ class CohereProvider extends AbstractLLMProvider
      * Provider identifier
      */
     protected string $providerId = 'cohere';
-    
+
     /**
      * Provider display name
      */
     protected string $providerName = 'Cohere';
-    
+
     /**
      * Default API endpoint
      */
     protected string $defaultEndpoint = 'https://api.cohere.ai/v2/chat';
-    
+
     /**
      * Available models with their specifications
      */
@@ -61,7 +61,7 @@ class CohereProvider extends AbstractLLMProvider
             'cost_per_1k_input' => 0.0025,
             'cost_per_1k_output' => 0.01,
         ],
-        
+
         // Command R models
         'command-r-08-2024' => [
             'context_window' => 128000,
@@ -81,7 +81,7 @@ class CohereProvider extends AbstractLLMProvider
             'cost_per_1k_input' => 0.00015,
             'cost_per_1k_output' => 0.0006,
         ],
-        
+
         // Command models (legacy)
         'command' => [
             'context_window' => 4096,
@@ -102,7 +102,7 @@ class CohereProvider extends AbstractLLMProvider
             'cost_per_1k_output' => 0.0006,
         ],
     ];
-    
+
     /**
      * Default model for this provider
      */
@@ -118,24 +118,24 @@ class CohereProvider extends AbstractLLMProvider
     ): LLMResponse {
         $model = $options['model'] ?? $this->defaultModel;
         $this->validateModel($model);
-        
+
         $modelSpec = $this->availableModels[$model];
-        
+
         // Build messages array for v2 API
         $messages = [];
-        
+
         if ($systemPrompt !== null) {
             $messages[] = [
                 'role' => 'system',
                 'content' => $systemPrompt,
             ];
         }
-        
+
         $messages[] = [
             'role' => 'user',
             'content' => $prompt,
         ];
-        
+
         $payload = [
             'model' => $model,
             'messages' => $messages,
@@ -146,40 +146,39 @@ class CohereProvider extends AbstractLLMProvider
             ),
             'stream' => false,
         ];
-        
+
         // Add response format for JSON mode
         if (($options['json_mode'] ?? false) && $modelSpec['supports_json_mode']) {
             $payload['response_format'] = ['type' => 'json_object'];
         }
-        
+
         // Add safety mode
         if (isset($options['safety_mode'])) {
             $payload['safety_mode'] = $options['safety_mode']; // CONTEXTUAL, STRICT, NONE
         }
-        
+
         // Add stop sequences
         if (!empty($options['stop'])) {
             $payload['stop_sequences'] = $options['stop'];
         }
-        
+
         // Add document grounding if provided
         if (!empty($options['documents'])) {
             $payload['documents'] = $options['documents'];
         }
-        
+
         // Add citation quality
         if (isset($options['citation_quality'])) {
             $payload['citation_quality'] = $options['citation_quality'];
         }
-        
+
         $startTime = microtime(true);
-        
+
         try {
             $response = $this->makeRequest($payload);
             $latency = (microtime(true) - $startTime) * 1000;
-            
+
             return $this->parseResponse($response, $model, $latency);
-            
         } catch (\Exception $e) {
             throw LLMProviderException::requestFailed(
                 $this->providerId,
@@ -200,26 +199,26 @@ class CohereProvider extends AbstractLLMProvider
     ): LLMResponse {
         $model = $options['model'] ?? $this->defaultModel;
         $this->validateModel($model);
-        
+
         $modelSpec = $this->availableModels[$model];
-        
+
         // Build messages array
         $formattedMessages = [];
-        
+
         if ($systemPrompt !== null) {
             $formattedMessages[] = [
                 'role' => 'system',
                 'content' => $systemPrompt,
             ];
         }
-        
+
         foreach ($messages as $message) {
             $formattedMessages[] = [
                 'role' => $message['role'],
                 'content' => $message['content'],
             ];
         }
-        
+
         $payload = [
             'model' => $model,
             'messages' => $formattedMessages,
@@ -230,19 +229,18 @@ class CohereProvider extends AbstractLLMProvider
             ),
             'stream' => false,
         ];
-        
+
         if (($options['json_mode'] ?? false) && $modelSpec['supports_json_mode']) {
             $payload['response_format'] = ['type' => 'json_object'];
         }
-        
+
         $startTime = microtime(true);
-        
+
         try {
             $response = $this->makeRequest($payload);
             $latency = (microtime(true) - $startTime) * 1000;
-            
+
             return $this->parseResponse($response, $model, $latency);
-            
         } catch (\Exception $e) {
             throw LLMProviderException::requestFailed(
                 $this->providerId,
@@ -259,9 +257,9 @@ class CohereProvider extends AbstractLLMProvider
     protected function makeRequest(array $payload): array
     {
         $endpoint = $this->config['endpoint'] ?? $this->defaultEndpoint;
-        
+
         $ch = curl_init($endpoint);
-        
+
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
@@ -274,24 +272,24 @@ class CohereProvider extends AbstractLLMProvider
             CURLOPT_TIMEOUT => $this->config['timeout'] ?? 120,
             CURLOPT_CONNECTTIMEOUT => $this->config['connect_timeout'] ?? 10,
         ]);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        
+
         curl_close($ch);
-        
+
         if ($error) {
             throw new \RuntimeException("cURL error: {$error}");
         }
-        
+
         $data = json_decode($response, true);
-        
+
         if ($httpCode !== 200) {
             $errorMessage = $data['message'] ?? 'Unknown error';
             throw new \RuntimeException("API error ({$httpCode}): {$errorMessage}", $httpCode);
         }
-        
+
         return $data;
     }
 
@@ -301,7 +299,7 @@ class CohereProvider extends AbstractLLMProvider
     protected function parseResponse(array $response, string $model, float $latency): LLMResponse
     {
         $content = '';
-        
+
         // v2 API returns message with content array
         if (isset($response['message']['content'])) {
             foreach ($response['message']['content'] as $block) {
@@ -310,18 +308,18 @@ class CohereProvider extends AbstractLLMProvider
                 }
             }
         }
-        
+
         $finishReason = $response['finish_reason'] ?? 'unknown';
-        
+
         $usage = $response['usage'] ?? [];
         $inputTokens = $usage['billed_units']['input_tokens'] ?? $usage['tokens']['input_tokens'] ?? 0;
         $outputTokens = $usage['billed_units']['output_tokens'] ?? $usage['tokens']['output_tokens'] ?? 0;
-        
+
         // Calculate cost
         $modelSpec = $this->availableModels[$model];
         $cost = (($inputTokens / 1000) * $modelSpec['cost_per_1k_input']) +
                 (($outputTokens / 1000) * $modelSpec['cost_per_1k_output']);
-        
+
         return new LLMResponse(
             content: $content,
             provider: $this->providerId,

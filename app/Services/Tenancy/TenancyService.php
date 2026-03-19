@@ -18,7 +18,9 @@ class TenancyService
 
     public function getCurrentTenant(): ?Tenant
     {
-        if ($this->currentTenant) return $this->currentTenant;
+        if ($this->currentTenant) {
+            return $this->currentTenant;
+        }
         $this->currentTenant = $this->identify();
         return $this->currentTenant;
     }
@@ -44,7 +46,9 @@ class TenancyService
         $host = $this->request->getServer('HTTP_HOST');
         if ($host) {
             $tenant = Tenant::findBy(['domain' => $host]);
-            if ($tenant) return $tenant;
+            if ($tenant) {
+                return $tenant;
+            }
         }
 
         return null;
@@ -53,7 +57,9 @@ class TenancyService
     public function requireTenant(): Tenant
     {
         $tenant = $this->getCurrentTenant();
-        if (!$tenant) throw new RuntimeException("Tenant context required.");
+        if (!$tenant) {
+            throw new RuntimeException("Tenant context required.");
+        }
         return $tenant;
     }
 }

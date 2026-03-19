@@ -128,9 +128,13 @@ class View
 
         $extensions = array_keys($this->engines);
 
-        usort($extensions, function($a, $b) {
-            if ($a === 'super.php') return -1;
-            if ($b === 'super.php') return 1;
+        usort($extensions, function ($a, $b) {
+            if ($a === 'super.php') {
+                return -1;
+            }
+            if ($b === 'super.php') {
+                return 1;
+            }
             return 0;
         });
 
@@ -143,37 +147,37 @@ class View
 
         if ($directory === $this->viewPath) {
              $layoutTemplate = $normalizedTemplate;
-             if (strpos($layoutTemplate, 'layouts/') === 0) {
-                 $layoutTemplate = substr($layoutTemplate, 8);
-             }
+            if (strpos($layoutTemplate, 'layouts/') === 0) {
+                $layoutTemplate = substr($layoutTemplate, 8);
+            }
 
              $layoutBasePath = $this->layoutPath . '/' . $layoutTemplate;
-             foreach ($extensions as $ext) {
-                 $file = $layoutBasePath . '.' . $ext;
-                 if (file_exists($file)) {
-                     return [$file, $this->engines[$ext]];
-                 }
-             }
+            foreach ($extensions as $ext) {
+                $file = $layoutBasePath . '.' . $ext;
+                if (file_exists($file)) {
+                    return [$file, $this->engines[$ext]];
+                }
+            }
 
              $componentTemplate = $normalizedTemplate;
-             if (strpos($componentTemplate, 'components/') === 0) {
-                 $componentTemplate = substr($componentTemplate, 11);
-             }
+            if (strpos($componentTemplate, 'components/') === 0) {
+                $componentTemplate = substr($componentTemplate, 11);
+            }
              $componentBasePath = $this->viewPath . '/components/' . $componentTemplate;
-             foreach ($extensions as $ext) {
-                 $file = $componentBasePath . '.' . $ext;
-                 if (file_exists($file)) {
-                     return [$file, $this->engines[$ext]];
-                 }
-             }
+            foreach ($extensions as $ext) {
+                $file = $componentBasePath . '.' . $ext;
+                if (file_exists($file)) {
+                    return [$file, $this->engines[$ext]];
+                }
+            }
 
              $componentBasePath = $this->viewPath . '/components/' . $normalizedTemplate;
-             foreach ($extensions as $ext) {
-                 $file = $componentBasePath . '.' . $ext;
-                 if (file_exists($file)) {
-                     return [$file, $this->engines[$ext]];
-                 }
-             }
+            foreach ($extensions as $ext) {
+                $file = $componentBasePath . '.' . $ext;
+                if (file_exists($file)) {
+                    return [$file, $this->engines[$ext]];
+                }
+            }
         }
 
         throw new \RuntimeException("View not found: {$template} at {$basePath}");

@@ -25,7 +25,9 @@ class Gate
     public function check(string $ability, array $arguments = []): bool
     {
         $user = $this->resolveUser();
-        if (!$user) return false;
+        if (!$user) {
+            return false;
+        }
 
         if (isset($this->abilities[$ability])) {
             return call_user_func($this->abilities[$ability], $user, ...$arguments);

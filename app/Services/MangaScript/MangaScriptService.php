@@ -39,13 +39,25 @@ class MangaScriptService extends BaseService implements ChunkedServiceInterface
             $result = $this->routing->route($input)->execute();
 
             $latency = (int)((microtime(true) - $startTime) * 1000);
-            $this->audit->log('mangascript', 'mangascript.process.success', $input['title'] ?? 'Untitled', [], 200, $latency);
+            $this->audit->log(
+                'mangascript',
+                'mangascript.process.success',
+                $input['title'] ?? 'Untitled',
+                [],
+                200,
+                $latency
+            );
 
             event('mangascript.process.completed', ['title' => $input['title'] ?? 'Untitled', 'latency' => $latency]);
 
             return $result;
         } catch (\Exception $e) {
-            $this->audit->log('mangascript', 'mangascript.process.failed', $input['title'] ?? 'Untitled', ['error' => $e->getMessage()]);
+            $this->audit->log(
+                'mangascript',
+                'mangascript.process.failed',
+                $input['title'] ?? 'Untitled',
+                ['error' => $e->getMessage()]
+            );
             event('mangascript.process.failed', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -76,6 +88,3 @@ class MangaScriptService extends BaseService implements ChunkedServiceInterface
         return $this->process($chunk);
     }
 }
-
-// Legacy Compatibility Layer
-class_alias(MangaScriptService::class, 'DGLab\Services\MangaScript\NovelToMangaScript');

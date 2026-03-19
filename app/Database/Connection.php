@@ -136,21 +136,29 @@ class Connection
     public function beginTransaction(): bool
     {
         $this->transactionLevel++;
-        if ($this->transactionLevel === 1) return $this->getPdo()->beginTransaction();
+        if ($this->transactionLevel === 1) {
+            return $this->getPdo()->beginTransaction();
+        }
         return true;
     }
 
     public function commit(): bool
     {
-        if ($this->transactionLevel === 0) return false;
+        if ($this->transactionLevel === 0) {
+            return false;
+        }
         $this->transactionLevel--;
-        if ($this->transactionLevel === 0) return $this->getPdo()->commit();
+        if ($this->transactionLevel === 0) {
+            return $this->getPdo()->commit();
+        }
         return true;
     }
 
     public function rollBack(): bool
     {
-        if ($this->transactionLevel === 0) return false;
+        if ($this->transactionLevel === 0) {
+            return false;
+        }
         $this->transactionLevel = 0;
         return $this->getPdo()->rollBack();
     }
@@ -166,8 +174,12 @@ class Connection
                 return $callback();
             } catch (PDOException $e) {
                 $lastException = $e;
-                if (!$this->shouldRetry($e) || $i === $attempts - 1) throw $e;
-                if ($this->isGoneAway($e)) $this->pdo = null;
+                if (!$this->shouldRetry($e) || $i === $attempts - 1) {
+                    throw $e;
+                }
+                if ($this->isGoneAway($e)) {
+                    $this->pdo = null;
+                }
                 usleep($delay * 1000);
                 $delay *= $multiplier;
             }
@@ -182,18 +194,24 @@ class Connection
 
     private function shouldRetry(PDOException $e): bool
     {
-        if ($e->getCode() === '42000') return false;
+        if ($e->getCode() === '42000') {
+            return false;
+        }
         return $this->isGoneAway($e) || $e->getCode() === '40001';
     }
 
     private function logQuery(string $sql, array $bindings): void
     {
-        if ($this->isLoggingQuery) return;
+        if ($this->isLoggingQuery) {
+            return;
+        }
         $this->isLoggingQuery = true;
         $time = microtime(true);
         try {
             event(new \DGLab\Events\Database\QueryExecuted($sql, $bindings, $time, $this->getDriver()));
-            if ($this->logging) $this->queryLog[] = ['sql' => $sql, 'bindings' => $bindings, 'time' => $time];
+            if ($this->logging) {
+                $this->queryLog[] = ['sql' => $sql, 'bindings' => $bindings, 'time' => $time];
+            }
         } finally {
             $this->isLoggingQuery = false;
         }

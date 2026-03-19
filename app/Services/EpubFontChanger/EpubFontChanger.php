@@ -135,7 +135,9 @@ class EpubFontChanger extends BaseService implements ChunkedServiceInterface
 
         foreach ($cssFiles as $cssFile) {
             $cssFilePath = $extractPath . '/' . $cssFile['href'];
-            if (!file_exists($cssFilePath)) continue;
+            if (!file_exists($cssFilePath)) {
+                continue;
+            }
 
             $cssContent = file_get_contents($cssFilePath);
 

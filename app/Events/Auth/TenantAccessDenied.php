@@ -8,5 +8,7 @@ use DGLab\Models\Tenant;
 
 class TenantAccessDenied extends BaseEvent
 {
-    public function __construct(public User $user, public Tenant $tenant) {}
+    public function __construct(public User $user, public Tenant $tenant)
+    {
+    }
 }

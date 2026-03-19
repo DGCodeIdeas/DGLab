@@ -34,14 +34,30 @@ class Lexer
         $this->line = 1;
 
         while ($this->input !== '') {
-            if ($this->matchLifecycle()) continue;
-            if ($this->matchExpressionRaw()) continue;
-            if ($this->matchExpressionEscaped()) continue;
-            if ($this->matchComponentSelfClosing()) continue;
-            if ($this->matchComponentOpen()) continue;
-            if ($this->matchComponentClose()) continue;
-            if ($this->matchReactiveTag()) continue;
-            if ($this->matchDirective()) continue;
+            if ($this->matchLifecycle()) {
+                continue;
+            }
+            if ($this->matchExpressionRaw()) {
+                continue;
+            }
+            if ($this->matchExpressionEscaped()) {
+                continue;
+            }
+            if ($this->matchComponentSelfClosing()) {
+                continue;
+            }
+            if ($this->matchComponentOpen()) {
+                continue;
+            }
+            if ($this->matchComponentClose()) {
+                continue;
+            }
+            if ($this->matchReactiveTag()) {
+                continue;
+            }
+            if ($this->matchDirective()) {
+                continue;
+            }
 
             $this->matchText();
         }
@@ -130,17 +146,21 @@ class Lexer
              $inSingleQuote = false;
              $len = strlen($content);
 
-             for ($i = 0; $i < $len; $i++) {
-                  $char = $content[$i];
-                  if ($char === '"' && !$inSingleQuote) $inDoubleQuote = !$inDoubleQuote;
-                  if ($char === "'" && !$inDoubleQuote) $inSingleQuote = !$inSingleQuote;
-                  if ($char === '>' && !$inDoubleQuote && !$inSingleQuote) {
-                       $tag = substr($content, 0, $i + 1);
-                       $this->pushToken(Token::T_REACTIVE_TAG, $tag);
-                       $this->consume($tag);
-                       return true;
-                  }
-             }
+            for ($i = 0; $i < $len; $i++) {
+                 $char = $content[$i];
+                if ($char === '"' && !$inSingleQuote) {
+                    $inDoubleQuote = !$inDoubleQuote;
+                }
+                if ($char === "'" && !$inDoubleQuote) {
+                    $inSingleQuote = !$inSingleQuote;
+                }
+                if ($char === '>' && !$inDoubleQuote && !$inSingleQuote) {
+                     $tag = substr($content, 0, $i + 1);
+                     $this->pushToken(Token::T_REACTIVE_TAG, $tag);
+                     $this->consume($tag);
+                     return true;
+                }
+            }
         }
         return false;
     }
@@ -160,9 +180,9 @@ class Lexer
                     }
                 } elseif ($special === '<') {
                      $remaining = substr($this->input, $pos);
-                     if (preg_match(self::P['REAC'], $remaining) && !preg_match('/^<s:/', $remaining)) {
-                          $closestPos = $pos;
-                     }
+                    if (preg_match(self::P['REAC'], $remaining) && !preg_match('/^<s:/', $remaining)) {
+                         $closestPos = $pos;
+                    }
                 } else {
                     $closestPos = $pos;
                 }
@@ -173,7 +193,7 @@ class Lexer
             $text = substr($this->input, 0, $closestPos);
             $this->pushToken(Token::T_TEXT, $text);
             $this->consume($text);
-        } else if ($closestPos === 0 && $this->input !== '') {
+        } elseif ($closestPos === 0 && $this->input !== '') {
             $char = $this->input[0];
             $this->pushToken(Token::T_TEXT, $char);
             $this->consume($char);

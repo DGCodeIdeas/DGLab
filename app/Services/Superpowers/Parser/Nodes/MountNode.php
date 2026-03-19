@@ -5,7 +5,8 @@ namespace DGLab\Services\Superpowers\Parser\Nodes;
 class MountNode extends Node
 {
     public string $code;
-    public function __construct(string $code, int $line) {
+    public function __construct(string $code, int $line)
+    {
         parent::__construct($line);
         $this->code = $code;
     }
