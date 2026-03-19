@@ -2,15 +2,22 @@
 
 namespace DGLab\Services\Download;
 
-use DGLab\Database\DownloadAuditLog;
+use DGLab\Core\AuditService as CoreAudit;
 
 /**
  * Download Audit Service
  *
- * Handles recording of download interactions for observability.
+ * Refactored to utilize the unified Core Audit Service.
  */
 class AuditService
 {
+    protected CoreAudit $audit;
+
+    public function __construct(CoreAudit $audit)
+    {
+        $this->audit = $audit;
+    }
+
     /**
      * Start timing a download
      */
@@ -32,26 +39,25 @@ class AuditService
     ): void {
         $latency = $startTime ? (int)((microtime(true) - $startTime) * 1000) : 0;
 
-        // Emit events based on status
+        // Emit standardized dot-notation events
         if ($statusCode >= 400) {
-            event(new \DGLab\Events\Download\DownloadFailed($path, $driver, $statusCode, $errorMessage ?? 'Unknown error'));
+            event('download.failed', ['path' => $path, 'driver' => $driver, 'status' => $statusCode, 'error' => $errorMessage]);
         } else {
-            event(new \DGLab\Events\Download\FileDownloaded($path, $driver, $statusCode, (float)$latency, $bytes));
+            event('download.success', ['path' => $path, 'driver' => $driver, 'status' => $statusCode, 'latency' => $latency, 'bytes' => $bytes]);
         }
 
-        try {
-            DownloadAuditLog::create([
-                'file_path' => $path,
+        // Log to unified audit
+        $this->audit->log(
+            'download',
+            $statusCode >= 400 ? 'download.failed' : 'download.success',
+            $path,
+            [
                 'driver' => $driver,
-                'status_code' => $statusCode,
                 'error_message' => $errorMessage,
-                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                'download_time_ms' => $latency,
                 'bytes_served' => $bytes,
-            ]);
-        } catch (\Exception $e) {
-            // Fail silently to prevent crashing the download
-        }
+            ],
+            $statusCode,
+            $latency
+        );
     }
 }

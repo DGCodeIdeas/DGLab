@@ -18,11 +18,11 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         
-        // Reset application singleton
+        // Reset application set
         Application::flush();
         
         // Create fresh application instance
-        $this->app = Application::getInstance();
+        $this->app = new Application(dirname(__DIR__, 1));
         
         // Register test services
         $this->registerTestServices();
@@ -42,10 +42,10 @@ abstract class TestCase extends BaseTestCase
      */
     protected function registerTestServices(): void
     {
-        $this->app->singleton(\DGLab\Core\Router::class);
+        $this->app->set(\DGLab\Core\Router::class, function($app) { return new \DGLab\Core\Router($app); });
 
         // Override with test implementations
-        $this->app->singleton(\DGLab\Database\Connection::class, function () {
+        $this->app->set(\DGLab\Database\Connection::class, function () {
             return new \DGLab\Database\Connection([
                 'default' => 'sqlite',
                 'connections' => [

@@ -3,12 +3,16 @@
 namespace DGLab\Services\Auth;
 
 use DGLab\Core\Application;
+use DGLab\Core\AuditService;
 use DGLab\Services\Auth\Contracts\AuthGuardInterface;
 use InvalidArgumentException;
-use DGLab\Events\Auth\UserLoggedIn;
-use DGLab\Events\Auth\LoginFailed;
-use DGLab\Events\Auth\UserLoggedOut;
+use DGLab\Core\Request;
 
+/**
+ * AuthManager
+ *
+ * Orchestrates multiple authentication guards and standardized event dispatching.
+ */
 class AuthManager
 {
     protected Application $app;
@@ -39,7 +43,7 @@ class AuthManager
             if ($success) {
                 $this->onLoginSuccess($guard->user());
             } else {
-                $this->onLoginFailure($credentials['login'] ?? 'unknown');
+                $this->onLoginFailure($credentials['login'] ?? ($credentials['email'] ?? 'unknown'));
             }
             return $success;
         }
@@ -48,22 +52,22 @@ class AuthManager
 
     protected function onLoginSuccess($user): void
     {
-        $this->app->get(AuthAuditService::class)->log('login.success', $user);
-        event(new UserLoggedIn($user));
+        $this->app->get(AuditService::class)->log('auth', 'auth.login.success', $user->email);
+        event('auth.login.success', ['user_id' => $user->id]);
     }
 
     protected function onLoginFailure(string $identifier): void
     {
-        $this->app->get(AuthAuditService::class)->log('login.failed', null, $identifier);
-        event(new LoginFailed($identifier));
+        $this->app->get(AuditService::class)->log('auth', 'auth.login.failed', $identifier);
+        event('auth.login.failed', ['identifier' => $identifier]);
     }
 
     public function logout(): void
     {
         $user = $this->user();
         if ($user) {
-            $this->app->get(AuthAuditService::class)->log('logout', $user);
-            event(new UserLoggedOut($user));
+            $this->app->get(AuditService::class)->log('auth', 'auth.logout', $user->email);
+            event('auth.logout', ['user_id' => $user->id]);
         }
         $this->guard()->logout();
     }
@@ -85,19 +89,19 @@ class AuthManager
     protected function createSessionDriver(string $name, array $config)
     {
         $provider = $this->createUserProvider($config['provider'] ?? null);
-        return new \DGLab\Services\Auth\Guards\SessionGuard($name, $provider, $this->app->get(\DGLab\Core\Request::class));
+        return new \DGLab\Services\Auth\Guards\SessionGuard($name, $provider, $this->app->get(Request::class));
     }
 
     protected function createTokenDriver(string $name, array $config)
     {
         $provider = $this->createUserProvider($config['provider'] ?? null);
-        return new \DGLab\Services\Auth\Guards\OpaqueTokenGuard($provider, $this->app->get(\DGLab\Core\Request::class));
+        return new \DGLab\Services\Auth\Guards\OpaqueTokenGuard($provider, $this->app->get(Request::class));
     }
 
     protected function createJwtDriver(string $name, array $config)
     {
         $provider = $this->createUserProvider($config['provider'] ?? null);
-        return new \DGLab\Services\Auth\Guards\JwtGuard($provider, $this->app->get(\DGLab\Core\Request::class), $this->app->get(JWTService::class));
+        return new \DGLab\Services\Auth\Guards\JwtGuard($provider, $this->app->get(Request::class), $this->app->get(JWTService::class));
     }
 
     public function createUserProvider(?string $provider = null)

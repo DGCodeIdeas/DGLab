@@ -5,10 +5,10 @@
  *
  * Standardized response object from any LLM provider.
  *
- * @package DGLab\Services\NovelToMangaScript\AI
+ * @package DGLab\Services\MangaScript\AI
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI;
+namespace DGLab\Services\MangaScript\AI;
 
 /**
  * Class LLMResponse

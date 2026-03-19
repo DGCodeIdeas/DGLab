@@ -1,39 +1,45 @@
-# MangaScript Service Refactor Blueprint
+# MangaScript Studio: AI Orchestration Ecosystem
 
-## Project Vision
-To transform the existing `NovelToMangaScript` service into `MangaScript`, a high-performance, modular, and meticulously observable AI orchestration service. This refactor aims to move beyond simple text-to-text conversion into a robust system that handles multi-modal inputs, asynchronous processing, and deep integration with the DGLab core framework ecosystem (CMS, EventDispatcher, and DownloadService).
+## Overview
+MangaScript is a premier "Studio App" within the DGLab framework, specializing in the high-fidelity transformation of novels into detailed manga scripts. It leverages the framework's core services—Auth (Phases 1-4), Tenancy, EventDispatcher, CMS, and DownloadService—to provide a secure, scalable, and reactive multi-modal experience.
 
-## Architecture
-The new `MangaScript` service will adopt a more modular and extensible architecture:
-- **Core Orchestrator**: `MangaScriptService` as the primary entry point, handling request lifecycle and coordination.
-- **AI Orchestration Layer**: Enhanced `RoutingEngine` and `ProviderRepository` supporting streaming, multi-modal (Vision) capabilities, and granular cost tracking.
-- **Data Layer**: Deep integration with the `CMS` for script versioning, multi-tenant isolation, and persistence.
-- **Asynchronous Engine**: Integration with `EventDispatcher` for handling long-running conversions and real-time event-driven updates.
-- **Delivery Layer**: Utilization of the `DownloadService` for secure, audited export of generated scripts in multiple formats.
+## Strategic Vision
+Instead of a simple utility, MangaScript is refactored into a full-scale "Workspace" that integrates:
+- **Intelligent LLM Orchestration**: Using `llm_unified.php` and `llm_categorization.php` for dynamic model selection.
+- **CMS Integration**: Leveraging the "Hybrid EAV" strategy for script versioning and metadata management.
+- **SuperPHP Reactive UI**: A modern, interactive frontend built with `<s:components>` and real-time state synchronization.
+- **Event-Driven Pipeline**: Background processing of massive novels via the `EventDispatcher`.
+- **Secure Delivery**: Distribution of final scripts through the `DownloadService` with signed, expiring URLs.
 
-## Phased Implementation Roadmap
+## Core Pillars
+1. **Precision**: High-fidelity panel descriptions including character positioning and camera angles.
+2. **Persistence**: Deep CMS integration for multi-tenant script management.
+3. **Observability**: Meticulous auditing of AI usage, cost, and latency via the unified `AuditService`.
+4. **Interactivity**: A real-time, reactive workspace powered by SuperPHP.
 
-### [Phase 1: Core Engine & Renaming (PENDING)](PHASE_1_CORE_ENGINE_RENAMING.md)
+## Phase Overview
+
+### [Phase 1: Core Engine & Renaming (COMPLETED)](PHASE_1_CORE_ENGINE_RENAMING.md)
 - Formal renaming of `NovelToMangaScript` to `MangaScript`.
-- Refactoring the base service interface to support advanced capabilities.
-- Setting up the foundational namespace and configuration structures.
+- Refactoring the engine to extend `BaseService` and use unified LLM configurations.
+- Implementation of the `MangaScript` facade and helper.
 
-### [Phase 2: AI Orchestration & Multi-Modal Support (PENDING)](PHASE_2_AI_ORCHESTRATION.md)
-- Implementation of the enhanced `RoutingEngine` for intelligent AI selection.
+### [Phase 2: Multi-Modal AI Orchestration (PENDING)](PHASE_2_AI_ORCHESTRATION.md)
+- Implementation of the enhanced `RoutingEngine` for intelligent AI selection based on context size and task specialization.
 - Support for Vision models to analyze character designs or reference images.
-- Implementation of real-time streaming for long script generation.
+- Implementation of real-time streaming for long script generation via the SuperPHP reactive bridge.
 
-### [Phase 3: CMS & Tenancy Integration (PENDING)](PHASE_3_CMS_TENANCY_INTEGRATION.md)
-- Migration of script storage to the `CMS` core engine.
+### [Phase 3: CMS Studio & Tenancy Integration (PENDING)](PHASE_3_CMS_TENANCY_INTEGRATION.md)
+- Migration of script storage to the `CMS` core engine (Hybrid EAV).
 - Implementation of multi-tenant isolation for script data.
-- Foundational content models for `MangaScript` entries and versions.
+- Integration with the `MediaLibraryService` for reference image storage.
 
-### [Phase 4: Event-Driven & Async Infrastructure (PENDING)](PHASE_4_EVENT_DRIVEN_ASYNC.md)
+### [Phase 4: Event-Driven Async Pipeline (PENDING)](PHASE_4_EVENT_DRIVEN_ASYNC.md)
 - Integration with `EventDispatcher` for background processing of large novels.
-- Event-based notification system for generation progress and completion.
-- Support for distributed processing across multiple workers.
+- Dispatching dot-notation events (e.g., `mangascript.job.completed`) for lifecycle hooks.
+- Real-time progress tracking in the UI via the EventDispatcher's `QueueDriver`.
 
-### [Phase 5: Observability, Delivery & Global Integration (PENDING)](PHASE_5_OBSERVABILITY_DELIVERY.md)
-- Integration with `DownloadService` for script exports (PDF, Markdown, JSON).
-- Meticulous audit logging of AI usage, performance, and costs.
+### [Phase 5: Delivery & Meticulous Observability (PENDING)](PHASE_5_OBSERVABILITY_DELIVERY.md)
+- Integration with `DownloadService` for script exports (PDF, Markdown, JSON) via signed URLs.
 - Global framework integration with facades and helpers.
+- Usage and cost auditing via the unified `AuditService`.

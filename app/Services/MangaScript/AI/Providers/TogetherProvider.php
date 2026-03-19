@@ -1,125 +1,107 @@
 <?php
 
 /**
- * DGLab OpenRouter Provider
+ * DGLab Together AI Provider
  *
- * Implementation for OpenRouter API (aggregator for 100+ models).
+ * Implementation for Together AI API (open source models hosting).
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
- * Class OpenRouterProvider
+ * Class TogetherProvider
  *
- * OpenRouter API provider implementation.
+ * Together AI API provider implementation.
  */
-class OpenRouterProvider extends AbstractLLMProvider
+class TogetherProvider extends AbstractLLMProvider
 {
     /**
      * Provider ID
      */
-    private const PROVIDER_ID = 'openrouter';
+    private const PROVIDER_ID = 'together';
 
     /**
      * Provider display name
      */
-    private const PROVIDER_NAME = 'OpenRouter';
+    private const PROVIDER_NAME = 'Together AI';
 
     /**
      * API base URL
      */
-    private const API_BASE = 'https://openrouter.ai/api/v1';
+    private const API_BASE = 'https://api.together.xyz/v1';
 
     /**
-     * Available models (subset - OpenRouter has 100+)
+     * Available models
      */
     private const MODELS = [
-        'openai/gpt-4o' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.005,
-            'cost_output' => 0.015,
-            'context_tokens' => 128000,
-            'speed_tier' => 'fast',
-            'specializations' => ['general'],
-        ],
-        'anthropic/claude-3.5-sonnet' => [
-            'censorship_level' => 2,
-            'cost_input' => 0.003,
-            'cost_output' => 0.015,
-            'context_tokens' => 200000,
-            'speed_tier' => 'fast',
-            'specializations' => ['general', 'creative'],
-        ],
-        'meta-llama/llama-3.1-405b-instruct' => [
+        'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo' => [
             'censorship_level' => 0,
             'cost_input' => 0.005,
             'cost_output' => 0.005,
             'context_tokens' => 128000,
             'speed_tier' => 'fast',
             'specializations' => ['general', 'creative'],
+            'openness' => 'weights_available',
         ],
-        'meta-llama/llama-3.1-70b-instruct' => [
+        'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' => [
             'censorship_level' => 0,
-            'cost_input' => 0.00052,
-            'cost_output' => 0.00075,
+            'cost_input' => 0.00088,
+            'cost_output' => 0.00088,
             'context_tokens' => 128000,
             'speed_tier' => 'fast',
+            'specializations' => ['general', 'creative'],
+        ],
+        'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' => [
+            'censorship_level' => 0,
+            'cost_input' => 0.00018,
+            'cost_output' => 0.00018,
+            'context_tokens' => 128000,
+            'speed_tier' => 'ultra',
             'specializations' => ['general'],
         ],
-        'mistralai/mistral-large' => [
-            'censorship_level' => 1,
-            'cost_input' => 0.002,
-            'cost_output' => 0.006,
-            'context_tokens' => 128000,
-            'speed_tier' => 'fast',
-            'specializations' => ['general', 'multilingual'],
-        ],
-        'google/gemini-pro-1.5' => [
-            'censorship_level' => 2,
-            'cost_input' => 0.00125,
-            'cost_output' => 0.005,
-            'context_tokens' => 2000000,
-            'speed_tier' => 'fast',
-            'specializations' => ['general', 'multilingual'],
-        ],
-        'nousresearch/hermes-3-llama-3.1-405b' => [
+        'NousResearch/Nous-Hermes-2-Yi-34B' => [
             'censorship_level' => 0,
-            'cost_input' => 0.005,
-            'cost_output' => 0.005,
-            'context_tokens' => 128000,
+            'cost_input' => 0.0008,
+            'cost_output' => 0.0008,
+            'context_tokens' => 32000,
             'speed_tier' => 'fast',
             'specializations' => ['creative', 'roleplay'],
         ],
-        'deepseek/deepseek-chat' => [
-            'censorship_level' => 5,
-            'cost_input' => 0.00014,
-            'cost_output' => 0.00028,
-            'context_tokens' => 64000,
-            'speed_tier' => 'fast',
-            'specializations' => ['technical', 'analytical'],
-        ],
-        // Free models
-        'meta-llama/llama-3.2-3b-instruct:free' => [
+        'NousResearch/Hermes-3-Llama-3.1-405B' => [
             'censorship_level' => 0,
-            'cost_input' => 0,
-            'cost_output' => 0,
-            'context_tokens' => 8192,
+            'cost_input' => 0.005,
+            'cost_output' => 0.005,
+            'context_tokens' => 128000,
             'speed_tier' => 'fast',
-            'specializations' => ['general'],
-            'is_free' => true,
+            'specializations' => ['creative', 'analytical'],
         ],
-        'mistralai/mistral-7b-instruct:free' => [
+        'mistralai/Mixtral-8x22B-Instruct-v0.1' => [
             'censorship_level' => 0,
-            'cost_input' => 0,
-            'cost_output' => 0,
+            'cost_input' => 0.0012,
+            'cost_output' => 0.0012,
+            'context_tokens' => 65536,
+            'speed_tier' => 'fast',
+            'specializations' => ['general', 'multilingual'],
+        ],
+        'Qwen/Qwen2-72B-Instruct' => [
+            'censorship_level' => 1,
+            'cost_input' => 0.0009,
+            'cost_output' => 0.0009,
             'context_tokens' => 32768,
             'speed_tier' => 'fast',
-            'specializations' => ['general'],
-            'is_free' => true,
+            'specializations' => ['multilingual', 'technical'],
+        ],
+        'deepseek-ai/deepseek-llm-67b-chat' => [
+            'censorship_level' => 1,
+            'cost_input' => 0.0009,
+            'cost_output' => 0.0009,
+            'context_tokens' => 32000,
+            'speed_tier' => 'fast',
+            'specializations' => ['technical', 'analytical'],
         ],
     ];
 
@@ -144,7 +126,7 @@ class OpenRouterProvider extends AbstractLLMProvider
      */
     public function getCategory(): string
     {
-        return 'C';
+        return 'B';
     }
 
     /**
@@ -184,7 +166,7 @@ class OpenRouterProvider extends AbstractLLMProvider
      */
     protected function getDefaultModel(): string
     {
-        return 'meta-llama/llama-3.2-3b-instruct:free';
+        return 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo';
     }
 
     /**
@@ -203,21 +185,19 @@ class OpenRouterProvider extends AbstractLLMProvider
             'max_tokens' => $options['max_tokens'] ?? 4096,
         ];
 
-        // OpenRouter-specific routing options
-        if (!empty($options['provider_preferences'])) {
-            $body['provider'] = [
-                'order' => $options['provider_preferences'],
-            ];
+        // Add repetition penalty for creative models
+        if (in_array('creative', self::MODELS[$model]['specializations'] ?? [])) {
+            $body['repetition_penalty'] = $options['repetition_penalty'] ?? 1.1;
         }
 
-        // Add transforms to allow fallback providers
-        $body['route'] = 'fallback';
+        // Add stop sequences
+        if (!empty($options['stop'])) {
+            $body['stop'] = $options['stop'];
+        }
 
         $headers = [
             'Authorization' => 'Bearer ' . $this->getApiKey(),
             'Content-Type' => 'application/json',
-            'HTTP-Referer' => $this->config['referer'] ?? 'https://dglab.app',
-            'X-Title' => 'DGLab MangaScript',
         ];
 
         $start = microtime(true);
@@ -230,8 +210,7 @@ class OpenRouterProvider extends AbstractLLMProvider
             $this->currentMode === 'uncensored'
         );
 
-        // OpenRouter provides generation cost directly
-        $cost = $response['usage']['total_cost'] ?? $this->estimateCost(
+        $cost = $this->estimateCost(
             $model,
             $llmResponse->inputTokens,
             $llmResponse->outputTokens
@@ -243,11 +222,8 @@ class OpenRouterProvider extends AbstractLLMProvider
             inputTokens: $llmResponse->inputTokens,
             outputTokens: $llmResponse->outputTokens,
             modelUsed: $llmResponse->modelUsed,
-            providerUsed: self::PROVIDER_ID,
-            metadata: array_merge($llmResponse->metadata, [
-                'router_model' => $model,
-                'actual_provider' => $response['provider'] ?? 'unknown',
-            ]),
+            providerUsed: $llmResponse->providerUsed,
+            metadata: $llmResponse->metadata,
             isUncensored: $llmResponse->isUncensored,
             latencyMs: $latency,
             costUsd: $cost
@@ -269,7 +245,6 @@ class OpenRouterProvider extends AbstractLLMProvider
             'temperature' => $options['temperature'] ?? 0.7,
             'max_tokens' => $options['max_tokens'] ?? 4096,
             'stream' => true,
-            'route' => 'fallback',
         ];
 
         $ch = curl_init();
@@ -280,8 +255,6 @@ class OpenRouterProvider extends AbstractLLMProvider
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $this->getApiKey(),
                 'Content-Type: application/json',
-                'HTTP-Referer: ' . ($this->config['referer'] ?? 'https://dglab.app'),
-                'X-Title: DGLab MangaScript',
             ],
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$buffer) {
@@ -311,26 +284,18 @@ class OpenRouterProvider extends AbstractLLMProvider
     }
 
     /**
-     * Get free models
-     */
-    public function getFreeModels(): array
-    {
-        return array_filter(self::MODELS, fn($m) => $m['is_free'] ?? false);
-    }
-
-    /**
-     * Get API key (uses OPENROUTER_API_KEY env var)
+     * Get API key (uses TOGETHER_API_KEY env var)
      */
     protected function getApiKey(): string
     {
         $key = $this->config['api_key'] ?? null;
 
         if (!$key) {
-            $key = getenv('OPENROUTER_API_KEY') ?: ($_ENV['OPENROUTER_API_KEY'] ?? '');
+            $key = getenv('TOGETHER_API_KEY') ?: ($_ENV['TOGETHER_API_KEY'] ?? '');
         }
 
         if (!$key) {
-            throw new \RuntimeException('OpenRouter API key not configured');
+            throw new \RuntimeException('Together API key not configured');
         }
 
         return $key;

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Services\NovelToMangaScript\AI;
+namespace DGLab\Services\MangaScript\AI;
 
-use DGLab\Services\NovelToMangaScript\AI\Contracts\LLMProviderInterface;
-use DGLab\Services\NovelToMangaScript\AI\Providers\{
+use DGLab\Services\MangaScript\AI\Contracts\LLMProviderInterface;
+use DGLab\Services\MangaScript\AI\Providers\{
     OpenAiProvider,
     AnthropicProvider,
     GoogleProvider,
@@ -28,7 +28,7 @@ use DGLab\Services\NovelToMangaScript\AI\Providers\{
  * Factory class for creating and managing LLM provider instances.
  * Handles provider registration, instantiation, and configuration.
  * 
- * @package DGLab\Services\NovelToMangaScript\AI
+ * @package DGLab\Services\MangaScript\AI
  */
 class ProviderFactory
 {

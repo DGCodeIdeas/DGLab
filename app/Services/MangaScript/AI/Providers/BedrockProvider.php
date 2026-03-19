@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
-use DGLab\Services\NovelToMangaScript\AI\LLMProviderException;
+use DGLab\Services\MangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
  * Amazon Bedrock LLM Provider
@@ -19,7 +19,7 @@ use DGLab\Services\NovelToMangaScript\AI\LLMProviderException;
  * - Regional endpoints
  * - VPC support
  * 
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 class BedrockProvider extends AbstractLLMProvider
 {

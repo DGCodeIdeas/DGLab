@@ -1,107 +1,90 @@
 <?php
 
 /**
- * DGLab Together AI Provider
+ * DGLab OpenAI Provider
  *
- * Implementation for Together AI API (open source models hosting).
+ * Implementation for OpenAI API (GPT-4, o1, o3-mini models).
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
- * Class TogetherProvider
+ * Class OpenAiProvider
  *
- * Together AI API provider implementation.
+ * OpenAI API provider implementation.
  */
-class TogetherProvider extends AbstractLLMProvider
+class OpenAiProvider extends AbstractLLMProvider
 {
     /**
      * Provider ID
      */
-    private const PROVIDER_ID = 'together';
+    private const PROVIDER_ID = 'openai';
 
     /**
      * Provider display name
      */
-    private const PROVIDER_NAME = 'Together AI';
+    private const PROVIDER_NAME = 'OpenAI';
 
     /**
      * API base URL
      */
-    private const API_BASE = 'https://api.together.xyz/v1';
+    private const API_BASE = 'https://api.openai.com/v1';
 
     /**
      * Available models
      */
     private const MODELS = [
-        'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo' => [
-            'censorship_level' => 0,
+        'gpt-4o' => [
+            'censorship_level' => 3,
             'cost_input' => 0.005,
-            'cost_output' => 0.005,
+            'cost_output' => 0.015,
             'context_tokens' => 128000,
             'speed_tier' => 'fast',
-            'specializations' => ['general', 'creative'],
-            'openness' => 'weights_available',
+            'specializations' => ['general', 'analytical'],
         ],
-        'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' => [
-            'censorship_level' => 0,
-            'cost_input' => 0.00088,
-            'cost_output' => 0.00088,
-            'context_tokens' => 128000,
-            'speed_tier' => 'fast',
-            'specializations' => ['general', 'creative'],
-        ],
-        'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' => [
-            'censorship_level' => 0,
-            'cost_input' => 0.00018,
-            'cost_output' => 0.00018,
+        'gpt-4o-mini' => [
+            'censorship_level' => 3,
+            'cost_input' => 0.00015,
+            'cost_output' => 0.0006,
             'context_tokens' => 128000,
             'speed_tier' => 'ultra',
             'specializations' => ['general'],
         ],
-        'NousResearch/Nous-Hermes-2-Yi-34B' => [
-            'censorship_level' => 0,
-            'cost_input' => 0.0008,
-            'cost_output' => 0.0008,
-            'context_tokens' => 32000,
-            'speed_tier' => 'fast',
-            'specializations' => ['creative', 'roleplay'],
-        ],
-        'NousResearch/Hermes-3-Llama-3.1-405B' => [
-            'censorship_level' => 0,
-            'cost_input' => 0.005,
-            'cost_output' => 0.005,
+        'gpt-4-turbo' => [
+            'censorship_level' => 3,
+            'cost_input' => 0.01,
+            'cost_output' => 0.03,
             'context_tokens' => 128000,
             'speed_tier' => 'fast',
-            'specializations' => ['creative', 'analytical'],
+            'specializations' => ['general', 'creative'],
         ],
-        'mistralai/Mixtral-8x22B-Instruct-v0.1' => [
-            'censorship_level' => 0,
-            'cost_input' => 0.0012,
-            'cost_output' => 0.0012,
-            'context_tokens' => 65536,
-            'speed_tier' => 'fast',
-            'specializations' => ['general', 'multilingual'],
+        'o1-preview' => [
+            'censorship_level' => 3,
+            'cost_input' => 0.015,
+            'cost_output' => 0.06,
+            'context_tokens' => 128000,
+            'speed_tier' => 'batch',
+            'specializations' => ['analytical', 'technical'],
         ],
-        'Qwen/Qwen2-72B-Instruct' => [
-            'censorship_level' => 1,
-            'cost_input' => 0.0009,
-            'cost_output' => 0.0009,
-            'context_tokens' => 32768,
-            'speed_tier' => 'fast',
-            'specializations' => ['multilingual', 'technical'],
+        'o1' => [
+            'censorship_level' => 3,
+            'cost_input' => 0.005,
+            'cost_output' => 0.015,
+            'context_tokens' => 200000,
+            'speed_tier' => 'batch',
+            'specializations' => ['analytical', 'technical'],
         ],
-        'deepseek-ai/deepseek-llm-67b-chat' => [
-            'censorship_level' => 1,
-            'cost_input' => 0.0009,
-            'cost_output' => 0.0009,
-            'context_tokens' => 32000,
+        'o3-mini' => [
+            'censorship_level' => 3,
+            'cost_input' => 0.0011,
+            'cost_output' => 0.0044,
+            'context_tokens' => 200000,
             'speed_tier' => 'fast',
-            'specializations' => ['technical', 'analytical'],
+            'specializations' => ['analytical', 'technical'],
         ],
     ];
 
@@ -119,22 +102,6 @@ class TogetherProvider extends AbstractLLMProvider
     public function getName(): string
     {
         return self::PROVIDER_NAME;
-    }
-
-    /**
-     * Get category
-     */
-    public function getCategory(): string
-    {
-        return 'B';
-    }
-
-    /**
-     * Get tier
-     */
-    public function getTier(): int
-    {
-        return 2;
     }
 
     /**
@@ -166,7 +133,7 @@ class TogetherProvider extends AbstractLLMProvider
      */
     protected function getDefaultModel(): string
     {
-        return 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo';
+        return 'gpt-4o-mini';
     }
 
     /**
@@ -176,7 +143,7 @@ class TogetherProvider extends AbstractLLMProvider
     {
         $this->validateMessages($messages);
 
-        $url = self::API_BASE . '/chat/completions';
+        $url = $this->getApiBase() . '/chat/completions';
 
         $body = [
             'model' => $model,
@@ -185,12 +152,12 @@ class TogetherProvider extends AbstractLLMProvider
             'max_tokens' => $options['max_tokens'] ?? 4096,
         ];
 
-        // Add repetition penalty for creative models
-        if (in_array('creative', self::MODELS[$model]['specializations'] ?? [])) {
-            $body['repetition_penalty'] = $options['repetition_penalty'] ?? 1.1;
+        // Add JSON mode if requested
+        if ($options['json_mode'] ?? false) {
+            $body['response_format'] = ['type' => 'json_object'];
         }
 
-        // Add stop sequences
+        // Add stop sequences if provided
         if (!empty($options['stop'])) {
             $body['stop'] = $options['stop'];
         }
@@ -210,6 +177,7 @@ class TogetherProvider extends AbstractLLMProvider
             $this->currentMode === 'uncensored'
         );
 
+        // Calculate cost
         $cost = $this->estimateCost(
             $model,
             $llmResponse->inputTokens,
@@ -237,7 +205,7 @@ class TogetherProvider extends AbstractLLMProvider
     {
         $this->validateMessages($messages);
 
-        $url = self::API_BASE . '/chat/completions';
+        $url = $this->getApiBase() . '/chat/completions';
 
         $body = [
             'model' => $model,
@@ -267,6 +235,7 @@ class TogetherProvider extends AbstractLLMProvider
         curl_exec($ch);
         curl_close($ch);
 
+        // Parse SSE stream
         $lines = explode("\n", $buffer);
         foreach ($lines as $line) {
             if (str_starts_with($line, 'data: ')) {
@@ -284,20 +253,10 @@ class TogetherProvider extends AbstractLLMProvider
     }
 
     /**
-     * Get API key (uses TOGETHER_API_KEY env var)
+     * Get API base URL
      */
-    protected function getApiKey(): string
+    protected function getApiBase(): string
     {
-        $key = $this->config['api_key'] ?? null;
-
-        if (!$key) {
-            $key = getenv('TOGETHER_API_KEY') ?: ($_ENV['TOGETHER_API_KEY'] ?? '');
-        }
-
-        if (!$key) {
-            throw new \RuntimeException('Together API key not configured');
-        }
-
-        return $key;
+        return $this->config['api_base'] ?? self::API_BASE;
     }
 }

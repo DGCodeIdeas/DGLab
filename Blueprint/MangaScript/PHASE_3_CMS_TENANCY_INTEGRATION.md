@@ -1,16 +1,16 @@
-# Phase 3: CMS & Tenancy Integration
+# Phase 3: CMS Studio & Tenancy Integration
 
 ## Goal
-To integrate the MangaScript service deeply with the DGLab CMS core, ensuring data persistence, version control, and multi-tenant security.
+To integrate the MangaScript service deeply with the DGLab CMS Studio, ensuring data persistence, version control, and multi-tenant security using the Hybrid EAV strategy.
 
 ## Key Components
 
-### 1. CMS Content Type Definition
+### 1. CMS Content Type Definition (Hybrid EAV)
 - Define the `MangaScript` content type in the CMS schema.
-- Map script metadata (Title, Style, AI Provider) and content (Chapters, Pages, Panels) to the CMS JSONB structure.
+- Map script metadata (Title, Style, AI Provider) and content (Chapters, Pages, Panels) to the CMS JSONB structure (`content_entries.content`).
 
 ### 2. Multi-Tenant Isolation
-- Ensure all MangaScript operations are bound to a `tenant_id`.
+- Ensure all MangaScript operations are bound to a `tenant_id` via the `TenancyService`.
 - Implement automatic scoping in the `MangaScriptService` to prevent cross-tenant data access.
 
 ### 3. Versioning & Workflow

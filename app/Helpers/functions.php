@@ -11,6 +11,7 @@ use DGLab\Core\Response;
 use DGLab\Core\View;
 use DGLab\Services\Download\Download;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
+use DGLab\Services\MangaScript\MangaScriptService;
 
 /**
  * Get the application instance
@@ -356,8 +357,11 @@ function download(string $path, ?string $name = null, array $headers = [], ?stri
 /**
  * Dispatch an event.
  */
-function event(\DGLab\Core\Contracts\EventInterface $event): void
+function event(\DGLab\Core\Contracts\EventInterface|string $event, array $payload = []): void
 {
+    if (is_string($event)) {
+        $event = new \DGLab\Core\GenericEvent($event, $payload);
+    }
     \DGLab\Facades\Event::dispatch($event);
 }
 
@@ -367,4 +371,12 @@ function event(\DGLab\Core\Contracts\EventInterface $event): void
 function auth(): \DGLab\Services\Auth\AuthManager
 {
     return \DGLab\Core\Application::getInstance()->get(\DGLab\Services\Auth\AuthManager::class);
+}
+
+/**
+ * Get the MangaScriptService instance.
+ */
+function mangascript(): MangaScriptService
+{
+    return \DGLab\Core\Application::getInstance()->get(MangaScriptService::class);
 }

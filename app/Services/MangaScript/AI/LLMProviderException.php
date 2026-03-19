@@ -5,10 +5,10 @@
  *
  * Exception thrown by LLM providers with detailed context.
  *
- * @package DGLab\Services\NovelToMangaScript\AI
+ * @package DGLab\Services\MangaScript\AI
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI;
+namespace DGLab\Services\MangaScript\AI;
 
 /**
  * Class LLMProviderException

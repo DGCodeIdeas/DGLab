@@ -1,90 +1,90 @@
 <?php
 
 /**
- * DGLab OpenAI Provider
+ * DGLab Mistral AI Provider
  *
- * Implementation for OpenAI API (GPT-4, o1, o3-mini models).
+ * Implementation for Mistral AI API.
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
- * Class OpenAiProvider
+ * Class MistralProvider
  *
- * OpenAI API provider implementation.
+ * Mistral AI API provider implementation.
  */
-class OpenAiProvider extends AbstractLLMProvider
+class MistralProvider extends AbstractLLMProvider
 {
     /**
      * Provider ID
      */
-    private const PROVIDER_ID = 'openai';
+    private const PROVIDER_ID = 'mistral';
 
     /**
      * Provider display name
      */
-    private const PROVIDER_NAME = 'OpenAI';
+    private const PROVIDER_NAME = 'Mistral AI';
 
     /**
      * API base URL
      */
-    private const API_BASE = 'https://api.openai.com/v1';
+    private const API_BASE = 'https://api.mistral.ai/v1';
 
     /**
      * Available models
      */
     private const MODELS = [
-        'gpt-4o' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.005,
-            'cost_output' => 0.015,
+        'mistral-large-latest' => [
+            'censorship_level' => 1,
+            'cost_input' => 0.002,
+            'cost_output' => 0.006,
             'context_tokens' => 128000,
             'speed_tier' => 'fast',
-            'specializations' => ['general', 'analytical'],
+            'specializations' => ['general', 'multilingual'],
         ],
-        'gpt-4o-mini' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.00015,
+        'mistral-medium-latest' => [
+            'censorship_level' => 1,
+            'cost_input' => 0.0007,
+            'cost_output' => 0.002,
+            'context_tokens' => 32000,
+            'speed_tier' => 'fast',
+            'specializations' => ['general'],
+        ],
+        'mistral-small-latest' => [
+            'censorship_level' => 1,
+            'cost_input' => 0.0002,
             'cost_output' => 0.0006,
-            'context_tokens' => 128000,
+            'context_tokens' => 32000,
             'speed_tier' => 'ultra',
             'specializations' => ['general'],
         ],
-        'gpt-4-turbo' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.01,
-            'cost_output' => 0.03,
-            'context_tokens' => 128000,
+        'codestral-latest' => [
+            'censorship_level' => 1,
+            'cost_input' => 0.001,
+            'cost_output' => 0.003,
+            'context_tokens' => 32000,
+            'speed_tier' => 'fast',
+            'specializations' => ['technical'],
+        ],
+        'open-mixtral-8x22b' => [
+            'censorship_level' => 0,
+            'cost_input' => 0.002,
+            'cost_output' => 0.006,
+            'context_tokens' => 64000,
             'speed_tier' => 'fast',
             'specializations' => ['general', 'creative'],
         ],
-        'o1-preview' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.015,
-            'cost_output' => 0.06,
+        'open-mistral-nemo' => [
+            'censorship_level' => 0,
+            'cost_input' => 0.0003,
+            'cost_output' => 0.0003,
             'context_tokens' => 128000,
-            'speed_tier' => 'batch',
-            'specializations' => ['analytical', 'technical'],
-        ],
-        'o1' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.005,
-            'cost_output' => 0.015,
-            'context_tokens' => 200000,
-            'speed_tier' => 'batch',
-            'specializations' => ['analytical', 'technical'],
-        ],
-        'o3-mini' => [
-            'censorship_level' => 3,
-            'cost_input' => 0.0011,
-            'cost_output' => 0.0044,
-            'context_tokens' => 200000,
-            'speed_tier' => 'fast',
-            'specializations' => ['analytical', 'technical'],
+            'speed_tier' => 'ultra',
+            'specializations' => ['multilingual'],
         ],
     ];
 
@@ -102,6 +102,22 @@ class OpenAiProvider extends AbstractLLMProvider
     public function getName(): string
     {
         return self::PROVIDER_NAME;
+    }
+
+    /**
+     * Get category
+     */
+    public function getCategory(): string
+    {
+        return 'B';
+    }
+
+    /**
+     * Get tier
+     */
+    public function getTier(): int
+    {
+        return 2;
     }
 
     /**
@@ -133,7 +149,7 @@ class OpenAiProvider extends AbstractLLMProvider
      */
     protected function getDefaultModel(): string
     {
-        return 'gpt-4o-mini';
+        return 'open-mistral-nemo';
     }
 
     /**
@@ -143,7 +159,7 @@ class OpenAiProvider extends AbstractLLMProvider
     {
         $this->validateMessages($messages);
 
-        $url = $this->getApiBase() . '/chat/completions';
+        $url = self::API_BASE . '/chat/completions';
 
         $body = [
             'model' => $model,
@@ -157,9 +173,9 @@ class OpenAiProvider extends AbstractLLMProvider
             $body['response_format'] = ['type' => 'json_object'];
         }
 
-        // Add stop sequences if provided
-        if (!empty($options['stop'])) {
-            $body['stop'] = $options['stop'];
+        // Mistral supports safe_prompt for additional safety
+        if ($this->currentMode === 'censored') {
+            $body['safe_prompt'] = true;
         }
 
         $headers = [
@@ -177,7 +193,6 @@ class OpenAiProvider extends AbstractLLMProvider
             $this->currentMode === 'uncensored'
         );
 
-        // Calculate cost
         $cost = $this->estimateCost(
             $model,
             $llmResponse->inputTokens,
@@ -205,7 +220,7 @@ class OpenAiProvider extends AbstractLLMProvider
     {
         $this->validateMessages($messages);
 
-        $url = $this->getApiBase() . '/chat/completions';
+        $url = self::API_BASE . '/chat/completions';
 
         $body = [
             'model' => $model,
@@ -253,10 +268,20 @@ class OpenAiProvider extends AbstractLLMProvider
     }
 
     /**
-     * Get API base URL
+     * Get API key (uses MISTRAL_API_KEY env var)
      */
-    protected function getApiBase(): string
+    protected function getApiKey(): string
     {
-        return $this->config['api_base'] ?? self::API_BASE;
+        $key = $this->config['api_key'] ?? null;
+
+        if (!$key) {
+            $key = getenv('MISTRAL_API_KEY') ?: ($_ENV['MISTRAL_API_KEY'] ?? '');
+        }
+
+        if (!$key) {
+            throw new \RuntimeException('Mistral API key not configured');
+        }
+
+        return $key;
     }
 }
