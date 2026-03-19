@@ -30,27 +30,27 @@ We will implement a dedicated `auth_audit_logs` table for critical security even
 
 ## Phased Implementation Roadmap
 
-### [Phase 1: Core Identity & Persistence](PHASE_1_CORE_IDENTITY.md)
+### [Phase 1: Core Identity & Persistence (COMPLETED)](PHASE_1_CORE_IDENTITY.md)
 - Global User schema and multi-identifier support.
 - Configurable password hashing (Argon2id default).
 - Foundation of the `User` model and repository.
 
-### [Phase 2: Multi-Mechanism Authentication](PHASE_2_MULTI_MECHANISM_AUTH.md)
+### [Phase 2: Multi-Mechanism Authentication (COMPLETED)](PHASE_2_MULTI_MECHANISM_AUTH.md)
 - Implementation of the `AuthManager` and Guard system.
 - Support for Sessions, JWT, and Opaque tokens.
 - Social login (OAuth2) integration strategy.
 
-### [Phase 3: Tenant-Aware Authorization](PHASE_3_TENANT_AUTHORIZATION.md)
+### [Phase 3: Tenant-Aware Authorization (COMPLETED)](PHASE_3_TENANT_AUTHORIZATION.md)
 - Multi-tenant RBAC (Global users with tenant-specific roles).
 - Permission management and Policy-based access control.
 - Integration with the `TenancyService`.
 
-### [Phase 4: Security Lifecycle & MFA](PHASE_4_SECURITY_LIFECYCLE.md)
+### [Phase 4: Security Lifecycle & MFA (COMPLETED)](PHASE_4_SECURITY_LIFECYCLE.md)
 - Multi-Factor Authentication (TOTP/Backup codes).
 - Registration, verification, and recovery flows.
 - Security policies (Rate limiting, Lockouts, IP Whitelisting).
 
-### [Phase 5: Global Integration & Audit](PHASE_5_OBSERVABILITY_INTEGRATION.md)
+### [Phase 5: Global Integration & Audit (COMPLETED)](PHASE_5_OBSERVABILITY_INTEGRATION.md)
 - Refactoring `Controller.php` to use `AuthService`.
 - Implementation of the `AuthAuditLog` and Event system integration.
 - Documentation and migration of legacy session logic.
