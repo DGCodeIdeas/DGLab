@@ -115,7 +115,7 @@ class Parser
 
         $node = new DirectiveNode($name, $expression, $token->line);
 
-        if (in_array($name, ['if', 'foreach', 'auth', 'guest', 'section', 'error', 'switch'])) {
+        if (in_array($name, ['if', 'foreach', 'auth', 'guest', 'error', 'switch'])) {
             $terminator = '@end' . $name;
             $node->children = $this->parseUntil($terminator);
         }

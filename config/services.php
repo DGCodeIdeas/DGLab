@@ -5,6 +5,7 @@ return [
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
         'webpack' => \DGLab\Services\AssetPacker\WebpackService::class,
         'novel-to-manga-script' => \DGLab\Services\NovelToMangaScript\NovelToMangaScript::class,
+        'superpowers-global-state' => \DGLab\Services\Superpowers\Runtime\GlobalStateStore::class,
     ],
     'defaults' => [
         'chunked_upload' => true,
@@ -56,7 +57,8 @@ return [
             '@' => 'resources/js',
         ],
     ],
-    'novel-to-manga-script' => [
+    'novel-to-manga-script' => \DGLab\Services\NovelToMangaScript\NovelToMangaScript::class,
+        'superpowers-global-state' => \DGLab\Services\Superpowers\Runtime\GlobalStateStore::class,
         'max_file_size' => 10485760,
         'allowed_extensions' => ['txt', 'epub', 'pdf', 'docx', 'md'],
         'allowed_mime_types' => [

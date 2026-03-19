@@ -124,7 +124,7 @@ class SuperpowersTest extends TestCase
 
     public function test_legacy_layout_extends()
     {
-        file_put_contents('resources/views/layouts/legacy.php', "START <?php \$this->yield('content'); ?> END");
+        file_put_contents('resources/views/layouts/legacy.php', "START <?php echo \$this->yield('content'); ?> END");
         file_put_contents('resources/views/legacy_view.super.php', "@extends('layouts.legacy') @section('content')Hello@endsection");
         $output = $this->view->render('legacy_view', [], null);
         $this->assertTrue(true);

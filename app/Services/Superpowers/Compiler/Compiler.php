@@ -77,6 +77,12 @@ class Compiler {
                 preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $n->expression, $m);
                 return "/* line:$n->line */ \$__items = (function() { extract(\$this->getEngine()->getInterpreter()->getState()->all()); return " . $this->tr->transpile($m[1]) . "; })->call(\$this);\n if (isset(\$__items) && is_iterable(\$__items)): foreach (\$__items as $m[2]): " . $this->cN($n->children) . " endforeach; endif;\n";
             }
+            if ($n->name === 'global') {
+                $p = explode(',', $n->expression);
+                $key = trim($p[0], "'\" ");
+                $var = isset($p[1]) ? trim($p[1], "'\"\$ ") : $key;
+                return "/* line:$n->line */ \$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStore::class);\n \$this->getEngine()->getInterpreter()->getState()->set('$var', \$__g->get('$key'));\n";
+            }
         }
         if ($n instanceof ComponentNode) {
             $vn = str_starts_with($n->tagName, 'layout:') ? 'layouts/' . substr($n->tagName, 7) : $n->tagName;

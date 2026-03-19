@@ -10,6 +10,7 @@ use DGLab\Core\Application;
 use DGLab\Core\Response;
 use DGLab\Core\View;
 use DGLab\Services\Download\Download;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
 
 /**
  * Get the application instance
@@ -42,6 +43,18 @@ function view(string $template, array $data = [], ?string $layout = 'master'): R
     $content = $view->render($template, $data, $layout);
 
     return new Response($content);
+}
+
+/**
+ * Get or set global state for Superpowers components.
+ */
+function global_state(?string $key = null, mixed $value = null): mixed
+{
+    $store = app()->get(GlobalStateStore::class);
+    if ($key === null) return $store;
+    if ($value === null) return $store->get($key);
+    $store->set($key, $value);
+    return null;
 }
 
 /**

@@ -21,6 +21,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Runtime\StateContainer;
 use DGLab\Services\Superpowers\Runtime\DebugCollector;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
 
 /**
  * Class Interpreter
@@ -166,7 +167,7 @@ class Interpreter
 
         if ($node instanceof SectionNode) {
              $this->view->section($node->name);
-             $this->view->getEngine()->getInterpreter()->interpretNodes($node->children);
+             echo $this->interpretNodes($node->children);
              $this->view->endSection();
              return "";
         }
@@ -202,6 +203,13 @@ class Interpreter
                     }
                 }
                 return $output;
+            case 'global':
+                $p = explode(',', $node->expression);
+                $key = trim($p[0], "'\" ");
+                $var = isset($p[1]) ? trim($p[1], "'\"\$ ") : $key;
+                $g = Application::getInstance()->get(GlobalStateStore::class);
+                $this->state->set($var, $g->get($key));
+                return "";
             default:
                 return "";
         }
@@ -221,6 +229,7 @@ class Interpreter
             $props[$name] = $prop['dynamic'] ? $this->evaluate($prop['value']) : $prop['value'];
         }
 
+        // Handle named slots
         $defaultSlot = "";
         foreach ($node->children as $child) {
             if ($child instanceof SlotNode) {

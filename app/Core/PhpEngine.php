@@ -37,7 +37,7 @@ class PhpEngine implements ViewEngineInterface
 
         try {
             include $path;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             ob_get_clean();
             throw $e;
         }
@@ -56,9 +56,9 @@ class PhpEngine implements ViewEngineInterface
     /**
      * Legacy yield support
      */
-    public function yield(string $name, string $default = ''): void
+    public function yield(string $name, string $default = ''): string
     {
-        echo $this->view->yield($name, $default);
+        return $this->view->yield($name, $default);
     }
 
     /**
