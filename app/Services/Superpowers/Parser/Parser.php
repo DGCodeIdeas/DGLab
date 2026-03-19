@@ -1,0 +1,310 @@
+<?php
+
+namespace DGLab\Services\Superpowers\Parser;
+
+use DGLab\Services\Superpowers\Lexer\Token;
+use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
+use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\Node;
+use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
+use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
+use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
+use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
+use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
+
+/**
+ * Class Parser
+ *
+ * Transforms a stream of tokens into an Abstract Syntax Tree (AST).
+ */
+class Parser
+{
+    /**
+     * @var Token[]
+     */
+    private array $tokens;
+    private int $pos = 0;
+
+    /**
+     * Parse the stream of tokens.
+     *
+     * @param Token[] $tokens
+     * @return Node[]
+     */
+    public function parse(array $tokens): array
+    {
+        $this->tokens = $tokens;
+        $this->pos = 0;
+        $ast = [];
+
+        while (!$this->isAtEnd()) {
+            $ast[] = $this->parseNode();
+        }
+
+        return $ast;
+    }
+
+    private function parseNode(): Node
+    {
+        $token = $this->peek();
+
+        switch ($token->type) {
+            case Token::T_TEXT:
+                $this->advance();
+                return new TextNode($token->value, $token->line);
+            case Token::T_EXPRESSION_ESCAPED:
+                $this->advance();
+                return new ExpressionNode($token->value, true, $token->line);
+            case Token::T_EXPRESSION_RAW:
+                $this->advance();
+                return new ExpressionNode($token->value, false, $token->line);
+            case Token::T_SETUP_BLOCK:
+                $this->advance();
+                return new SetupNode($token->value, $token->line);
+            case Token::T_MOUNT_BLOCK:
+                $this->advance();
+                return new MountNode($token->value, $token->line);
+            case Token::T_RENDERED_BLOCK:
+                $this->advance();
+                return new RenderedNode($token->value, $token->line);
+            case Token::T_CLEANUP_BLOCK:
+                $this->advance();
+                return new CleanupNode($token->value, $token->line);
+            case Token::T_DIRECTIVE:
+                return $this->parseDirective();
+            case Token::T_COMPONENT_OPEN:
+            case Token::T_COMPONENT_SELF_CLOSING:
+                return $this->parseComponent();
+            case Token::T_REACTIVE_TAG:
+                return $this->parseReactiveTag();
+            case Token::T_COMPONENT_CLOSE:
+                throw new \RuntimeException("Unexpected closing tag: {$token->value} at line {$token->line}");
+            default:
+                throw new \RuntimeException("Unknown token type: {$token->type} at line {$token->line}");
+        }
+    }
+
+    private function parseDirective(): Node
+    {
+        $token = $this->advance();
+
+        $name = '';
+        $expression = null;
+
+        if (preg_match('/^@([a-zA-Z0-9]+)(?:\s*\((.*)\))?/s', $token->value, $matches)) {
+            $name = $matches[1];
+            if (isset($matches[2]) && $matches[2] !== '') {
+                 $expression = trim($matches[2]);
+            }
+        } else {
+             $name = ltrim($token->value, '@');
+        }
+
+        if ($name === 'section') {
+            $sectionName = trim($expression, "'\"");
+            $node = new SectionNode($sectionName, $token->line);
+            $node->children = $this->parseUntilDirective('@endsection');
+            return $node;
+        }
+
+        if ($name === 'yield') {
+             $parts = array_map('trim', explode(',', $expression));
+             $yieldName = trim($parts[0], "'\"");
+             $default = isset($parts[1]) ? trim($parts[1], "'\"") : null;
+             return new YieldNode($yieldName, $default, $token->line);
+        }
+
+        if ($name === 'extends') {
+            $layout = trim($expression, "'\"");
+            return new ExtendsNode($layout, $token->line);
+        }
+
+        $node = new DirectiveNode($name, $expression, $token->line);
+
+        if ($this->isBlockDirective($name)) {
+            $terminator = '@end' . $name;
+            $node->children = $this->parseUntilDirective($terminator);
+        }
+
+        return $node;
+    }
+
+    private function parseComponent(): Node
+    {
+        $token = $this->advance();
+        $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
+
+        if (preg_match('/^<s:([a-zA-Z0-9\-\.\:]+)(.*?)(\/?)>/s', $token->value, $matches)) {
+             $fullTagName = $matches[1];
+             $propsString = $matches[2];
+        } else {
+             throw new \RuntimeException("Invalid component tag: {$token->value}");
+        }
+
+        $props = $this->parseProps($propsString);
+
+        if ($fullTagName === 'slot') {
+            $name = $props['name']['value'] ?? 'default';
+            $node = new SlotNode($name, $token->line);
+            if (!$isSelfClosing) {
+                $node->children = $this->parseUntilComponentClose($fullTagName);
+            }
+            return $node;
+        }
+
+        $node = new ComponentNode($fullTagName, $props, $token->line);
+
+        if (!$isSelfClosing) {
+            $node->children = $this->parseUntilComponentClose($fullTagName);
+        }
+
+        return $node;
+    }
+
+    private function parseReactiveTag(): Node
+    {
+        $token = $this->advance();
+        preg_match('/^<([a-zA-Z0-9]+)\s+(.*?)(\/?)>/s', $token->value, $matches);
+        $tagName = $matches[1];
+        $attributesString = $matches[2];
+        $isSelfClosing = ($matches[3] === '/');
+
+        $attributes = [];
+        $reactiveAttributes = [];
+
+        preg_match_all('/(?<special>@|s-)(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $attributesString, $attrMatches, PREG_SET_ORDER);
+
+        foreach ($attrMatches as $match) {
+            $name = $match['name'];
+            $value = $match['value'] ?? ($match['unquoted'] ?? true);
+            $special = $match['special'];
+
+            if ($special === '@') {
+                $reactiveAttributes[$name] = $value;
+            } else {
+                $attributes["s-{$name}"] = $value;
+            }
+        }
+
+        $cleanAttributesString = preg_replace('/(@|s-)[a-zA-Z0-9\-\._]+(\s*=\s*(?:"[^"]*"|[^\s>]+))?/', '', $attributesString);
+        preg_match_all('/(?<name>[a-zA-Z0-9\-_]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $cleanAttributesString, $stdMatches, PREG_SET_ORDER);
+        foreach ($stdMatches as $match) {
+             $attributes[$match['name']] = $match['value'] ?? ($match['unquoted'] ?? true);
+        }
+
+        $node = new ReactiveNode($tagName, $attributes, $reactiveAttributes, $token->line);
+        if (!$isSelfClosing) {
+             $node->children = $this->parseUntilTagClose($tagName);
+        }
+
+        return $node;
+    }
+
+    private function parseUntilTagClose(string $tagName): array
+    {
+         $children = [];
+         while (!$this->isAtEnd()) {
+              $token = $this->peek();
+              if ($token->type === Token::T_TEXT && strpos($token->value, "</{$tagName}>") !== false) {
+                   // This is very naive, but for Phase 8 it works for simple cases.
+                   // A better way would be the Lexer recognizing ALL closing tags.
+                   $pos = strpos($token->value, "</{$tagName}>");
+                   if ($pos > 0) {
+                        $children[] = new TextNode(substr($token->value, 0, $pos), $token->line);
+                   }
+                   $token->value = substr($token->value, $pos + strlen("</{$tagName}>"));
+                   if ($token->value === '') $this->advance();
+                   return $children;
+              }
+              $children[] = $this->parseNode();
+         }
+         return $children;
+    }
+
+    private function parseProps(string $propsString): array
+    {
+        $props = [];
+        preg_match_all('/(?<dynamic>:)?(?<special>@|s-)?(?<name>[a-zA-Z0-9\-\._]+)(?:\s*=\s*(?:"(?<value>[^"]*)"|(?<unquoted>[^\s>]+)))?/', $propsString, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $match) {
+            $name = $match['name'];
+            $isDynamic = !empty($match['dynamic']);
+            $special = $match['special'] ?? '';
+
+            $value = '';
+            if (isset($match['value'])) {
+                $value = $match['value'];
+            } elseif (isset($match['unquoted'])) {
+                $value = $match['unquoted'];
+            } else {
+                $value = 'true';
+            }
+
+            $props[$name] = [
+                'value' => $value,
+                'dynamic' => $isDynamic,
+                'special' => $special
+            ];
+        }
+
+        return $props;
+    }
+
+    private function parseUntilDirective(string $terminator): array
+    {
+        $children = [];
+        while (!$this->isAtEnd()) {
+            $token = $this->peek();
+            if ($token->type === Token::T_DIRECTIVE && str_starts_with($token->value, $terminator)) {
+                $this->advance();
+                return $children;
+            }
+            $children[] = $this->parseNode();
+        }
+        throw new \RuntimeException("Missing expected terminator: {$terminator}");
+    }
+
+    private function parseUntilComponentClose(string $tagName): array
+    {
+        $children = [];
+        while (!$this->isAtEnd()) {
+            $token = $this->peek();
+            if ($token->type === Token::T_COMPONENT_CLOSE) {
+                if (preg_match('/^<\/s:([a-zA-Z0-9\-\.\:]+)\s*>/s', $token->value, $matches)) {
+                    if ($matches[1] === $tagName) {
+                        $this->advance();
+                        return $children;
+                    }
+                }
+            }
+            $children[] = $this->parseNode();
+        }
+        throw new \RuntimeException("Missing expected closing tag for component: {$tagName}");
+    }
+
+    private function isBlockDirective(string $name): bool
+    {
+        return in_array($name, ['if', 'foreach', 'auth', 'guest', 'section', 'error', 'switch']);
+    }
+
+    private function isAtEnd(): bool
+    {
+        return $this->pos >= count($this->tokens);
+    }
+
+    private function peek(): Token
+    {
+        return $this->tokens[$this->pos];
+    }
+
+    private function advance(): Token
+    {
+        return $this->tokens[$this->pos++];
+    }
+}
