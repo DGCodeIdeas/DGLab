@@ -17,7 +17,8 @@ echo "========================================\n\n";
 $basePath = dirname(__DIR__);
 
 // Bootstrap Application (needed for config and js path)
-$app = Application::getInstance($basePath);
+$app = new Application($basePath);
+require_once $basePath . '/app/Helpers/functions.php';
 
 $webpack = new WebpackService();
 
@@ -46,10 +47,10 @@ foreach ($entries as $entry) {
 
         if ($result['success']) {
             echo "\n  ✓ Dependency graph resolved successfully!\n";
-            echo "  Found {$result['count']} files:\n";
-            foreach ($result['dependencies'] as $dep) {
-                echo "    - {$dep}\n";
-            }
+            echo "  Build successful!\n";
+            echo "  Output: {$result['output']}\n";
+            echo "  Hash: {$result['hash']}\n";
+            echo "  Files bundled: {$result['count']}\n";
         }
     } catch (Exception $e) {
         echo "\n  ✗ Error: " . $e->getMessage() . "\n";
