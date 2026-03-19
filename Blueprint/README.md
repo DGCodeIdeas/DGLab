@@ -9,6 +9,7 @@ To build a high-performance, ultra-flexible, and meticulously observable ecosyst
 | :--- | :--- | :--- | :--- |
 | **AuthService** | ✅ COMPLETED | 5 | 5 |
 | **SuperPHP Engine** | ✅ COMPLETED | 10 | 10 |
+| **Superpowers SPA** | 🏗️ IN PROGRESS | 0 | 10 |
 | **DownloadService** | ✅ COMPLETED | 5 | 5 |
 | **EventDispatcher** | ✅ COMPLETED | 5 | 5 |
 | **CMS Studio** | 🏗️ IN PROGRESS | 2 | 9 |
@@ -22,6 +23,7 @@ To build a high-performance, ultra-flexible, and meticulously observable ecosyst
 ### Core Framework Services
 - **[AuthService](./AuthService/OVERVIEW.md)**: Unified identity, multi-mechanism authentication (Session, JWT, Token), and tenant-aware RBAC.
 - **[SuperPHP](./SuperPHP/OVERVIEW.md)**: A modern, reactive-lite templating engine for PHP with component-first architecture.
+- **[Superpowers SPA](./SuperpowersSPA/OVERVIEW.md)**: (NEW) A 10-phase roadmap to transform the entire framework into a Node-free SPA/PWA.
 - **[DownloadService](./DownloadService/OVERVIEW.md)**: Secure, driver-based file delivery system with lifecycle management and audit trails.
 - **[EventDispatcher](./EventDispatcher/OVERVIEW.md)**: Foundational engine for synchronous and asynchronous event-driven communication.
 - **[AssetBundler](./AssetBundler/OVERVIEW.md)**: Pure PHP alternative to Webpack for JS dependency resolution and bundling.
