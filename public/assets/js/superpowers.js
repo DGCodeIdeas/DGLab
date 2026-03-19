@@ -31,6 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        if (!navigator.onLine) {
+            console.log('[Superpowers] Offline, queuing action:', action);
+            this.queueAction({ el, action, state, view });
+            Superpowers.applyLoadingStates(loadingEls, false);
+            return;
+        }
+
         try {
             const response = await fetch('/_superpowers/action', {
                 method: 'POST',
@@ -310,6 +317,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return div.innerHTML;
         }
     }
+
+        Superpowers.queueAction = function(data) {
+        const queue = JSON.parse(localStorage.getItem('sp_offline_queue') || '[]');
+        queue.push({ ...data, id: Date.now() });
+        localStorage.setItem('sp_offline_queue', JSON.stringify(queue));
+
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+            navigator.serviceWorker.ready.then(registration => {
+                return registration.sync.register('sp-sync-actions');
+            });
+        }
+    };
+
+    Superpowers.processQueue = async function() {
+        const queue = JSON.parse(localStorage.getItem('sp_offline_queue') || '[]');
+        if (queue.length === 0) return;
+
+        console.log('[Superpowers] Syncing', queue.length, 'actions...');
+        for (const item of queue) {
+            // Re-run handleAction but skip queuing
+            // For Phase 6 we just log, in Phase 10 we do full replay
+        }
+        localStorage.removeItem('sp_offline_queue');
+    };
 
     new SuperpowersDebugOverlay();
     Superpowers.initReactiveElements();

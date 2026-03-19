@@ -55,7 +55,11 @@
 
             } catch (err) {
                 console.error('Navigation failed:', err);
-                window.location.href = url; // Fallback to full reload
+                if (!navigator.onLine) {
+                    this.showOffline();
+                } else {
+                    window.location.href = url;
+                }
             } finally {
                 isNavigating = false;
             }
@@ -133,9 +137,31 @@
         }
     };
 
+            showOffline() {
+            const root = this.getNavRoot();
+            // Simple offline template - usually we'd fetch this or have it pre-cached
+            root.innerHTML = `
+                <div class="container text-center py-5">
+                    <div class="icon fs-1 mb-4">📡</div>
+                    <h1 class="fw-bold mb-3">You're Offline</h1>
+                    <p class="lead mb-4 text-muted">No internet connection detected.</p>
+                    <button class="btn btn-primary" onclick="location.reload()">Try Again</button>
+                </div>
+            `;
+        },
+
+        initSync() {
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                window.addEventListener('online', () => {
+                    console.log('[Nav] Back online, syncing...');
+                });
+            }
+        },
+
     window.SuperpowersNav = SuperpowersNav;
 
     document.addEventListener('DOMContentLoaded', () => {
         SuperpowersNav.init();
+        SuperpowersNav.initSync();
     });
 })();

@@ -12,15 +12,13 @@ const API_CACHE = `dglab-api-${CACHE_VERSION}`;
 // App shell assets to cache on install
 const APP_SHELL = [
     '/',
-    '/services',
     '/manifest.json',
     '/assets/css/app.css',
-    '/assets/js/app.js',
-    '/assets/css/bootstrap.min.css',
-    '/assets/js/bootstrap.bundle.min.js',
-    '/assets/css/all.min.css',
-    '/assets/js/jquery.min.js',
-    '/offline.html'
+    '/assets/css/superpowers.nav.css',
+    '/assets/js/superpowers.js',
+    '/assets/js/superpowers.nav.js',
+    '/assets/js/vendor.fec7a3ad00a3.js',
+    '/assets/js/app.dd82d79c9d17.js'
 ];
 
 // Install event - cache app shell
@@ -85,6 +83,11 @@ self.addEventListener('fetch', (event) => {
     }
     
     // Route-specific strategies
+    // App Shell Assets - Cache First
+    if (APP_SHELL.some(asset => url.pathname === asset)) {
+        event.respondWith(cacheFirst(request, STATIC_CACHE));
+        return;
+    }
     
     // API requests - Network First with timeout
     if (url.pathname.startsWith('/api/')) {
@@ -109,11 +112,21 @@ self.addEventListener('fetch', (event) => {
 });
 
 // Background Sync - for upload resume
+// Superpowers Sync Handler
 self.addEventListener('sync', (event) => {
+    if (event.tag === 'sp-sync-actions') {
+        event.waitUntil(self.syncSuperpowersActions());
+    }
     if (event.tag === 'upload-resume') {
         event.waitUntil(handleUploadResume());
     }
 });
+
+self.syncSuperpowersActions = async function() {
+    console.log('[SW] Background syncing Superpowers actions');
+    // Actual implementation would use clients.matchAll and postMessage
+    // or just let the main thread handle it when it sees 'online' event.
+};
 
 // Push notification handling (preparation)
 self.addEventListener('push', (event) => {
