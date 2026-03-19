@@ -11,5 +11,6 @@ class DownloadFailed extends BaseEvent
         public string $driver,
         public int $status,
         public string $reason
-    ) {}
+    ) {
+    }
 }

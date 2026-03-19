@@ -9,16 +9,16 @@ use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
  * Amazon Bedrock LLM Provider
- * 
+ *
  * Implements the Amazon Bedrock API for accessing multiple
  * foundation models through a unified AWS interface.
- * 
+ *
  * Features:
  * - Access to Claude, Llama, Mistral, and other models
  * - AWS IAM authentication
  * - Regional endpoints
  * - VPC support
- * 
+ *
  * @package DGLab\Services\MangaScript\AI\Providers
  */
 class BedrockProvider extends AbstractLLMProvider
@@ -27,17 +27,17 @@ class BedrockProvider extends AbstractLLMProvider
      * Provider identifier
      */
     protected string $providerId = 'bedrock';
-    
+
     /**
      * Provider display name
      */
     protected string $providerName = 'Amazon Bedrock';
-    
+
     /**
      * AWS Region
      */
     protected string $region = 'us-east-1';
-    
+
     /**
      * Available models with their specifications
      */
@@ -70,7 +70,7 @@ class BedrockProvider extends AbstractLLMProvider
             'cost_per_1k_input' => 0.015,
             'cost_per_1k_output' => 0.075,
         ],
-        
+
         // Llama models
         'meta.llama3-2-90b-instruct-v1:0' => [
             'display_name' => 'Llama 3.2 90B',
@@ -99,7 +99,7 @@ class BedrockProvider extends AbstractLLMProvider
             'cost_per_1k_input' => 0.00099,
             'cost_per_1k_output' => 0.00099,
         ],
-        
+
         // Mistral models
         'mistral.mistral-large-2407-v1:0' => [
             'display_name' => 'Mistral Large 2',
@@ -119,7 +119,7 @@ class BedrockProvider extends AbstractLLMProvider
             'cost_per_1k_input' => 0.001,
             'cost_per_1k_output' => 0.003,
         ],
-        
+
         // Amazon Titan
         'amazon.titan-text-premier-v1:0' => [
             'display_name' => 'Amazon Titan Text Premier',
@@ -131,12 +131,12 @@ class BedrockProvider extends AbstractLLMProvider
             'cost_per_1k_output' => 0.0015,
         ],
     ];
-    
+
     /**
      * Default model for this provider
      */
     protected string $defaultModel = 'anthropic.claude-3-5-sonnet-20241022-v2:0';
-    
+
     /**
      * AWS credentials
      */
@@ -151,7 +151,7 @@ class BedrockProvider extends AbstractLLMProvider
     {
         // For Bedrock, apiKey can be empty as we use IAM
         parent::__construct($apiKey, $config);
-        
+
         $this->region = $config['region'] ?? getenv('AWS_REGION') ?: 'us-east-1';
         $this->accessKeyId = $config['access_key_id'] ?? getenv('AWS_ACCESS_KEY_ID') ?: '';
         $this->secretAccessKey = $config['secret_access_key'] ?? getenv('AWS_SECRET_ACCESS_KEY') ?: '';
@@ -168,20 +168,19 @@ class BedrockProvider extends AbstractLLMProvider
     ): LLMResponse {
         $model = $options['model'] ?? $this->defaultModel;
         $this->validateModel($model);
-        
+
         $modelSpec = $this->availableModels[$model];
-        
+
         // Determine request format based on model provider
         $payload = $this->buildPayload($model, $prompt, $systemPrompt, $options);
-        
+
         $startTime = microtime(true);
-        
+
         try {
             $response = $this->makeRequest($model, $payload);
             $latency = (microtime(true) - $startTime) * 1000;
-            
+
             return $this->parseResponse($response, $model, $latency);
-            
         } catch (\Exception $e) {
             throw LLMProviderException::requestFailed(
                 $this->providerId,
@@ -191,7 +190,7 @@ class BedrockProvider extends AbstractLLMProvider
             );
         }
     }
-    
+
     /**
      * Build request payload based on model type
      */
@@ -202,11 +201,11 @@ class BedrockProvider extends AbstractLLMProvider
         array $options
     ): array {
         $modelSpec = $this->availableModels[$model];
-        
+
         // Claude models use Messages API format
         if (str_starts_with($model, 'anthropic.')) {
             $messages = [['role' => 'user', 'content' => $prompt]];
-            
+
             $payload = [
                 'anthropic_version' => 'bedrock-2023-05-31',
                 'max_tokens' => min(
@@ -216,20 +215,20 @@ class BedrockProvider extends AbstractLLMProvider
                 'messages' => $messages,
                 'temperature' => $options['temperature'] ?? 0.7,
             ];
-            
+
             if ($systemPrompt) {
                 $payload['system'] = $systemPrompt;
             }
-            
+
             return $payload;
         }
-        
+
         // Llama models
         if (str_starts_with($model, 'meta.')) {
-            $fullPrompt = $systemPrompt 
+            $fullPrompt = $systemPrompt
                 ? "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n{$systemPrompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n{$prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
                 : "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n{$prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>";
-            
+
             return [
                 'prompt' => $fullPrompt,
                 'max_gen_len' => min($options['max_tokens'] ?? 2048, $modelSpec['max_output']),
@@ -237,7 +236,7 @@ class BedrockProvider extends AbstractLLMProvider
                 'top_p' => $options['top_p'] ?? 0.9,
             ];
         }
-        
+
         // Mistral models
         if (str_starts_with($model, 'mistral.')) {
             $messages = [];
@@ -245,20 +244,20 @@ class BedrockProvider extends AbstractLLMProvider
                 $messages[] = ['role' => 'system', 'content' => $systemPrompt];
             }
             $messages[] = ['role' => 'user', 'content' => $prompt];
-            
+
             return [
                 'messages' => $messages,
                 'max_tokens' => min($options['max_tokens'] ?? 4096, $modelSpec['max_output']),
                 'temperature' => $options['temperature'] ?? 0.7,
             ];
         }
-        
+
         // Amazon Titan models
         if (str_starts_with($model, 'amazon.')) {
-            $inputText = $systemPrompt 
+            $inputText = $systemPrompt
                 ? "System: {$systemPrompt}\n\nUser: {$prompt}"
                 : $prompt;
-            
+
             return [
                 'inputText' => $inputText,
                 'textGenerationConfig' => [
@@ -268,7 +267,7 @@ class BedrockProvider extends AbstractLLMProvider
                 ],
             ];
         }
-        
+
         throw new \InvalidArgumentException("Unsupported model: {$model}");
     }
 
@@ -281,17 +280,17 @@ class BedrockProvider extends AbstractLLMProvider
         array $options = []
     ): LLMResponse {
         $model = $options['model'] ?? $this->defaultModel;
-        
+
         // For Claude, we can use the messages directly
         if (str_starts_with($model, 'anthropic.')) {
             return $this->sendClaudeWithHistory($messages, $systemPrompt, $options);
         }
-        
+
         // For other models, concatenate history into a single prompt
         $prompt = $this->flattenHistory($messages);
         return $this->send($prompt, $systemPrompt, $options);
     }
-    
+
     /**
      * Send with history using Claude's Messages API
      */
@@ -302,25 +301,25 @@ class BedrockProvider extends AbstractLLMProvider
     ): LLMResponse {
         $model = $options['model'] ?? $this->defaultModel;
         $modelSpec = $this->availableModels[$model];
-        
+
         $payload = [
             'anthropic_version' => 'bedrock-2023-05-31',
             'max_tokens' => min($options['max_tokens'] ?? 4096, $modelSpec['max_output']),
             'messages' => $messages,
             'temperature' => $options['temperature'] ?? 0.7,
         ];
-        
+
         if ($systemPrompt) {
             $payload['system'] = $systemPrompt;
         }
-        
+
         $startTime = microtime(true);
         $response = $this->makeRequest($model, $payload);
         $latency = (microtime(true) - $startTime) * 1000;
-        
+
         return $this->parseResponse($response, $model, $latency);
     }
-    
+
     /**
      * Flatten message history for models that don't support multi-turn
      */
@@ -340,16 +339,16 @@ class BedrockProvider extends AbstractLLMProvider
     protected function makeRequest(string $model, array $payload): array
     {
         $endpoint = "https://bedrock-runtime.{$this->region}.amazonaws.com/model/{$model}/invoke";
-        
+
         $body = json_encode($payload);
         $datetime = gmdate('Ymd\THis\Z');
         $date = gmdate('Ymd');
-        
+
         // Build canonical request
         $headers = $this->signRequest($endpoint, $body, $datetime, $date);
-        
+
         $ch = curl_init($endpoint);
-        
+
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
@@ -358,27 +357,27 @@ class BedrockProvider extends AbstractLLMProvider
             CURLOPT_TIMEOUT => $this->config['timeout'] ?? 120,
             CURLOPT_CONNECTTIMEOUT => $this->config['connect_timeout'] ?? 10,
         ]);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        
+
         curl_close($ch);
-        
+
         if ($error) {
             throw new \RuntimeException("cURL error: {$error}");
         }
-        
+
         $data = json_decode($response, true);
-        
+
         if ($httpCode !== 200) {
             $errorMessage = $data['message'] ?? $data['Message'] ?? 'Unknown error';
             throw new \RuntimeException("API error ({$httpCode}): {$errorMessage}", $httpCode);
         }
-        
+
         return $data;
     }
-    
+
     /**
      * Sign request with AWS Signature V4
      */
@@ -392,42 +391,42 @@ class BedrockProvider extends AbstractLLMProvider
         $host = $parsed['host'];
         $path = $parsed['path'];
         $service = 'bedrock';
-        
+
         $payloadHash = hash('sha256', $body);
-        
+
         $canonicalHeaders = "content-type:application/json\nhost:{$host}\nx-amz-date:{$datetime}\n";
         $signedHeaders = 'content-type;host;x-amz-date';
-        
+
         if ($this->sessionToken) {
             $canonicalHeaders .= "x-amz-security-token:{$this->sessionToken}\n";
             $signedHeaders .= ';x-amz-security-token';
         }
-        
+
         $canonicalRequest = "POST\n{$path}\n\n{$canonicalHeaders}\n{$signedHeaders}\n{$payloadHash}";
-        
+
         $credentialScope = "{$date}/{$this->region}/{$service}/aws4_request";
         $stringToSign = "AWS4-HMAC-SHA256\n{$datetime}\n{$credentialScope}\n" . hash('sha256', $canonicalRequest);
-        
+
         $kDate = hash_hmac('sha256', $date, "AWS4{$this->secretAccessKey}", true);
         $kRegion = hash_hmac('sha256', $this->region, $kDate, true);
         $kService = hash_hmac('sha256', $service, $kRegion, true);
         $kSigning = hash_hmac('sha256', 'aws4_request', $kService, true);
-        
+
         $signature = hash_hmac('sha256', $stringToSign, $kSigning);
-        
+
         $authorization = "AWS4-HMAC-SHA256 Credential={$this->accessKeyId}/{$credentialScope}, SignedHeaders={$signedHeaders}, Signature={$signature}";
-        
+
         $headers = [
             'Content-Type: application/json',
             "Host: {$host}",
             "X-Amz-Date: {$datetime}",
             "Authorization: {$authorization}",
         ];
-        
+
         if ($this->sessionToken) {
             $headers[] = "X-Amz-Security-Token: {$this->sessionToken}";
         }
-        
+
         return $headers;
     }
 
@@ -440,7 +439,7 @@ class BedrockProvider extends AbstractLLMProvider
         $inputTokens = 0;
         $outputTokens = 0;
         $finishReason = 'unknown';
-        
+
         // Parse based on model type
         if (str_starts_with($model, 'anthropic.')) {
             $content = $response['content'][0]['text'] ?? '';
@@ -461,12 +460,12 @@ class BedrockProvider extends AbstractLLMProvider
             $outputTokens = $response['results'][0]['tokenCount'] ?? 0;
             $finishReason = $response['results'][0]['completionReason'] ?? 'unknown';
         }
-        
+
         // Calculate cost
         $modelSpec = $this->availableModels[$model];
         $cost = (($inputTokens / 1000) * $modelSpec['cost_per_1k_input']) +
                 (($outputTokens / 1000) * $modelSpec['cost_per_1k_output']);
-        
+
         return new LLMResponse(
             content: $content,
             provider: $this->providerId,
@@ -545,7 +544,7 @@ class BedrockProvider extends AbstractLLMProvider
             );
         }
     }
-    
+
     /**
      * Set AWS region
      */
@@ -554,7 +553,7 @@ class BedrockProvider extends AbstractLLMProvider
         $this->region = $region;
         return $this;
     }
-    
+
     /**
      * Get current AWS region
      */

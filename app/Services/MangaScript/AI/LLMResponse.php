@@ -31,7 +31,8 @@ class LLMResponse
         public readonly bool $isUncensored = false,
         public readonly ?float $latencyMs = null,
         public readonly ?float $costUsd = null
-    ) {}
+    ) {
+    }
 
     /**
      * Get total tokens used

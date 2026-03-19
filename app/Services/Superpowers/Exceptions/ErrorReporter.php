@@ -50,7 +50,7 @@ class ErrorReporter
                 <div class="content">
                     <div class="message"><?php echo nl2br(htmlspecialchars($e->getMessage())); ?></div>
                     <div class="location">In <strong><?php echo htmlspecialchars($displayFile); ?></strong> on line <strong><?php echo $displayLine; ?></strong></div>
-                    <?php if ($snippet): ?>
+                    <?php if ($snippet) : ?>
                         <div class="snippet"><?php echo $snippet; ?></div>
                     <?php endif; ?>
                     <div class="trace">

@@ -7,5 +7,7 @@ use DGLab\Models\User;
 
 class PasswordChanged extends BaseEvent
 {
-    public function __construct(public User $user) {}
+    public function __construct(public User $user)
+    {
+    }
 }

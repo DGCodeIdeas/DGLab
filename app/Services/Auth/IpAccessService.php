@@ -15,8 +15,12 @@ class IpAccessService
 
     public function isAllowed(string $ip): bool
     {
-        if ($this->isBlacklisted($ip)) return false;
-        if (!empty($this->whitelist)) return $this->isWhitelisted($ip);
+        if ($this->isBlacklisted($ip)) {
+            return false;
+        }
+        if (!empty($this->whitelist)) {
+            return $this->isWhitelisted($ip);
+        }
         return true;
     }
 
@@ -33,14 +37,18 @@ class IpAccessService
     protected function ipInList(string $ip, array $list): bool
     {
         foreach ($list as $pattern) {
-            if ($this->ipMatches($ip, $pattern)) return true;
+            if ($this->ipMatches($ip, $pattern)) {
+                return true;
+            }
         }
         return false;
     }
 
     protected function ipMatches(string $ip, string $pattern): bool
     {
-        if ($ip === $pattern) return true;
+        if ($ip === $pattern) {
+            return true;
+        }
         if (str_contains($pattern, '*')) {
             $regex = str_replace(['.', '*'], ['\.', '.*'], $pattern);
             return preg_match('/^' . $regex . '$/', $ip) === 1;

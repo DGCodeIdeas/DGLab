@@ -27,7 +27,7 @@ class DownloadController extends Controller
      */
     public function __construct()
     {
-        $this->audit = new AuditService();
+        $this->audit = Application::getInstance()->get(AuditService::class);
     }
 
     /**

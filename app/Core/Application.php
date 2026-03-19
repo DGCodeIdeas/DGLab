@@ -82,21 +82,42 @@ class Application
     protected function registerBaseServices(): void
     {
         $this->set(Application::class, $this);
-        $this->set(Request::class, function () { return new Request(); });
-        $this->set(Router::class, function () { return new Router($this); });
-        $this->set(View::class, function () { return new View($this); });
-        $this->set(Connection::class, function () {
-            return new Connection($this->config('database.default', 'sqlite'));
+        $this->set(Request::class, function () {
+            return new Request();
         });
-        $this->set(LoggerInterface::class, function () { return new Logger($this); });
-        $this->set(DispatcherInterface::class, function () { return new EventDispatcher($this); });
+        $this->set(Router::class, function () {
+            return new Router($this);
+        });
+        $this->set(View::class, function () {
+            return new View($this);
+        });
+        $this->set(Connection::class, function () {
+            return new Connection($this->config('database') ?? []);
+        });
+        $this->set(LoggerInterface::class, function () {
+            return new Logger();
+        });
+        $this->set(DispatcherInterface::class, function () {
+            return new EventDispatcher($this);
+        });
+        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, function () {
+            return new \DGLab\Core\EventDrivers\SyncDriver($this);
+        });
+        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, function () {
+            return new \DGLab\Core\EventDrivers\QueueDriver($this);
+        });
         $this->set(AuditService::class, function () {
             return new AuditService(
                 $this->get(Connection::class),
                 $this->get(Request::class),
-                $this->has(\DGLab\Services\Tenancy\TenancyService::class) ? $this->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
-                $this->has(\DGLab\Services\Auth\AuthManager::class) ? $this->get(\DGLab\Services\Auth\AuthManager::class) : null
+                $this->has(\DGLab\Services\Tenancy\TenancyService::class) ?
+                    $this->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
+                $this->has(\DGLab\Services\Auth\AuthManager::class) ?
+                    $this->get(\DGLab\Services\Auth\AuthManager::class) : null
             );
+        });
+        $this->set(\DGLab\Services\Download\AuditService::class, function () {
+            return new \DGLab\Services\Download\AuditService($this->get(AuditService::class));
         });
     }
 
@@ -149,6 +170,44 @@ class Application
         }
 
         return $this->services[$id];
+    }
+
+    /**
+     * Call a class method with dependency injection.
+     */
+    public function call(callable $callable, array $args = []): mixed
+    {
+        if (is_array($callable)) {
+            $reflection = new \ReflectionMethod($callable[0], $callable[1]);
+        } else {
+            $reflection = new \ReflectionFunction($callable);
+        }
+
+        $params = $reflection->getParameters();
+        $finalArgs = [];
+
+        foreach ($params as $param) {
+            $name = $param->getName();
+            if (isset($args[$name])) {
+                $finalArgs[] = $args[$name];
+                continue;
+            }
+
+            $type = $param->getType();
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $finalArgs[] = $this->get($type->getName());
+                continue;
+            }
+
+            if ($param->isDefaultValueAvailable()) {
+                $finalArgs[] = $param->getDefaultValue();
+                continue;
+            }
+
+            throw new \RuntimeException("Unable to resolve parameter: {$name}");
+        }
+
+        return call_user_func_array($callable, $finalArgs);
     }
 
     /**

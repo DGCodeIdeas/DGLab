@@ -19,7 +19,7 @@ class ExpressionTranspiler
     {
         // Support for null-safe dot notation: $user?.profile?.name
         $patternNullSafe = '/\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(\?\.[a-zA-Z0-9_\-\.]+)+/';
-        $expression = preg_replace_callback($patternNullSafe, function($matches) {
+        $expression = preg_replace_callback($patternNullSafe, function ($matches) {
             $base = '$' . $matches[1];
             $remaining = substr($matches[0], strlen($base) + 2);
             $parts = explode('?.', $remaining);
@@ -32,7 +32,7 @@ class ExpressionTranspiler
 
         // Support for standard dot notation: $user.profile.name
         $pattern = '/\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(\.[a-zA-Z0-9_\-\.]+)+/';
-        $expression = preg_replace_callback($pattern, function($matches) {
+        $expression = preg_replace_callback($pattern, function ($matches) {
             $base = '$' . $matches[1];
             $remaining = substr($matches[0], strlen($base) + 1);
             $parts = explode('.', $remaining);

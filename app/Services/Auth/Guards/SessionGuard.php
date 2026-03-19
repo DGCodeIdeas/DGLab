@@ -33,8 +33,12 @@ class SessionGuard implements AuthGuardInterface
 
     public function user(): ?User
     {
-        if ($this->loggedOut) return null;
-        if (!is_null($this->user)) return $this->user;
+        if ($this->loggedOut) {
+            return null;
+        }
+        if (!is_null($this->user)) {
+            return $this->user;
+        }
 
         $id = $_SESSION[$this->getName()] ?? null;
         if (!is_null($id)) {
@@ -48,9 +52,18 @@ class SessionGuard implements AuthGuardInterface
         return $this->user;
     }
 
-    public function id(): int|string|null { return $this->user() ? $this->user()->id : null; }
-    public function check(): bool { return !is_null($this->user()); }
-    public function guest(): bool { return !$this->check(); }
+    public function id(): int|string|null
+    {
+        return $this->user() ? $this->user()->id : null;
+    }
+    public function check(): bool
+    {
+        return !is_null($this->user());
+    }
+    public function guest(): bool
+    {
+        return !$this->check();
+    }
     public function validate(array $credentials = []): bool
     {
         $user = $this->provider->findByIdentifier($credentials['login'] ?? '');
@@ -79,7 +92,9 @@ class SessionGuard implements AuthGuardInterface
     protected function updateSession(int $id): void
     {
         $_SESSION[$this->getName()] = $id;
-        if (!headers_sent()) session_regenerate_id(true);
+        if (!headers_sent()) {
+            session_regenerate_id(true);
+        }
     }
 
     public function setUser(User $user): void
@@ -103,17 +118,27 @@ class SessionGuard implements AuthGuardInterface
         if (isset($_COOKIE[$cookieName])) {
             $token = $_COOKIE[$cookieName];
             Connection::getInstance()->delete("DELETE FROM remember_tokens WHERE token = ?", [$token]);
-            if (!headers_sent()) setcookie($cookieName, '', time() - 3600, '/');
+            if (!headers_sent()) {
+                setcookie($cookieName, '', time() - 3600, '/');
+            }
         }
     }
 
-    protected function getName(): string { return 'login_' . $this->name . '_' . sha1(static::class); }
-    protected function getRememberTokenName(): string { return 'remember_' . $this->name . '_' . sha1(static::class); }
+    protected function getName(): string
+    {
+        return 'login_' . $this->name . '_' . sha1(static::class);
+    }
+    protected function getRememberTokenName(): string
+    {
+        return 'remember_' . $this->name . '_' . sha1(static::class);
+    }
 
     protected function recallFromRememberCookie(): ?User
     {
         $token = $_COOKIE[$this->getRememberTokenName()] ?? null;
-        if (!$token) return null;
+        if (!$token) {
+            return null;
+        }
 
         $record = Connection::getInstance()->selectOne(
             "SELECT user_id FROM remember_tokens WHERE token = ? AND expires_at > ?",
@@ -141,6 +166,8 @@ class SessionGuard implements AuthGuardInterface
             [$user->id, $token, $expires, date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]
         );
 
-        if (!headers_sent()) setcookie($this->getRememberTokenName(), $token, time() + 60 * 60 * 24 * 30, '/', '', false, true);
+        if (!headers_sent()) {
+            setcookie($this->getRememberTokenName(), $token, time() + 60 * 60 * 24 * 30, '/', '', false, true);
+        }
     }
 }

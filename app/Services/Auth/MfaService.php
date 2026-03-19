@@ -30,7 +30,9 @@ class MfaService
      */
     public function getCode(string $secret, ?int $time = null): string
     {
-        if (null === $time) $time = time();
+        if (null === $time) {
+            $time = time();
+        }
         $timestamp = floor($time / 30);
 
         $secretKey = $this->base32Decode($secret);
@@ -91,7 +93,9 @@ class MfaService
         for ($i = 0; $i < strlen($base32); $i++) {
             $char = $base32[$i];
             $value = strpos($chars, $char);
-            if ($value === false) continue;
+            if ($value === false) {
+                continue;
+            }
 
             $buffer = ($buffer << 5) | $value;
             $bufferLength += 5;

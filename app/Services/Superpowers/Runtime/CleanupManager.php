@@ -12,7 +12,9 @@ class CleanupManager
     private static ?CleanupManager $instance = null;
     private array $callbacks = [];
 
-    private function __construct() {}
+    private function __construct()
+    {
+    }
 
     public static function getInstance(): self
     {

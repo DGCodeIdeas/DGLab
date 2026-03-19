@@ -1,7 +1,11 @@
 <?php
+
 namespace DGLab\Services\Auth\Contracts;
+
 use DGLab\Models\User;
-interface AuthGuardInterface {
+
+interface AuthGuardInterface
+{
     public function user(): ?User;
     public function id(): int|string|null;
     public function check(): bool;

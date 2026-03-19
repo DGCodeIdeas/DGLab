@@ -10,7 +10,9 @@ class DebugCollector
 
     public static function getInstance(): DebugCollector
     {
-        if (self::$instance === null) self::$instance = new self();
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
         return self::$instance;
     }
 
@@ -49,10 +51,16 @@ class DebugCollector
     {
         $san = [];
         foreach ($data as $k => $v) {
-            if (strpos($k, '__') === 0) continue;
-            if (is_object($v)) $san[$k] = '[Obj: ' . get_class($v) . ']';
-            elseif (is_array($v)) $san[$k] = $this->sanitize($v);
-            else $san[$k] = $v;
+            if (strpos($k, '__') === 0) {
+                continue;
+            }
+            if (is_object($v)) {
+                $san[$k] = '[Obj: ' . get_class($v) . ']';
+            } elseif (is_array($v)) {
+                $san[$k] = $this->sanitize($v);
+            } else {
+                $san[$k] = $v;
+            }
         }
         return $san;
     }

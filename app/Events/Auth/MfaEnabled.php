@@ -7,5 +7,7 @@ use DGLab\Models\User;
 
 class MfaEnabled extends BaseEvent
 {
-    public function __construct(public User $user) {}
+    public function __construct(public User $user)
+    {
+    }
 }

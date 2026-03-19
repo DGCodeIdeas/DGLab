@@ -19,7 +19,9 @@ class AuthorizationService
     public function can(User $user, string $permission): bool
     {
         $tenantId = $this->tenancy->tenantId();
-        if (!$tenantId) return false;
+        if (!$tenantId) {
+            return false;
+        }
 
         $permissions = $this->getUserPermissionsForTenant($user, $tenantId);
         return in_array($permission, $permissions);
@@ -28,7 +30,9 @@ class AuthorizationService
     public function hasRole(User $user, string $role): bool
     {
         $tenantId = $this->tenancy->tenantId();
-        if (!$tenantId) return false;
+        if (!$tenantId) {
+            return false;
+        }
 
         $sql = "SELECT r.name FROM roles r
                 INNER JOIN tenant_user_roles tur ON r.id = tur.role_id
@@ -41,7 +45,9 @@ class AuthorizationService
     protected function getUserPermissionsForTenant(User $user, int $tenantId): array
     {
         $cacheKey = "{$user->id}:{$tenantId}";
-        if (isset($this->permissionCache[$cacheKey])) return $this->permissionCache[$cacheKey];
+        if (isset($this->permissionCache[$cacheKey])) {
+            return $this->permissionCache[$cacheKey];
+        }
 
         $sql = "SELECT DISTINCT p.name FROM permissions p
                 INNER JOIN role_permissions rp ON p.id = rp.permission_id

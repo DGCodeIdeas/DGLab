@@ -72,9 +72,9 @@ class SuperpowersEngine implements ViewEngineInterface
             if ($mode === 'interpreted') {
                 if (Application::config('app.debug')) {
                      $this->debugCollector->recordView($viewName, $path, $data);
-                     if (Application::config('superpowers.linter.on_render', true)) {
-                          $this->linter->lint(file_get_contents($path), $path);
-                     }
+                    if (Application::config('superpowers.linter.on_render', true)) {
+                         $this->linter->lint(file_get_contents($path), $path);
+                    }
                 }
                 $content = file_get_contents($path);
                 $tokens = $this->lexer->tokenize($content);
@@ -132,11 +132,11 @@ class SuperpowersEngine implements ViewEngineInterface
         }
 
         if (!defined('PHPUNIT_RUNNING') && Application::config('app.debug') && Application::config('superpowers.debug_overlay.enabled', true)) {
-             if (strpos($output, '<body') !== false) {
-                  $meta = json_encode($this->debugCollector->getMetadata());
-                  $overlay = "<div id='superpowers-debug-overlay' data-meta='{$meta}'></div>";
-                  $output = str_replace('</body>', $overlay . '</body>', $output);
-             }
+            if (strpos($output, '<body') !== false) {
+                 $meta = json_encode($this->debugCollector->getMetadata());
+                 $overlay = "<div id='superpowers-debug-overlay' data-meta='{$meta}'></div>";
+                 $output = str_replace('</body>', $overlay . '</body>', $output);
+            }
         }
 
         return $output;
@@ -166,11 +166,12 @@ class SuperpowersEngine implements ViewEngineInterface
                     foreach ($deps as $dep) {
                         try {
                              [$depPath, $engine] = $this->view->resolveView($dep);
-                             if (filemtime($depPath) > filemtime($compiledFile)) {
-                                 $shouldRecompile = true;
-                                 break;
-                             }
-                        } catch (\Exception $e) {}
+                            if (filemtime($depPath) > filemtime($compiledFile)) {
+                                $shouldRecompile = true;
+                                break;
+                            }
+                        } catch (\Exception $e) {
+                        }
                     }
                 }
             }
@@ -190,14 +191,14 @@ class SuperpowersEngine implements ViewEngineInterface
         if (Application::config('app.debug')) {
              $viewName = $this->extractViewName($path);
              $this->debugCollector->recordView($viewName, $path, $data, $compiledFile);
-             if (Application::config('superpowers.linter.on_render', true)) {
-                  $this->linter->lint(file_get_contents($path), $path);
-             }
+            if (Application::config('superpowers.linter.on_render', true)) {
+                 $this->linter->lint(file_get_contents($path), $path);
+            }
         }
 
         $view = $this->view;
 
-        $render = (function() use ($compiledFile, $data) {
+        $render = (function () use ($compiledFile, $data) {
             $__action = $data['__action'] ?? null;
             $__state = $data['__state'] ?? null;
             $__view = $data['__view'] ?? null;

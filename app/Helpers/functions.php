@@ -52,8 +52,12 @@ function view(string $template, array $data = [], ?string $layout = 'master'): R
 function global_state(?string $key = null, mixed $value = null): mixed
 {
     $store = app()->get(GlobalStateStore::class);
-    if ($key === null) return $store;
-    if ($value === null) return $store->get($key);
+    if ($key === null) {
+        return $store;
+    }
+    if ($value === null) {
+        return $store->get($key);
+    }
     $store->set($key, $value);
     return null;
 }

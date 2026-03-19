@@ -26,7 +26,7 @@ class RoutingEngine
     /**
      * Route a request to the most suitable LLM
      */
-    public function route(array $input): LLMResponse
+    public function route(array $input): RoutingResponse
     {
         $category = $input['category'] ?? 'A'; // Enterprise Cloud by default
         $tier = $input['tier'] ?? 'medium';
@@ -39,7 +39,7 @@ class RoutingEngine
 
         $model = $models[0]; // Select the first available for now
 
-        return new LLMResponse($model, $input);
+        return new RoutingResponse($model, $input);
     }
 
     protected function getModelsForCategoryAndTier(string $category, string $tier): array
@@ -61,29 +61,5 @@ class RoutingEngine
         }
 
         return $results;
-    }
-}
-
-/**
- * Placeholder for LLMResponse
- */
-class LLMResponse
-{
-    protected array $model;
-    protected array $input;
-
-    public function __construct(array $model, array $input)
-    {
-        $this->model = $model;
-        $this->input = $input;
-    }
-
-    public function execute(): array
-    {
-        return [
-            'title' => $this->input['title'] ?? 'Generated Script',
-            'model' => $this->model['model'],
-            'content' => 'Sample manga script content generated via ' . $this->model['provider'] . ' (' . $this->model['model'] . ')'
-        ];
     }
 }

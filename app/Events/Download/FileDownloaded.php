@@ -12,5 +12,6 @@ class FileDownloaded extends BaseEvent
         public int $status,
         public float $latency,
         public int $bytes
-    ) {}
+    ) {
+    }
 }

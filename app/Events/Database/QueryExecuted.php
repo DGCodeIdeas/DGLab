@@ -11,5 +11,6 @@ class QueryExecuted extends BaseEvent
         public array $bindings,
         public float $time,
         public string $connectionName
-    ) {}
+    ) {
+    }
 }
