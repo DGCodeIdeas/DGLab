@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{!! $title ?? config('app.name') !!}</title>
+
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <header class="bg-white shadow">
+        <nav class="container mx-auto px-4 py-6">
+            <a href="/" class="text-xl font-bold">{{ config('app.name') }}</a>
+        </nav>
+    </header>
+
+    <main>
+        {!! $slot !!}
+    </main>
+
+    <footer class="container mx-auto px-4 py-12 text-center text-gray-500">
+        &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+    </footer>
+
+    <script src="{{ asset('js/app.js') }}"></script>
+</body>
+</html>

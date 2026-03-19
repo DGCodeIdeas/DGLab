@@ -1,0 +1,33 @@
+~setup {
+    /**
+     * Initial component state.
+     * Accessible via {{ $propertyName }} in the template.
+     */
+    $title = '{{ name }}';
+    {{ setup_extra }}
+}
+
+~mount {
+    /**
+     * Runs when the component is first mounted on the page.
+     * Perfect for initial data fetching or setup.
+     */
+}
+
+<div class="component-{{ name }}">
+    <h2>{{ $title }}</h2>
+    <div class="component-body">
+        {!! $slot !!}
+    </div>
+
+    {{ reactive_example }}
+</div>
+
+<style>
+    .component-{{ name }} {
+        border: 1px solid #ddd;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+</style>

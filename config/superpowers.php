@@ -31,22 +31,23 @@ return [
      */
     'reactivity' => [
         'enabled' => true,
-
-        /**
-         * State Storage Mode
-         * 'dom' - Encrypted state is stored in data attributes in the browser.
-         * 'session' - State is stored on the server in the user session.
-         */
         'storage' => 'dom',
-
-        /**
-         * The route used for action handling.
-         */
         'action_route' => '/_superpowers/action',
-
-        /**
-         * Automatic injection of JS runtime.
-         */
         'inject_runtime' => true,
+    ],
+
+    /**
+     * DX & Observability (Phase 9)
+     */
+    'errors' => [
+        'context_lines' => 3,
+    ],
+
+    'debug_overlay' => [
+        'enabled' => true,
+    ],
+
+    'linter' => [
+        'on_render' => true,
     ],
 ];
