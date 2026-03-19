@@ -89,7 +89,8 @@ class Interpreter
         $layout = $this->state->get('__extendedLayout');
         if ($layout) {
              $this->state->remove('__extendedLayout');
-             return $this->view->render($layout, array_merge($data, $this->state->all()));
+             $output = $this->view->render($layout, array_merge($data, $this->state->all()));
+             return $output;
         }
 
         return $output;

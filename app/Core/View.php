@@ -98,7 +98,7 @@ class View
         $this->fragmentMode = $sectionName;
     }
 
-        public function render(string $template, array $data = [], ?string $layout = 'master'): string
+            public function render(string $template, array $data = [], ?string $layout = 'master'): string
     {
         $data = array_merge($this->shared, $data);
 
@@ -107,9 +107,7 @@ class View
         $content = $engine->render($viewFile, $data);
 
         if ($this->fragmentMode !== null) {
-            $frag = $this->fragmentMode;
-            $this->fragmentMode = null;
-            return $this->yield($frag);
+            return $this->yield($this->fragmentMode);
         }
 
         if ($layout !== null) {

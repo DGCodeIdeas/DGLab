@@ -37,6 +37,13 @@ class DebugCollector
         ];
     }
 
+    public function clear(): void
+    {
+        $this->views = [];
+        $this->components = [];
+        $this->events = [];
+    }
+
     public function getMetadata(): array
     {
         return [
