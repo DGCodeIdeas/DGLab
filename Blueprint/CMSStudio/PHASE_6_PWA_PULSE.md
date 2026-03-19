@@ -30,9 +30,10 @@ Extend the Pulse App to monitor the health and performance of the PWA from the c
 
 ## 6.6 User Interface: The "Pulse App" (Client View)
 - **"Command Center" Vibe**: Like a NASA control room.
-- **Global PWA Health Map**: Visualization of PWA health by browser, OS, and region.
-- **Telemetry Charts**: High-density charts showing PWA cache hit rates and Core Web Vitals trends.
-- **Telemetry Overlays**: The sidebar of the Content App (Phase 4) now shows real-time PWA cache hit rates for specific content.
+- **SuperPHP Reactive Components**:
+    - `<s:pulse-pwa-health-map>`: Visualization of PWA health by browser, OS, and region.
+    - `<s:pulse-client-telemetry-charts>`: High-density charts showing PWA cache hit rates and Core Web Vitals trends.
+    - `<s:pulse-telemetry-overlay>`: The sidebar of the Content App (Phase 4) now shows real-time PWA cache hit rates for specific content.
 
 ## 6.7 Security & Isolation
 - **Client Metadata Isolation**: Ensure all client-side metrics are strictly bound to their respective tenant contexts.

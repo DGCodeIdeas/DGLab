@@ -1,41 +1,43 @@
 # Phase 1: Identity & Access Management (IAM)
 
 ## Goals
-Establish a unified, multi-tenant security foundation for the entire CMS Studio ecosystem. This phase merges administrative security (MFA, IP filtering) with granular content permissions (RBAC).
+Establish a unified, multi-tenant security foundation for the entire CMS Studio ecosystem. This phase leverages the existing `AuthService` to provide administrative security (MFA, IP filtering) and granular content permissions (RBAC) via the `Gate` system.
 
-## 1.1 Unified Security Architecture
-- **StudioAuthMiddleware**: A custom middleware protecting all routes under `/studio/*`.
-- **Identity Service**: A singleton service responsible for managing user sessions across all Studio apps.
-- **Session Security**: Native PHP session management with `Secure`, `HttpOnly`, and `SameSite` flags.
-- **Credential Storage**: Migration from environment variables to salted/hashed database storage (Argon2id).
+## 1.1 Core Security Architecture (BACKEND COMPLETED)
+- **Multi-Mechanism Authentication**: Supported via `AuthManager` and specialized guards:
+    - `SessionGuard`: Standard web-based sessions with CSRF protection.
+    - `OpaqueTokenGuard`: Stateful API tokens with specific "abilities."
+    - `JwtGuard`: Stateless authentication using `JWTService` (HS256/RS256).
+- **Identity Models**:
+    - `User`: Central identity model using Argon2id for password hashing.
+    - `Tenant`: Foundation for physical and logical data isolation.
+- **Tenant-Aware RBAC**: Roles and permissions are scoped to specific tenants via the `AuthorizationService`.
 
-## 1.2 Multi-Factor Authentication (MFA)
-- **Time-based OTP (TOTP)**: Integration for all Studio users.
-- **Setup Flow**: Visual QR code setup and secret key generation.
-- **Recovery Architecture**: Secure generation and storage of encrypted backup codes.
+## 1.2 Multi-Factor Authentication (MFA) (BACKEND COMPLETED)
+- **TOTP Implementation**: Handled by `MfaService` for secure generation and verification of time-based one-time passwords.
+- **Backup Codes**: Secure, encrypted recovery codes for account restoration.
+- **Verification Service**: Support for email and password reset flows.
 
-## 1.3 Tenant-Aware RBAC (Role-Based Access Control)
+## 1.3 Tenant-Aware Authorization (BACKEND COMPLETED)
+- **The Gate Utility**: A global utility for checking custom abilities and policies.
 - **Granular Permissions**:
-    - **Resource-Level**: Permissions to specific content types or system tools (e.g., `edit-articles`, `view-server-telemetry`).
-    - **Field-Level**: Define which roles can View, Edit, or Clear specific fields (e.g., "Finance" can edit "Price", "Editor" cannot).
-    - **Action-Level**: Control over workflow transitions (e.g., "Publish" vs. "Draft").
-- **Tenant Isolation**: Users are assigned roles within specific tenants. A user might be an `Admin` on Site A but only a `Viewer` on Site B.
+    - `Permission` model stores resource-level (e.g., `edit-articles`) and action-level permissions.
+    - `Role` model groups permissions within a `tenant_id` context.
+- **User Integration**: `User::can()` and `User::hasRole()` methods for seamless authorization checks in controllers and views.
 
-## 1.4 Network & Brute-Force Protection
-- **IP Filtering**: Configuration to restrict Studio access to specific CIDR ranges or static IPs.
-- **Rate Limiting**: Strict limiting on `/studio/login` and sensitive API endpoints.
-- **Account Lockout**: Automated temporary lockout after 5 consecutive failed login attempts.
+## 1.4 Network & Brute-Force Protection (BACKEND COMPLETED)
+- **IpAccessService**: Support for IP filtering and CIDR range white/blacklisting.
+- **RateLimiter**: Distributed rate limiting for sensitive endpoints (Login, MFA verification) via `RateLimitMiddleware`.
 
-## 1.5 The Audit Log (The "Black Box")
-- **Continuous Auditing**: Every write action in the Studio is logged with:
-    - Timestamp (microsecond precision).
-    - User/Admin ID.
-    - Tenant ID.
-    - Origin IP & User-Agent.
-    - Action type & Resource ID.
-    - **Delta Tracking**: Store "Before" and "After" snapshots of modified data for full accountability.
-- **Retention Policy**: Audit logs are immutable and stored for a minimum of 90 days.
+## 1.5 The Audit Log (CORE INTEGRATION)
+- **EventDispatcher Integration**: Every security event (Login, Failed Login, Permission Change) is dispatched as an `Event` and captured by the `EventAuditService`.
+- **Query Logging**: `Connection` class automatically logs database queries with recursion guards for deep auditing.
+- **Audit Trails**: Immutable logs stored in `event_audit_logs`, providing a "Black Box" for system interactions.
 
-## 1.6 User Interface: The "IAM Studio"
-- **"Pro-Tool" Density**: A high-density dashboard for managing users, roles, and permission matrices.
-- **Permission Simulator**: A tool to "Test as User" to verify RBAC configurations without logging out.
+## 1.6 User Interface: The "IAM Studio" (PENDING)
+- **SuperPHP Reactive UI**: A high-density dashboard built with SuperPHP components.
+- **Component Stack**:
+    - `<s:iam-user-list>`: Reactive table with real-time filtering and pagination.
+    - `<s:iam-role-matrix>`: Visual matrix for managing role-permission assignments.
+    - `<s:iam-mfa-setup>`: Reactive setup flow with dynamic QR code generation.
+- **Permission Simulator**: A SuperPHP-powered "Impersonation" tool to verify RBAC configurations in real-time.
