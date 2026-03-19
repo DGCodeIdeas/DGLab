@@ -1,3 +1,5 @@
+# [SUPERSEDED] This blueprint has been evolved into [CMS Studio](../CMSStudio/OVERVIEW.md)
+
 # Base Content Management System (CMS) Blueprint
 
 ## Project Vision

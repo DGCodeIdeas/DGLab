@@ -1,3 +1,5 @@
+# [SUPERSEDED] This blueprint has been evolved into [CMS Studio](../CMSStudio/OVERVIEW.md)
+
 # Admin Control Panel Blueprint
 
 ## Project Vision

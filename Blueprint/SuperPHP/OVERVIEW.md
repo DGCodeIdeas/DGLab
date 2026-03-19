@@ -18,13 +18,13 @@ The SuperPHP Engine is a foundational core service designed to transform the tra
 - **Reactive Handlers**: `<button @click="increment">Plus One</button>`.
 
 ## 10-Phase Roadmap
-1.  **Foundations & Lexer**: Establishing the `.super.php` extension and the base lexical analyzer.
-2.  **Expression Safety**: Implementing the "Superpowered" expression engine with auto-escaping and dot-notation.
-3.  **Component Core**: Building the tag-based component system with props and slots.
-4.  **Lifecycle & State**: Enabling self-sufficient components with `~setup` blocks and internal state management.
-5.  **Advanced Layouts**: Transitioning from `section`/`yield` to component-based layouts.
-6.  **Compiler & Caching**: Transforming AST into optimized PHP files with hash-based invalidation.
-7.  **Reactive Bridge**: Implementing the JS-to-PHP communication layer and state hydration.
-8.  **Reactive UI Diffing**: Building the client-side "Morph" runtime for partial DOM updates.
-9.  **DX & Observability**: Adding source mapping for error reporting and the "Debug Overlay."
-10. **Ecosystem Integration**: Global application integration and migration path for legacy views.
+1.  **Foundations & Lexer (COMPLETED)** : Establishing the `.super.php` extension and the base lexical analyzer.
+2.  **Expression Safety (COMPLETED)** : Implementing the "Superpowered" expression engine with auto-escaping and dot-notation.
+3.  **Component Core (COMPLETED)** : Building the tag-based component system with props and slots.
+4.  **Lifecycle & State (COMPLETED)** : Enabling self-sufficient components with `~setup` blocks and internal state management.
+5.  **Advanced Layouts (COMPLETED)** : Transitioning from `section`/`yield` to component-based layouts.
+6.  **Compiler & Caching (COMPLETED)** : Transforming AST into optimized PHP files with hash-based invalidation.
+7.  **Reactive Bridge (COMPLETED)** : Implementing the JS-to-PHP communication layer and state hydration.
+8.  **Reactive UI Diffing (COMPLETED)** : Building the client-side "Morph" runtime for partial DOM updates.
+9.  **DX & Observability (COMPLETED)** : Adding source mapping for error reporting and the "Debug Overlay."
+10. **Ecosystem Integration (COMPLETED)** : Global application integration and migration path for legacy views.

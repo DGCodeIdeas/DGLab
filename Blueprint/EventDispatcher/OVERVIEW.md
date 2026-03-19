@@ -14,27 +14,27 @@ The Event Dispatcher will be integrated as a top-level core service:
 
 ## Phased Implementation Roadmap
 
-### [Phase 1: Core Engine & Synchronous Execution](PHASE_1_CORE_ENGINE.md)
+### [Phase 1: Core Engine & Synchronous Execution (COMPLETED)](PHASE_1_CORE_ENGINE.md)
 - Definition of core interfaces and base classes.
 - Implementation of the `SyncDriver` for immediate listener execution.
 - Integration of the Dispatcher into the `Application` container.
 
-### [Phase 2: Advanced Routing & Control](PHASE_2_ROUTING_CONTROL.md)
+### [Phase 2: Advanced Routing & Control (COMPLETED)](PHASE_2_ROUTING_CONTROL.md)
 - Implementation of wildcard listener patterns (e.g., `user.*`).
 - Priority-based listener ordering.
 - Propagation stopping mechanism for complex event chains.
 
-### [Phase 3: Asynchronous Infrastructure](PHASE_3_ASYNC_INFRASTRUCTURE.md)
+### [Phase 3: Asynchronous Infrastructure (COMPLETED)](PHASE_3_ASYNC_INFRASTRUCTURE.md)
 - Implementation of the `QueueDriver`.
 - Event and listener serialization logic.
 - Development of the background worker/consumer to process deferred events.
 
-### [Phase 4: Meticulous Observability & Audit](PHASE_4_OBSERVABILITY_AUDIT.md)
+### [Phase 4: Meticulous Observability & Audit (COMPLETED)](PHASE_4_OBSERVABILITY_AUDIT.md)
 - Database-backed audit trail for all event activities.
 - Failure recovery and retry logic for asynchronous listeners.
 - Performance tracking for listener execution times.
 
-### [Phase 5: Global Framework Integration](PHASE_5_INTEGRATION.md)
+### [Phase 5: Global Framework Integration (COMPLETED)](PHASE_5_INTEGRATION.md)
 - Introduction of the `event()` global helper and `Event` facade.
 - Refactoring core framework hooks (Auth, Router) to emit events.
 - Documentation for creating custom events and subscribers.
