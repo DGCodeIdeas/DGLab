@@ -1,244 +1,101 @@
 <?php
-
 namespace DGLab\Services\Superpowers\Compiler;
-
 use DGLab\Core\Application;
-use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
-use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
+use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
 use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
 use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
-use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
-use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
-use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
-use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
 
-/**
- * Class Compiler
- *
- * Compiles SuperPHP AST into optimized PHP code.
- */
-class Compiler
-{
-    private ExpressionTranspiler $transpiler;
-    private array $dependencies = [];
-    private bool $inlineExpressions;
-    private bool $isReactive = false;
-
-    public function __construct()
-    {
-        $this->transpiler = new ExpressionTranspiler();
-        $this->inlineExpressions = (bool) Application::config('superpowers.inline_expressions', true);
-    }
-
-    public function compile(array $ast): string
-    {
-        $this->dependencies = [];
-        $this->isReactive = false;
-
-        $body = $this->compileNodes($ast);
-        $lifecycle = $this->compileLifecycle($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
-        $rendered = $this->compileLifecycle($ast, [RenderedNode::class]);
+class Compiler {
+    private ExpressionTranspiler $tr;
+    private array $deps = [];
+    private bool $reac = false;
+    public function __construct() { $this->tr = new ExpressionTranspiler(); }
+    public function compile(array $ast): string {
+        $this->deps = []; $this->reac = false;
+        $body = $this->cN($ast);
+        $lifecycle = $this->cLife($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
+        $rendered = $this->cLife($ast, [RenderedNode::class]);
 
         $code = "<?php\n";
-        $code .= "// Compiled SuperPHP Template\n";
-
-        $code .= "if (isset(\$__state)) {\n";
-        $code .= "    \$this->getEngine()->getInterpreter()->getState()->import(\$__state);\n";
-        $code .= "}\n";
-
-        $code .= "foreach (\$data as \$k => \$v) { if (substr(\$k, 0, 2) !== '__') \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); }\n";
-
+        $code .= "if (isset(\$__state)) \$this->getEngine()->getInterpreter()->getState()->import(\$__state);\n";
+        $code .= "foreach (\$data as \$k => \$v) if (substr(\$k, 0, 2) !== '__') \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v);\n";
         $code .= $lifecycle;
+        $code .= "if (isset(\$__action)) { \$s = \$this->getEngine()->getInterpreter()->getState()->all(); if (isset(\$s[\$__action]) && is_callable(\$s[\$__action])) { \$s[\$__action](); foreach (\$s as \$k => \$v) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); } }\n";
+        $code .= "ob_start();\n$body\n\$__output = ob_get_clean();\n";
+        $code .= "ob_start();\n$rendered\n\$__output .= ob_get_clean();\n";
 
-        $code .= "if (isset(\$__action)) {\n";
-        $code .= "    \$__scope = \$this->getEngine()->getInterpreter()->getState()->all();\n";
-        $code .= "    if (isset(\$__scope[\$__action]) && is_callable(\$__scope[\$__action])) {\n";
-        $code .= "        \$__scope[\$__action]();\n";
-        $code .= "        foreach (\$__scope as \$k => \$v) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v);\n";
-        $code .= "    }\n";
-        $code .= "}\n";
-
-        $code .= "ob_start();\n";
-        $code .= $body;
-        $code .= "\$__output = ob_get_clean();\n";
-
-        $code .= "ob_start();\n";
-        $code .= $rendered;
-        $code .= "\$__output .= ob_get_clean();\n";
-
-        if ($this->isReactive) {
-             $code .= "\$__encrypted = \$this->getEngine()->getInterpreter()->getState()->export();\n";
-             $code .= "\$__viewAttr = isset(\$__view) ? \" s-view='{\$__view}'\" : \"\";\n";
-             $code .= "echo \"<div s-data='{\$__encrypted}' s-id='\" . uniqid() . \"'{\$__viewAttr}>{\$__output}</div>\";\n";
+        if ($this->reac) {
+            $code .= "\$__enc = \$this->getEngine()->getInterpreter()->getState()->export();\n";
+            $code .= "\$__v = isset(\$__view) ? \" s-view='\$__view'\" : \"\";\n";
+            $code .= "echo \"<div s-data='\$__enc' s-id='\" . uniqid() . \"'\$__v>\$__output</div>\";\n";
         } else {
-             $code .= "echo \$__output;\n";
+            $code .= "echo \$__output;\n";
         }
 
-        $code .= "if (isset(\$__extendedLayout)) {\n";
-        $code .= "    return \$this->render(\$__extendedLayout, array_merge(\$data, \$this->getEngine()->getInterpreter()->getState()->all()), null);\n";
-        $code .= "}\n";
-
+        $code .= "if (isset(\$__extendedLayout)) return \$this->render(\$__extendedLayout, array_merge(\$data, \$this->getEngine()->getInterpreter()->getState()->all()), null);\n";
         return $code;
     }
-
-    public function getDependencies(): array
-    {
-        return array_unique($this->dependencies);
-    }
-
-    private function compileLifecycle(array $nodes, array $types): string
-    {
-        $code = "";
-        foreach ($nodes as $node) {
-            foreach ($types as $type) {
-                if ($node instanceof $type) {
-                    if ($node instanceof ExtendsNode) {
-                        $code .= "\$__extendedLayout = '{$node->layout}';\n";
-                    } else {
-                        $code .= "extract(\$this->getEngine()->getInterpreter()->getState()->all());\n";
-                        $code .= $node->code . "\n";
-                        $code .= "\$__vars = get_defined_vars();\n";
-                        $code .= "foreach (\$__vars as \$k => \$v) { if (!in_array(\$k, ['this', 'data', 'code', 'vars'])) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v); }\n";
-                    }
+    public function getDependencies(): array { return array_unique($this->deps); }
+    private function cLife(array $nodes, array $types): string {
+        $c = "";
+        foreach ($nodes as $n) {
+            foreach ($types as $t) {
+                if ($n instanceof $t) {
+                    if ($n instanceof ExtendsNode) $c .= "/* line:$n->line */ \$__extendedLayout = '$n->layout';\n";
+                    else $c .= "/* line:$n->line */ extract(\$this->getEngine()->getInterpreter()->getState()->all()); $n->code\n \$vars = get_defined_vars(); foreach (\$vars as \$k => \$v) if (!in_array(\$k, ['this', 'data', 'code', 'vars'])) \$this->getEngine()->getInterpreter()->getState()->set(\$k, \$v);\n";
                 }
             }
-            if (isset($node->children)) {
-                $code .= $this->compileLifecycle($node->children, $types);
+            if (isset($n->children)) $c .= $this->cLife($n->children, $types);
+        }
+        return $c;
+    }
+    private function cN(array $nodes): string {
+        $c = ""; foreach ($nodes as $n) $c .= $this->cOne($n); return $c;
+    }
+    private function cOne(Node $n): string {
+        if ($n instanceof TextNode) return "/* line:$n->line */ echo " . var_export($n->content, true) . ";\n";
+        if ($n instanceof ExpressionNode) {
+            $t = $this->tr->transpile($n->expression);
+            $ev = "((function() { extract(\$this->getEngine()->getInterpreter()->getState()->all()); return $t; })->call(\$this))";
+            return "/* line:$n->line */ echo " . ($n->escaped ? "\\DGLab\\Core\\View::e((string)$ev)" : "(string)$ev") . ";\n";
+        }
+        if ($n instanceof DirectiveNode) {
+            if ($n->name === 'if') return "/* line:$n->line */ if ((function() { extract(\$this->getEngine()->getInterpreter()->getState()->all()); return " . $this->tr->transpile($n->expression) . "; })->call(\$this)): " . $this->cN($n->children) . " endif;\n";
+            if ($n->name === 'foreach') {
+                preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $n->expression, $m);
+                return "/* line:$n->line */ \$__items = (function() { extract(\$this->getEngine()->getInterpreter()->getState()->all()); return " . $this->tr->transpile($m[1]) . "; })->call(\$this);\n if (isset(\$__items) && is_iterable(\$__items)): foreach (\$__items as $m[2]): " . $this->cN($n->children) . " endforeach; endif;\n";
             }
         }
-        return $code;
-    }
-
-    private function compileNodes(array $nodes): string
-    {
-        $code = "";
-        foreach ($nodes as $node) {
-            $code .= $this->compileNode($node);
-        }
-        return $code;
-    }
-
-    private function compileNode(Node $node): string
-    {
-        if ($node instanceof TextNode) {
-            return "echo " . var_export($node->content, true) . ";\n";
-        }
-
-        if ($node instanceof SetupNode || $node instanceof MountNode || $node instanceof RenderedNode || $node instanceof CleanupNode || $node instanceof ExtendsNode) {
-            return "";
-        }
-
-        if ($node instanceof ExpressionNode) {
-            $transpiled = $this->transpiler->transpile($node->expression);
-            if ($node->escaped) {
-                return "echo \DGLab\Core\View::e((string)((function() { \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$transpiled}; })->call(\$this)));\n";
+        if ($n instanceof ComponentNode) {
+            $vn = str_starts_with($n->tagName, 'layout:') ? 'layouts/' . substr($n->tagName, 7) : $n->tagName;
+            $this->deps[] = $vn;
+            $c = "/* line:$n->line */ \$__p = [];\n";
+            foreach ($n->props as $name => $p) {
+                if ($p['dynamic']) $c .= "\$__p['$name'] = (function() { extract(\$this->getEngine()->getInterpreter()->getState()->all()); return " . $this->tr->transpile($p['value']) . "; })->call(\$this);\n";
+                else $c .= "\$__p['$name'] = " . var_export($p['value'], true) . ";\n";
             }
-            return "echo (string)((function() { \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$transpiled}; })->call(\$this));\n";
+            $c .= "ob_start(); " . $this->cN($n->children) . " \$__p['slot'] = ob_get_clean();\necho \$this->render('$vn', \$__p, null);\n";
+            return $c;
         }
-
-        if ($node instanceof DirectiveNode) {
-            return $this->compileDirective($node);
+        if ($n instanceof ReactiveNode) {
+            $this->reac = true; $c = "/* line:$n->line */ echo '<$n->tagName';\n";
+            foreach ($n->attributes as $name => $val) $c .= "echo ' $name=\"' . \\DGLab\\Core\\View::e((string)" . var_export($val, true) . ") . '\"';\n";
+            foreach ($n->reactiveAttributes as $ev => $ac) $c .= "echo ' s-on:$ev=\"' . \\DGLab\\Core\\View::e((string)" . var_export($ac, true) . ") . '\"';\n";
+            $c .= "echo \">\"; " . $this->cN($n->children) . " echo \"</$n->tagName>\";\n";
+            return $c;
         }
-
-        if ($node instanceof ComponentNode) {
-            return $this->compileComponent($node);
-        }
-
-        if ($node instanceof ReactiveNode) {
-             return $this->compileReactive($node);
-        }
-
-        if ($node instanceof SectionNode) {
-             $code = "\$this->section('{$node->name}');\n";
-             $code .= $this->compileNodes($node->children);
-             $code .= "\$this->endSection();\n";
-             return $code;
-        }
-
-        if ($node instanceof YieldNode) {
-             return "echo \$this->yield('{$node->name}', " . var_export($node->default ?? '', true) . ");\n";
-        }
-
-        if ($node instanceof SlotNode) {
-             return $this->compileNodes($node->children);
-        }
-
         return "";
-    }
-
-    private function compileDirective(DirectiveNode $node): string
-    {
-        switch ($node->name) {
-            case 'if':
-                $transpiled = $this->transpiler->transpile($node->expression);
-                $code = "if ((function(){ \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$transpiled}; })->call(\$this)):\n";
-                $code .= $this->compileNodes($node->children);
-                $code .= "endif;\n";
-                return $code;
-            case 'foreach':
-                preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $node->expression, $matches);
-                $itemsExpr = $this->transpiler->transpile($matches[1]);
-                $as = $matches[2];
-                $code = "\$__items = (function(){ \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$itemsExpr}; })->call(\$this);\n";
-                $code .= "if (isset(\$__items) && is_iterable(\$__items)): foreach (\$__items as {$as}):\n";
-                $code .= $this->compileNodes($node->children);
-                $code .= "endforeach; endif;\n";
-                return $code;
-            default:
-                return "";
-        }
-    }
-
-    private function compileComponent(ComponentNode $node): string
-    {
-        $tagName = $node->tagName;
-        if (str_starts_with($tagName, 'layout:')) {
-            $viewName = 'layouts/' . substr($tagName, 7);
-        } else {
-            $viewName = $tagName;
-        }
-
-        $this->dependencies[] = $viewName;
-
-        $code = "\$__props = [];\n";
-        foreach ($node->props as $name => $prop) {
-            if ($prop['dynamic']) {
-                $val = $this->transpiler->transpile($prop['value']);
-                $code .= "\$__props['{$name}'] = (function(){ \$scope = \$this->getEngine()->getInterpreter()->getState()->all(); extract(\$scope); return {$val}; })->call(\$this);\n";
-            } else {
-                $code .= "\$__props['{$name}'] = " . var_export($prop['value'], true) . ";\n";
-            }
-        }
-
-        $code .= "ob_start();\n";
-        $code .= $this->compileNodes($node->children);
-        $code .= "\$__props['slot'] = ob_get_clean();\n";
-
-        $code .= "echo \$this->render('{$viewName}', \$__props, null);\n";
-
-        return $code;
-    }
-
-    private function compileReactive(ReactiveNode $node): string
-    {
-        $this->isReactive = true;
-        $code = "echo '<{$node->tagName}';\n";
-        foreach ($node->attributes as $name => $value) {
-            $code .= "echo ' {$name}=\"'. \DGLab\Core\View::e((string)(" . var_export($value, true) . ")) . '\"';\n";
-        }
-        foreach ($node->reactiveAttributes as $event => $action) {
-            $code .= "echo ' s-on:{$event}=\"{$action}\"';\n";
-        }
-        $code .= "echo '>';\n";
-        $code .= $this->compileNodes($node->children);
-        $code .= "echo '</{$node->tagName}>';\n";
-        return $code;
     }
 }

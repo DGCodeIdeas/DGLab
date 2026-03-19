@@ -6,9 +6,15 @@ use DGLab\Core\Application;
 use DGLab\Core\Contracts\ViewEngineInterface;
 use DGLab\Core\View;
 use DGLab\Services\Superpowers\Interpreter\Interpreter;
+use DGLab\Services\Superpowers\Lexer\Token;
 use DGLab\Services\Superpowers\Lexer\Lexer;
 use DGLab\Services\Superpowers\Parser\Parser;
 use DGLab\Services\Superpowers\Compiler\Compiler;
+use DGLab\Services\Superpowers\Parser\Linter;
+use DGLab\Services\Superpowers\Exceptions\ErrorReporter;
+use DGLab\Services\Superpowers\Exceptions\SuperpowersException;
+use DGLab\Services\Superpowers\Runtime\SourceMapResolver;
+use DGLab\Services\Superpowers\Runtime\DebugCollector;
 
 /**
  * Class SuperpowersEngine
@@ -22,6 +28,10 @@ class SuperpowersEngine implements ViewEngineInterface
     private Interpreter $interpreter;
     private Compiler $compiler;
     private View $view;
+    private ErrorReporter $errorReporter;
+    private SourceMapResolver $sourceMapResolver;
+    private DebugCollector $debugCollector;
+    private Linter $linter;
 
     public function __construct(View $view)
     {
@@ -30,6 +40,10 @@ class SuperpowersEngine implements ViewEngineInterface
         $this->compiler = new Compiler();
         $this->view = $view;
         $this->interpreter = new Interpreter($view);
+        $this->errorReporter = new ErrorReporter();
+        $this->sourceMapResolver = new SourceMapResolver();
+        $this->debugCollector = DebugCollector::getInstance();
+        $this->linter = new Linter();
     }
 
     public function getInterpreter(): Interpreter
@@ -46,24 +60,59 @@ class SuperpowersEngine implements ViewEngineInterface
      */
     public function render(string $path, array $data = []): string
     {
-        // Track the view name for reactivity
-        $viewName = $this->extractViewName($path);
-        $data['__view'] = $viewName;
+        try {
+            $viewName = $this->extractViewName($path);
+            $data['__view'] = $viewName;
 
-        $mode = Application::config('superpowers.mode', 'auto');
-        if ($mode === 'auto') {
-            $mode = Application::config('app.debug') ? 'interpreted' : 'compiled';
+            $mode = Application::config('superpowers.mode', 'auto');
+            if ($mode === 'auto') {
+                $mode = Application::config('app.debug') ? 'interpreted' : 'compiled';
+            }
+
+            if ($mode === 'interpreted') {
+                if (Application::config('app.debug')) {
+                     $this->debugCollector->recordView($viewName, $path, $data);
+                     if (Application::config('superpowers.linter.on_render', true)) {
+                          $this->linter->lint(file_get_contents($path), $path);
+                     }
+                }
+                $content = file_get_contents($path);
+                $tokens = $this->lexer->tokenize($content);
+                $ast = $this->parser->parse($tokens);
+                $output = $this->interpreter->interpret($ast, $data);
+                return $this->processReactivity($output);
+            }
+
+            return $this->processReactivity($this->renderCompiled($path, $data));
+        } catch (\Throwable $e) {
+            if (Application::config('app.debug') && !defined('PHPUNIT_RUNNING')) {
+                $this->handleException($e, $path);
+            }
+            throw $e;
+        }
+    }
+
+    private function handleException(\Throwable $e, string $path): void
+    {
+        $originalLine = null;
+        if (!($e instanceof SuperpowersException)) {
+            $originalLine = $this->sourceMapResolver->resolve($e->getFile(), $e->getLine());
+        } else {
+            $originalLine = $e->getViewLine();
+            $path = $e->getViewPath() ?: $path;
         }
 
-        if ($mode === 'interpreted') {
-            $content = file_get_contents($path);
-            $tokens = $this->lexer->tokenize($content);
-            $ast = $this->parser->parse($tokens);
-            $output = $this->interpreter->interpret($ast, $data);
-            return $this->processReactivity($output);
-        }
+        $wrapped = new SuperpowersException(
+            $e->getMessage(),
+            $path,
+            $originalLine,
+            null,
+            $e->getCode(),
+            $e
+        );
 
-        return $this->processReactivity($this->renderCompiled($path, $data));
+        echo $this->errorReporter->report($wrapped);
+        die();
     }
 
     private function extractViewName(string $path): string
@@ -76,12 +125,20 @@ class SuperpowersEngine implements ViewEngineInterface
     private function processReactivity(string $output): string
     {
         if (Application::config('superpowers.reactivity.enabled', true) && Application::config('superpowers.reactivity.inject_runtime', true)) {
-            // Only inject if it looks like a full HTML document
             if (strpos($output, '<body') !== false && strpos($output, 'superpowers.js') === false) {
                  $script = '<script src="/assets/js/superpowers.js"></script>';
                  $output = str_replace('</body>', $script . '</body>', $output);
             }
         }
+
+        if (!defined('PHPUNIT_RUNNING') && Application::config('app.debug') && Application::config('superpowers.debug_overlay.enabled', true)) {
+             if (strpos($output, '<body') !== false) {
+                  $meta = json_encode($this->debugCollector->getMetadata());
+                  $overlay = "<div id='superpowers-debug-overlay' data-meta='{$meta}'></div>";
+                  $output = str_replace('</body>', $overlay . '</body>', $output);
+             }
+        }
+
         return $output;
     }
 
@@ -130,6 +187,14 @@ class SuperpowersEngine implements ViewEngineInterface
             file_put_contents($depsFile, json_encode($this->compiler->getDependencies()));
         }
 
+        if (Application::config('app.debug')) {
+             $viewName = $this->extractViewName($path);
+             $this->debugCollector->recordView($viewName, $path, $data, $compiledFile);
+             if (Application::config('superpowers.linter.on_render', true)) {
+                  $this->linter->lint(file_get_contents($path), $path);
+             }
+        }
+
         $view = $this->view;
 
         $render = (function() use ($compiledFile, $data) {
@@ -150,7 +215,7 @@ class SuperpowersEngine implements ViewEngineInterface
                     }
                     return $this->render($__extendedLayout, array_merge($data, $this->getEngine()->getInterpreter()->getState()->all()), null);
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 ob_get_clean();
                 throw $e;
             }

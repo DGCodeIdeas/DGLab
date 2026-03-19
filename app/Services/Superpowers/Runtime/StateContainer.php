@@ -14,6 +14,7 @@ class StateContainer
 {
     private array $data = [];
     private array $tracked = [];
+    private bool $isModified = false;
 
     public function set(string $key, mixed $value): void
     {
@@ -26,6 +27,12 @@ class StateContainer
         return $this->data[$key] ?? $default;
     }
 
+    public function remove(string $key): void
+    {
+        unset($this->data[$key]);
+        unset($this->tracked[$key]);
+    }
+
     public function merge(array $values): void
     {
         foreach ($values as $key => $value) {
@@ -36,6 +43,16 @@ class StateContainer
     public function all(): array
     {
         return $this->data;
+    }
+
+    public function markModified(): void
+    {
+        $this->isModified = true;
+    }
+
+    public function isModified(): bool
+    {
+        return $this->isModified;
     }
 
     /**

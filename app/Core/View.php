@@ -117,7 +117,7 @@ class View
      * @param string $template
      * @return array{0: string, 1: ViewEngineInterface}
      */
-    private function resolveView(string $template, string $directory = null): array
+    public function resolveView(string $template, string $directory = null): array
     {
         if ($directory === null) {
             $directory = $this->viewPath;
@@ -221,13 +221,17 @@ class View
 
     /**
      * Yield a section
+     *
+     * @param string $name
+     * @param string $default
+     * @return string
      */
-    public function yield(string $name, string $default = ''): void
+    public function yield(string $name, string $default = ''): string
     {
         if (isset($this->sections[$name])) {
-            echo $this->sections[$name];
+            return $this->sections[$name];
         } else {
-            echo $default;
+            return $default;
         }
     }
 

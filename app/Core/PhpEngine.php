@@ -58,7 +58,7 @@ class PhpEngine implements ViewEngineInterface
      */
     public function yield(string $name, string $default = ''): void
     {
-        $this->view->yield($name, $default);
+        echo $this->view->yield($name, $default);
     }
 
     /**
