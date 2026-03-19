@@ -1,0 +1,33 @@
+/**
+ * Superpowers Navigation Transitions
+ */
+.sp-transition-fade-leave {
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.sp-transition-fade-enter {
+    opacity: 0;
+}
+
+.sp-transition-fade-enter-active {
+    opacity: 1;
+    transition: opacity 0.3s ease-in;
+}
+
+.sp-transition-slide-leave {
+    transform: translateX(-20px);
+    opacity: 0;
+    transition: all 0.3s ease-out;
+}
+
+.sp-transition-slide-enter {
+    transform: translateX(20px);
+    opacity: 0;
+}
+
+.sp-transition-slide-enter-active {
+    transform: translateX(0);
+    opacity: 1;
+    transition: all 0.3s ease-in;
+}

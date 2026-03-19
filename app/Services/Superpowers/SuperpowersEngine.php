@@ -127,6 +127,10 @@ class SuperpowersEngine implements ViewEngineInterface
         if (config('superpowers.reactivity.enabled', true) && config('superpowers.reactivity.inject_runtime', true)) {
             if (strpos($output, '<body') !== false && strpos($output, 'superpowers.js') === false) {
                  $script = '<script src="/assets/js/superpowers.js"></script>';
+                 if (config('superpowers.navigation.enabled', true)) {
+                     $script .= '\n<link rel="stylesheet" href="/assets/css/superpowers.nav.css">';
+                     $script .= '\n<script src="/assets/js/superpowers.nav.js"></script>';
+                 }
                  $output = str_replace('</body>', $script . '</body>', $output);
             }
         }

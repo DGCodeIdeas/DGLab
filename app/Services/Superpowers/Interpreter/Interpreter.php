@@ -173,7 +173,7 @@ class Interpreter
         }
 
         if ($node instanceof YieldNode) {
-             return $this->view->yield($node->name, $node->default);
+             return $this->view->yield($node->name, (string)$node->default);
         }
 
                 if ($node instanceof FragmentNode) {
