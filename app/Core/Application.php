@@ -1,296 +1,273 @@
 <?php
 
-/**
- * DGLab Core Application
- */
-
 namespace DGLab\Core;
 
-use DGLab\Core\EventDispatcher;
-use DGLab\Core\EventAuditService;
 use DGLab\Core\Contracts\DispatcherInterface;
+use DGLab\Core\Contracts\ServiceProviderInterface;
 use DGLab\Core\Exceptions\RouteNotFoundException;
-use ReflectionClass;
-use ReflectionException;
-use ReflectionParameter;
+use DGLab\Database\Connection;
+use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 /**
  * Class Application
+ *
+ * The core application container and orchestrator.
  */
-class Application implements \Psr\Container\ContainerInterface
+class Application
 {
-    private static ?Application $instance = null;
-    private ?string $basePath = null;
-    private array $bindings = [];
-    private array $singletons = [];
-    private array $aliases = [];
-    private array $providers = [];
-    private array $config = [];
-    private bool $booted = false;
+    /**
+     * @var string The application version.
+     */
+    public const VERSION = '1.0.0-Superpowers';
 
-    private function __construct(?string $basePath = null)
+    /**
+     * @var Application|null The singleton instance.
+     */
+    protected static ?Application $instance = null;
+
+    /**
+     * @var string The base path of the application.
+     */
+    protected string $basePath;
+
+    /**
+     * @var array Registered service instances.
+     */
+    protected array $services = [];
+
+    /**
+     * @var array Service provider instances.
+     */
+    protected array $providers = [];
+
+    /**
+     * @var array Configuration settings.
+     */
+    protected array $config = [];
+
+    /**
+     * Application constructor.
+     *
+     * @param string $basePath
+     */
+    public function __construct(string $basePath)
     {
         $this->basePath = $basePath;
-        $this->singletons[self::class] = $this;
-        $this->singletons[\Psr\Container\ContainerInterface::class] = $this;
-
-        $this->registerCoreServices();
+        static::$instance = $this;
+        $this->loadConfig();
+        $this->registerBaseServices();
     }
 
-    private function registerCoreServices(): void
+    /**
+     * Get the singleton instance.
+     *
+     * @return Application
+     */
+    public static function getInstance(): Application
     {
-        $this->singleton(\DGLab\Database\Connection::class, function () {
-            $config = require ($this->basePath ?? dirname(__DIR__, 2)) . "/config/database.php";
-            return new \DGLab\Database\Connection($config);
+        if (static::$instance === null) {
+            throw new RuntimeException("Application instance not initialized.");
+        }
+
+        return static::$instance;
+    }
+
+    /**
+     * Register the core services.
+     *
+     * @return void
+     */
+    protected function registerBaseServices(): void
+    {
+        $this->set(Application::class, $this);
+        $this->set(Request::class, function () { return new Request(); });
+        $this->set(Router::class, function () { return new Router($this); });
+        $this->set(View::class, function () { return new View($this); });
+        $this->set(Connection::class, function () {
+            return new Connection($this->config('database.default', 'sqlite'));
         });
-
-        $this->singleton(EventAuditService::class, function () {
-            return new EventAuditService($this->get(\DGLab\Database\Connection::class));
+        $this->set(LoggerInterface::class, function () { return new Logger($this); });
+        $this->set(DispatcherInterface::class, function () { return new EventDispatcher($this); });
+        $this->set(AuditService::class, function () {
+            return new AuditService(
+                $this->get(Connection::class),
+                $this->get(Request::class),
+                $this->has(\DGLab\Services\Tenancy\TenancyService::class) ? $this->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
+                $this->has(\DGLab\Services\Auth\AuthManager::class) ? $this->get(\DGLab\Services\Auth\AuthManager::class) : null
+            );
         });
-
-        $this->singleton(EventDispatcher::class, function () {
-            return new EventDispatcher($this);
-        });
-
-        $this->bind(DispatcherInterface::class, EventDispatcher::class, true);
-        $this->alias(EventDispatcher::class, 'events');
     }
 
-    public static function getInstance(?string $basePath = null): self
+    /**
+     * Boot the application.
+     *
+     * @return void
+     */
+    public function boot(): void
     {
-        if (self::$instance === null) {
-            self::$instance = new self($basePath);
+        foreach ($this->providers as $provider) {
+            $provider->boot();
+        }
+    }
+
+    /**
+     * Handle the incoming request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function handle(Request $request): Response
+    {
+        $this->set(Request::class, $request);
+
+        try {
+            $router = $this->get(Router::class);
+            return $router->dispatch($request);
+        } catch (RouteNotFoundException $e) {
+            return new Response("404 Not Found", 404);
+        } catch (\Exception $e) {
+            return new Response("500 Internal Server Error: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get a service instance.
+     *
+     * @param string $id
+     * @return mixed
+     */
+    public function get(string $id): mixed
+    {
+        if (!isset($this->services[$id])) {
+            throw new InvalidArgumentException("Service not found: {$id}");
         }
 
-        return self::$instance;
-    }
-
-    public function singleton(string $abstract, $concrete = null): self
-    {
-        $this->bind($abstract, $concrete, true);
-        return $this;
-    }
-
-    public function bind(string $abstract, $concrete = null, bool $shared = false): self
-    {
-        if ($concrete === null) {
-            $concrete = $abstract;
+        if (is_callable($this->services[$id])) {
+            $this->services[$id] = ($this->services[$id])($this);
         }
 
-        $this->bindings[$abstract] = $concrete;
-
-        if ($shared) {
-            $this->singletons[$abstract] = null;
-        }
-
-        return $this;
+        return $this->services[$id];
     }
 
-    public function alias(string $abstract, string $alias): self
+    /**
+     * Register a service instance or factory.
+     *
+     * @param string $id
+     * @param mixed $service
+     * @return void
+     */
+    public function set(string $id, mixed $service): void
     {
-        $this->aliases[$alias] = $abstract;
-        return $this;
+        $this->services[$id] = $service;
     }
 
-    public function get(string $id): object
+    /**
+     * Alias for set() for backward compatibility with tests.
+     */
+    public function singleton(string $id, mixed $service = null): void
     {
-        $abstract = $this->aliases[$id] ?? $id;
-
-        if (isset($this->singletons[$abstract]) && $this->singletons[$abstract] !== null) {
-            return $this->singletons[$abstract];
+        if ($service === null) {
+            $this->set($id, function ($app) use ($id) {
+                return new $id($app);
+            });
+        } else {
+            $this->set($id, $service);
         }
-
-        $concrete = $this->bindings[$abstract] ?? $abstract;
-        $instance = $this->build($concrete);
-
-        if (array_key_exists($abstract, $this->singletons)) {
-            $this->singletons[$abstract] = $instance;
-        }
-
-        return $instance;
     }
 
+    /**
+     * Check if a service is registered.
+     *
+     * @param string $id
+     * @return bool
+     */
     public function has(string $id): bool
     {
-        $abstract = $this->aliases[$id] ?? $id;
-
-        if (isset($this->bindings[$abstract]) || isset($this->singletons[$abstract])) {
-            return true;
-        }
-
-        if (class_exists($id)) {
-            $reflection = new ReflectionClass($id);
-            return $reflection->isInstantiable();
-        }
-
-        return false;
+        return isset($this->services[$id]);
     }
 
-    private function build($concrete): object
+    /**
+     * Load the application configuration.
+     *
+     * @return void
+     */
+    public function loadConfig(?string $path = null): void
     {
-        if ($concrete instanceof \Closure) {
-            return $concrete($this);
+        $configPath = $path ?: $this->basePath . '/config';
+
+        if (!is_dir($configPath)) {
+            return;
         }
 
-        if (is_object($concrete)) {
-            return $concrete;
-        }
-
-        if (is_string($concrete)) {
-            return $this->autowire($concrete);
-        }
-
-        throw new \RuntimeException("Unable to build concrete of type: " . gettype($concrete));
-    }
-
-    private function autowire(string $className): object
-    {
-        try {
-            $reflection = new ReflectionClass($className);
-
-            if (!$reflection->isInstantiable()) {
-                throw new \RuntimeException("Class {$className} is not instantiable");
-            }
-
-            $constructor = $reflection->getConstructor();
-
-            if ($constructor === null) {
-                return $reflection->newInstance();
-            }
-
-            $parameters = $constructor->getParameters();
-            $dependencies = $this->resolveDependencies($parameters);
-
-            return $reflection->newInstanceArgs($dependencies);
-        } catch (ReflectionException $e) {
-            throw new \RuntimeException("Failed to autowire class {$className}: " . $e->getMessage(), 0, $e);
-        }
-    }
-
-    private function resolveDependencies(array $parameters): array
-    {
-        $dependencies = [];
-
-        foreach ($parameters as $parameter) {
-            $dependency = $this->resolveParameter($parameter);
-
-            if ($dependency === null && !$parameter->isOptional()) {
-                $declaringClass = $parameter->getDeclaringClass()?->getName();
-                $declaringFunction = $parameter->getDeclaringFunction()->getName();
-                throw new \RuntimeException("Cannot resolve required parameter \${$parameter->getName()} in {$declaringClass}::{$declaringFunction}()");
-            }
-
-            $dependencies[] = $dependency;
-        }
-
-        return $dependencies;
-    }
-
-    private function resolveParameter(ReflectionParameter $parameter): mixed
-    {
-        $type = $parameter->getType();
-
-        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
-            $typeName = $type->getName();
-
-            if ($this->has($typeName)) {
-                return $this->get($typeName);
-            }
-        }
-
-        if ($parameter->isDefaultValueAvailable()) {
-            return $parameter->getDefaultValue();
-        }
-
-        return null;
-    }
-
-    public function call($callback, array $parameters = []): mixed
-    {
-        if (is_array($callback)) {
-            [$class, $method] = $callback;
-            $reflection = new \ReflectionMethod($class, $method);
-        } else {
-            $reflection = new \ReflectionFunction($callback);
-        }
-
-        $dependencies = [];
-
-        foreach ($reflection->getParameters() as $parameter) {
-            $name = $parameter->getName();
-
-            if (array_key_exists($name, $parameters)) {
-                $dependencies[] = $parameters[$name];
-                continue;
-            }
-
-            $resolved = $this->resolveParameter($parameter);
-            if ($resolved !== null) {
-                $dependencies[] = $resolved;
-                continue;
-            }
-
-            if (array_key_exists($parameter->getPosition(), $parameters)) {
-                $dependencies[] = $parameters[$parameter->getPosition()];
-                continue;
-            }
-
-            throw new \RuntimeException("Unable to resolve parameter \${$name}");
-        }
-
-        if ($reflection instanceof \ReflectionMethod) {
-            return $reflection->invoke($class, ...$dependencies);
-        }
-
-        return $reflection->invoke(...$dependencies);
-    }
-
-    public function loadConfig(string $path): void
-    {
-        foreach (glob($path . '/*.php') as $file) {
+        foreach (glob($configPath . '/*.php') as $file) {
             $key = basename($file, '.php');
             $this->config[$key] = require $file;
         }
     }
 
-    public static function config(string $key, mixed $default = null): mixed
+    /**
+     * Get a configuration value.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function config(string $key, mixed $default = null): mixed
     {
-        $instance = self::getInstance();
         $parts = explode('.', $key);
-        $config = $instance->config;
+        $value = $this->config;
 
         foreach ($parts as $part) {
-            if (!isset($config[$part])) {
+            if (!isset($value[$part]) || (!is_array($value) && !($value instanceof \ArrayAccess))) {
                 return $default;
             }
-            $config = $config[$part];
+            $value = $value[$part];
         }
 
-        return $config;
+        return $value;
     }
 
+    /**
+     * Set a configuration value at runtime.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
     public function setConfig(string $key, mixed $value): void
     {
         $parts = explode('.', $key);
-        $config = &$this->config;
+        $target = &$this->config;
 
         foreach ($parts as $part) {
-            if (!isset($config[$part])) {
-                $config[$part] = [];
+            if (!isset($target[$part]) || !is_array($target[$part])) {
+                $target[$part] = [];
             }
-            $config = &$config[$part];
+            $target = &$target[$part];
         }
 
-        $config = $value;
+        $target = $value;
     }
 
+    /**
+     * Get the base path.
+     *
+     * @return string
+     */
     public function getBasePath(): string
     {
-        return $this->basePath ?? dirname(__DIR__, 2);
+        return $this->basePath;
     }
 
+    /**
+     * Flush the application state (useful for tests).
+     *
+     * @return void
+     */
     public static function flush(): void
     {
-        self::$instance = null;
+        static::$instance = null;
     }
 }

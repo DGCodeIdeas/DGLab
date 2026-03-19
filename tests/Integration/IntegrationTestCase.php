@@ -9,9 +9,9 @@ use DGLab\Database\Connection;
 
 abstract class IntegrationTestCase extends TestCase
 {
-    protected function setUp(): void
+    protected function singletonUp(): void
     {
-        parent::setUp();
+        parent::singletonUp();
 
         $_ENV['DB_CONNECTION'] = 'sqlite';
         $_ENV['DB_DATABASE'] = ':memory:';
@@ -28,10 +28,10 @@ abstract class IntegrationTestCase extends TestCase
 
         $db = new Connection($config);
         $this->app->singleton(Connection::class, fn() => $db);
-        Connection::setInstance($db);
+        Connection::singletonInstance($db);
 
         $this->app->loadConfig(__DIR__ . '/../../config');
-        $this->app->singleton(Router::class);
+        $this->app->singleton(Router::class, function($app) { return new Router($app); });
     }
 
     protected function tearDown(): void

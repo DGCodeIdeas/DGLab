@@ -2,135 +2,111 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
-use DGLab\Services\NovelToMangaScript\AI\LLMProviderException;
+use DGLab\Services\MangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
- * Groq LLM Provider
+ * Cohere LLM Provider
  * 
- * Implements the Groq API for ultra-fast inference using
- * custom LPU (Language Processing Unit) hardware.
+ * Implements the Cohere API for enterprise-grade language models
+ * with strong RAG and embedding capabilities.
  * 
  * Features:
- * - Extremely fast inference (sub-second for most requests)
- * - OpenAI-compatible API format
- * - Support for Llama, Mixtral, and Gemma models
- * - JSON mode support
+ * - Command models for generation
+ * - Strong multilingual support
+ * - Built-in RAG with connectors
+ * - Document grounding for factual responses
  * 
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
-class GroqProvider extends AbstractLLMProvider
+class CohereProvider extends AbstractLLMProvider
 {
     /**
      * Provider identifier
      */
-    protected string $providerId = 'groq';
+    protected string $providerId = 'cohere';
     
     /**
      * Provider display name
      */
-    protected string $providerName = 'Groq';
+    protected string $providerName = 'Cohere';
     
     /**
      * Default API endpoint
      */
-    protected string $defaultEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    protected string $defaultEndpoint = 'https://api.cohere.ai/v2/chat';
     
     /**
      * Available models with their specifications
      */
     protected array $availableModels = [
-        // Llama 3.3 models
-        'llama-3.3-70b-versatile' => [
+        // Command R+ models
+        'command-r-plus-08-2024' => [
             'context_window' => 128000,
-            'max_output' => 32768,
+            'max_output' => 4096,
             'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00059,
-            'cost_per_1k_output' => 0.00079,
+            'supports_tools' => true,
+            'supports_rag' => true,
+            'cost_per_1k_input' => 0.0025,
+            'cost_per_1k_output' => 0.01,
         ],
-        'llama-3.3-70b-specdec' => [
-            'context_window' => 8192,
-            'max_output' => 8192,
+        'command-r-plus' => [
+            'context_window' => 128000,
+            'max_output' => 4096,
             'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00059,
-            'cost_per_1k_output' => 0.00099,
+            'supports_tools' => true,
+            'supports_rag' => true,
+            'cost_per_1k_input' => 0.0025,
+            'cost_per_1k_output' => 0.01,
         ],
         
-        // Llama 3.1 models
-        'llama-3.1-70b-versatile' => [
+        // Command R models
+        'command-r-08-2024' => [
             'context_window' => 128000,
-            'max_output' => 32768,
+            'max_output' => 4096,
             'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00059,
-            'cost_per_1k_output' => 0.00079,
+            'supports_tools' => true,
+            'supports_rag' => true,
+            'cost_per_1k_input' => 0.00015,
+            'cost_per_1k_output' => 0.0006,
         ],
-        'llama-3.1-8b-instant' => [
+        'command-r' => [
             'context_window' => 128000,
-            'max_output' => 8192,
+            'max_output' => 4096,
             'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00005,
-            'cost_per_1k_output' => 0.00008,
+            'supports_tools' => true,
+            'supports_rag' => true,
+            'cost_per_1k_input' => 0.00015,
+            'cost_per_1k_output' => 0.0006,
         ],
         
-        // Llama 3 Vision
-        'llama-3.2-90b-vision-preview' => [
-            'context_window' => 128000,
-            'max_output' => 8192,
-            'supports_json_mode' => true,
-            'supports_vision' => true,
-            'cost_per_1k_input' => 0.0009,
-            'cost_per_1k_output' => 0.0009,
+        // Command models (legacy)
+        'command' => [
+            'context_window' => 4096,
+            'max_output' => 4096,
+            'supports_json_mode' => false,
+            'supports_tools' => false,
+            'supports_rag' => false,
+            'cost_per_1k_input' => 0.001,
+            'cost_per_1k_output' => 0.002,
         ],
-        'llama-3.2-11b-vision-preview' => [
-            'context_window' => 128000,
-            'max_output' => 8192,
-            'supports_json_mode' => true,
-            'supports_vision' => true,
-            'cost_per_1k_input' => 0.00018,
-            'cost_per_1k_output' => 0.00018,
-        ],
-        
-        // Mixtral
-        'mixtral-8x7b-32768' => [
-            'context_window' => 32768,
-            'max_output' => 32768,
-            'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00024,
-            'cost_per_1k_output' => 0.00024,
-        ],
-        
-        // Gemma
-        'gemma2-9b-it' => [
-            'context_window' => 8192,
-            'max_output' => 8192,
-            'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00020,
-            'cost_per_1k_output' => 0.00020,
-        ],
-        
-        // DeepSeek on Groq
-        'deepseek-r1-distill-llama-70b' => [
-            'context_window' => 128000,
-            'max_output' => 16384,
-            'supports_json_mode' => true,
-            'supports_vision' => false,
-            'cost_per_1k_input' => 0.00075,
-            'cost_per_1k_output' => 0.00099,
+        'command-light' => [
+            'context_window' => 4096,
+            'max_output' => 4096,
+            'supports_json_mode' => false,
+            'supports_tools' => false,
+            'supports_rag' => false,
+            'cost_per_1k_input' => 0.0003,
+            'cost_per_1k_output' => 0.0006,
         ],
     ];
     
     /**
      * Default model for this provider
      */
-    protected string $defaultModel = 'llama-3.3-70b-versatile';
+    protected string $defaultModel = 'command-r-plus';
 
     /**
      * {@inheritdoc}
@@ -145,7 +121,7 @@ class GroqProvider extends AbstractLLMProvider
         
         $modelSpec = $this->availableModels[$model];
         
-        // Build messages array
+        // Build messages array for v2 API
         $messages = [];
         
         if ($systemPrompt !== null) {
@@ -160,7 +136,6 @@ class GroqProvider extends AbstractLLMProvider
             'content' => $prompt,
         ];
         
-        // Build request payload (OpenAI-compatible format)
         $payload = [
             'model' => $model,
             'messages' => $messages,
@@ -169,26 +144,32 @@ class GroqProvider extends AbstractLLMProvider
                 $options['max_tokens'] ?? $this->config['default_max_tokens'] ?? 4096,
                 $modelSpec['max_output']
             ),
-            'top_p' => $options['top_p'] ?? 1.0,
             'stream' => false,
         ];
         
-        // Add JSON mode if requested and supported
+        // Add response format for JSON mode
         if (($options['json_mode'] ?? false) && $modelSpec['supports_json_mode']) {
             $payload['response_format'] = ['type' => 'json_object'];
         }
         
-        // Add stop sequences
-        if (!empty($options['stop'])) {
-            $payload['stop'] = $options['stop'];
+        // Add safety mode
+        if (isset($options['safety_mode'])) {
+            $payload['safety_mode'] = $options['safety_mode']; // CONTEXTUAL, STRICT, NONE
         }
         
-        // Add frequency and presence penalties
-        if (isset($options['frequency_penalty'])) {
-            $payload['frequency_penalty'] = $options['frequency_penalty'];
+        // Add stop sequences
+        if (!empty($options['stop'])) {
+            $payload['stop_sequences'] = $options['stop'];
         }
-        if (isset($options['presence_penalty'])) {
-            $payload['presence_penalty'] = $options['presence_penalty'];
+        
+        // Add document grounding if provided
+        if (!empty($options['documents'])) {
+            $payload['documents'] = $options['documents'];
+        }
+        
+        // Add citation quality
+        if (isset($options['citation_quality'])) {
+            $payload['citation_quality'] = $options['citation_quality'];
         }
         
         $startTime = microtime(true);
@@ -273,7 +254,7 @@ class GroqProvider extends AbstractLLMProvider
     }
 
     /**
-     * Make HTTP request to Groq API
+     * Make HTTP request to Cohere API
      */
     protected function makeRequest(array $payload): array
     {
@@ -288,6 +269,7 @@ class GroqProvider extends AbstractLLMProvider
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $this->apiKey,
+                'X-Client-Name: DGLab-NovelToMangaScript',
             ],
             CURLOPT_TIMEOUT => $this->config['timeout'] ?? 120,
             CURLOPT_CONNECTTIMEOUT => $this->config['connect_timeout'] ?? 10,
@@ -306,7 +288,7 @@ class GroqProvider extends AbstractLLMProvider
         $data = json_decode($response, true);
         
         if ($httpCode !== 200) {
-            $errorMessage = $data['error']['message'] ?? 'Unknown error';
+            $errorMessage = $data['message'] ?? 'Unknown error';
             throw new \RuntimeException("API error ({$httpCode}): {$errorMessage}", $httpCode);
         }
         
@@ -314,22 +296,26 @@ class GroqProvider extends AbstractLLMProvider
     }
 
     /**
-     * Parse Groq API response
+     * Parse Cohere API response (v2 format)
      */
     protected function parseResponse(array $response, string $model, float $latency): LLMResponse
     {
-        $choice = $response['choices'][0] ?? null;
+        $content = '';
         
-        if (!$choice) {
-            throw new \RuntimeException('No response choices returned');
+        // v2 API returns message with content array
+        if (isset($response['message']['content'])) {
+            foreach ($response['message']['content'] as $block) {
+                if ($block['type'] === 'text') {
+                    $content .= $block['text'];
+                }
+            }
         }
         
-        $content = $choice['message']['content'] ?? '';
-        $finishReason = $choice['finish_reason'] ?? 'unknown';
+        $finishReason = $response['finish_reason'] ?? 'unknown';
         
         $usage = $response['usage'] ?? [];
-        $inputTokens = $usage['prompt_tokens'] ?? 0;
-        $outputTokens = $usage['completion_tokens'] ?? 0;
+        $inputTokens = $usage['billed_units']['input_tokens'] ?? $usage['tokens']['input_tokens'] ?? 0;
+        $outputTokens = $usage['billed_units']['output_tokens'] ?? $usage['tokens']['output_tokens'] ?? 0;
         
         // Calculate cost
         $modelSpec = $this->availableModels[$model];
@@ -348,9 +334,8 @@ class GroqProvider extends AbstractLLMProvider
             finishReason: $finishReason,
             metadata: [
                 'response_id' => $response['id'] ?? null,
-                'created' => $response['created'] ?? null,
-                'system_fingerprint' => $response['system_fingerprint'] ?? null,
-                'groq_queue_time' => $response['x_groq']['queue_time'] ?? null,
+                'citations' => $response['citations'] ?? [],
+                'search_queries' => $response['search_queries'] ?? [],
             ]
         );
     }
@@ -385,7 +370,7 @@ class GroqProvider extends AbstractLLMProvider
      */
     public function supportsJsonMode(): bool
     {
-        return true;
+        return true; // Command R models support JSON mode
     }
 
     /**
@@ -393,7 +378,7 @@ class GroqProvider extends AbstractLLMProvider
      */
     public function supportsFunctionCalling(): bool
     {
-        return true; // Supported on most Groq models
+        return true; // Command R models support tools
     }
 
     /**
@@ -401,17 +386,25 @@ class GroqProvider extends AbstractLLMProvider
      */
     public function supportsVision(): bool
     {
-        return true; // Some models support vision
+        return false; // Cohere doesn't have vision models yet
     }
 
     /**
-     * Get available vision-capable models
+     * Check if provider supports RAG
      */
-    public function getVisionModels(): array
+    public function supportsRag(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get models that support RAG
+     */
+    public function getRagModels(): array
     {
         return array_keys(array_filter(
             $this->availableModels,
-            fn($spec) => $spec['supports_vision']
+            fn($spec) => $spec['supports_rag'] ?? false
         ));
     }
 

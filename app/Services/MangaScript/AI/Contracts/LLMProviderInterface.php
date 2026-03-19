@@ -5,12 +5,12 @@
  *
  * Contract for all LLM providers in the MangaScript system.
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Contracts
+ * @package DGLab\Services\MangaScript\AI\Contracts
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Contracts;
+namespace DGLab\Services\MangaScript\AI\Contracts;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
  * Interface LLMProviderInterface

@@ -5,13 +5,13 @@
  *
  * Central registry for all LLM providers.
  *
- * @package DGLab\Services\NovelToMangaScript\AI
+ * @package DGLab\Services\MangaScript\AI
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI;
+namespace DGLab\Services\MangaScript\AI;
 
-use DGLab\Services\NovelToMangaScript\AI\Contracts\LLMProviderInterface;
-use DGLab\Services\NovelToMangaScript\AI\Providers\AbstractLLMProvider;
+use DGLab\Services\MangaScript\AI\Contracts\LLMProviderInterface;
+use DGLab\Services\MangaScript\AI\Providers\AbstractLLMProvider;
 
 /**
  * Class ProviderRepository

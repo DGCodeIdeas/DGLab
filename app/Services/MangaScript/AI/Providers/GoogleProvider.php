@@ -5,12 +5,12 @@
  *
  * Implementation for Google Gemini API.
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
  * Class GoogleProvider

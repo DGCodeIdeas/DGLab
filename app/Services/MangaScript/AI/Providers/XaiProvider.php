@@ -2,122 +2,104 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
-use DGLab\Services\NovelToMangaScript\AI\LLMProviderException;
+use DGLab\Services\MangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
- * Azure OpenAI LLM Provider
+ * xAI (Grok) LLM Provider
  * 
- * Implements the Azure OpenAI Service API for enterprise-grade
- * OpenAI model deployments with Azure security and compliance.
+ * Implements the xAI API for Grok models with real-time
+ * knowledge and reasoning capabilities.
  * 
  * Features:
- * - GPT-4o, GPT-4 Turbo, GPT-3.5 deployments
- * - Regional deployment support
- * - Azure Active Directory authentication
- * - Private endpoint support
+ * - OpenAI-compatible API format
+ * - Real-time knowledge access
+ * - Large context windows
+ * - Vision support (Grok 2 Vision)
  * 
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
-class AzureOpenAiProvider extends AbstractLLMProvider
+class XaiProvider extends AbstractLLMProvider
 {
     /**
      * Provider identifier
      */
-    protected string $providerId = 'azure_openai';
+    protected string $providerId = 'xai';
     
     /**
      * Provider display name
      */
-    protected string $providerName = 'Azure OpenAI';
+    protected string $providerName = 'xAI (Grok)';
     
     /**
-     * Azure resource name
+     * Default API endpoint
      */
-    protected string $resourceName;
+    protected string $defaultEndpoint = 'https://api.x.ai/v1/chat/completions';
     
     /**
-     * API version
-     */
-    protected string $apiVersion = '2024-10-01-preview';
-    
-    /**
-     * Available deployments (configured per Azure resource)
-     * Note: These are template specs - actual models depend on your Azure deployment
+     * Available models with their specifications
      */
     protected array $availableModels = [
-        'gpt-4o' => [
-            'context_window' => 128000,
-            'max_output' => 16384,
-            'supports_json_mode' => true,
-            'supports_vision' => true,
-            'cost_per_1k_input' => 0.0025,
-            'cost_per_1k_output' => 0.01,
-        ],
-        'gpt-4o-mini' => [
-            'context_window' => 128000,
-            'max_output' => 16384,
-            'supports_json_mode' => true,
-            'supports_vision' => true,
-            'cost_per_1k_input' => 0.00015,
-            'cost_per_1k_output' => 0.0006,
-        ],
-        'gpt-4-turbo' => [
-            'context_window' => 128000,
-            'max_output' => 4096,
-            'supports_json_mode' => true,
-            'supports_vision' => true,
-            'cost_per_1k_input' => 0.01,
-            'cost_per_1k_output' => 0.03,
-        ],
-        'gpt-4' => [
-            'context_window' => 8192,
+        // Grok 2 models
+        'grok-2-latest' => [
+            'context_window' => 131072,
             'max_output' => 8192,
             'supports_json_mode' => true,
             'supports_vision' => false,
-            'cost_per_1k_input' => 0.03,
-            'cost_per_1k_output' => 0.06,
+            'supports_tools' => true,
+            'cost_per_1k_input' => 0.002,
+            'cost_per_1k_output' => 0.010,
         ],
-        'gpt-35-turbo' => [
-            'context_window' => 16384,
-            'max_output' => 4096,
+        'grok-2-1212' => [
+            'context_window' => 131072,
+            'max_output' => 8192,
             'supports_json_mode' => true,
             'supports_vision' => false,
-            'cost_per_1k_input' => 0.0005,
-            'cost_per_1k_output' => 0.0015,
+            'supports_tools' => true,
+            'cost_per_1k_input' => 0.002,
+            'cost_per_1k_output' => 0.010,
+        ],
+        
+        // Grok 2 Vision
+        'grok-2-vision-1212' => [
+            'context_window' => 32768,
+            'max_output' => 8192,
+            'supports_json_mode' => true,
+            'supports_vision' => true,
+            'supports_tools' => true,
+            'cost_per_1k_input' => 0.002,
+            'cost_per_1k_output' => 0.010,
+        ],
+        
+        // Grok Beta
+        'grok-beta' => [
+            'context_window' => 131072,
+            'max_output' => 8192,
+            'supports_json_mode' => true,
+            'supports_vision' => false,
+            'supports_tools' => true,
+            'cost_per_1k_input' => 0.005,
+            'cost_per_1k_output' => 0.015,
+        ],
+        
+        // Grok Vision Beta
+        'grok-vision-beta' => [
+            'context_window' => 8192,
+            'max_output' => 8192,
+            'supports_json_mode' => true,
+            'supports_vision' => true,
+            'supports_tools' => true,
+            'cost_per_1k_input' => 0.005,
+            'cost_per_1k_output' => 0.015,
         ],
     ];
     
     /**
-     * Default deployment name
+     * Default model for this provider
      */
-    protected string $defaultModel = 'gpt-4o';
-    
-    /**
-     * Deployment name mapping (deployment name -> model spec key)
-     */
-    protected array $deploymentMapping = [];
-
-    /**
-     * Constructor
-     */
-    public function __construct(string $apiKey, array $config = [])
-    {
-        parent::__construct($apiKey, $config);
-        
-        $this->resourceName = $config['resource_name'] 
-            ?? getenv('AZURE_OPENAI_RESOURCE_NAME') 
-            ?: throw new \InvalidArgumentException('Azure resource name is required');
-            
-        $this->apiVersion = $config['api_version'] ?? $this->apiVersion;
-        
-        // Set up deployment mapping if provided
-        if (!empty($config['deployments'])) {
-            $this->deploymentMapping = $config['deployments'];
-        }
-    }
+    protected string $defaultModel = 'grok-2-latest';
 
     /**
      * {@inheritdoc}
@@ -127,8 +109,10 @@ class AzureOpenAiProvider extends AbstractLLMProvider
         ?string $systemPrompt = null,
         array $options = []
     ): LLMResponse {
-        $deploymentName = $options['model'] ?? $options['deployment'] ?? $this->defaultModel;
-        $modelSpec = $this->getModelSpec($deploymentName);
+        $model = $options['model'] ?? $this->defaultModel;
+        $this->validateModel($model);
+        
+        $modelSpec = $this->availableModels[$model];
         
         // Build messages array
         $messages = [];
@@ -145,7 +129,9 @@ class AzureOpenAiProvider extends AbstractLLMProvider
             'content' => $prompt,
         ];
         
+        // Build request payload (OpenAI-compatible format)
         $payload = [
+            'model' => $model,
             'messages' => $messages,
             'temperature' => $options['temperature'] ?? $this->config['default_temperature'] ?? 0.7,
             'max_tokens' => min(
@@ -173,18 +159,23 @@ class AzureOpenAiProvider extends AbstractLLMProvider
             $payload['presence_penalty'] = $options['presence_penalty'];
         }
         
+        // Add top_p
+        if (isset($options['top_p'])) {
+            $payload['top_p'] = $options['top_p'];
+        }
+        
         $startTime = microtime(true);
         
         try {
-            $response = $this->makeRequest($deploymentName, $payload);
+            $response = $this->makeRequest($payload);
             $latency = (microtime(true) - $startTime) * 1000;
             
-            return $this->parseResponse($response, $deploymentName, $latency);
+            return $this->parseResponse($response, $model, $latency);
             
         } catch (\Exception $e) {
             throw LLMProviderException::requestFailed(
                 $this->providerId,
-                $deploymentName,
+                $model,
                 $e->getMessage(),
                 $e->getCode()
             );
@@ -199,8 +190,10 @@ class AzureOpenAiProvider extends AbstractLLMProvider
         ?string $systemPrompt = null,
         array $options = []
     ): LLMResponse {
-        $deploymentName = $options['model'] ?? $options['deployment'] ?? $this->defaultModel;
-        $modelSpec = $this->getModelSpec($deploymentName);
+        $model = $options['model'] ?? $this->defaultModel;
+        $this->validateModel($model);
+        
+        $modelSpec = $this->availableModels[$model];
         
         // Build messages array
         $formattedMessages = [];
@@ -220,6 +213,7 @@ class AzureOpenAiProvider extends AbstractLLMProvider
         }
         
         $payload = [
+            'model' => $model,
             'messages' => $formattedMessages,
             'temperature' => $options['temperature'] ?? 0.7,
             'max_tokens' => min(
@@ -236,15 +230,15 @@ class AzureOpenAiProvider extends AbstractLLMProvider
         $startTime = microtime(true);
         
         try {
-            $response = $this->makeRequest($deploymentName, $payload);
+            $response = $this->makeRequest($payload);
             $latency = (microtime(true) - $startTime) * 1000;
             
-            return $this->parseResponse($response, $deploymentName, $latency);
+            return $this->parseResponse($response, $model, $latency);
             
         } catch (\Exception $e) {
             throw LLMProviderException::requestFailed(
                 $this->providerId,
-                $deploymentName,
+                $model,
                 $e->getMessage(),
                 $e->getCode()
             );
@@ -252,38 +246,103 @@ class AzureOpenAiProvider extends AbstractLLMProvider
     }
 
     /**
-     * Get model specification for a deployment
+     * Send with vision (image analysis)
      */
-    protected function getModelSpec(string $deploymentName): array
-    {
-        // Check deployment mapping first
-        if (isset($this->deploymentMapping[$deploymentName])) {
-            $modelKey = $this->deploymentMapping[$deploymentName];
-            if (isset($this->availableModels[$modelKey])) {
-                return $this->availableModels[$modelKey];
+    public function sendWithVision(
+        string $prompt,
+        array $images,
+        ?string $systemPrompt = null,
+        array $options = []
+    ): LLMResponse {
+        $model = $options['model'] ?? 'grok-2-vision-1212';
+        $this->validateModel($model);
+        
+        $modelSpec = $this->availableModels[$model];
+        
+        if (!$modelSpec['supports_vision']) {
+            throw LLMProviderException::featureNotSupported(
+                $this->providerId,
+                'vision',
+                $this->getVisionModels()
+            );
+        }
+        
+        $messages = [];
+        
+        if ($systemPrompt !== null) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => $systemPrompt,
+            ];
+        }
+        
+        // Build content with images
+        $content = [];
+        
+        foreach ($images as $image) {
+            if (isset($image['url'])) {
+                $content[] = [
+                    'type' => 'image_url',
+                    'image_url' => [
+                        'url' => $image['url'],
+                        'detail' => $image['detail'] ?? 'auto',
+                    ],
+                ];
+            } elseif (isset($image['base64'])) {
+                $content[] = [
+                    'type' => 'image_url',
+                    'image_url' => [
+                        'url' => 'data:' . ($image['media_type'] ?? 'image/jpeg') . ';base64,' . $image['base64'],
+                    ],
+                ];
             }
         }
         
-        // Check if deployment name matches a known model
-        if (isset($this->availableModels[$deploymentName])) {
-            return $this->availableModels[$deploymentName];
-        }
+        $content[] = [
+            'type' => 'text',
+            'text' => $prompt,
+        ];
         
-        // Default to gpt-4o specs
-        return $this->availableModels['gpt-4o'];
+        $messages[] = [
+            'role' => 'user',
+            'content' => $content,
+        ];
+        
+        $payload = [
+            'model' => $model,
+            'messages' => $messages,
+            'temperature' => $options['temperature'] ?? 0.7,
+            'max_tokens' => min(
+                $options['max_tokens'] ?? 4096,
+                $modelSpec['max_output']
+            ),
+            'stream' => false,
+        ];
+        
+        $startTime = microtime(true);
+        
+        try {
+            $response = $this->makeRequest($payload);
+            $latency = (microtime(true) - $startTime) * 1000;
+            
+            return $this->parseResponse($response, $model, $latency);
+            
+        } catch (\Exception $e) {
+            throw LLMProviderException::requestFailed(
+                $this->providerId,
+                $model,
+                $e->getMessage(),
+                $e->getCode()
+            );
+        }
     }
 
     /**
-     * Make HTTP request to Azure OpenAI API
+     * Make HTTP request to xAI API
      */
-    protected function makeRequest(string $deploymentName, array $payload): array
+    protected function makeRequest(array $payload): array
     {
-        $endpoint = sprintf(
-            'https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s',
-            $this->resourceName,
-            $deploymentName,
-            $this->apiVersion
-        );
+        $endpoint = $this->config['endpoint'] ?? $this->defaultEndpoint;
         
         $ch = curl_init($endpoint);
         
@@ -293,7 +352,7 @@ class AzureOpenAiProvider extends AbstractLLMProvider
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'api-key: ' . $this->apiKey,
+                'Authorization: Bearer ' . $this->apiKey,
             ],
             CURLOPT_TIMEOUT => $this->config['timeout'] ?? 120,
             CURLOPT_CONNECTTIMEOUT => $this->config['connect_timeout'] ?? 10,
@@ -320,9 +379,9 @@ class AzureOpenAiProvider extends AbstractLLMProvider
     }
 
     /**
-     * Parse Azure OpenAI API response
+     * Parse xAI API response
      */
-    protected function parseResponse(array $response, string $deployment, float $latency): LLMResponse
+    protected function parseResponse(array $response, string $model, float $latency): LLMResponse
     {
         $choice = $response['choices'][0] ?? null;
         
@@ -338,14 +397,14 @@ class AzureOpenAiProvider extends AbstractLLMProvider
         $outputTokens = $usage['completion_tokens'] ?? 0;
         
         // Calculate cost
-        $modelSpec = $this->getModelSpec($deployment);
+        $modelSpec = $this->availableModels[$model];
         $cost = (($inputTokens / 1000) * $modelSpec['cost_per_1k_input']) +
                 (($outputTokens / 1000) * $modelSpec['cost_per_1k_output']);
         
         return new LLMResponse(
             content: $content,
             provider: $this->providerId,
-            model: $deployment,
+            model: $model,
             inputTokens: $inputTokens,
             outputTokens: $outputTokens,
             totalTokens: $inputTokens + $outputTokens,
@@ -356,7 +415,6 @@ class AzureOpenAiProvider extends AbstractLLMProvider
                 'response_id' => $response['id'] ?? null,
                 'created' => $response['created'] ?? null,
                 'system_fingerprint' => $response['system_fingerprint'] ?? null,
-                'azure_resource' => $this->resourceName,
             ]
         );
     }
@@ -366,11 +424,7 @@ class AzureOpenAiProvider extends AbstractLLMProvider
      */
     public function getAvailableModels(): array
     {
-        // Return both deployment mappings and known models
-        return array_unique(array_merge(
-            array_keys($this->deploymentMapping),
-            array_keys($this->availableModels)
-        ));
+        return array_keys($this->availableModels);
     }
 
     /**
@@ -378,7 +432,8 @@ class AzureOpenAiProvider extends AbstractLLMProvider
      */
     public function getModelCapabilities(string $model): array
     {
-        return $this->getModelSpec($model);
+        $this->validateModel($model);
+        return $this->availableModels[$model];
     }
 
     /**
@@ -414,30 +469,27 @@ class AzureOpenAiProvider extends AbstractLLMProvider
     }
 
     /**
-     * Set deployment mapping
-     * 
-     * @param array<string, string> $mapping Deployment name -> model spec key
+     * Get available vision-capable models
      */
-    public function setDeploymentMapping(array $mapping): self
+    public function getVisionModels(): array
     {
-        $this->deploymentMapping = $mapping;
-        return $this;
+        return array_keys(array_filter(
+            $this->availableModels,
+            fn($spec) => $spec['supports_vision']
+        ));
     }
-    
+
     /**
-     * Add a deployment
+     * Validate model exists
      */
-    public function addDeployment(string $deploymentName, string $modelSpecKey): self
+    protected function validateModel(string $model): void
     {
-        $this->deploymentMapping[$deploymentName] = $modelSpecKey;
-        return $this;
-    }
-    
-    /**
-     * Get Azure resource name
-     */
-    public function getResourceName(): string
-    {
-        return $this->resourceName;
+        if (!isset($this->availableModels[$model])) {
+            throw LLMProviderException::invalidModel(
+                $this->providerId,
+                $model,
+                $this->getAvailableModels()
+            );
+        }
     }
 }

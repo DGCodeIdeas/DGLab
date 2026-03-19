@@ -1,44 +1,76 @@
 <?php
 
 /**
- * DGLab Mistral AI Provider
+ * DGLab OpenRouter Provider
  *
- * Implementation for Mistral AI API.
+ * Implementation for OpenRouter API (aggregator for 100+ models).
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
- * Class MistralProvider
+ * Class OpenRouterProvider
  *
- * Mistral AI API provider implementation.
+ * OpenRouter API provider implementation.
  */
-class MistralProvider extends AbstractLLMProvider
+class OpenRouterProvider extends AbstractLLMProvider
 {
     /**
      * Provider ID
      */
-    private const PROVIDER_ID = 'mistral';
+    private const PROVIDER_ID = 'openrouter';
 
     /**
      * Provider display name
      */
-    private const PROVIDER_NAME = 'Mistral AI';
+    private const PROVIDER_NAME = 'OpenRouter';
 
     /**
      * API base URL
      */
-    private const API_BASE = 'https://api.mistral.ai/v1';
+    private const API_BASE = 'https://openrouter.ai/api/v1';
 
     /**
-     * Available models
+     * Available models (subset - OpenRouter has 100+)
      */
     private const MODELS = [
-        'mistral-large-latest' => [
+        'openai/gpt-4o' => [
+            'censorship_level' => 3,
+            'cost_input' => 0.005,
+            'cost_output' => 0.015,
+            'context_tokens' => 128000,
+            'speed_tier' => 'fast',
+            'specializations' => ['general'],
+        ],
+        'anthropic/claude-3.5-sonnet' => [
+            'censorship_level' => 2,
+            'cost_input' => 0.003,
+            'cost_output' => 0.015,
+            'context_tokens' => 200000,
+            'speed_tier' => 'fast',
+            'specializations' => ['general', 'creative'],
+        ],
+        'meta-llama/llama-3.1-405b-instruct' => [
+            'censorship_level' => 0,
+            'cost_input' => 0.005,
+            'cost_output' => 0.005,
+            'context_tokens' => 128000,
+            'speed_tier' => 'fast',
+            'specializations' => ['general', 'creative'],
+        ],
+        'meta-llama/llama-3.1-70b-instruct' => [
+            'censorship_level' => 0,
+            'cost_input' => 0.00052,
+            'cost_output' => 0.00075,
+            'context_tokens' => 128000,
+            'speed_tier' => 'fast',
+            'specializations' => ['general'],
+        ],
+        'mistralai/mistral-large' => [
             'censorship_level' => 1,
             'cost_input' => 0.002,
             'cost_output' => 0.006,
@@ -46,45 +78,48 @@ class MistralProvider extends AbstractLLMProvider
             'speed_tier' => 'fast',
             'specializations' => ['general', 'multilingual'],
         ],
-        'mistral-medium-latest' => [
-            'censorship_level' => 1,
-            'cost_input' => 0.0007,
-            'cost_output' => 0.002,
-            'context_tokens' => 32000,
+        'google/gemini-pro-1.5' => [
+            'censorship_level' => 2,
+            'cost_input' => 0.00125,
+            'cost_output' => 0.005,
+            'context_tokens' => 2000000,
             'speed_tier' => 'fast',
-            'specializations' => ['general'],
+            'specializations' => ['general', 'multilingual'],
         ],
-        'mistral-small-latest' => [
-            'censorship_level' => 1,
-            'cost_input' => 0.0002,
-            'cost_output' => 0.0006,
-            'context_tokens' => 32000,
-            'speed_tier' => 'ultra',
-            'specializations' => ['general'],
-        ],
-        'codestral-latest' => [
-            'censorship_level' => 1,
-            'cost_input' => 0.001,
-            'cost_output' => 0.003,
-            'context_tokens' => 32000,
-            'speed_tier' => 'fast',
-            'specializations' => ['technical'],
-        ],
-        'open-mixtral-8x22b' => [
+        'nousresearch/hermes-3-llama-3.1-405b' => [
             'censorship_level' => 0,
-            'cost_input' => 0.002,
-            'cost_output' => 0.006,
+            'cost_input' => 0.005,
+            'cost_output' => 0.005,
+            'context_tokens' => 128000,
+            'speed_tier' => 'fast',
+            'specializations' => ['creative', 'roleplay'],
+        ],
+        'deepseek/deepseek-chat' => [
+            'censorship_level' => 5,
+            'cost_input' => 0.00014,
+            'cost_output' => 0.00028,
             'context_tokens' => 64000,
             'speed_tier' => 'fast',
-            'specializations' => ['general', 'creative'],
+            'specializations' => ['technical', 'analytical'],
         ],
-        'open-mistral-nemo' => [
+        // Free models
+        'meta-llama/llama-3.2-3b-instruct:free' => [
             'censorship_level' => 0,
-            'cost_input' => 0.0003,
-            'cost_output' => 0.0003,
-            'context_tokens' => 128000,
-            'speed_tier' => 'ultra',
-            'specializations' => ['multilingual'],
+            'cost_input' => 0,
+            'cost_output' => 0,
+            'context_tokens' => 8192,
+            'speed_tier' => 'fast',
+            'specializations' => ['general'],
+            'is_free' => true,
+        ],
+        'mistralai/mistral-7b-instruct:free' => [
+            'censorship_level' => 0,
+            'cost_input' => 0,
+            'cost_output' => 0,
+            'context_tokens' => 32768,
+            'speed_tier' => 'fast',
+            'specializations' => ['general'],
+            'is_free' => true,
         ],
     ];
 
@@ -109,7 +144,7 @@ class MistralProvider extends AbstractLLMProvider
      */
     public function getCategory(): string
     {
-        return 'B';
+        return 'C';
     }
 
     /**
@@ -149,7 +184,7 @@ class MistralProvider extends AbstractLLMProvider
      */
     protected function getDefaultModel(): string
     {
-        return 'open-mistral-nemo';
+        return 'meta-llama/llama-3.2-3b-instruct:free';
     }
 
     /**
@@ -168,19 +203,21 @@ class MistralProvider extends AbstractLLMProvider
             'max_tokens' => $options['max_tokens'] ?? 4096,
         ];
 
-        // Add JSON mode if requested
-        if ($options['json_mode'] ?? false) {
-            $body['response_format'] = ['type' => 'json_object'];
+        // OpenRouter-specific routing options
+        if (!empty($options['provider_preferences'])) {
+            $body['provider'] = [
+                'order' => $options['provider_preferences'],
+            ];
         }
 
-        // Mistral supports safe_prompt for additional safety
-        if ($this->currentMode === 'censored') {
-            $body['safe_prompt'] = true;
-        }
+        // Add transforms to allow fallback providers
+        $body['route'] = 'fallback';
 
         $headers = [
             'Authorization' => 'Bearer ' . $this->getApiKey(),
             'Content-Type' => 'application/json',
+            'HTTP-Referer' => $this->config['referer'] ?? 'https://dglab.app',
+            'X-Title' => 'DGLab MangaScript',
         ];
 
         $start = microtime(true);
@@ -193,7 +230,8 @@ class MistralProvider extends AbstractLLMProvider
             $this->currentMode === 'uncensored'
         );
 
-        $cost = $this->estimateCost(
+        // OpenRouter provides generation cost directly
+        $cost = $response['usage']['total_cost'] ?? $this->estimateCost(
             $model,
             $llmResponse->inputTokens,
             $llmResponse->outputTokens
@@ -205,8 +243,11 @@ class MistralProvider extends AbstractLLMProvider
             inputTokens: $llmResponse->inputTokens,
             outputTokens: $llmResponse->outputTokens,
             modelUsed: $llmResponse->modelUsed,
-            providerUsed: $llmResponse->providerUsed,
-            metadata: $llmResponse->metadata,
+            providerUsed: self::PROVIDER_ID,
+            metadata: array_merge($llmResponse->metadata, [
+                'router_model' => $model,
+                'actual_provider' => $response['provider'] ?? 'unknown',
+            ]),
             isUncensored: $llmResponse->isUncensored,
             latencyMs: $latency,
             costUsd: $cost
@@ -228,6 +269,7 @@ class MistralProvider extends AbstractLLMProvider
             'temperature' => $options['temperature'] ?? 0.7,
             'max_tokens' => $options['max_tokens'] ?? 4096,
             'stream' => true,
+            'route' => 'fallback',
         ];
 
         $ch = curl_init();
@@ -238,6 +280,8 @@ class MistralProvider extends AbstractLLMProvider
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $this->getApiKey(),
                 'Content-Type: application/json',
+                'HTTP-Referer: ' . ($this->config['referer'] ?? 'https://dglab.app'),
+                'X-Title: DGLab MangaScript',
             ],
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$buffer) {
@@ -250,7 +294,6 @@ class MistralProvider extends AbstractLLMProvider
         curl_exec($ch);
         curl_close($ch);
 
-        // Parse SSE stream
         $lines = explode("\n", $buffer);
         foreach ($lines as $line) {
             if (str_starts_with($line, 'data: ')) {
@@ -268,18 +311,26 @@ class MistralProvider extends AbstractLLMProvider
     }
 
     /**
-     * Get API key (uses MISTRAL_API_KEY env var)
+     * Get free models
+     */
+    public function getFreeModels(): array
+    {
+        return array_filter(self::MODELS, fn($m) => $m['is_free'] ?? false);
+    }
+
+    /**
+     * Get API key (uses OPENROUTER_API_KEY env var)
      */
     protected function getApiKey(): string
     {
         $key = $this->config['api_key'] ?? null;
 
         if (!$key) {
-            $key = getenv('MISTRAL_API_KEY') ?: ($_ENV['MISTRAL_API_KEY'] ?? '');
+            $key = getenv('OPENROUTER_API_KEY') ?: ($_ENV['OPENROUTER_API_KEY'] ?? '');
         }
 
         if (!$key) {
-            throw new \RuntimeException('Mistral API key not configured');
+            throw new \RuntimeException('OpenRouter API key not configured');
         }
 
         return $key;

@@ -5,13 +5,13 @@
  *
  * Implementation for local Ollama API.
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
-use DGLab\Services\NovelToMangaScript\AI\LLMProviderException;
+use DGLab\Services\MangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
  * Class OllamaProvider

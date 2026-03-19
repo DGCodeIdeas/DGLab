@@ -5,14 +5,14 @@
  *
  * Base class for all LLM providers with common functionality.
  *
- * @package DGLab\Services\NovelToMangaScript\AI\Providers
+ * @package DGLab\Services\MangaScript\AI\Providers
  */
 
-namespace DGLab\Services\NovelToMangaScript\AI\Providers;
+namespace DGLab\Services\MangaScript\AI\Providers;
 
-use DGLab\Services\NovelToMangaScript\AI\Contracts\LLMProviderInterface;
-use DGLab\Services\NovelToMangaScript\AI\LLMProviderException;
-use DGLab\Services\NovelToMangaScript\AI\LLMResponse;
+use DGLab\Services\MangaScript\AI\Contracts\LLMProviderInterface;
+use DGLab\Services\MangaScript\AI\LLMProviderException;
+use DGLab\Services\MangaScript\AI\LLMResponse;
 
 /**
  * Class AbstractLLMProvider
