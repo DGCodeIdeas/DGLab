@@ -40,9 +40,15 @@ abstract class Controller
     {
         return Response::json($data, $status, $headers);
     }
-    protected function view(string $template, array $data = [], int $status = 200): Response
+        protected function view(string $template, array $data = [], int $status = 200): Response
     {
-        $view = $this->app->get(View::class);
+        $view = app()->get(View::class);
+
+        $fragment = $this->request->getHeader('X-Superpowers-Fragment');
+        if ($fragment) {
+            $view->setFragmentMode($fragment === 'true' ? 'content' : $fragment);
+        }
+
         return new Response($view->render($template, $data), $status);
     }
 

@@ -17,7 +17,7 @@ class Linter
             if ($token->type === Token::T_DIRECTIVE) {
                 preg_match('/^@([a-zA-Z0-9]+)/', $token->value, $matches);
                 $name = $matches[1] ?? '';
-                if (in_array($name, ['if', 'foreach', 'auth', 'guest', 'section'])) {
+                if (in_array($name, ['if', 'foreach', 'auth', 'guest', 'section', 'fragment'])) {
                     $stack[] = ['name' => $name, 'line' => $token->line];
                 } elseif (str_starts_with($name, 'end') && $name !== 'end') {
                     if (empty($stack)) {

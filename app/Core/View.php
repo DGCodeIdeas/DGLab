@@ -45,6 +45,7 @@ class View
      * Section content
      */
     private array $sections = [];
+    private ?string $fragmentMode = null;
 
     /**
      * Current section being captured
@@ -91,13 +92,25 @@ class View
     /**
      * Render a view template
      */
-    public function render(string $template, array $data = [], ?string $layout = 'master'): string
+    public function setSection(string $name, string $content): void { $this->sections[$name] = $content; }
+    public function setFragmentMode(?string $sectionName): void
+    {
+        $this->fragmentMode = $sectionName;
+    }
+
+        public function render(string $template, array $data = [], ?string $layout = 'master'): string
     {
         $data = array_merge($this->shared, $data);
 
         [$viewFile, $engine] = $this->resolveView($template);
 
         $content = $engine->render($viewFile, $data);
+
+        if ($this->fragmentMode !== null) {
+            $frag = $this->fragmentMode;
+            $this->fragmentMode = null;
+            return $this->yield($frag);
+        }
 
         if ($layout !== null) {
             if (!$this->hasSection('content')) {

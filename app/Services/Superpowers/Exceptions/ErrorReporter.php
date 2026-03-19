@@ -68,7 +68,7 @@ class ErrorReporter
     private function generateSnippet(string $path, int $line): string
     {
         $lines = file($path);
-        $contextLines = (int) Application::config('superpowers.errors.context_lines', 3);
+        $contextLines = (int) config('superpowers.errors.context_lines', 3);
         $start = max(0, $line - $contextLines - 1);
         $end = min(count($lines), $line + $contextLines);
         $output = "";
