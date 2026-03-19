@@ -1,0 +1,1759 @@
+2026-03-19T11:47:55.6741746Z Current runner version: '2.332.0'
+2026-03-19T11:47:55.6776843Z ##[group]Runner Image Provisioner
+2026-03-19T11:47:55.6778202Z Hosted Compute Agent
+2026-03-19T11:47:55.6779350Z Version: 20260213.493
+2026-03-19T11:47:55.6780474Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-03-19T11:47:55.6781802Z Build Date: 2026-02-13T00:28:41Z
+2026-03-19T11:47:55.6783067Z Worker ID: {66216209-de18-4a54-8c47-227424d47a10}
+2026-03-19T11:47:55.6784019Z Azure Region: northcentralus
+2026-03-19T11:47:55.6784788Z ##[endgroup]
+2026-03-19T11:47:55.6786716Z ##[group]Operating System
+2026-03-19T11:47:55.6787419Z Ubuntu
+2026-03-19T11:47:55.6787874Z 24.04.3
+2026-03-19T11:47:55.6788401Z LTS
+2026-03-19T11:47:55.6788908Z ##[endgroup]
+2026-03-19T11:47:55.6789442Z ##[group]Runner Image
+2026-03-19T11:47:55.6790023Z Image: ubuntu-24.04
+2026-03-19T11:47:55.6790623Z Version: 20260309.50.1
+2026-03-19T11:47:55.6791897Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260309.50/images/ubuntu/Ubuntu2404-Readme.md
+2026-03-19T11:47:55.6793455Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260309.50
+2026-03-19T11:47:55.6794376Z ##[endgroup]
+2026-03-19T11:47:55.6795805Z ##[group]GITHUB_TOKEN Permissions
+2026-03-19T11:47:55.6797894Z Contents: read
+2026-03-19T11:47:55.6798594Z Metadata: read
+2026-03-19T11:47:55.6799138Z ##[endgroup]
+2026-03-19T11:47:55.6801116Z Secret source: Actions
+2026-03-19T11:47:55.6802571Z Prepare workflow directory
+2026-03-19T11:47:55.7207038Z Prepare all required actions
+2026-03-19T11:47:55.7262560Z Getting action download info
+2026-03-19T11:47:56.0637413Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-03-19T11:47:56.2051391Z Download action repository 'shivammathur/setup-php@v2' (SHA:accd6127cb78bee3e8082180cb391013d204ef9f)
+2026-03-19T11:47:56.5896811Z Download action repository 'SamKirkland/FTP-Deploy-Action@v4.3.4' (SHA:8a24039354ee91000cb948cb4a1dbdf1a1b94a3c)
+2026-03-19T11:47:57.0005754Z Complete job name: build-and-deploy
+2026-03-19T11:47:57.0897362Z ##[group]Run actions/checkout@v4
+2026-03-19T11:47:57.0898681Z with:
+2026-03-19T11:47:57.0899478Z   repository: DGCodeIdeas/DGLab
+2026-03-19T11:47:57.0900746Z   token: ***
+2026-03-19T11:47:57.0901516Z   ssh-strict: true
+2026-03-19T11:47:57.0902325Z   ssh-user: git
+2026-03-19T11:47:57.0903141Z   persist-credentials: true
+2026-03-19T11:47:57.0904063Z   clean: true
+2026-03-19T11:47:57.0904896Z   sparse-checkout-cone-mode: true
+2026-03-19T11:47:57.0906071Z   fetch-depth: 1
+2026-03-19T11:47:57.0906866Z   fetch-tags: false
+2026-03-19T11:47:57.0907725Z   show-progress: true
+2026-03-19T11:47:57.0908563Z   lfs: false
+2026-03-19T11:47:57.0909320Z   submodules: false
+2026-03-19T11:47:57.0910162Z   set-safe-directory: true
+2026-03-19T11:47:57.0911315Z ##[endgroup]
+2026-03-19T11:47:57.2059659Z Syncing repository: DGCodeIdeas/DGLab
+2026-03-19T11:47:57.2062541Z ##[group]Getting Git version info
+2026-03-19T11:47:57.2063842Z Working directory is '/home/runner/work/DGLab/DGLab'
+2026-03-19T11:47:57.2066137Z [command]/usr/bin/git version
+2026-03-19T11:47:57.2144859Z git version 2.53.0
+2026-03-19T11:47:57.2174598Z ##[endgroup]
+2026-03-19T11:47:57.2191158Z Temporarily overriding HOME='/home/runner/work/_temp/8e9323a1-ebcb-4ff8-a45e-9c249283ffb4' before making global git config changes
+2026-03-19T11:47:57.2194139Z Adding repository directory to the temporary git global config as a safe directory
+2026-03-19T11:47:57.2205380Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/DGLab/DGLab
+2026-03-19T11:47:57.2250935Z Deleting the contents of '/home/runner/work/DGLab/DGLab'
+2026-03-19T11:47:57.2255253Z ##[group]Initializing the repository
+2026-03-19T11:47:57.2259623Z [command]/usr/bin/git init /home/runner/work/DGLab/DGLab
+2026-03-19T11:47:57.2391856Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-03-19T11:47:57.2394047Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-03-19T11:47:57.2397554Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-03-19T11:47:57.2400630Z hint: call:
+2026-03-19T11:47:57.2401935Z hint:
+2026-03-19T11:47:57.2403510Z hint: 	git config --global init.defaultBranch <name>
+2026-03-19T11:47:57.2405730Z hint:
+2026-03-19T11:47:57.2407715Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-03-19T11:47:57.2410804Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-03-19T11:47:57.2413332Z hint:
+2026-03-19T11:47:57.2414668Z hint: 	git branch -m <name>
+2026-03-19T11:47:57.2416443Z hint:
+2026-03-19T11:47:57.2418363Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-03-19T11:47:57.2421513Z Initialized empty Git repository in /home/runner/work/DGLab/DGLab/.git/
+2026-03-19T11:47:57.2425671Z [command]/usr/bin/git remote add origin https://github.com/DGCodeIdeas/DGLab
+2026-03-19T11:47:57.2459740Z ##[endgroup]
+2026-03-19T11:47:57.2462252Z ##[group]Disabling automatic garbage collection
+2026-03-19T11:47:57.2464645Z [command]/usr/bin/git config --local gc.auto 0
+2026-03-19T11:47:57.2499265Z ##[endgroup]
+2026-03-19T11:47:57.2501568Z ##[group]Setting up auth
+2026-03-19T11:47:57.2507959Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-03-19T11:47:57.2546010Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-03-19T11:47:57.2927798Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-03-19T11:47:57.2965790Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-03-19T11:47:57.3215239Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-03-19T11:47:57.3252617Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-03-19T11:47:57.3511383Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-03-19T11:47:57.3549090Z ##[endgroup]
+2026-03-19T11:47:57.3551579Z ##[group]Fetching the repository
+2026-03-19T11:47:57.3561344Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6b25fb74a565293c8e63bf6464f261d6eb24274c:refs/remotes/origin/main
+2026-03-19T11:47:57.7407433Z From https://github.com/DGCodeIdeas/DGLab
+2026-03-19T11:47:57.7411148Z  * [new ref]         6b25fb74a565293c8e63bf6464f261d6eb24274c -> origin/main
+2026-03-19T11:47:57.7446495Z ##[endgroup]
+2026-03-19T11:47:57.7448462Z ##[group]Determining the checkout info
+2026-03-19T11:47:57.7449999Z ##[endgroup]
+2026-03-19T11:47:57.7453142Z [command]/usr/bin/git sparse-checkout disable
+2026-03-19T11:47:57.7498029Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-03-19T11:47:57.7526148Z ##[group]Checking out the ref
+2026-03-19T11:47:57.7529257Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-03-19T11:47:57.7837112Z Switched to a new branch 'main'
+2026-03-19T11:47:57.7838963Z branch 'main' set up to track 'origin/main'.
+2026-03-19T11:47:57.7848015Z ##[endgroup]
+2026-03-19T11:47:57.7889864Z [command]/usr/bin/git log -1 --format=%H
+2026-03-19T11:47:57.7914425Z 6b25fb74a565293c8e63bf6464f261d6eb24274c
+2026-03-19T11:47:57.8175415Z ##[group]Run shivammathur/setup-php@v2
+2026-03-19T11:47:57.8176644Z with:
+2026-03-19T11:47:57.8177335Z   php-version: 8.0
+2026-03-19T11:47:57.8178419Z   extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip, gd
+2026-03-19T11:47:57.8179713Z   coverage: none
+2026-03-19T11:47:57.8180488Z   ini-file: production
+2026-03-19T11:47:57.8181658Z   github-token: ***
+2026-03-19T11:47:57.8182414Z ##[endgroup]
+2026-03-19T11:47:57.8568094Z [command]/usr/bin/bash /home/runner/work/_actions/shivammathur/setup-php/v2/src/scripts/run.sh
+2026-03-19T11:47:57.9026401Z 
+2026-03-19T11:47:57.9028766Z [90;1m==> [0m[37;1mSetup PHP[0m
+2026-03-19T11:48:03.4838910Z [32;1m✓ [0m[34;1mPHP [0m[90;1mInstalled PHP 8.0.30[0m
+2026-03-19T11:48:03.4839849Z 
+2026-03-19T11:48:03.4840261Z [90;1m==> [0m[37;1mSetup Extensions[0m
+2026-03-19T11:48:03.5303373Z [32;1m✓ [0m[34;1mmbstring [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5335084Z [32;1m✓ [0m[34;1mxml [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5370275Z [32;1m✓ [0m[34;1mctype [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5403088Z [32;1m✓ [0m[34;1miconv [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5436349Z [32;1m✓ [0m[34;1mintl [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5454129Z [32;1m✓ [0m[34;1mpdo_mysql [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5487046Z [32;1m✓ [0m[34;1mzip [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5520005Z [32;1m✓ [0m[34;1mgd [0m[90;1mEnabled[0m
+2026-03-19T11:48:03.5520651Z 
+2026-03-19T11:48:03.5521115Z [90;1m==> [0m[37;1mSetup Tools[0m
+2026-03-19T11:48:03.8578051Z [32;1m✓ [0m[34;1mcomposer [0m[90;1mAdded composer 2.9.5[0m
+2026-03-19T11:48:03.8578641Z 
+2026-03-19T11:48:03.8578972Z [90;1m==> [0m[37;1mSetup Coverage[0m
+2026-03-19T11:48:04.0812992Z [32;1m✓ [0m[34;1mnone [0m[90;1mDisabled Xdebug and PCOV[0m
+2026-03-19T11:48:04.0813616Z 
+2026-03-19T11:48:04.0813981Z [90;1m==> [0m[37;1mSponsor setup-php[0m
+2026-03-19T11:48:04.0814872Z [32;1m✓ [0m[34;1msetup-php [0m[90;1mhttps://setup-php.com/sponsor[0m
+2026-03-19T11:48:04.1017765Z ##[group]Run composer validate --strict
+2026-03-19T11:48:04.1018146Z [36;1mcomposer validate --strict[0m
+2026-03-19T11:48:04.1076782Z shell: /usr/bin/bash -e {0}
+2026-03-19T11:48:04.1077057Z env:
+2026-03-19T11:48:04.1077249Z   COMPOSER_PROCESS_TIMEOUT: 0
+2026-03-19T11:48:04.1077501Z   COMPOSER_NO_INTERACTION: 1
+2026-03-19T11:48:04.1077731Z   COMPOSER_NO_AUDIT: 1
+2026-03-19T11:48:04.1077936Z ##[endgroup]
+2026-03-19T11:48:04.2851364Z ./composer.json is valid
+2026-03-19T11:48:04.3019456Z ##[group]Run composer install --prefer-dist --no-progress
+2026-03-19T11:48:04.3019917Z [36;1mcomposer install --prefer-dist --no-progress[0m
+2026-03-19T11:48:04.3072403Z shell: /usr/bin/bash -e {0}
+2026-03-19T11:48:04.3072653Z env:
+2026-03-19T11:48:04.3072855Z   COMPOSER_PROCESS_TIMEOUT: 0
+2026-03-19T11:48:04.3073148Z   COMPOSER_NO_INTERACTION: 1
+2026-03-19T11:48:04.3073385Z   COMPOSER_NO_AUDIT: 1
+2026-03-19T11:48:04.3073588Z ##[endgroup]
+2026-03-19T11:48:04.4545170Z Installing dependencies from lock file (including require-dev)
+2026-03-19T11:48:04.4564209Z Verifying lock file contents can be installed on current platform.
+2026-03-19T11:48:04.4948107Z Package operations: 46 installs, 0 updates, 0 removals
+2026-03-19T11:48:04.4955880Z   - Downloading psr/log (2.0.0)
+2026-03-19T11:48:04.4964579Z   - Downloading psr/cache (3.0.0)
+2026-03-19T11:48:04.4968094Z   - Downloading doctrine/deprecations (1.1.6)
+2026-03-19T11:48:04.4985605Z   - Downloading doctrine/event-manager (1.2.0)
+2026-03-19T11:48:04.4986291Z   - Downloading doctrine/dbal (3.10.5)
+2026-03-19T11:48:04.4986876Z   - Downloading matthiasmullie/path-converter (1.1.3)
+2026-03-19T11:48:04.4987495Z   - Downloading matthiasmullie/minify (1.3.75)
+2026-03-19T11:48:04.4988011Z   - Downloading monolog/monolog (2.11.0)
+2026-03-19T11:48:04.4989293Z   - Downloading phpstan/phpstan (1.12.33)
+2026-03-19T11:48:04.4993897Z   - Downloading sebastian/version (3.0.2)
+2026-03-19T11:48:04.4998177Z   - Downloading sebastian/type (3.2.1)
+2026-03-19T11:48:04.5001572Z   - Downloading sebastian/resource-operations (3.0.4)
+2026-03-19T11:48:04.5005069Z   - Downloading sebastian/recursion-context (4.0.6)
+2026-03-19T11:48:04.5007241Z   - Downloading sebastian/object-reflector (2.0.4)
+2026-03-19T11:48:04.5009215Z   - Downloading sebastian/object-enumerator (4.0.4)
+2026-03-19T11:48:04.5011237Z   - Downloading sebastian/global-state (5.0.8)
+2026-03-19T11:48:04.5013276Z   - Downloading sebastian/exporter (4.0.8)
+2026-03-19T11:48:04.5015390Z   - Downloading sebastian/environment (5.1.5)
+2026-03-19T11:48:04.5017587Z   - Downloading sebastian/diff (4.0.6)
+2026-03-19T11:48:04.5019500Z   - Downloading sebastian/comparator (4.0.10)
+2026-03-19T11:48:04.5021474Z   - Downloading sebastian/code-unit (1.0.8)
+2026-03-19T11:48:04.5023620Z   - Downloading sebastian/cli-parser (1.0.2)
+2026-03-19T11:48:04.5026592Z   - Downloading phpunit/php-timer (5.0.3)
+2026-03-19T11:48:04.5028732Z   - Downloading phpunit/php-text-template (2.0.4)
+2026-03-19T11:48:04.5030786Z   - Downloading phpunit/php-invoker (3.1.1)
+2026-03-19T11:48:04.5034176Z   - Downloading phpunit/php-file-iterator (3.0.6)
+2026-03-19T11:48:04.5036749Z   - Downloading theseer/tokenizer (1.3.1)
+2026-03-19T11:48:04.5039197Z   - Downloading symfony/polyfill-ctype (v1.33.0)
+2026-03-19T11:48:04.5041545Z   - Downloading nikic/php-parser (v5.7.0)
+2026-03-19T11:48:04.5043374Z   - Downloading sebastian/lines-of-code (1.0.4)
+2026-03-19T11:48:04.5045024Z   - Downloading sebastian/complexity (2.0.3)
+2026-03-19T11:48:04.5047217Z   - Downloading sebastian/code-unit-reverse-lookup (2.0.3)
+2026-03-19T11:48:04.5048899Z   - Downloading phpunit/php-code-coverage (9.2.32)
+2026-03-19T11:48:04.5051418Z   - Downloading phar-io/version (3.2.1)
+2026-03-19T11:48:04.5053051Z   - Downloading phar-io/manifest (2.0.4)
+2026-03-19T11:48:04.5055707Z   - Downloading myclabs/deep-copy (1.13.4)
+2026-03-19T11:48:04.5057824Z   - Downloading symfony/polyfill-mbstring (v1.33.0)
+2026-03-19T11:48:04.5059912Z   - Downloading doctrine/instantiator (1.5.0)
+2026-03-19T11:48:04.5061905Z   - Downloading phpunit/phpunit (9.6.34)
+2026-03-19T11:48:04.5063925Z   - Downloading psr/container (2.0.2)
+2026-03-19T11:48:04.5066805Z   - Downloading scssphp/scssphp (v1.13.0)
+2026-03-19T11:48:04.5069391Z   - Downloading squizlabs/php_codesniffer (3.13.5)
+2026-03-19T11:48:04.5071565Z   - Downloading symfony/polyfill-php81 (v1.33.0)
+2026-03-19T11:48:04.5073541Z   - Downloading symfony/polyfill-php80 (v1.33.0)
+2026-03-19T11:48:04.5076047Z   - Downloading symfony/deprecation-contracts (v2.5.4)
+2026-03-19T11:48:04.5078393Z   - Downloading twig/twig (v3.11.3)
+2026-03-19T11:48:05.6346621Z   - Installing psr/log (2.0.0): Extracting archive
+2026-03-19T11:48:05.6395158Z   - Installing psr/cache (3.0.0): Extracting archive
+2026-03-19T11:48:05.6431063Z   - Installing doctrine/deprecations (1.1.6): Extracting archive
+2026-03-19T11:48:05.6468755Z   - Installing doctrine/event-manager (1.2.0): Extracting archive
+2026-03-19T11:48:05.6508391Z   - Installing doctrine/dbal (3.10.5): Extracting archive
+2026-03-19T11:48:05.6549345Z   - Installing matthiasmullie/path-converter (1.1.3): Extracting archive
+2026-03-19T11:48:05.6589147Z   - Installing matthiasmullie/minify (1.3.75): Extracting archive
+2026-03-19T11:48:05.6628669Z   - Installing monolog/monolog (2.11.0): Extracting archive
+2026-03-19T11:48:05.6668787Z   - Installing phpstan/phpstan (1.12.33): Extracting archive
+2026-03-19T11:48:05.6709479Z   - Installing sebastian/version (3.0.2): Extracting archive
+2026-03-19T11:48:05.6750025Z   - Installing sebastian/type (3.2.1): Extracting archive
+2026-03-19T11:48:05.6756287Z   - Installing sebastian/resource-operations (3.0.4): Extracting archive
+2026-03-19T11:48:05.6760114Z   - Installing sebastian/recursion-context (4.0.6): Extracting archive
+2026-03-19T11:48:05.6763828Z   - Installing sebastian/object-reflector (2.0.4): Extracting archive
+2026-03-19T11:48:05.6767700Z   - Installing sebastian/object-enumerator (4.0.4): Extracting archive
+2026-03-19T11:48:05.6771007Z   - Installing sebastian/global-state (5.0.8): Extracting archive
+2026-03-19T11:48:05.6774760Z   - Installing sebastian/exporter (4.0.8): Extracting archive
+2026-03-19T11:48:05.6779461Z   - Installing sebastian/environment (5.1.5): Extracting archive
+2026-03-19T11:48:05.6783011Z   - Installing sebastian/diff (4.0.6): Extracting archive
+2026-03-19T11:48:05.6787168Z   - Installing sebastian/comparator (4.0.10): Extracting archive
+2026-03-19T11:48:05.6789996Z   - Installing sebastian/code-unit (1.0.8): Extracting archive
+2026-03-19T11:48:05.6793790Z   - Installing sebastian/cli-parser (1.0.2): Extracting archive
+2026-03-19T11:48:05.6797091Z   - Installing phpunit/php-timer (5.0.3): Extracting archive
+2026-03-19T11:48:05.6800697Z   - Installing phpunit/php-text-template (2.0.4): Extracting archive
+2026-03-19T11:48:05.6803853Z   - Installing phpunit/php-invoker (3.1.1): Extracting archive
+2026-03-19T11:48:05.6807048Z   - Installing phpunit/php-file-iterator (3.0.6): Extracting archive
+2026-03-19T11:48:05.6809961Z   - Installing theseer/tokenizer (1.3.1): Extracting archive
+2026-03-19T11:48:05.6813547Z   - Installing symfony/polyfill-ctype (v1.33.0): Extracting archive
+2026-03-19T11:48:05.6817894Z   - Installing nikic/php-parser (v5.7.0): Extracting archive
+2026-03-19T11:48:05.6821325Z   - Installing sebastian/lines-of-code (1.0.4): Extracting archive
+2026-03-19T11:48:05.6824457Z   - Installing sebastian/complexity (2.0.3): Extracting archive
+2026-03-19T11:48:05.6827428Z   - Installing sebastian/code-unit-reverse-lookup (2.0.3): Extracting archive
+2026-03-19T11:48:05.6830581Z   - Installing phpunit/php-code-coverage (9.2.32): Extracting archive
+2026-03-19T11:48:05.6833720Z   - Installing phar-io/version (3.2.1): Extracting archive
+2026-03-19T11:48:05.6839124Z   - Installing phar-io/manifest (2.0.4): Extracting archive
+2026-03-19T11:48:05.6839888Z   - Installing myclabs/deep-copy (1.13.4): Extracting archive
+2026-03-19T11:48:05.6845063Z   - Installing symfony/polyfill-mbstring (v1.33.0): Extracting archive
+2026-03-19T11:48:05.6848139Z   - Installing doctrine/instantiator (1.5.0): Extracting archive
+2026-03-19T11:48:05.6851368Z   - Installing phpunit/phpunit (9.6.34): Extracting archive
+2026-03-19T11:48:05.6854719Z   - Installing psr/container (2.0.2): Extracting archive
+2026-03-19T11:48:05.6858137Z   - Installing scssphp/scssphp (v1.13.0): Extracting archive
+2026-03-19T11:48:05.6861547Z   - Installing squizlabs/php_codesniffer (3.13.5): Extracting archive
+2026-03-19T11:48:05.6865070Z   - Installing symfony/polyfill-php81 (v1.33.0): Extracting archive
+2026-03-19T11:48:05.6869576Z   - Installing symfony/polyfill-php80 (v1.33.0): Extracting archive
+2026-03-19T11:48:05.6926274Z   - Installing symfony/deprecation-contracts (v2.5.4): Extracting archive
+2026-03-19T11:48:05.6927314Z   - Installing twig/twig (v3.11.3): Extracting archive
+2026-03-19T11:48:06.4746522Z Generating optimized autoload files
+2026-03-19T11:48:06.7942407Z 38 packages you are using are looking for funding.
+2026-03-19T11:48:06.7943164Z Use the `composer fund` command to find out more!
+2026-03-19T11:48:06.8237240Z ##[group]Run composer run cs
+2026-03-19T11:48:06.8237549Z [36;1mcomposer run cs[0m
+2026-03-19T11:48:06.8287269Z shell: /usr/bin/bash -e {0}
+2026-03-19T11:48:06.8287501Z env:
+2026-03-19T11:48:06.8287694Z   COMPOSER_PROCESS_TIMEOUT: 0
+2026-03-19T11:48:06.8287940Z   COMPOSER_NO_INTERACTION: 1
+2026-03-19T11:48:06.8288164Z   COMPOSER_NO_AUDIT: 1
+2026-03-19T11:48:06.8288369Z ##[endgroup]
+2026-03-19T11:48:06.9759242Z > vendor/bin/phpcs --standard=PSR12 app/
+2026-03-19T11:48:08.5451959Z 
+2026-03-19T11:48:08.5452684Z FILE: /home/runner/work/DGLab/DGLab/app/Core/View.php
+2026-03-19T11:48:08.5453688Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5454569Z FOUND 19 ERRORS AFFECTING 19 LINES
+2026-03-19T11:48:08.5455333Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5456373Z  131 | ERROR | [x] Expected 1 space after FUNCTION keyword; 0 found
+2026-03-19T11:48:08.5457247Z  132 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5458041Z  133 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5458752Z  146 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5459572Z  148 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5460467Z  151 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5461232Z  153 | ERROR | [x] Line indented incorrectly; expected 16 spaces, found 17
+2026-03-19T11:48:08.5462323Z  155 | ERROR | [x] Line indented incorrectly; expected 16 spaces, found 17
+2026-03-19T11:48:08.5463412Z  156 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5464161Z  159 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5464903Z  161 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5465829Z  163 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5466578Z  165 | ERROR | [x] Line indented incorrectly; expected 16 spaces, found 17
+2026-03-19T11:48:08.5467320Z  167 | ERROR | [x] Line indented incorrectly; expected 16 spaces, found 17
+2026-03-19T11:48:08.5468068Z  168 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5468699Z  171 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5469140Z  173 | ERROR | [x] Line indented incorrectly; expected 16 spaces, found 17
+2026-03-19T11:48:08.5469583Z  175 | ERROR | [x] Line indented incorrectly; expected 16 spaces, found 17
+2026-03-19T11:48:08.5469992Z  176 | ERROR | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5470383Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5470776Z PHPCBF CAN FIX THE 19 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5471156Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5471397Z 
+2026-03-19T11:48:08.5471401Z 
+2026-03-19T11:48:08.5471557Z FILE: /home/runner/work/DGLab/DGLab/app/Core/Controller.php
+2026-03-19T11:48:08.5471924Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5472265Z FOUND 72 ERRORS AND 4 WARNINGS AFFECTING 25 LINES
+2026-03-19T11:48:08.5472603Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5472967Z  20 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5473327Z  20 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5473700Z  20 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5474062Z  20 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5474400Z  21 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5475046Z  21 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5475630Z  21 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5476017Z  22 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5476370Z  22 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5476746Z  22 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5477103Z  22 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5477432Z  23 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5477776Z  23 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5478142Z  23 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5478481Z  25 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5478823Z  25 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5479232Z  25 | WARNING | [ ] Line exceeds 120 characters; contains 143 characters
+2026-03-19T11:48:08.5479608Z  25 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5479940Z  32 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5480284Z  32 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5480639Z  32 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5480965Z  39 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5481441Z  39 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5481792Z  39 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5482114Z  46 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5482453Z  46 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5482824Z  46 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5483200Z  46 | WARNING | [ ] Line exceeds 120 characters; contains 156 characters
+2026-03-19T11:48:08.5483567Z  46 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5483887Z  47 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5484227Z  47 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5484575Z  47 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5484896Z  49 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5485245Z  49 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5485794Z  49 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5486183Z  50 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5486550Z  50 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5486923Z  50 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5487248Z  51 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5487588Z  51 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5487946Z  51 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5488274Z  52 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5488620Z  52 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5489009Z  52 | WARNING | [ ] Line exceeds 120 characters; contains 125 characters
+2026-03-19T11:48:08.5489382Z  52 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5489719Z  56 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5490048Z  59 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5490393Z  59 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5490744Z  59 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5491212Z  62 | ERROR   | [x] Newline required after opening brace
+2026-03-19T11:48:08.5491698Z  62 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5492071Z  62 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5492415Z  62 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5492761Z  63 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5493114Z  63 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5493455Z  66 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5493791Z  66 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5494147Z  66 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5494469Z  67 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5494809Z  67 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5495170Z  67 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5495687Z  68 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5496039Z  68 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5496396Z  68 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5496723Z  72 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5497046Z  76 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5497520Z  76 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5497905Z  76 | WARNING | [ ] Line exceeds 120 characters; contains 145 characters
+2026-03-19T11:48:08.5498274Z  76 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5498598Z  78 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5498938Z  78 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5499296Z  78 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5499620Z  79 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5499934Z  79 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5500256Z  80 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5500577Z  80 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5500930Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5501311Z PHPCBF CAN FIX THE 72 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5501674Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5501910Z 
+2026-03-19T11:48:08.5501914Z 
+2026-03-19T11:48:08.5502083Z FILE: /home/runner/work/DGLab/DGLab/app/Core/EventDispatcher.php
+2026-03-19T11:48:08.5502462Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5502792Z FOUND 0 ERRORS AND 2 WARNINGS AFFECTING 2 LINES
+2026-03-19T11:48:08.5503119Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5503492Z   83 | WARNING | Line exceeds 120 characters; contains 146 characters
+2026-03-19T11:48:08.5503888Z  178 | WARNING | Line exceeds 120 characters; contains 121 characters
+2026-03-19T11:48:08.5504253Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5504477Z 
+2026-03-19T11:48:08.5504481Z 
+2026-03-19T11:48:08.5504667Z FILE: /home/runner/work/DGLab/DGLab/app/Core/EventDrivers/QueueDriver.php
+2026-03-19T11:48:08.5505082Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5505580Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5505930Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5506305Z  113 | WARNING | Line exceeds 120 characters; contains 121 characters
+2026-03-19T11:48:08.5506802Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5507037Z 
+2026-03-19T11:48:08.5507040Z 
+2026-03-19T11:48:08.5507186Z FILE: /home/runner/work/DGLab/DGLab/app/Core/AuditService.php
+2026-03-19T11:48:08.5507544Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5507867Z FOUND 0 ERRORS AND 2 WARNINGS AFFECTING 2 LINES
+2026-03-19T11:48:08.5508186Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5508551Z  22 | WARNING | Line exceeds 120 characters; contains 125 characters
+2026-03-19T11:48:08.5508944Z  46 | WARNING | Line exceeds 120 characters; contains 165 characters
+2026-03-19T11:48:08.5509303Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5509520Z 
+2026-03-19T11:48:08.5509523Z 
+2026-03-19T11:48:08.5509669Z FILE: /home/runner/work/DGLab/DGLab/app/Core/Application.php
+2026-03-19T11:48:08.5510035Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5510373Z FOUND 15 ERRORS AND 2 WARNINGS AFFECTING 7 LINES
+2026-03-19T11:48:08.5510698Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5511059Z  85 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5511425Z  85 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5511777Z  85 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5512151Z  86 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5512622Z  86 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5512973Z  86 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5513360Z  87 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5513714Z  87 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5514055Z  87 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5514426Z  91 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5514781Z  91 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5515128Z  91 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5515688Z  92 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5516052Z  92 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5516398Z  92 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5516785Z  97 | WARNING | [ ] Line exceeds 120 characters; contains 141 characters
+2026-03-19T11:48:08.5517183Z  98 | WARNING | [ ] Line exceeds 120 characters; contains 128 characters
+2026-03-19T11:48:08.5517556Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5517937Z PHPCBF CAN FIX THE 15 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5518308Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5518534Z 
+2026-03-19T11:48:08.5518537Z 
+2026-03-19T11:48:08.5518711Z FILE: /home/runner/work/DGLab/DGLab/app/Core/EventAuditService.php
+2026-03-19T11:48:08.5519086Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5519418Z FOUND 0 ERRORS AND 2 WARNINGS AFFECTING 2 LINES
+2026-03-19T11:48:08.5519740Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5520108Z  47 | WARNING | Line exceeds 120 characters; contains 134 characters
+2026-03-19T11:48:08.5520491Z  84 | WARNING | Line exceeds 120 characters; contains 190 characters
+2026-03-19T11:48:08.5520856Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5521081Z 
+2026-03-19T11:48:08.5521084Z 
+2026-03-19T11:48:08.5521274Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Download/DownloadFailed.php
+2026-03-19T11:48:08.5521692Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5522141Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5522433Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5522791Z  14 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5523141Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5523511Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5523863Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5524101Z 
+2026-03-19T11:48:08.5524104Z 
+2026-03-19T11:48:08.5524288Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Download/FileDownloaded.php
+2026-03-19T11:48:08.5524692Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5525009Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5525283Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5525842Z  15 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5526193Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5526553Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5526906Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5527140Z 
+2026-03-19T11:48:08.5527144Z 
+2026-03-19T11:48:08.5527332Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Database/QueryExecuted.php
+2026-03-19T11:48:08.5527871Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5528183Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5528470Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5528811Z  14 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5529152Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5529521Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5529875Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5530099Z 
+2026-03-19T11:48:08.5530103Z 
+2026-03-19T11:48:08.5530275Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Auth/UserLoggedOut.php
+2026-03-19T11:48:08.5530667Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5530979Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5531259Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5531595Z  9 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5531922Z  9 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5532259Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5532615Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5532963Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5533197Z 
+2026-03-19T11:48:08.5533207Z 
+2026-03-19T11:48:08.5533376Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Auth/UserLoggedIn.php
+2026-03-19T11:48:08.5533757Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5534054Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5534327Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5534659Z  9 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5534987Z  9 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5535315Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5535875Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5536227Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5536443Z 
+2026-03-19T11:48:08.5536447Z 
+2026-03-19T11:48:08.5536616Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Auth/MfaEnabled.php
+2026-03-19T11:48:08.5537119Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5537421Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5537698Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5538035Z  10 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5538360Z  10 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5538688Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5539049Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5539394Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5539608Z 
+2026-03-19T11:48:08.5539612Z 
+2026-03-19T11:48:08.5539802Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Auth/PasswordChanged.php
+2026-03-19T11:48:08.5540198Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5540513Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5540790Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5541123Z  10 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5541437Z  10 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5541771Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5542128Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5542687Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5543039Z 
+2026-03-19T11:48:08.5543044Z 
+2026-03-19T11:48:08.5543363Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Auth/TenantAccessDenied.php
+2026-03-19T11:48:08.5544076Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5544625Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5545032Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5545605Z  11 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5545970Z  11 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5546359Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5546740Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5547151Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5547406Z 
+2026-03-19T11:48:08.5547415Z 
+2026-03-19T11:48:08.5547627Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Auth/LoginFailed.php
+2026-03-19T11:48:08.5548015Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5548589Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5549106Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5549764Z  9 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5550192Z  9 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5550595Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5551028Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5551448Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5551676Z 
+2026-03-19T11:48:08.5551679Z 
+2026-03-19T11:48:08.5551872Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Routing/RequestHandled.php
+2026-03-19T11:48:08.5552425Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5552863Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5553204Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5553591Z  11 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5554025Z  11 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5554401Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5555284Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5555942Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5556181Z 
+2026-03-19T11:48:08.5556184Z 
+2026-03-19T11:48:08.5556372Z FILE: /home/runner/work/DGLab/DGLab/app/Events/Routing/RouteMatched.php
+2026-03-19T11:48:08.5556773Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5557084Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5557363Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5557714Z  11 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5558040Z  11 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5558379Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5558731Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5559089Z -----------------------------------------------------------------------
+2026-03-19T11:48:08.5559312Z 
+2026-03-19T11:48:08.5559316Z 
+2026-03-19T11:48:08.5559467Z FILE: /home/runner/work/DGLab/DGLab/app/Helpers/functions.php
+2026-03-19T11:48:08.5559832Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5560198Z FOUND 2 ERRORS AFFECTING 2 LINES
+2026-03-19T11:48:08.5560570Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5561045Z  55 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5561695Z  56 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5562158Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5562643Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5563135Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5563445Z 
+2026-03-19T11:48:08.5563448Z 
+2026-03-19T11:48:08.5563611Z FILE: /home/runner/work/DGLab/DGLab/app/Models/User.php
+2026-03-19T11:48:08.5564015Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5564419Z FOUND 1 ERROR AND 2 WARNINGS AFFECTING 3 LINES
+2026-03-19T11:48:08.5564827Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5565308Z  13 | WARNING | [ ] Line exceeds 120 characters; contains 218 characters
+2026-03-19T11:48:08.5566007Z  31 | WARNING | [ ] Line exceeds 120 characters; contains 131 characters
+2026-03-19T11:48:08.5566432Z  41 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5566772Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5567181Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5567563Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5567801Z 
+2026-03-19T11:48:08.5567804Z 
+2026-03-19T11:48:08.5568004Z FILE: /home/runner/work/DGLab/DGLab/app/Database/MigrationBlueprint.php
+2026-03-19T11:48:08.5568431Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5568796Z FOUND 51 ERRORS AND 4 WARNINGS AFFECTING 18 LINES
+2026-03-19T11:48:08.5569182Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5569652Z  24 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5570118Z  25 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5570568Z  29 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5571046Z  29 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5571522Z  29 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5571900Z  29 | WARNING | [ ] Line exceeds 120 characters; contains 134 characters
+2026-03-19T11:48:08.5572315Z  29 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5572802Z  30 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5573281Z  30 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5573772Z  30 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5574217Z  30 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5574606Z  31 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5574969Z  31 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5575351Z  31 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5575933Z  31 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5576348Z  31 | WARNING | [ ] Line exceeds 120 characters; contains 164 characters
+2026-03-19T11:48:08.5576799Z  31 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5577214Z  32 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5577620Z  32 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5578083Z  32 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5578549Z  32 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5579045Z  32 | WARNING | [ ] Line exceeds 120 characters; contains 170 characters
+2026-03-19T11:48:08.5579485Z  32 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5580038Z  33 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5580428Z  33 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5580798Z  33 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5581229Z  33 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5581654Z  34 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5582117Z  34 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5582614Z  34 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5582970Z  34 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5583293Z  35 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5583667Z  35 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5584040Z  35 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5584384Z  35 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5584728Z  42 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5585070Z  42 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5585657Z  42 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5586017Z  42 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5586349Z  43 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5586700Z  47 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5587044Z  51 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5587383Z  51 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5587741Z  51 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5588092Z  67 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5588433Z  67 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5588841Z  67 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5589173Z  70 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5589553Z  71 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5589914Z  71 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5590397Z  71 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5590795Z  71 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5591166Z  71 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5591563Z  76 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5591964Z  90 | WARNING | [ ] Line exceeds 120 characters; contains 157 characters
+2026-03-19T11:48:08.5592376Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5592783Z PHPCBF CAN FIX THE 51 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5593173Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5593425Z 
+2026-03-19T11:48:08.5593429Z 
+2026-03-19T11:48:08.5593619Z FILE: /home/runner/work/DGLab/DGLab/app/Database/Connection.php
+2026-03-19T11:48:08.5594036Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5594409Z FOUND 9 ERRORS AND 3 WARNINGS AFFECTING 12 LINES
+2026-03-19T11:48:08.5594797Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5595210Z   73 | WARNING | [ ] Line exceeds 120 characters; contains 140 characters
+2026-03-19T11:48:08.5595847Z   75 | WARNING | [ ] Line exceeds 120 characters; contains 190 characters
+2026-03-19T11:48:08.5596256Z  139 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5596649Z  145 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5597236Z  147 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5597621Z  153 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5597989Z  169 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5598350Z  170 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5598733Z  180 | WARNING | [ ] Line exceeds 120 characters; contains 127 characters
+2026-03-19T11:48:08.5599137Z  185 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5599532Z  191 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5599912Z  196 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5600292Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5600721Z PHPCBF CAN FIX THE 9 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5601105Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5601368Z 
+2026-03-19T11:48:08.5601372Z 
+2026-03-19T11:48:08.5601531Z FILE: /home/runner/work/DGLab/DGLab/app/Facades/Event.php
+2026-03-19T11:48:08.5601911Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5602260Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5602576Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5602972Z  80 | WARNING | Line exceeds 120 characters; contains 143 characters
+2026-03-19T11:48:08.5603369Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5603606Z 
+2026-03-19T11:48:08.5603610Z 
+2026-03-19T11:48:08.5603816Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Download/Download.php
+2026-03-19T11:48:08.5604233Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5604603Z FOUND 0 ERRORS AND 3 WARNINGS AFFECTING 3 LINES
+2026-03-19T11:48:08.5604930Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5605340Z  27 | WARNING | Line exceeds 120 characters; contains 166 characters
+2026-03-19T11:48:08.5606014Z  29 | WARNING | Line exceeds 120 characters; contains 132 characters
+2026-03-19T11:48:08.5606441Z  35 | WARNING | Line exceeds 120 characters; contains 122 characters
+2026-03-19T11:48:08.5606808Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5607051Z 
+2026-03-19T11:48:08.5607054Z 
+2026-03-19T11:48:08.5607432Z FILE: ...k/DGLab/DGLab/app/Services/Download/Contracts/DownloadServiceInterface.php
+2026-03-19T11:48:08.5607938Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5608337Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5608671Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5609085Z  22 | WARNING | Line exceeds 120 characters; contains 124 characters
+2026-03-19T11:48:08.5609517Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5609782Z 
+2026-03-19T11:48:08.5609785Z 
+2026-03-19T11:48:08.5610016Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Download/CleanupService.php
+2026-03-19T11:48:08.5610479Z ----------------------------------------------------------------------------
+2026-03-19T11:48:08.5610836Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5611169Z ----------------------------------------------------------------------------
+2026-03-19T11:48:08.5611569Z  70 | WARNING | Line exceeds 120 characters; contains 164 characters
+2026-03-19T11:48:08.5611966Z ----------------------------------------------------------------------------
+2026-03-19T11:48:08.5612227Z 
+2026-03-19T11:48:08.5612230Z 
+2026-03-19T11:48:08.5612422Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Download/AuditService.php
+2026-03-19T11:48:08.5612861Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5613380Z FOUND 0 ERRORS AND 2 WARNINGS AFFECTING 2 LINES
+2026-03-19T11:48:08.5613729Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5614128Z  44 | WARNING | Line exceeds 120 characters; contains 128 characters
+2026-03-19T11:48:08.5614564Z  46 | WARNING | Line exceeds 120 characters; contains 145 characters
+2026-03-19T11:48:08.5614978Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5615204Z 
+2026-03-19T11:48:08.5615207Z 
+2026-03-19T11:48:08.5615589Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Download/DownloadManager.php
+2026-03-19T11:48:08.5616133Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5616510Z FOUND 0 ERRORS AND 3 WARNINGS AFFECTING 3 LINES
+2026-03-19T11:48:08.5616867Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5617284Z  152 | WARNING | Line exceeds 120 characters; contains 123 characters
+2026-03-19T11:48:08.5617734Z  157 | WARNING | Line exceeds 120 characters; contains 129 characters
+2026-03-19T11:48:08.5618171Z  174 | WARNING | Line exceeds 120 characters; contains 127 characters
+2026-03-19T11:48:08.5618586Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5618848Z 
+2026-03-19T11:48:08.5618851Z 
+2026-03-19T11:48:08.5619109Z FILE: .../work/DGLab/DGLab/app/Services/MangaScript/AI/Providers/GoogleProvider.php
+2026-03-19T11:48:08.5619598Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5619943Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5620276Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5620670Z  287 | WARNING | Line exceeds 120 characters; contains 123 characters
+2026-03-19T11:48:08.5621071Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5621333Z 
+2026-03-19T11:48:08.5621340Z 
+2026-03-19T11:48:08.5621579Z FILE: .../work/DGLab/DGLab/app/Services/MangaScript/AI/Providers/CohereProvider.php
+2026-03-19T11:48:08.5622096Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5622465Z FOUND 48 ERRORS AFFECTING 46 LINES
+2026-03-19T11:48:08.5622807Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5623202Z   12 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5623705Z   15 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5624053Z   21 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5624361Z   30 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5624670Z   35 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5624988Z   40 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5625295Z   64 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5625821Z   84 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5626158Z  105 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5626490Z  121 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5626821Z  123 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5627147Z  126 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5627484Z  133 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5627810Z  138 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5628142Z  149 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5628483Z  154 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5628814Z  159 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5629123Z  164 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5629433Z  169 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5629745Z  174 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5630046Z  176 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5630514Z  180 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5630868Z  182 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5631221Z  182 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5631508Z  203 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5631845Z  205 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5632178Z  208 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5632470Z  215 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5632753Z  222 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5652750Z  233 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5653104Z  237 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5653417Z  239 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5653705Z  243 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5654055Z  245 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5654399Z  245 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5654693Z  262 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5654975Z  264 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5655281Z  277 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5655808Z  281 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5656109Z  283 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5656396Z  287 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5656686Z  289 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5657022Z  294 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5657313Z  304 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5657599Z  313 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5657891Z  315 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5658187Z  319 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5658479Z  324 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5658824Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5659236Z PHPCBF CAN FIX THE 48 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5659622Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5659870Z 
+2026-03-19T11:48:08.5660054Z 
+2026-03-19T11:48:08.5660297Z FILE: ...er/work/DGLab/DGLab/app/Services/MangaScript/AI/Providers/GroqProvider.php
+2026-03-19T11:48:08.5660771Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5661101Z FOUND 49 ERRORS AFFECTING 47 LINES
+2026-03-19T11:48:08.5661409Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5661763Z   12 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5662092Z   15 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5662381Z   21 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5662667Z   30 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5662955Z   35 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5663242Z   40 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5663522Z   62 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5663814Z   80 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5664106Z   98 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5664420Z  108 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5664706Z  118 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5664991Z  129 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5665301Z  145 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5665788Z  147 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5666235Z  150 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5666527Z  157 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5666821Z  162 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5667134Z  175 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5667432Z  180 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5667731Z  185 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5668029Z  193 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5668312Z  195 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5668599Z  199 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5668926Z  201 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5669264Z  201 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5669545Z  222 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5669854Z  224 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5670145Z  227 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5670435Z  234 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5670719Z  241 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5671008Z  252 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5671301Z  256 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5671596Z  258 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5671879Z  262 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5672199Z  264 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5672520Z  264 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5672805Z  281 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5673089Z  283 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5673377Z  295 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5673664Z  299 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5673950Z  301 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5674238Z  305 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5674526Z  307 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5674807Z  312 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5675095Z  322 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5675736Z  326 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5676083Z  329 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5676387Z  333 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5676685Z  338 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5677025Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5677430Z PHPCBF CAN FIX THE 49 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5677820Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5678074Z 
+2026-03-19T11:48:08.5678077Z 
+2026-03-19T11:48:08.5678302Z FILE: ...ner/work/DGLab/DGLab/app/Services/MangaScript/AI/Providers/XaiProvider.php
+2026-03-19T11:48:08.5678758Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5679089Z FOUND 62 ERRORS AFFECTING 59 LINES
+2026-03-19T11:48:08.5679393Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5679749Z   12 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5680038Z   15 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5680321Z   21 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5680598Z   30 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5680877Z   35 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5681151Z   40 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5681554Z   64 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5681830Z   75 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5682105Z   86 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5682380Z   98 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5682659Z  114 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5682935Z  116 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5683219Z  119 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5683500Z  126 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5683774Z  131 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5684051Z  143 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5684329Z  148 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5684641Z  153 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5684927Z  161 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5685209Z  166 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5685713Z  168 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5686003Z  172 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5686326Z  174 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5686644Z  174 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5686923Z  195 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5687203Z  197 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5687482Z  200 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5687756Z  207 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5688036Z  214 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5688317Z  225 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5688603Z  229 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5688883Z  231 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5689166Z  235 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5689488Z  237 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5689813Z  237 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5690096Z  259 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5690382Z  261 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5690806Z  269 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5691100Z  271 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5691415Z  278 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5691701Z  281 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5691984Z  300 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5692265Z  305 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5692547Z  310 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5692835Z  321 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5693119Z  323 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5693405Z  327 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5693877Z  329 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5694476Z  329 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5694992Z  346 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5695668Z  348 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5696175Z  360 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5696519Z  364 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5696810Z  366 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5697098Z  370 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5697378Z  372 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5697664Z  377 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5698108Z  387 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5698393Z  391 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5698671Z  394 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5698953Z  398 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5699237Z  403 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5699577Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5699975Z PHPCBF CAN FIX THE 62 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5700359Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5700606Z 
+2026-03-19T11:48:08.5700609Z 
+2026-03-19T11:48:08.5700837Z FILE: .../DGLab/DGLab/app/Services/MangaScript/AI/Providers/AzureOpenAiProvider.php
+2026-03-19T11:48:08.5701300Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5701636Z FOUND 54 ERRORS AFFECTING 52 LINES
+2026-03-19T11:48:08.5701941Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5702286Z   12 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5702578Z   15 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5702856Z   21 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5703140Z   30 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5703426Z   35 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5703713Z   40 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5703989Z   45 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5704270Z   92 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5704554Z   97 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5704840Z  109 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5705121Z  110 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5705588Z  111 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5705958Z  113 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5706249Z  115 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5706543Z  132 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5706833Z  135 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5707112Z  142 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5707531Z  147 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5707824Z  157 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5708112Z  162 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5708392Z  167 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5708682Z  175 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5708969Z  177 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5709258Z  181 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5709583Z  183 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5709914Z  183 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5710204Z  204 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5710489Z  207 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5710769Z  214 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5711057Z  221 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5711343Z  231 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5711629Z  235 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5711910Z  237 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5712192Z  241 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5712510Z  243 | ERROR | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5712833Z  243 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5713232Z  266 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5713519Z  271 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5713803Z  287 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5714088Z  289 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5714367Z  301 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5714653Z  305 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5714945Z  307 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5715231Z  311 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5715652Z  313 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5715939Z  318 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5716221Z  328 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5716507Z  332 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5716787Z  335 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5717079Z  339 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5717367Z  344 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5717653Z  418 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5717933Z  426 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5718220Z  435 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5718559Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5718955Z PHPCBF CAN FIX THE 54 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5719328Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5719575Z 
+2026-03-19T11:48:08.5719579Z 
+2026-03-19T11:48:08.5719802Z FILE: ...work/DGLab/DGLab/app/Services/MangaScript/AI/Providers/BedrockProvider.php
+2026-03-19T11:48:08.5720265Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5720631Z FOUND 68 ERRORS AND 3 WARNINGS AFFECTING 70 LINES
+2026-03-19T11:48:08.5720967Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5721328Z   12 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5721631Z   15 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5721926Z   21 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5722210Z   30 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5722618Z   35 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5722914Z   40 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5723202Z   73 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5723483Z  102 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5723774Z  122 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5724065Z  134 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5724354Z  139 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5724643Z  154 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5724931Z  171 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5725218Z  173 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5725616Z  176 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5725902Z  178 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5726194Z  182 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5726527Z  184 | ERROR   | [x] Blank line found at end of control structure
+2026-03-19T11:48:08.5726856Z  184 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5727142Z  194 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5727432Z  205 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5727721Z  209 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5728011Z  219 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5728454Z  223 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5728742Z  226 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5729028Z  229 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5729375Z  230 | WARNING | [ ] Line exceeds 120 characters; contains 212 characters
+2026-03-19T11:48:08.5729779Z  231 | WARNING | [ ] Line exceeds 120 characters; contains 144 characters
+2026-03-19T11:48:08.5730136Z  232 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5730430Z  240 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5730726Z  248 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5731011Z  255 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5731303Z  258 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5731597Z  261 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5731882Z  271 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5732174Z  284 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5732464Z  289 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5732755Z  294 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5733045Z  305 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5733330Z  312 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5733620Z  316 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5733915Z  320 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5734206Z  323 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5734490Z  343 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5734779Z  347 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5735068Z  350 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5735354Z  352 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5735766Z  361 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5736057Z  365 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5736347Z  367 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5736639Z  371 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5736922Z  373 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5737211Z  378 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5737616Z  381 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5737912Z  395 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5738199Z  397 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5738490Z  400 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5738780Z  405 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5739069Z  407 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5739354Z  410 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5739650Z  415 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5739937Z  417 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5740281Z  418 | WARNING | [ ] Line exceeds 120 characters; contains 151 characters
+2026-03-19T11:48:08.5740633Z  419 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5740923Z  426 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5741219Z  430 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5741521Z  443 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5741812Z  464 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5742099Z  469 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5742388Z  548 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5742676Z  557 | ERROR   | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5743004Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5743516Z PHPCBF CAN FIX THE 68 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5743893Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5744133Z 
+2026-03-19T11:48:08.5744136Z 
+2026-03-19T11:48:08.5744358Z FILE: ...home/runner/work/DGLab/DGLab/app/Services/MangaScript/AI/RoutingEngine.php
+2026-03-19T11:48:08.5744806Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5745155Z FOUND 1 ERROR AND 1 WARNING AFFECTING 2 LINES
+2026-03-19T11:48:08.5745588Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5745945Z  70 | ERROR   | Each class must be in a file by itself
+2026-03-19T11:48:08.5746298Z  86 | WARNING | Line exceeds 120 characters; contains 133 characters
+2026-03-19T11:48:08.5746676Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5746921Z 
+2026-03-19T11:48:08.5746930Z 
+2026-03-19T11:48:08.5747136Z FILE: /home/runner/work/DGLab/DGLab/app/Services/MangaScript/AI/LLMResponse.php
+2026-03-19T11:48:08.5747574Z -------------------------------------------------------------------------------
+2026-03-19T11:48:08.5747906Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5748191Z -------------------------------------------------------------------------------
+2026-03-19T11:48:08.5748552Z  34 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5748909Z -------------------------------------------------------------------------------
+2026-03-19T11:48:08.5749285Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5749641Z -------------------------------------------------------------------------------
+2026-03-19T11:48:08.5749882Z 
+2026-03-19T11:48:08.5749886Z 
+2026-03-19T11:48:08.5750101Z FILE: ...me/runner/work/DGLab/DGLab/app/Services/MangaScript/AI/ProviderFactory.php
+2026-03-19T11:48:08.5750552Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5750885Z FOUND 45 ERRORS AFFECTING 45 LINES
+2026-03-19T11:48:08.5751188Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5751534Z   27 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5751833Z   30 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5752122Z   53 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5752524Z   58 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5752809Z   63 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5753092Z   71 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5753374Z   74 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5753655Z   87 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5753931Z   92 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5754217Z  100 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5754506Z  105 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5754790Z  111 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5755069Z  114 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5755351Z  124 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5755768Z  127 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5756056Z  139 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5756341Z  143 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5756627Z  146 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5756909Z  161 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5757192Z  167 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5757470Z  177 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5757754Z  192 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5758038Z  199 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5758443Z  204 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5758721Z  207 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5759005Z  215 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5759286Z  218 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5759562Z  229 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5759847Z  232 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5760135Z  235 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5760419Z  242 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5760697Z  250 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5760988Z  258 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5761269Z  266 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5761551Z  269 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5761829Z  275 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5762117Z  292 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5762405Z  295 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5762691Z  298 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5762974Z  305 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5763260Z  314 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5763553Z  317 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5763842Z  320 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5764119Z  326 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5764401Z  345 | ERROR | [x] Whitespace found at end of line
+2026-03-19T11:48:08.5764737Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5765124Z PHPCBF CAN FIX THE 45 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5765593Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5765846Z 
+2026-03-19T11:48:08.5765849Z 
+2026-03-19T11:48:08.5766062Z FILE: ...me/runner/work/DGLab/DGLab/app/Services/MangaScript/MangaScriptService.php
+2026-03-19T11:48:08.5766514Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5766867Z FOUND 0 ERRORS AND 3 WARNINGS AFFECTING 3 LINES
+2026-03-19T11:48:08.5767200Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5767735Z   1 | WARNING | A file should declare new symbols (classes, functions,
+2026-03-19T11:48:08.5768162Z     |         | constants, etc.) and cause no other side effects, or it should
+2026-03-19T11:48:08.5768584Z     |         | execute logic with side effects, but should not do both. The
+2026-03-19T11:48:08.5769009Z     |         | first symbol is defined on line 15 and the first side effect is
+2026-03-19T11:48:08.5769338Z     |         | on line 81.
+2026-03-19T11:48:08.5769633Z  42 | WARNING | Line exceeds 120 characters; contains 126 characters
+2026-03-19T11:48:08.5770023Z  48 | WARNING | Line exceeds 120 characters; contains 137 characters
+2026-03-19T11:48:08.5770405Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5770648Z 
+2026-03-19T11:48:08.5770651Z 
+2026-03-19T11:48:08.5770881Z FILE: ...e/runner/work/DGLab/DGLab/app/Services/EpubFontChanger/EpubFontChanger.php
+2026-03-19T11:48:08.5771339Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5771672Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5771963Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5772340Z  138 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5772701Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5773080Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5773563Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5773802Z 
+2026-03-19T11:48:08.5773806Z 
+2026-03-19T11:48:08.5774032Z FILE: ...nner/work/DGLab/DGLab/app/Services/Superpowers/Interpreter/Interpreter.php
+2026-03-19T11:48:08.5774478Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5774821Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5775153Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5775655Z  147 | WARNING | Line exceeds 120 characters; contains 168 characters
+2026-03-19T11:48:08.5776045Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5776283Z 
+2026-03-19T11:48:08.5776286Z 
+2026-03-19T11:48:08.5776483Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Superpowers/Lexer/Lexer.php
+2026-03-19T11:48:08.5776912Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5777264Z FOUND 16 ERRORS AND 1 WARNING AFFECTING 17 LINES
+2026-03-19T11:48:08.5777596Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5777958Z   37 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5778304Z   38 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5778640Z   39 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5778986Z   40 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5779315Z   41 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5779650Z   42 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5779986Z   43 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5780322Z   44 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5780692Z  133 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5781086Z  135 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5781427Z  136 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5781807Z  137 | ERROR   | [x] Line indented incorrectly; expected 16 spaces, found 18
+2026-03-19T11:48:08.5782221Z  142 | ERROR   | [x] Line indented incorrectly; expected 16 spaces, found 18
+2026-03-19T11:48:08.5782745Z  143 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5783162Z  163 | ERROR   | [x] Line indented incorrectly; expected 20 spaces, found 21
+2026-03-19T11:48:08.5783574Z  165 | ERROR   | [x] Line indented incorrectly; expected 20 spaces, found 21
+2026-03-19T11:48:08.5783988Z  176 | WARNING | [x] Usage of ELSE IF is discouraged; use ELSEIF instead
+2026-03-19T11:48:08.5784372Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5784755Z PHPCBF CAN FIX THE 17 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5785137Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5785369Z 
+2026-03-19T11:48:08.5785372Z 
+2026-03-19T11:48:08.5785717Z FILE: ...ome/runner/work/DGLab/DGLab/app/Services/Superpowers/Compiler/Compiler.php
+2026-03-19T11:48:08.5786170Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5786528Z FOUND 27 ERRORS AND 13 WARNINGS AFFECTING 29 LINES
+2026-03-19T11:48:08.5786875Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5787277Z    1 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5787686Z    2 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5788088Z   20 | ERROR   | [x] Opening brace of a class must be on the line after the
+2026-03-19T11:48:08.5788413Z      |         |     definition
+2026-03-19T11:48:08.5788677Z   24 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5789149Z   24 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5789508Z   24 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5789837Z   25 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5790177Z   26 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5790566Z   33 | WARNING | [ ] Line exceeds 120 characters; contains 150 characters
+2026-03-19T11:48:08.5790960Z   35 | WARNING | [ ] Line exceeds 120 characters; contains 289 characters
+2026-03-19T11:48:08.5791352Z   47 | WARNING | [ ] Line exceeds 120 characters; contains 180 characters
+2026-03-19T11:48:08.5791743Z   50 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5792092Z   50 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5792453Z   50 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5792787Z   51 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5793108Z   56 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5793443Z   57 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5793802Z   57 | WARNING | [ ] Line exceeds 120 characters; contains 313 characters
+2026-03-19T11:48:08.5794169Z   60 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5794496Z   64 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5794821Z   65 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5795167Z   65 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5795638Z   65 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5795980Z   67 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5796303Z   68 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5796664Z   71 | WARNING | [ ] Line exceeds 120 characters; contains 131 characters
+2026-03-19T11:48:08.5797064Z   72 | WARNING | [ ] Line exceeds 120 characters; contains 127 characters
+2026-03-19T11:48:08.5797430Z   75 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5797796Z   75 | WARNING | [ ] Line exceeds 120 characters; contains 262 characters
+2026-03-19T11:48:08.5798189Z   78 | WARNING | [ ] Line exceeds 120 characters; contains 334 characters
+2026-03-19T11:48:08.5798694Z   84 | WARNING | [ ] Line exceeds 120 characters; contains 255 characters
+2026-03-19T11:48:08.5799064Z   92 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5799430Z   92 | WARNING | [ ] Line exceeds 120 characters; contains 211 characters
+2026-03-19T11:48:08.5799793Z   93 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5800148Z   95 | WARNING | [ ] Line exceeds 120 characters; contains 140 characters
+2026-03-19T11:48:08.5800527Z   99 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5800885Z  100 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5801251Z  100 | WARNING | [ ] Line exceeds 120 characters; contains 154 characters
+2026-03-19T11:48:08.5801621Z  101 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5801992Z  101 | WARNING | [ ] Line exceeds 120 characters; contains 161 characters
+2026-03-19T11:48:08.5802390Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5802779Z PHPCBF CAN FIX THE 27 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5803149Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5803399Z 
+2026-03-19T11:48:08.5803402Z 
+2026-03-19T11:48:08.5803608Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Superpowers/Parser/Linter.php
+2026-03-19T11:48:08.5804045Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5804511Z FOUND 0 ERRORS AND 3 WARNINGS AFFECTING 3 LINES
+2026-03-19T11:48:08.5804839Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5805222Z  29 | WARNING | Line exceeds 120 characters; contains 140 characters
+2026-03-19T11:48:08.5805721Z  43 | WARNING | Line exceeds 120 characters; contains 144 characters
+2026-03-19T11:48:08.5806104Z  50 | WARNING | Line exceeds 120 characters; contains 139 characters
+2026-03-19T11:48:08.5806486Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5806720Z 
+2026-03-19T11:48:08.5806724Z 
+2026-03-19T11:48:08.5806943Z FILE: ...er/work/DGLab/DGLab/app/Services/Superpowers/Parser/Nodes/RenderedNode.php
+2026-03-19T11:48:08.5807398Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5807726Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5808012Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5808369Z  8 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5808713Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5809098Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5809462Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5809699Z 
+2026-03-19T11:48:08.5809702Z 
+2026-03-19T11:48:08.5809924Z FILE: ...unner/work/DGLab/DGLab/app/Services/Superpowers/Parser/Nodes/MountNode.php
+2026-03-19T11:48:08.5810369Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5810693Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5810980Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5811332Z  8 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5811664Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5812047Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5812415Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5812650Z 
+2026-03-19T11:48:08.5812653Z 
+2026-03-19T11:48:08.5812873Z FILE: ...ner/work/DGLab/DGLab/app/Services/Superpowers/Parser/Nodes/CleanupNode.php
+2026-03-19T11:48:08.5813324Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5813758Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5814050Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5814401Z  8 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5814738Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5815108Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5815566Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5815812Z 
+2026-03-19T11:48:08.5815823Z 
+2026-03-19T11:48:08.5816026Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Superpowers/Parser/Parser.php
+2026-03-19T11:48:08.5816464Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5816804Z FOUND 7 ERRORS AND 3 WARNINGS AFFECTING 10 LINES
+2026-03-19T11:48:08.5817136Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5817534Z  169 | WARNING | [ ] Line exceeds 120 characters; contains 194 characters
+2026-03-19T11:48:08.5817943Z  174 | WARNING | [ ] Line exceeds 120 characters; contains 210 characters
+2026-03-19T11:48:08.5818347Z  196 | ERROR   | [x] Line indented incorrectly; expected 8 spaces, found 9
+2026-03-19T11:48:08.5818765Z  198 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 14
+2026-03-19T11:48:08.5819195Z  200 | ERROR   | [x] Line indented incorrectly; expected 16 spaces, found 19
+2026-03-19T11:48:08.5819732Z  202 | ERROR   | [x] Line indented incorrectly; expected 16 spaces, found 19
+2026-03-19T11:48:08.5820123Z  204 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5820498Z  206 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 14
+2026-03-19T11:48:08.5820908Z  208 | ERROR   | [x] Line indented incorrectly; expected 8 spaces, found 9
+2026-03-19T11:48:08.5821321Z  215 | WARNING | [ ] Line exceeds 120 characters; contains 180 characters
+2026-03-19T11:48:08.5821716Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5822086Z PHPCBF CAN FIX THE 7 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5822451Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5822692Z 
+2026-03-19T11:48:08.5822695Z 
+2026-03-19T11:48:08.5822914Z FILE: ...er/work/DGLab/DGLab/app/Services/Superpowers/Runtime/SourceMapResolver.php
+2026-03-19T11:48:08.5823378Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5823697Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5823989Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5824350Z  9 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5824701Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5825077Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5825534Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5825781Z 
+2026-03-19T11:48:08.5825784Z 
+2026-03-19T11:48:08.5825995Z FILE: ...unner/work/DGLab/DGLab/app/Services/Superpowers/Runtime/DebugCollector.php
+2026-03-19T11:48:08.5826446Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5826770Z FOUND 5 ERRORS AFFECTING 5 LINES
+2026-03-19T11:48:08.5827067Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5827431Z  13 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5827764Z  52 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5828091Z  53 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5828414Z  54 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5828857Z  55 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5829212Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5829592Z PHPCBF CAN FIX THE 5 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5829950Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5830193Z 
+2026-03-19T11:48:08.5830196Z 
+2026-03-19T11:48:08.5830409Z FILE: ...unner/work/DGLab/DGLab/app/Services/Superpowers/Runtime/CleanupManager.php
+2026-03-19T11:48:08.5830866Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5831196Z FOUND 2 ERRORS AFFECTING 1 LINE
+2026-03-19T11:48:08.5831490Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5831842Z  15 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5832215Z  15 | ERROR | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5832568Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5832949Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5833307Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5833550Z 
+2026-03-19T11:48:08.5833554Z 
+2026-03-19T11:48:08.5833771Z FILE: ...ome/runner/work/DGLab/DGLab/app/Services/Superpowers/SuperpowersEngine.php
+2026-03-19T11:48:08.5834225Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5834697Z FOUND 11 ERRORS AND 3 WARNINGS AFFECTING 13 LINES
+2026-03-19T11:48:08.5835037Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5835535Z   75 | ERROR   | [x] Line indented incorrectly; expected 20 spaces, found 21
+2026-03-19T11:48:08.5835957Z   77 | ERROR   | [x] Line indented incorrectly; expected 20 spaces, found 21
+2026-03-19T11:48:08.5836366Z  127 | WARNING | [ ] Line exceeds 120 characters; contains 144 characters
+2026-03-19T11:48:08.5836777Z  134 | WARNING | [ ] Line exceeds 120 characters; contains 144 characters
+2026-03-19T11:48:08.5837181Z  135 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5837594Z  139 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5838008Z  169 | ERROR   | [x] Line indented incorrectly; expected 28 spaces, found 29
+2026-03-19T11:48:08.5838415Z  172 | ERROR   | [x] Line indented incorrectly; expected 28 spaces, found 29
+2026-03-19T11:48:08.5838792Z  173 | ERROR   | [x] Newline required after opening brace
+2026-03-19T11:48:08.5839135Z  173 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5839516Z  193 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5839935Z  195 | ERROR   | [x] Line indented incorrectly; expected 12 spaces, found 13
+2026-03-19T11:48:08.5840327Z  200 | ERROR   | [x] Expected 1 space after FUNCTION keyword; 0 found
+2026-03-19T11:48:08.5840729Z  216 | WARNING | [ ] Line exceeds 120 characters; contains 143 characters
+2026-03-19T11:48:08.5841125Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5841509Z PHPCBF CAN FIX THE 11 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5841877Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5842122Z 
+2026-03-19T11:48:08.5842125Z 
+2026-03-19T11:48:08.5842345Z FILE: ...k/DGLab/DGLab/app/Services/Superpowers/Exceptions/SuperpowersException.php
+2026-03-19T11:48:08.5842814Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5843164Z FOUND 9 ERRORS AND 1 WARNING AFFECTING 4 LINES
+2026-03-19T11:48:08.5843496Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5843887Z  11 | WARNING | [ ] Line exceeds 120 characters; contains 170 characters
+2026-03-19T11:48:08.5844368Z  19 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5844728Z  19 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5845095Z  19 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5845516Z  20 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5845865Z  20 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5846225Z  20 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5846557Z  21 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5846896Z  21 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5847252Z  21 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5847611Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5847992Z PHPCBF CAN FIX THE 9 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5848360Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5848610Z 
+2026-03-19T11:48:08.5848613Z 
+2026-03-19T11:48:08.5848829Z FILE: ...ner/work/DGLab/DGLab/app/Services/Superpowers/Exceptions/ErrorReporter.php
+2026-03-19T11:48:08.5849291Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5849640Z FOUND 1 ERROR AND 6 WARNINGS AFFECTING 7 LINES
+2026-03-19T11:48:08.5849972Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5850515Z  34 | WARNING | [ ] Line exceeds 120 characters; contains 218 characters
+2026-03-19T11:48:08.5850916Z  35 | WARNING | [ ] Line exceeds 120 characters; contains 198 characters
+2026-03-19T11:48:08.5851309Z  39 | WARNING | [ ] Line exceeds 120 characters; contains 143 characters
+2026-03-19T11:48:08.5851699Z  40 | WARNING | [ ] Line exceeds 120 characters; contains 150 characters
+2026-03-19T11:48:08.5852087Z  43 | WARNING | [ ] Line exceeds 120 characters; contains 148 characters
+2026-03-19T11:48:08.5852476Z  52 | WARNING | [ ] Line exceeds 120 characters; contains 166 characters
+2026-03-19T11:48:08.5852870Z  53 | ERROR   | [x] Expected 1 space after closing parenthesis; found 0
+2026-03-19T11:48:08.5853262Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5853638Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5854008Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5854260Z 
+2026-03-19T11:48:08.5854263Z 
+2026-03-19T11:48:08.5854482Z FILE: ...k/DGLab/DGLab/app/Services/Superpowers/Transpiler/ExpressionTranspiler.php
+2026-03-19T11:48:08.5854942Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5855272Z FOUND 2 ERRORS AFFECTING 2 LINES
+2026-03-19T11:48:08.5855667Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5856060Z  22 | ERROR | [x] Expected 1 space after FUNCTION keyword; 0 found
+2026-03-19T11:48:08.5856436Z  35 | ERROR | [x] Expected 1 space after FUNCTION keyword; 0 found
+2026-03-19T11:48:08.5856811Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5857184Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5857338Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5857343Z 
+2026-03-19T11:48:08.5857352Z 
+2026-03-19T11:48:08.5857569Z FILE: .../runner/work/DGLab/DGLab/app/Services/Auth/Repositories/UserRepository.php
+2026-03-19T11:48:08.5857721Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5857809Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5857950Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5858082Z  60 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5858339Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5858485Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5858626Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5858630Z 
+2026-03-19T11:48:08.5858634Z 
+2026-03-19T11:48:08.5858841Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/VerificationService.php
+2026-03-19T11:48:08.5858989Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5859102Z FOUND 1 ERROR AND 1 WARNING AFFECTING 2 LINES
+2026-03-19T11:48:08.5859245Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5859397Z  16 | WARNING | [ ] Line exceeds 120 characters; contains 130 characters
+2026-03-19T11:48:08.5859534Z  30 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5859675Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5859812Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5859955Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5859959Z 
+2026-03-19T11:48:08.5859962Z 
+2026-03-19T11:48:08.5860142Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/Guards/JwtGuard.php
+2026-03-19T11:48:08.5860289Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5860511Z FOUND 36 ERRORS AND 4 WARNINGS AFFECTING 22 LINES
+2026-03-19T11:48:08.5860652Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5860816Z   1 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5860971Z   2 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5861128Z   9 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5861286Z  10 | ERROR   | [x] Opening brace of a class must be on the line after the
+2026-03-19T11:48:08.5861364Z     |         |     definition
+2026-03-19T11:48:08.5861486Z  15 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5861632Z  15 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5861777Z  15 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5861909Z  15 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5862070Z  15 | WARNING | [ ] Line exceeds 120 characters; contains 192 characters
+2026-03-19T11:48:08.5862200Z  15 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5862314Z  16 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5862442Z  17 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5862564Z  19 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5862719Z  22 | WARNING | [ ] Line exceeds 120 characters; contains 144 characters
+2026-03-19T11:48:08.5862848Z  24 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5862964Z  25 | ERROR   | [x] Newline required after opening brace
+2026-03-19T11:48:08.5863090Z  25 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5863202Z  28 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5863349Z  28 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5863479Z  28 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5863589Z  29 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5863738Z  29 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5863861Z  29 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5863972Z  30 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5864211Z  30 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5864335Z  30 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5864451Z  31 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5864593Z  31 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5864713Z  31 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5864830Z  32 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5864980Z  32 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5865114Z  32 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5865234Z  33 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5865399Z  33 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5865635Z  33 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5865766Z  34 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5865926Z  36 | WARNING | [ ] Line exceeds 120 characters; contains 141 characters
+2026-03-19T11:48:08.5866078Z  37 | WARNING | [ ] Line exceeds 120 characters; contains 214 characters
+2026-03-19T11:48:08.5866190Z  40 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5866318Z  42 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5866463Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5866726Z PHPCBF CAN FIX THE 36 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5866869Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5866873Z 
+2026-03-19T11:48:08.5866876Z 
+2026-03-19T11:48:08.5867073Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/Guards/SessionGuard.php
+2026-03-19T11:48:08.5867219Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5867334Z FOUND 21 ERRORS AND 1 WARNING AFFECTING 11 LINES
+2026-03-19T11:48:08.5867474Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5867603Z   36 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5867728Z   37 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5867849Z   51 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5867996Z   51 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5868131Z   51 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5868245Z   52 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5868391Z   52 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5868519Z   52 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5868631Z   53 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5868782Z   53 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5868904Z   53 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5869025Z   82 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5869165Z  106 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5869283Z  110 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5869434Z  110 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5869566Z  110 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5869683Z  111 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5869832Z  111 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5869955Z  111 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5870088Z  116 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5870324Z  144 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5870485Z  144 | WARNING | [ ] Line exceeds 120 characters; contains 128 characters
+2026-03-19T11:48:08.5870630Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5870772Z PHPCBF CAN FIX THE 21 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5870915Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5870919Z 
+2026-03-19T11:48:08.5870927Z 
+2026-03-19T11:48:08.5871146Z FILE: ...home/runner/work/DGLab/DGLab/app/Services/Auth/Guards/OpaqueTokenGuard.php
+2026-03-19T11:48:08.5871291Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5871408Z FOUND 32 ERRORS AND 5 WARNINGS AFFECTING 22 LINES
+2026-03-19T11:48:08.5871553Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5871720Z   1 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5871876Z   2 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5872026Z   7 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5872181Z   8 | ERROR   | [x] Opening brace of a class must be on the line after the
+2026-03-19T11:48:08.5872259Z     |         |     definition
+2026-03-19T11:48:08.5872380Z  13 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5872608Z  13 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5872746Z  13 | ERROR   | [x] Each PHP statement must be on a line by itself
+2026-03-19T11:48:08.5872906Z  13 | WARNING | [ ] Line exceeds 120 characters; contains 135 characters
+2026-03-19T11:48:08.5873031Z  13 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5873149Z  14 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5873277Z  15 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5873398Z  17 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5873554Z  19 | WARNING | [ ] Line exceeds 120 characters; contains 194 characters
+2026-03-19T11:48:08.5873702Z  23 | WARNING | [ ] Line exceeds 120 characters; contains 151 characters
+2026-03-19T11:48:08.5873820Z  27 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5873964Z  27 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5874090Z  27 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5874209Z  28 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5874351Z  28 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5874476Z  28 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5874586Z  29 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5874731Z  29 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5874858Z  29 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5874969Z  30 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5875116Z  30 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5875237Z  30 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5875350Z  31 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5875605Z  31 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5875732Z  31 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5875847Z  32 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5875999Z  40 | WARNING | [ ] Line exceeds 120 characters; contains 121 characters
+2026-03-19T11:48:08.5876110Z  40 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5876378Z  44 | WARNING | [ ] Line exceeds 120 characters; contains 295 characters
+2026-03-19T11:48:08.5876493Z  47 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5876621Z  48 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5876731Z  52 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5876853Z  54 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5877003Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5877151Z PHPCBF CAN FIX THE 32 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5877302Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5877306Z 
+2026-03-19T11:48:08.5877309Z 
+2026-03-19T11:48:08.5877457Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/Gate.php
+2026-03-19T11:48:08.5877583Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5877678Z FOUND 1 ERROR AFFECTING 1 LINE
+2026-03-19T11:48:08.5877809Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5877937Z  28 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5878063Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5878201Z PHPCBF CAN FIX THE 1 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5878333Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5878336Z 
+2026-03-19T11:48:08.5878450Z 
+2026-03-19T11:48:08.5878624Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/AuthManager.php
+2026-03-19T11:48:08.5878767Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5878884Z FOUND 20 ERRORS AND 4 WARNINGS AFFECTING 12 LINES
+2026-03-19T11:48:08.5879025Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5879159Z   30 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5879278Z   34 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5879430Z   34 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5879554Z   34 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5879668Z   35 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5879817Z   35 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5879940Z   35 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5880064Z   36 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5880209Z   36 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5880331Z   36 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5880463Z   83 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5880586Z   85 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5880755Z  104 | WARNING | [ ] Line exceeds 120 characters; contains 136 characters
+2026-03-19T11:48:08.5880882Z  110 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5881037Z  110 | WARNING | [ ] Line exceeds 120 characters; contains 127 characters
+2026-03-19T11:48:08.5881172Z  111 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5881324Z  111 | WARNING | [ ] Line exceeds 120 characters; contains 126 characters
+2026-03-19T11:48:08.5881492Z  112 | WARNING | [ ] Line exceeds 120 characters; contains 122 characters
+2026-03-19T11:48:08.5881615Z  115 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5881763Z  115 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5881895Z  115 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5882016Z  116 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5882269Z  116 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5882400Z  116 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5882535Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5882682Z PHPCBF CAN FIX THE 20 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5882818Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5882822Z 
+2026-03-19T11:48:08.5882825Z 
+2026-03-19T11:48:08.5883007Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/MfaService.php
+2026-03-19T11:48:08.5883134Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5883225Z FOUND 2 ERRORS AFFECTING 2 LINES
+2026-03-19T11:48:08.5883360Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5883482Z  33 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5883607Z  94 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5883737Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5883875Z PHPCBF CAN FIX THE 2 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5884006Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5884010Z 
+2026-03-19T11:48:08.5884013Z 
+2026-03-19T11:48:08.5884217Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/KeyManagementService.php
+2026-03-19T11:48:08.5884365Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5884531Z FOUND 9 ERRORS AFFECTING 9 LINES
+2026-03-19T11:48:08.5884679Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5884835Z   1 | ERROR | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5884991Z   2 | ERROR | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5885150Z   3 | ERROR | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5885300Z   4 | ERROR | [x] Opening brace of a class must be on the line after the
+2026-03-19T11:48:08.5885377Z     |       |     definition
+2026-03-19T11:48:08.5885595Z   6 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5885716Z   8 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5885836Z  10 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5885955Z  13 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5886072Z  18 | ERROR | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5886222Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5886358Z PHPCBF CAN FIX THE 9 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5886505Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5886509Z 
+2026-03-19T11:48:08.5886512Z 
+2026-03-19T11:48:08.5886722Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/AuthorizationService.php
+2026-03-19T11:48:08.5886869Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5886956Z FOUND 3 ERRORS AFFECTING 3 LINES
+2026-03-19T11:48:08.5887095Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5887219Z  22 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5887340Z  31 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5887470Z  44 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5887607Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5887743Z PHPCBF CAN FIX THE 3 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5887885Z ------------------------------------------------------------------------------
+2026-03-19T11:48:08.5887889Z 
+2026-03-19T11:48:08.5887893Z 
+2026-03-19T11:48:08.5888225Z FILE: ...runner/work/DGLab/DGLab/app/Services/Auth/Contracts/AuthGuardInterface.php
+2026-03-19T11:48:08.5888377Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5888461Z FOUND 4 ERRORS AFFECTING 4 LINES
+2026-03-19T11:48:08.5888604Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5888764Z  1 | ERROR | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5888915Z  2 | ERROR | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5889075Z  3 | ERROR | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5889239Z  4 | ERROR | [x] Opening brace of a interface must be on the line after the
+2026-03-19T11:48:08.5889316Z    |       |     definition
+2026-03-19T11:48:08.5889465Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5889599Z PHPCBF CAN FIX THE 4 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5889751Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5889755Z 
+2026-03-19T11:48:08.5889758Z 
+2026-03-19T11:48:08.5889924Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/JWTService.php
+2026-03-19T11:48:08.5890064Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5890182Z FOUND 30 ERRORS AND 4 WARNINGS AFFECTING 22 LINES
+2026-03-19T11:48:08.5890324Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5890597Z   1 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5890754Z   2 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5890904Z   4 | ERROR   | [x] Header blocks must be separated by a single blank line
+2026-03-19T11:48:08.5891060Z   5 | ERROR   | [x] Opening brace of a class must be on the line after the
+2026-03-19T11:48:08.5891139Z     |         |     definition
+2026-03-19T11:48:08.5891269Z   6 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5891418Z  14 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5891546Z  16 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5891674Z  19 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5891798Z  20 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5891959Z  20 | WARNING | [ ] Line exceeds 120 characters; contains 139 characters
+2026-03-19T11:48:08.5892086Z  22 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5892206Z  24 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5892364Z  24 | WARNING | [ ] Line exceeds 120 characters; contains 137 characters
+2026-03-19T11:48:08.5892484Z  25 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5892604Z  28 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5892750Z  30 | ERROR   | [x] The CASE body must start on the line following the
+2026-03-19T11:48:08.5892827Z     |         |     statement
+2026-03-19T11:48:08.5892978Z  30 | ERROR   | [x] Terminating statement must be on a line by itself
+2026-03-19T11:48:08.5893100Z  30 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5893224Z  33 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5893373Z  33 | WARNING | [ ] Line exceeds 120 characters; contains 132 characters
+2026-03-19T11:48:08.5893528Z  35 | ERROR   | [x] The DEFAULT body must start on the line following the
+2026-03-19T11:48:08.5893607Z     |         |     statement
+2026-03-19T11:48:08.5893754Z  35 | ERROR   | [x] Terminating statement must be on a line by itself
+2026-03-19T11:48:08.5893995Z  35 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5894181Z  38 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5894427Z  45 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5894661Z  47 | ERROR   | [x] The DEFAULT body must start on the line following the
+2026-03-19T11:48:08.5894774Z     |         |     statement
+2026-03-19T11:48:08.5895070Z  47 | ERROR   | [x] Terminating statement must be on a line by itself
+2026-03-19T11:48:08.5895251Z  47 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5895605Z  50 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5895798Z  50 | ERROR   | [x] Opening brace must be the last content on the line
+2026-03-19T11:48:08.5896033Z  50 | WARNING | [ ] Line exceeds 120 characters; contains 139 characters
+2026-03-19T11:48:08.5896178Z  50 | ERROR   | [x] Closing brace must be on a line by itself
+2026-03-19T11:48:08.5896393Z  51 | ERROR   | [x] Opening brace should be on a new line
+2026-03-19T11:48:08.5896648Z  53 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5896838Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5897059Z PHPCBF CAN FIX THE 30 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5897242Z --------------------------------------------------------------------------------
+2026-03-19T11:48:08.5897248Z 
+2026-03-19T11:48:08.5897251Z 
+2026-03-19T11:48:08.5897552Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Auth/IpAccessService.php
+2026-03-19T11:48:08.5897740Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5898025Z FOUND 4 ERRORS AND 1 WARNING AFFECTING 5 LINES
+2026-03-19T11:48:08.5898237Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5898399Z  18 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5898582Z  19 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5898825Z  36 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5899007Z  43 | ERROR   | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5899243Z  57 | WARNING | [ ] Line exceeds 120 characters; contains 129 characters
+2026-03-19T11:48:08.5899411Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5899628Z PHPCBF CAN FIX THE 4 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5899778Z -------------------------------------------------------------------------
+2026-03-19T11:48:08.5899783Z 
+2026-03-19T11:48:08.5899786Z 
+2026-03-19T11:48:08.5900124Z FILE: /home/runner/work/DGLab/DGLab/app/Services/Tenancy/TenancyService.php
+2026-03-19T11:48:08.5900306Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5900433Z FOUND 3 ERRORS AFFECTING 3 LINES
+2026-03-19T11:48:08.5900645Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5900807Z  21 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5901071Z  47 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5901248Z  56 | ERROR | [x] Inline control structures are not allowed
+2026-03-19T11:48:08.5908932Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5909137Z PHPCBF CAN FIX THE 3 MARKED SNIFF VIOLATIONS AUTOMATICALLY
+2026-03-19T11:48:08.5909298Z ---------------------------------------------------------------------------
+2026-03-19T11:48:08.5909304Z 
+2026-03-19T11:48:08.5909308Z 
+2026-03-19T11:48:08.5909536Z FILE: /home/runner/work/DGLab/DGLab/app/Middleware/TenantMemberMiddleware.php
+2026-03-19T11:48:08.5909702Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5909823Z FOUND 0 ERRORS AND 2 WARNINGS AFFECTING 2 LINES
+2026-03-19T11:48:08.5909965Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5910130Z  28 | WARNING | Line exceeds 120 characters; contains 145 characters
+2026-03-19T11:48:08.5910443Z  42 | WARNING | Line exceeds 120 characters; contains 155 characters
+2026-03-19T11:48:08.5910599Z -----------------------------------------------------------------------------
+2026-03-19T11:48:08.5910604Z 
+2026-03-19T11:48:08.5910608Z 
+2026-03-19T11:48:08.5910787Z FILE: /home/runner/work/DGLab/DGLab/app/Middleware/AuthMiddleware.php
+2026-03-19T11:48:08.5910917Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5911035Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5911161Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5911322Z  23 | WARNING | Line exceeds 120 characters; contains 126 characters
+2026-03-19T11:48:08.5911451Z ----------------------------------------------------------------------
+2026-03-19T11:48:08.5911456Z 
+2026-03-19T11:48:08.5911459Z 
+2026-03-19T11:48:08.5911659Z FILE: /home/runner/work/DGLab/DGLab/app/Middleware/RateLimitMiddleware.php
+2026-03-19T11:48:08.5911807Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5911924Z FOUND 0 ERRORS AND 1 WARNING AFFECTING 1 LINE
+2026-03-19T11:48:08.5912066Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5912217Z  24 | WARNING | Line exceeds 120 characters; contains 124 characters
+2026-03-19T11:48:08.5912351Z --------------------------------------------------------------------------
+2026-03-19T11:48:08.5912361Z 
+2026-03-19T11:48:08.5912451Z Time: 1.52 secs; Memory: 14MB
+2026-03-19T11:48:08.5912455Z 
+2026-03-19T11:48:08.5912850Z Script vendor/bin/phpcs --standard=PSR12 app/ handling the cs event returned with error code 2
+2026-03-19T11:48:08.5923141Z ##[error]Process completed with exit code 2.
+2026-03-19T11:48:08.6036825Z Post job cleanup.
+2026-03-19T11:48:08.6995840Z [command]/usr/bin/git version
+2026-03-19T11:48:08.7035703Z git version 2.53.0
+2026-03-19T11:48:08.7080795Z Temporarily overriding HOME='/home/runner/work/_temp/d7928f84-9466-4886-a2d3-9f697814be34' before making global git config changes
+2026-03-19T11:48:08.7082161Z Adding repository directory to the temporary git global config as a safe directory
+2026-03-19T11:48:08.7094943Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/DGLab/DGLab
+2026-03-19T11:48:08.7131386Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-03-19T11:48:08.7166069Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-03-19T11:48:08.7410814Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-03-19T11:48:08.7433502Z http.https://github.com/.extraheader
+2026-03-19T11:48:08.7447206Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-03-19T11:48:08.7479698Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-03-19T11:48:08.7733786Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-03-19T11:48:08.7774122Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-03-19T11:48:08.8164517Z Cleaning up orphan processes
+2026-03-19T11:48:08.8488481Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
