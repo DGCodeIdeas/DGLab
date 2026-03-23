@@ -1,8 +1,0 @@
-[2026-03-16 22:34:33.946810] app.DEBUG: Event Dispatched: test (ID: ev_69b88579e67cd4.74787904)
-[2026-03-16 22:34:33.952265] app.DEBUG: Event Dispatched: test (ID: ev_69b88579e86b37.43886518)
-[2026-03-16 22:34:33.952905] app.DEBUG: Event Dispatched: test (ID: ev_69b88579e88cf7.97115113)
-[2026-03-16 22:34:33.953430] app.DEBUG: Event Dispatched: test (ID: ev_69b88579e8bdf7.69885499)
-[2026-03-16 22:34:33.953866] app.DEBUG: Event Dispatched: stoppable.test (ID: ev_69b88579e8d393.29124019)
-[2026-03-16 22:35:34.491842] app.DEBUG: Event Dispatched: user.logged.in (ID: ev_69b885b677c449.38393290)
-[2026-03-16 22:35:34.494417] app.DEBUG: Event Dispatched: user.logged.in (ID: ev_69b885b677c449.38393290)
-[2026-03-16 22:35:34.494767] app.DEBUG: Event Dispatched: user.logged.in (ID: ev_69b885b677c449.38393290)

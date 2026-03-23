@@ -9,6 +9,10 @@ namespace DGLab\Tests;
 
 use DGLab\Core\Application;
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use Psr\Log\LoggerInterface;
+use DGLab\Core\Logger;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
+use DGLab\Services\Encryption\EncryptionService;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -18,6 +22,10 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         
+        if (!defined('PHPUNIT_RUNNING')) {
+            define('PHPUNIT_RUNNING', true);
+        }
+
         // Reset application set
         Application::flush();
         
@@ -43,6 +51,12 @@ abstract class TestCase extends BaseTestCase
     protected function registerTestServices(): void
     {
         $this->app->set(\DGLab\Core\Router::class, function($app) { return new \DGLab\Core\Router($app); });
+        $this->app->set(LoggerInterface::class, function() { return new Logger(); });
+        $this->app->set(Logger::class, function() { return new Logger(); });
+        $this->app->set(GlobalStateStore::class, function() { return new GlobalStateStore(); });
+        $this->app->set(EncryptionService::class, function() {
+            return new EncryptionService('12345678901234567890123456789012');
+        });
 
         // Override with test implementations
         $this->app->set(\DGLab\Database\Connection::class, function () {

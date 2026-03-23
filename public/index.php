@@ -44,9 +44,15 @@ use DGLab\Database\Connection;
 use DGLab\Services\ServiceRegistry;
 
 // Initialize application
-$app = Application::getInstance();
+$app = new Application(realpath(__DIR__ . '/..'));
 
 // Register core services
+$app->singleton(\DGLab\Controllers\HomeController::class, function () { return new \DGLab\Controllers\HomeController(); });
+$app->singleton(\DGLab\Controllers\ServicesController::class, function () { return new \DGLab\Controllers\ServicesController(); });
+$app->singleton(\DGLab\Services\Encryption\EncryptionService::class, function ($app) {
+    return new \DGLab\Services\Encryption\EncryptionService($app->config('app.security.encryption_key') ?: '12345678901234567890123456789012');
+});
+$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class, function () { return new \DGLab\Services\Superpowers\Runtime\GlobalStateStore(); });
 $app->singleton(Connection::class, function () {
     return new Connection(require __DIR__ . '/../config/database.php');
 });

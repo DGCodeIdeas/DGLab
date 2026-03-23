@@ -64,25 +64,8 @@ class SuperpowersEngine implements ViewEngineInterface
             $viewName = $this->extractViewName($path);
             $data['__view'] = $viewName;
 
-            $mode = config('superpowers.mode', 'auto');
-            if ($mode === 'auto') {
-                $mode = config('app.debug') ? 'interpreted' : 'compiled';
-            }
-
-            if ($mode === 'interpreted') {
-                if (config('app.debug')) {
-                     $this->debugCollector->recordView($viewName, $path, $data);
-                    if (config('superpowers.linter.on_render', true)) {
-                         $this->linter->lint(file_get_contents($path), $path);
-                    }
-                }
-                $content = file_get_contents($path);
-                $tokens = $this->lexer->tokenize($content);
-                $ast = $this->parser->parse($tokens);
-                $output = $this->interpreter->interpret($ast, $data);
-                return $this->processReactivity($output);
-            }
-
+            // Interpreter is disconnected as per user request.
+            // Always use Compiler for rendering.
             return $this->processReactivity($this->renderCompiled($path, $data));
         } catch (\Throwable $e) {
             if (config('app.debug') && !defined('PHPUNIT_RUNNING')) {
@@ -127,10 +110,10 @@ class SuperpowersEngine implements ViewEngineInterface
         if (config('superpowers.reactivity.enabled', true) && config('superpowers.reactivity.inject_runtime', true)) {
             if (strpos($output, '<body') !== false && strpos($output, 'superpowers.js') === false) {
                  $script = '<script src="/assets/js/superpowers.js"></script>';
-                 if (config('superpowers.navigation.enabled', true)) {
-                     $script .= '\n<link rel="stylesheet" href="/assets/css/superpowers.nav.css">';
-                     $script .= '\n<script src="/assets/js/superpowers.nav.js"></script>';
-                 }
+                if (config('superpowers.navigation.enabled', true)) {
+                    $script .= "\n<link rel=\"stylesheet\" href=\"/assets/css/superpowers.nav.css\">";
+                    $script .= "\n<script src=\"/assets/js/superpowers.nav.js\"></script>";
+                }
                  $output = str_replace('</body>', $script . '</body>', $output);
             }
         }
@@ -151,7 +134,7 @@ class SuperpowersEngine implements ViewEngineInterface
      */
     private function renderCompiled(string $path, array $data): string
     {
-        $cachePath = config('superpowers.cache_path');
+        $cachePath = config('superpowers.cache_path', Application::getInstance()->getBasePath() . '/storage/cache/views');
         if (!is_dir($cachePath)) {
             @mkdir($cachePath, 0777, true);
         }
@@ -206,22 +189,19 @@ class SuperpowersEngine implements ViewEngineInterface
             $__action = $data['__action'] ?? null;
             $__state = $data['__state'] ?? null;
             $__view = $data['__view'] ?? null;
+            $__raw_data = $data;
 
             extract($data);
+            $data = $__raw_data;
             ob_start();
             try {
-                include $compiledFile;
-                if (isset($__extendedLayout)) {
-                    $content = ob_get_clean();
-                    if (!$this->hasSection('content')) {
-                         $this->section('content');
-                         echo $content;
-                         $this->endSection();
-                    }
-                    return $this->render($__extendedLayout, array_merge($data, $this->getEngine()->getInterpreter()->getState()->all()), null);
+                $__ret = include $compiledFile;
+                if ($__ret !== 1 && $__ret !== true) {
+                    ob_end_clean();
+                    return $__ret;
                 }
             } catch (\Throwable $e) {
-                ob_get_clean();
+                ob_end_clean();
                 throw $e;
             }
             return ob_get_clean();

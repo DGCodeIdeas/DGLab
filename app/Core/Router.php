@@ -493,6 +493,10 @@ class Router
                 ? Application::getInstance()->get($controller)
                 : $controller;
 
+            if ($instance instanceof \DGLab\Core\Controller) {
+                $instance->setRequest($request);
+            }
+
             return Application::getInstance()->call([$instance, $method], ['request' => $request]);
         }
 
