@@ -135,7 +135,7 @@ class SuperpowersTest extends TestCase
         Application::getInstance()->setConfig('superpowers.mode', 'compiled');
         file_put_contents('resources/views/test_compiled.super.php', '<h1>{{ $title }}</h1>');
 
-        $cachePath = Application::config('superpowers.cache_path');
+        $cachePath = Application::getInstance()->config('superpowers.cache_path');
         @mkdir($cachePath, 0777, true);
         array_map('unlink', glob("$cachePath/*"));
 

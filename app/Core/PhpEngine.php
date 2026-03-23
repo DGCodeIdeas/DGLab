@@ -32,17 +32,19 @@ class PhpEngine implements ViewEngineInterface
      */
     public function render(string $path, array $data = []): string
     {
-        extract($data);
-        ob_start();
+        $render = function($__path, $__data) {
+            extract($__data);
+            ob_start();
+            try {
+                include $__path;
+            } catch (\Throwable $e) {
+                ob_get_clean();
+                throw $e;
+            }
+            return ob_get_clean();
+        };
 
-        try {
-            include $path;
-        } catch (\Throwable $e) {
-            ob_get_clean();
-            throw $e;
-        }
-
-        return ob_get_clean();
+        return $render->call($this->view, $path, $data);
     }
 
     /**

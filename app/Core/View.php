@@ -92,13 +92,16 @@ class View
     /**
      * Render a view template
      */
-    public function setSection(string $name, string $content): void { $this->sections[$name] = $content; }
+    public function setSection(string $name, string $content): void
+    {
+        $this->sections[$name] = $content;
+    }
     public function setFragmentMode(?string $sectionName): void
     {
         $this->fragmentMode = $sectionName;
     }
 
-            public function render(string $template, array $data = [], ?string $layout = 'master'): string
+    public function render(string $template, array $data = [], ?string $layout = 'master'): string
     {
         $data = array_merge($this->shared, $data);
 
@@ -157,12 +160,12 @@ class View
         }
 
         if ($directory === $this->viewPath) {
-             $layoutTemplate = $normalizedTemplate;
+            $layoutTemplate = $normalizedTemplate;
             if (strpos($layoutTemplate, 'layouts/') === 0) {
                 $layoutTemplate = substr($layoutTemplate, 8);
             }
 
-             $layoutBasePath = $this->layoutPath . '/' . $layoutTemplate;
+            $layoutBasePath = $this->layoutPath . '/' . $layoutTemplate;
             foreach ($extensions as $ext) {
                 $file = $layoutBasePath . '.' . $ext;
                 if (file_exists($file)) {
@@ -170,11 +173,11 @@ class View
                 }
             }
 
-             $componentTemplate = $normalizedTemplate;
+            $componentTemplate = $normalizedTemplate;
             if (strpos($componentTemplate, 'components/') === 0) {
                 $componentTemplate = substr($componentTemplate, 11);
             }
-             $componentBasePath = $this->viewPath . '/components/' . $componentTemplate;
+            $componentBasePath = $this->viewPath . '/components/' . $componentTemplate;
             foreach ($extensions as $ext) {
                 $file = $componentBasePath . '.' . $ext;
                 if (file_exists($file)) {
@@ -182,7 +185,7 @@ class View
                 }
             }
 
-             $componentBasePath = $this->viewPath . '/components/' . $normalizedTemplate;
+            $componentBasePath = $this->viewPath . '/components/' . $normalizedTemplate;
             foreach ($extensions as $ext) {
                 $file = $componentBasePath . '.' . $ext;
                 if (file_exists($file)) {
@@ -241,12 +244,12 @@ class View
      * @param string $default
      * @return string
      */
-    public function yield(string $name, string $default = ''): string
+    public function yield(string $name, ?string $default = ''): string
     {
         if (isset($this->sections[$name])) {
             return $this->sections[$name];
         } else {
-            return $default;
+            return $default ?? '';
         }
     }
 
