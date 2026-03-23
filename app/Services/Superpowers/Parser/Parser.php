@@ -16,6 +16,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\FragmentNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Exceptions\SyntaxException;
 
@@ -108,6 +109,13 @@ class Parser
              return new YieldNode($yieldName, $default, $token->line);
         }
 
+                if ($name === 'fragment') {
+            $id = trim($expression, "'\"");
+            $node = new FragmentNode($id, $token->line);
+            $node->children = $this->parseUntil('@endfragment');
+            return $node;
+        }
+
         if ($name === 'extends') {
             $layout = trim($expression, "'\"");
             return new ExtendsNode($layout, $token->line);
@@ -173,7 +181,11 @@ class Parser
             $name = $match['name'];
             $value = isset($match['v1']) && $match['v1'] !== '' ? $match['v1'] : (isset($match['v2']) && $match['v2'] !== '' ? $match['v2'] : (isset($match['v3']) && $match['v3'] !== '' ? $match['v3'] : true));
 
-            if ($prefix === '@') {
+                        if ($prefix === '@') {
+                if (in_array($name, ['prefetch', 'transition'])) {
+                    $attributes['data-' . $name] = ($value === true) ? 'true' : $value;
+                    continue;
+                }
                 $reactiveAttributes[$name] = $value;
             } elseif ($prefix === 's-') {
                 $attributes["s-{$name}"] = $value;

@@ -64,15 +64,15 @@ class SuperpowersEngine implements ViewEngineInterface
             $viewName = $this->extractViewName($path);
             $data['__view'] = $viewName;
 
-            $mode = Application::config('superpowers.mode', 'auto');
+            $mode = config('superpowers.mode', 'auto');
             if ($mode === 'auto') {
-                $mode = Application::config('app.debug') ? 'interpreted' : 'compiled';
+                $mode = config('app.debug') ? 'interpreted' : 'compiled';
             }
 
             if ($mode === 'interpreted') {
-                if (Application::config('app.debug')) {
+                if (config('app.debug')) {
                      $this->debugCollector->recordView($viewName, $path, $data);
-                    if (Application::config('superpowers.linter.on_render', true)) {
+                    if (config('superpowers.linter.on_render', true)) {
                          $this->linter->lint(file_get_contents($path), $path);
                     }
                 }
@@ -85,7 +85,7 @@ class SuperpowersEngine implements ViewEngineInterface
 
             return $this->processReactivity($this->renderCompiled($path, $data));
         } catch (\Throwable $e) {
-            if (Application::config('app.debug') && !defined('PHPUNIT_RUNNING')) {
+            if (config('app.debug') && !defined('PHPUNIT_RUNNING')) {
                 $this->handleException($e, $path);
             }
             throw $e;
@@ -124,14 +124,18 @@ class SuperpowersEngine implements ViewEngineInterface
 
     private function processReactivity(string $output): string
     {
-        if (Application::config('superpowers.reactivity.enabled', true) && Application::config('superpowers.reactivity.inject_runtime', true)) {
+        if (config('superpowers.reactivity.enabled', true) && config('superpowers.reactivity.inject_runtime', true)) {
             if (strpos($output, '<body') !== false && strpos($output, 'superpowers.js') === false) {
                  $script = '<script src="/assets/js/superpowers.js"></script>';
+                 if (config('superpowers.navigation.enabled', true)) {
+                     $script .= '\n<link rel="stylesheet" href="/assets/css/superpowers.nav.css">';
+                     $script .= '\n<script src="/assets/js/superpowers.nav.js"></script>';
+                 }
                  $output = str_replace('</body>', $script . '</body>', $output);
             }
         }
 
-        if (!defined('PHPUNIT_RUNNING') && Application::config('app.debug') && Application::config('superpowers.debug_overlay.enabled', true)) {
+        if (!defined('PHPUNIT_RUNNING') && config('app.debug') && config('superpowers.debug_overlay.enabled', true)) {
             if (strpos($output, '<body') !== false) {
                  $meta = json_encode($this->debugCollector->getMetadata());
                  $overlay = "<div id='superpowers-debug-overlay' data-meta='{$meta}'></div>";
@@ -147,7 +151,7 @@ class SuperpowersEngine implements ViewEngineInterface
      */
     private function renderCompiled(string $path, array $data): string
     {
-        $cachePath = Application::config('superpowers.cache_path');
+        $cachePath = config('superpowers.cache_path');
         if (!is_dir($cachePath)) {
             @mkdir($cachePath, 0777, true);
         }
@@ -158,7 +162,7 @@ class SuperpowersEngine implements ViewEngineInterface
 
         $shouldRecompile = !file_exists($compiledFile);
 
-        if (!$shouldRecompile && Application::config('superpowers.check_dependencies', true)) {
+        if (!$shouldRecompile && config('superpowers.check_dependencies', true)) {
             if (file_exists($depsFile)) {
                 $depsJson = file_get_contents($depsFile);
                 $deps = json_decode($depsJson, true);
@@ -188,10 +192,10 @@ class SuperpowersEngine implements ViewEngineInterface
             file_put_contents($depsFile, json_encode($this->compiler->getDependencies()));
         }
 
-        if (Application::config('app.debug')) {
+        if (config('app.debug')) {
              $viewName = $this->extractViewName($path);
              $this->debugCollector->recordView($viewName, $path, $data, $compiledFile);
-            if (Application::config('superpowers.linter.on_render', true)) {
+            if (config('superpowers.linter.on_render', true)) {
                  $this->linter->lint(file_get_contents($path), $path);
             }
         }

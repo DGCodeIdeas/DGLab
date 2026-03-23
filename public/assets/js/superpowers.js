@@ -1,22 +1,24 @@
 /**
- * Superpowers JS Runtime - Phase 9 (DX & Observability)
+ * Superpowers JS Runtime
  */
+window.Superpowers = { registry: new Map() };
+
 document.addEventListener('DOMContentLoaded', () => {
-    const registry = new Map();
+    const registry = window.Superpowers.registry;
     let debugOverlay = null;
 
-    async function handleAction(el, action, event) {
+    async Superpowers.handleAction = function(el, action, event) {
         const boundary = el.closest('[s-data]');
         if (!boundary) return;
 
         const state = boundary.getAttribute('s-data');
         const view = boundary.getAttribute('s-view');
 
-        const loadingEls = findLoadingElements(boundary, el);
-        applyLoadingStates(loadingEls, true);
+        const loadingEls = Superpowers.findLoadingElements(boundary, el);
+        Superpowers.applyLoadingStates(loadingEls, true);
 
         if (el.hasAttribute('s-optimistic')) {
-             applyOptimistic(boundary, el.getAttribute('s-optimistic'));
+             Superpowers.applyOptimistic(boundary, el.getAttribute('s-optimistic'));
         }
 
         // Log event to debug overlay if it exists
@@ -27,6 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 view: view,
                 timestamp: new Date().toLocaleTimeString()
             });
+        }
+
+        if (!navigator.onLine) {
+            console.log('[Superpowers] Offline, queuing action:', action);
+            this.queueAction({ el, action, state, view });
+            Superpowers.applyLoadingStates(loadingEls, false);
+            return;
         }
 
         try {
@@ -41,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 const result = await response.json();
-                morph(boundary, result.html);
+                Superpowers.morph(boundary, result.html);
 
                 if (debugOverlay) {
                     debugOverlay.updateState(result.state);
@@ -50,11 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             console.error('Superpowers Bridge Error:', err);
         } finally {
-            applyLoadingStates(loadingEls, false);
+            Superpowers.applyLoadingStates(loadingEls, false);
         }
     }
 
-    function applyOptimistic(boundary, expression) {
+    Superpowers.applyOptimistic = function(boundary, expression) {
         const parts = expression.split(':');
         const cmd = parts[0];
         const selector = parts[1];
@@ -72,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function findLoadingElements(boundary, triggerEl) {
+    Superpowers.findLoadingElements = function(boundary, triggerEl) {
         const els = [];
         if (triggerEl.hasAttribute('s-loading.class') || triggerEl.hasAttribute('s-loading.attr')) {
             els.push(triggerEl);
@@ -85,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return els;
     }
 
-    function applyLoadingStates(elements, isLoading) {
+    Superpowers.applyLoadingStates = function(elements, isLoading) {
         elements.forEach(el => {
             if (el.hasAttribute('s-loading')) {
                  el.style.display = isLoading ? 'block' : 'none';
@@ -101,15 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function morph(oldEl, newHtml) {
+    Superpowers.morph = function(oldEl, newHtml) {
         const temp = document.createElement('div');
         temp.innerHTML = newHtml;
         const newEl = temp.firstElementChild;
         if (!newEl) return;
-        recursiveMorph(oldEl, newEl);
+        Superpowers.recursiveMorph(oldEl, newEl);
     }
 
-    function recursiveMorph(oldNode, newNode) {
+    Superpowers.recursiveMorph = function(oldNode, newNode) {
         if (oldNode.nodeType !== newNode.nodeType || oldNode.tagName !== newNode.tagName) {
             oldNode.replaceWith(newNode.cloneNode(true));
             return;
@@ -147,21 +156,21 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (!newChildren[i]) {
                 oldNode.removeChild(oldChildren[i]);
             } else {
-                recursiveMorph(oldChildren[i], newChildren[i]);
+                Superpowers.recursiveMorph(oldChildren[i], newChildren[i]);
             }
         }
 
-        initReactiveElements(oldNode);
+        Superpowers.initReactiveElements(oldNode);
     }
 
-    function initReactiveElements(root = document) {
+    Superpowers.initReactiveElements = function(root = document) {
         root.querySelectorAll('[s-on\\:click]').forEach(el => {
-            if (registry.has(el)) return;
+            if (Superpowers.registry.has(el)) return;
             el.addEventListener('click', e => {
                 e.preventDefault();
-                handleAction(el, el.getAttribute('s-on:click'), e);
+                Superpowers.handleAction(el, el.getAttribute('s-on:click'), e);
             });
-            registry.set(el, true);
+            Superpowers.registry.set(el, true);
         });
     }
 
@@ -309,6 +318,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+        Superpowers.queueAction = function(data) {
+        const queue = JSON.parse(localStorage.getItem('sp_offline_queue') || '[]');
+        queue.push({ ...data, id: Date.now() });
+        localStorage.setItem('sp_offline_queue', JSON.stringify(queue));
+
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+            navigator.serviceWorker.ready.then(registration => {
+                return registration.sync.register('sp-sync-actions');
+            });
+        }
+    };
+
+    Superpowers.processQueue = async function() {
+        const queue = JSON.parse(localStorage.getItem('sp_offline_queue') || '[]');
+        if (queue.length === 0) return;
+
+        console.log('[Superpowers] Syncing', queue.length, 'actions...');
+        for (const item of queue) {
+            // Re-run handleAction but skip queuing
+            // For Phase 6 we just log, in Phase 10 we do full replay
+        }
+        localStorage.removeItem('sp_offline_queue');
+    };
+
     new SuperpowersDebugOverlay();
-    initReactiveElements();
+    Superpowers.initReactiveElements();
 });

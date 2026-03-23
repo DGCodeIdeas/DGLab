@@ -12,6 +12,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\FragmentNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
@@ -96,6 +97,10 @@ class Compiler
     }
     private function cOne(Node $n): string
     {
+                if ($n instanceof FragmentNode) {
+            return "/* line:$n->line */ echo '<div data-fragment=\"' . \DGLab\Core\View::e($n->id) . '\">'; " . $this->cN($n->children) . " echo '</div>';
+";
+        }
         if ($n instanceof TextNode) {
             return "/* line:$n->line */ echo " . var_export($n->content, true) . ";\n";
         }
@@ -105,6 +110,16 @@ class Compiler
             return "/* line:$n->line */ echo " . ($n->escaped ? "\\DGLab\\Core\\View::e((string)$ev)" : "(string)$ev") . ";\n";
         }
         if ($n instanceof DirectiveNode) {
+                        if ($n->name === 'prefetch') {
+                $val = $n->expression ? "((function() { extract($this->getEngine()->getInterpreter()->getState()->all()); return $n->expression; })->call($this))" : "'true'";
+                return "/* line:$n->line */ echo ' data-prefetch=\"' . \DGLab\Core\View::e((string)$val) . '\"';
+";
+            }
+            if ($n->name === 'transition') {
+                $val = $n->expression ? "((function() { extract($this->getEngine()->getInterpreter()->getState()->all()); return $n->expression; })->call($this))" : "'fade'";
+                return "/* line:$n->line */ echo ' data-transition=\"' . \DGLab\Core\View::e((string)$val) . '\"';
+";
+            }
             if ($n->name === 'if') {
                 $expr = $this->tr->transpile($n->expression);
                 return "/* line:$n->line */ if ((function() { ";

@@ -17,6 +17,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
+use DGLab\Services\Superpowers\Parser\Nodes\FragmentNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Runtime\StateContainer;
 use DGLab\Services\Superpowers\Runtime\DebugCollector;
@@ -40,7 +41,7 @@ class Interpreter
         $this->state = new StateContainer();
         $this->view = $view;
         $this->transpiler = new ExpressionTranspiler();
-        if (Application::config('app.debug')) {
+        if (config('app.debug')) {
             $this->debugCollector = DebugCollector::getInstance();
         }
     }
@@ -88,7 +89,8 @@ class Interpreter
         $layout = $this->state->get('__extendedLayout');
         if ($layout) {
              $this->state->remove('__extendedLayout');
-             return $this->view->render($layout, array_merge($data, $this->state->all()));
+             $output = $this->view->render($layout, array_merge($data, $this->state->all()));
+             return $output;
         }
 
         return $output;
@@ -165,15 +167,18 @@ class Interpreter
              return $this->interpretReactive($node);
         }
 
-        if ($node instanceof SectionNode) {
-             $this->view->section($node->name);
-             echo $this->interpretNodes($node->children);
-             $this->view->endSection();
+                if ($node instanceof SectionNode) {
+             $content = $this->interpretNodes($node->children);
+             $this->view->setSection($node->name, $content);
              return "";
         }
 
         if ($node instanceof YieldNode) {
-             return $this->view->yield($node->name, $node->default);
+             return $this->view->yield($node->name, (string)$node->default);
+        }
+
+                if ($node instanceof FragmentNode) {
+             return '<div data-fragment="' . View::e($node->id) . '">' . $this->interpretNodes($node->children) . '</div>';
         }
 
         if ($node instanceof SlotNode) {
@@ -203,6 +208,12 @@ class Interpreter
                     }
                 }
                 return $output;
+                        case 'prefetch':
+                $val = $node->expression ? $this->evaluate($node->expression) : 'true';
+                return ' data-prefetch="' . View::e((string)$val) . '"';
+            case 'transition':
+                $val = $node->expression ? $this->evaluate($node->expression) : 'fade';
+                return ' data-transition="' . View::e((string)$val) . '"';
             case 'global':
                 $p = explode(',', $node->expression);
                 $key = trim($p[0], "'\" ");

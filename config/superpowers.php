@@ -37,6 +37,14 @@ return [
     ],
 
     /**
+     * Navigation Settings (Phase 2)
+     */
+    'navigation' => [
+        'enabled' => true,
+        'default_transition' => 'fade',
+    ],
+
+    /**
      * DX & Observability (Phase 9)
      */
     'errors' => [
