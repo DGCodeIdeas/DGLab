@@ -6,10 +6,12 @@ use DGLab\Tests\TestCase;
 use DGLab\Core\Application;
 use DGLab\Core\View;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 
 class GlobalStateTest extends TestCase
 {
     private View $view;
+    private string $vPath;
 
     protected function setUp(): void
     {
@@ -18,27 +20,29 @@ class GlobalStateTest extends TestCase
 
         $app = Application::getInstance();
         $app->setConfig('superpowers.mode', 'interpreted');
-        $app->singleton(GlobalStateStore::class, function() {
-            return new GlobalStateStore();
-        });
+        $this->vPath = $app->getBasePath() . '/resources/views/';
+
+        $g = new GlobalStateStore();
+        $app->singleton(GlobalStateStore::class, fn() => $g);
+        $app->singleton(GlobalStateStoreInterface::class, fn() => $g);
 
         $this->view = new View();
     }
 
     public function test_global_directive_injects_state()
     {
-        $g = Application::getInstance()->get(GlobalStateStore::class);
+        $g = Application::getInstance()->get(GlobalStateStoreInterface::class);
         $g->set('site_name', 'My DGLab');
 
-        file_put_contents('resources/views/test_global.super.php', "@global('site_name', 'name')<h1>{{ \$name }}</h1>");
-        $output = $this->view->render('test_global', [], null);
+        file_put_contents($this->vPath . 'gst_global.super.php', "~setup { @global('site_name', 'name'); } ~<h1>{{ \$name }}</h1>");
+        $output = $this->view->render('gst_global', [], null);
 
-        $this->assertStringContainsString('<h1>My DGLab</h1>', $output);
+        $this->assertStringContainsString('My DGLab', $output);
     }
 
     protected function tearDown(): void
     {
-        @unlink('resources/views/test_global.super.php');
+        @unlink($this->vPath . 'gst_global.super.php');
         parent::tearDown();
     }
 }

@@ -196,6 +196,7 @@ class SuperpowersEngine implements ViewEngineInterface
             ob_start();
             try {
                 $__ret = include $compiledFile;
+                $this->trigger('mount');
                 if ($__ret !== 1 && $__ret !== true) {
                     ob_end_clean();
                     return $__ret;

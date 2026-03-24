@@ -47,6 +47,10 @@ use DGLab\Services\ServiceRegistry;
 $app = new Application(realpath(__DIR__ . '/..'));
 
 // Register core services
+$app->singleton(\DGLab\Core\Logger::class, function () { return new \DGLab\Core\Logger(); });
+$app->singleton(\Psr\Log\LoggerInterface::class, function ($app) { return $app->get(\DGLab\Core\Logger::class); });
+$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface::class, function ($app) { return $app->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class); });
+
 $app->singleton(\DGLab\Controllers\HomeController::class, function () { return new \DGLab\Controllers\HomeController(); });
 $app->singleton(\DGLab\Controllers\ServicesController::class, function () { return new \DGLab\Controllers\ServicesController(); });
 $app->singleton(\DGLab\Services\Encryption\EncryptionService::class, function ($app) {
