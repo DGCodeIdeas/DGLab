@@ -3,17 +3,17 @@
 namespace DGLab\Services\Superpowers\Compiler;
 
 use DGLab\Core\Application;
+use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
+use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
-use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
 use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
 use DGLab\Services\Superpowers\Parser\Nodes\FragmentNode;
-use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
 use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
@@ -93,7 +93,7 @@ class Compiler
                     } else {
                         $c .= "/* line:$n->line */ (function() use (&\$__ctx) {\n";
                         $c .= "  extract(\$__ctx, EXTR_REFS);\n";
-                        $c .= "  " . $n->code . "\n";
+                        $c .= "  " . $this->processDirectivesInPHP($n->code) . "\n";
                         $c .= "  \$__vars = get_defined_vars(); foreach (\$__vars as \$__k => \$__v) ";
                         $c .= "if (!in_array(\$__k, ['this', 'data', 'code', 'vars', 'n', 't', 'c', 'nodes', 'types', '__ctx', '__vars'])) ";
                         $c .= "  \$__ctx[\$__k] = \$__v;\n";
@@ -106,6 +106,16 @@ class Compiler
             }
         }
         return $c;
+    }
+
+    private function processDirectivesInPHP(string $code): string
+    {
+        // Replace @global('key', 'var') with PHP code
+        return preg_replace_callback('/@global\s*\(\s*[\'"](.*?)[\'"]\s*(?:,\s*[\'"](.*?)[\'"]\s*)?\)/', function($m) {
+            $key = $m[1];
+            $var = $m[2] ?? $key;
+            return "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStore::class); \${$var} = \$__g->get('{$key}');";
+        }, $code);
     }
 
     private function cN(array $nodes): string

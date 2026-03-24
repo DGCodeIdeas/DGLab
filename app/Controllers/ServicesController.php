@@ -21,4 +21,13 @@ class ServicesController extends BaseController
 
         return $this->view('services/index', ['services' => $services]);
     }
+
+    public function show(string $id): Response
+    {
+        if ($id === 'epub-font-changer') {
+            return $this->view('services/epub-font-changer');
+        }
+
+        return redirect('/services');
+    }
 }
