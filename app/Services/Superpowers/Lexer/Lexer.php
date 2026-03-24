@@ -5,7 +5,7 @@ namespace DGLab\Services\Superpowers\Lexer;
 /**
  * Class Lexer
  *
- * Scans .super.php files and produces a stream of tokens.
+ * Tokenizes SuperPHP template content.
  */
 class Lexer
 {
@@ -35,6 +35,9 @@ class Lexer
 
         while ($this->input !== '') {
             if ($this->matchLifecycle()) {
+                continue;
+            }
+            if ($this->matchLegacyLifecycle()) {
                 continue;
             }
             if ($this->matchExpressionRaw()) {
@@ -78,6 +81,30 @@ class Lexer
         return false;
     }
 
+    private function matchLegacyLifecycle(): bool
+    {
+        foreach (['SETUP', 'MOUNT', 'RENDERED', 'CLEANUP'] as $key) {
+             $pattern = '/^~' . strtolower($key) . '\s+(.*?)\s*~/s';
+            if (preg_match($pattern, $this->input, $matches)) {
+                $type = constant(Token::class . '::T_' . $key . '_BLOCK');
+                $this->pushToken($type, $matches[1]);
+                $this->consume($matches[0]);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function matchDirective(): bool
+    {
+        if (preg_match(self::P['DIR'], $this->input, $matches)) {
+            $this->pushToken(Token::T_DIRECTIVE, $matches[0]);
+            $this->consume($matches[0]);
+            return true;
+        }
+        return false;
+    }
+
     private function matchExpressionRaw(): bool
     {
         if (preg_match(self::P['RAW'], $this->input, $matches)) {
@@ -92,26 +119,6 @@ class Lexer
     {
         if (preg_match(self::P['ESC'], $this->input, $matches)) {
             $this->pushToken(Token::T_EXPRESSION_ESCAPED, $matches[1]);
-            $this->consume($matches[0]);
-            return true;
-        }
-        return false;
-    }
-
-    private function matchDirective(): bool
-    {
-        if (preg_match(self::P['DIR'], $this->input, $matches)) {
-            $this->pushToken(Token::T_DIRECTIVE, $matches[1]);
-            $this->consume($matches[0]);
-            return true;
-        }
-        return false;
-    }
-
-    private function matchComponentSelfClosing(): bool
-    {
-        if (preg_match(self::P['SELF'], $this->input, $matches)) {
-            $this->pushToken(Token::T_COMPONENT_SELF_CLOSING, $matches[0]);
             $this->consume($matches[0]);
             return true;
         }
@@ -138,28 +145,27 @@ class Lexer
         return false;
     }
 
+    private function matchComponentSelfClosing(): bool
+    {
+        if (preg_match(self::P['SELF'], $this->input, $matches)) {
+            $this->pushToken(Token::T_COMPONENT_SELF_CLOSING, $matches[0]);
+            $this->consume($matches[0]);
+            return true;
+        }
+        return false;
+    }
+
     private function matchReactiveTag(): bool
     {
-        if (preg_match(self::P['REAC'], $this->input)) {
-             $content = $this->input;
-             $inDoubleQuote = false;
-             $inSingleQuote = false;
-             $len = strlen($content);
-
-            for ($i = 0; $i < $len; $i++) {
-                 $char = $content[$i];
-                if ($char === '"' && !$inSingleQuote) {
-                    $inDoubleQuote = !$inDoubleQuote;
-                }
-                if ($char === "'" && !$inDoubleQuote) {
-                    $inSingleQuote = !$inSingleQuote;
-                }
-                if ($char === '>' && !$inDoubleQuote && !$inSingleQuote) {
-                     $tag = substr($content, 0, $i + 1);
-                     $this->pushToken(Token::T_REACTIVE_TAG, $tag);
-                     $this->consume($tag);
-                     return true;
-                }
+        if (preg_match(self::P['REAC'], $this->input, $matches)) {
+            $tag = $matches[1];
+            // Find the end of this tag
+            $endPos = strpos($this->input, '>');
+            if ($endPos !== false) {
+                 $tagContent = substr($this->input, 0, $endPos + 1);
+                 $this->pushToken(Token::T_REACTIVE_TAG, $tagContent);
+                 $this->consume($tagContent);
+                 return true;
             }
         }
         return false;
@@ -167,47 +173,42 @@ class Lexer
 
     private function matchText(): void
     {
-        $specials = ['~setup', '~mount', '~rendered', '~cleanup', '{{', '{!!', '<s:', '</s:', '@', '<'];
-        $closestPos = strlen($this->input);
+        $next = strpos($this->input, '@');
+        $next2 = strpos($this->input, '{{');
+        $next3 = strpos($this->input, '{!!');
+        $next4 = strpos($this->input, '<s:');
+        $next5 = strpos($this->input, '</s:');
+        $next6 = strpos($this->input, '~');
+        $next7 = strpos($this->input, '<'); // For reactive tags
 
-        foreach ($specials as $special) {
-            $pos = strpos($this->input, $special);
-            if ($pos !== false && $pos < $closestPos) {
-                if ($special === '@') {
-                    $remaining = substr($this->input, $pos);
-                    if (preg_match('/^@[a-zA-Z]+/', $remaining)) {
-                        $closestPos = $pos;
-                    }
-                } elseif ($special === '<') {
-                     $remaining = substr($this->input, $pos);
-                    if (preg_match(self::P['REAC'], $remaining) && !preg_match('/^<s:/', $remaining)) {
-                         $closestPos = $pos;
-                    }
-                } else {
-                    $closestPos = $pos;
-                }
+        $pos = false;
+        foreach ([$next, $next2, $next3, $next4, $next5, $next6, $next7] as $p) {
+            if ($p !== false && ($pos === false || $p < $pos)) {
+                $pos = $p;
             }
         }
 
-        if ($closestPos > 0) {
-            $text = substr($this->input, 0, $closestPos);
-            $this->pushToken(Token::T_TEXT, $text);
-            $this->consume($text);
-        } elseif ($closestPos === 0 && $this->input !== '') {
-            $char = $this->input[0];
-            $this->pushToken(Token::T_TEXT, $char);
-            $this->consume($char);
+        if ($pos === false) {
+            $text = $this->input;
+        } elseif ($pos === 0) {
+             // If we are at a potential token start but none matched, take 1 char as text
+             $text = substr($this->input, 0, 1);
+        } else {
+            $text = substr($this->input, 0, $pos);
         }
-    }
 
-    private function consume(string $text): void
-    {
-        $this->line += substr_count($text, "\n");
-        $this->input = substr($this->input, strlen($text));
+        $this->pushToken(Token::T_TEXT, $text);
+        $this->consume($text);
     }
 
     private function pushToken(string $type, string $value): void
     {
         $this->tokens[] = new Token($type, $value, $this->line);
+    }
+
+    private function consume(string $content): void
+    {
+        $this->line += substr_count($content, "\n");
+        $this->input = substr($this->input, strlen($content));
     }
 }

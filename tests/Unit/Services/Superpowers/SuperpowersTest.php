@@ -178,3 +178,14 @@ class SuperpowersTest extends TestCase
         parent::tearDown();
     }
 }
+
+    public function testGlobalDirective()
+    {
+        $store = \DGLab\Core\Application::getInstance()->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class);
+        $store->set('test_key', 'test_value');
+
+        $template = "~setup @global('test_key', 'my_val') ~ <div>{{ $my_val }}</div>";
+        $content = $this->engine->renderString($template);
+
+        $this->assertStringContainsString('<div>test_value</div>', $content);
+    }
