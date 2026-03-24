@@ -5,16 +5,16 @@ namespace DGLab\Services\Superpowers\Lexer;
 class Lexer
 {
     private const P = [
-        'SETUP' => '/^~setup\s*\{(.*?)\}/s',
-        'MOUNT' => '/^~mount\s*\{(.*?)\}/s',
-        'RENDERED' => '/^~rendered\s*\{(.*?)\}/s',
-        'CLEANUP' => '/^~cleanup\s*\{(.*?)\}/s',
+        'SETUP' => '/^~setup\s*(\{(?:[^{}]|(?R))*\})(?:\s*~)?\s*/s',
+        'MOUNT' => '/^~mount\s*(\{(?:[^{}]|(?R))*\})(?:\s*~)?\s*/s',
+        'RENDERED' => '/^~rendered\s*(\{(?:[^{}]|(?R))*\})(?:\s*~)?\s*/s',
+        'CLEANUP' => '/^~cleanup\s*(\{(?:[^{}]|(?R))*\})(?:\s*~)?\s*/s',
         'DIR' => '/^(@[a-zA-Z0-9]+(?:\s*(\((?:[^()]++|(?2))*\)))?)/s',
         'RAW' => '/^\{!!\s*(.*?)\s*!!\}/s',
         'ESC' => '/^\{\{\s*(.*?)\s*\}\}/s',
-        'SELF' => '/^<s:([a-zA-Z0-9\-\.\:]+)\s*([^>]*?)\s*\/>/s',
-        'OPEN' => '/^<s:([a-zA-Z0-9\-\.\:]+)\s*([^>]*?)>/s',
-        'CLOSE' => '/^<\/s:([a-zA-Z0-9\-\.\:]+)\s*>/s',
+        'SELF' => '/^<s:([a-zA-Z0-9\-\.\:_]+)\s*([^>]*?)\s*\/>/s',
+        'OPEN' => '/^<s:([a-zA-Z0-9\-\.\:_]+)\s*([^>]*?)>/s',
+        'CLOSE' => '/^<\/s:([a-zA-Z0-9\-\.\:_]+)\s*>/s',
         'REAC' => '/^<([a-zA-Z0-9]+)\s+[^>]*?(@|s-)[a-z0-9\.]+/is',
         'TAG_CLOSE' => '/^<\/([a-zA-Z0-9]+)>/s'
     ];
@@ -30,36 +30,16 @@ class Lexer
         $this->line = 1;
 
         while ($this->input !== '') {
-            if ($this->matchLifecycle()) {
-                continue;
-            }
-            if ($this->matchLegacyLifecycle()) {
-                continue;
-            }
-            if ($this->matchExpressionRaw()) {
-                continue;
-            }
-            if ($this->matchExpressionEscaped()) {
-                continue;
-            }
-            if ($this->matchComponentSelfClosing()) {
-                continue;
-            }
-            if ($this->matchComponentOpen()) {
-                continue;
-            }
-            if ($this->matchComponentClose()) {
-                continue;
-            }
-            if ($this->matchGenericClose()) {
-                continue;
-            }
-            if ($this->matchReactiveTag()) {
-                continue;
-            }
-            if ($this->matchDirective()) {
-                continue;
-            }
+            if ($this->matchLifecycle()) continue;
+            if ($this->matchLegacyLifecycle()) continue;
+            if ($this->matchExpressionRaw()) continue;
+            if ($this->matchExpressionEscaped()) continue;
+            if ($this->matchComponentSelfClosing()) continue;
+            if ($this->matchComponentOpen()) continue;
+            if ($this->matchComponentClose()) continue;
+            if ($this->matchGenericClose()) continue;
+            if ($this->matchReactiveTag()) continue;
+            if ($this->matchDirective()) continue;
             $this->matchText();
         }
         return $this->tokens;
@@ -69,7 +49,9 @@ class Lexer
     {
         foreach (['SETUP', 'MOUNT', 'RENDERED', 'CLEANUP'] as $key) {
             if (preg_match(self::P[$key], $this->input, $matches)) {
-                $this->pushToken(constant(Token::class . '::T_' . $key . '_BLOCK'), $matches[1]);
+                $code = $matches[1];
+                if (str_starts_with($code, '{') && str_ends_with($code, '}')) $code = substr($code, 1, -1);
+                $this->pushToken(constant(Token::class . '::T_' . $key . '_BLOCK'), $code);
                 $this->consume($matches[0]);
                 return true;
             }
@@ -129,18 +111,9 @@ class Lexer
         return false;
     }
 
-    private function matchComponentOpen(): bool
-    {
-        return $this->m(self::P['OPEN'], Token::T_COMPONENT_OPEN);
-    }
-    private function matchComponentClose(): bool
-    {
-        return $this->m(self::P['CLOSE'], Token::T_COMPONENT_CLOSE);
-    }
-    private function matchComponentSelfClosing(): bool
-    {
-        return $this->m(self::P['SELF'], Token::T_COMPONENT_SELF_CLOSING);
-    }
+    private function matchComponentOpen(): bool { return $this->m(self::P['OPEN'], Token::T_COMPONENT_OPEN); }
+    private function matchComponentClose(): bool { return $this->m(self::P['CLOSE'], Token::T_COMPONENT_CLOSE); }
+    private function matchComponentSelfClosing(): bool { return $this->m(self::P['SELF'], Token::T_COMPONENT_SELF_CLOSING); }
 
     private function m($p, $t): bool
     {
@@ -172,28 +145,15 @@ class Lexer
         $pos = false;
         foreach ($stops as $s) {
             $p = strpos($this->input, $s);
-            if ($p !== false && ($pos === false || $p < $pos)) {
-                $pos = $p;
-            }
+            if ($p !== false && ($pos === false || $p < $pos)) $pos = $p;
         }
-        if ($pos === false) {
-            $text = $this->input;
-        } elseif ($pos === 0) {
-            $text = substr($this->input, 0, 1);
-        } else {
-            $text = substr($this->input, 0, $pos);
-        }
+        if ($pos === false) $text = $this->input;
+        elseif ($pos === 0) $text = substr($this->input, 0, 1);
+        else $text = substr($this->input, 0, $pos);
         $this->pushToken(Token::T_TEXT, $text);
         $this->consume($text);
     }
 
-    private function pushToken(string $type, string $value): void
-    {
-        $this->tokens[] = new Token($type, $value, $this->line);
-    }
-    private function consume(string $content): void
-    {
-        $this->line += substr_count($content, "\n");
-        $this->input = substr($this->input, strlen($content));
-    }
+    private function pushToken(string $type, string $value): void { $this->tokens[] = new Token($type, $value, $this->line); }
+    private function consume(string $content): void { $this->line += substr_count($content, "\n"); $this->input = substr($this->input, strlen($content)); }
 }

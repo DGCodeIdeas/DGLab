@@ -22,8 +22,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/icon-32x32.png">
     <link rel="manifest" href="/manifest.json">
 
-    <link href="{{ $this->asset('vendor.css') }}" rel="stylesheet">
-    <link rel="stylesheet" href="{{ $this->asset('app.css') }}">
+    <link href="/assets/css/superpowers.nav.css" rel="stylesheet">
+
 
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8f9fa; }
@@ -51,8 +51,8 @@
         </div>
     </div>
 
-    <script src="{{ $this->asset('vendor.js') }}"></script>
-    <script src="{{ $this->asset('app.js') }}"></script>
+    <script src="/assets/js/superpowers.js"></script>
+    <script src="/assets/js/superpowers.nav.js"></script>
 
     {!! $scripts !!}
 

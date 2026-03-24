@@ -30,9 +30,7 @@ class Parser
         $this->tokens = $tokens;
         $this->pos = 0;
         $ast = [];
-        while ($this->pos < count($this->tokens)) {
-            $ast[] = $this->parseNode();
-        }
+        while ($this->pos < count($this->tokens)) $ast[] = $this->parseNode();
         return $ast;
     }
 
@@ -101,9 +99,7 @@ class Parser
             $node->children = $this->parseUntil('@endfragment');
             return $node;
         }
-        if ($name === 'extends') {
-            return new ExtendsNode(trim($expression, "'\""), $token->line);
-        }
+        if ($name === 'extends') return new ExtendsNode(trim($expression, "'\""), $token->line);
 
         $node = new DirectiveNode($name, $expression, $token->line);
         if (in_array($name, ['if', 'foreach', 'auth', 'guest', 'error', 'switch'])) {
@@ -116,21 +112,18 @@ class Parser
     {
         $token = $this->tokens[$this->pos++];
         $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
-        preg_match('/^<s:([a-zA-Z0-9\-\.\:]+)(.*?)(\/?)>/s', $token->value, $matches);
+        preg_match('/^<s:([a-zA-Z0-9\-\.\:_]+)(.*?)(\/?)>/s', $token->value, $matches);
         $fullTagName = $matches[1];
         $props = $this->parseProps($matches[2]);
 
-        if ($fullTagName === 'slot') {
-            $node = new SlotNode($props['name']['value'] ?? 'default', $token->line);
-            if (!$isSelfClosing) {
-                $node->children = $this->parseUntilComponentClose($fullTagName);
-            }
+        if ($fullTagName === 'slot' || str_starts_with($fullTagName, 'slot:')) {
+            $slotName = ($fullTagName === 'slot') ? ($props['name']['value'] ?? 'default') : substr($fullTagName, 5);
+            $node = new SlotNode($slotName, $token->line);
+            if (!$isSelfClosing) $node->children = $this->parseUntilComponentClose($fullTagName);
             return $node;
         }
         $node = new ComponentNode($fullTagName, $props, $token->line);
-        if (!$isSelfClosing) {
-            $node->children = $this->parseUntilComponentClose($fullTagName);
-        }
+        if (!$isSelfClosing) $node->children = $this->parseUntilComponentClose($fullTagName);
         return $node;
     }
 
@@ -148,21 +141,13 @@ class Parser
             $name = $match['name'];
             $value = isset($match['v1']) && $match['v1'] !== '' ? $match['v1'] : (isset($match['v2']) && $match['v2'] !== '' ? $match['v2'] : (isset($match['v3']) && $match['v3'] !== '' ? $match['v3'] : true));
             if ($prefix === '@') {
-                if (in_array($name, ['prefetch', 'transition'])) {
-                    $attributes['data-' . $name] = ($value === true) ? 'true' : $value;
-                } else {
-                    $reactiveAttributes[$name] = $value;
-                }
-            } elseif ($prefix === 's-') {
-                $attributes["s-{$name}"] = $value;
-            } else {
-                $attributes[$name] = $value;
-            }
+                if (in_array($name, ['prefetch', 'transition'])) $attributes['data-' . $name] = ($value === true) ? 'true' : $value;
+                else $reactiveAttributes[$name] = $value;
+            } elseif ($prefix === 's-') $attributes["s-{$name}"] = $value;
+            else $attributes[$name] = $value;
         }
         $node = new ReactiveNode($tagName, $attributes, $reactiveAttributes, $token->line);
-        if (!$isSelfClosing) {
-            $node->children = $this->parseUntilTagClose($tagName);
-        }
+        if (!$isSelfClosing) $node->children = $this->parseUntilTagClose($tagName);
         return $node;
     }
 
@@ -174,16 +159,10 @@ class Parser
             if (($token->type === Token::T_TEXT && strpos($token->value, "</{$tagName}>") !== false) || ($token->type === Token::T_TAG_CLOSE && $token->value === "</{$tagName}>")) {
                 if ($token->type === Token::T_TEXT) {
                     $pos = strpos($token->value, "</{$tagName}>");
-                    if ($pos > 0) {
-                        $children[] = new TextNode(substr($token->value, 0, $pos), $token->line);
-                    }
+                    if ($pos > 0) $children[] = new TextNode(substr($token->value, 0, $pos), $token->line);
                     $token->value = substr($token->value, $pos + strlen("</{$tagName}>"));
-                    if ($token->value === '') {
-                        $this->pos++;
-                    }
-                } else {
-                    $this->pos++;
-                }
+                    if ($token->value === '') $this->pos++;
+                } else $this->pos++;
                 return $children;
             }
             $children[] = $this->parseNode();
@@ -224,7 +203,7 @@ class Parser
         $children = [];
         while ($this->pos < count($this->tokens)) {
             $token = $this->tokens[$this->pos];
-            if ($token->type === Token::T_COMPONENT_CLOSE && preg_match('/^<\/s:([a-zA-Z0-9\-\.\:]+)\s*>/s', $token->value, $m) && $m[1] === $tagName) {
+            if ($token->type === Token::T_COMPONENT_CLOSE && preg_match('/^<\/s:([a-zA-Z0-9\-\.\:_]+)\s*>/s', $token->value, $m) && $m[1] === $tagName) {
                 $this->pos++;
                 return $children;
             }

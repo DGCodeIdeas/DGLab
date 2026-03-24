@@ -18,24 +18,15 @@ class ExpressionTranspiler
      */
     public function transpile(string $expression, string $contextVar = '$__ctx'): string
     {
-        // Simple variable access: $user -> $__ctx['user']
-        // We do this first to simplify, but we must avoid variables that are already in the contextVar
-        // or other special variables.
-
-        // Actually, let's do standard and null-safe dot notation first, but more carefully.
-
-        // Support for null-safe dot notation: $user?.profile?.name
+        // 1. Handle null-safe dot notation: $user?.profile?.name
         $patternNullSafe = '/\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(\?\.[a-zA-Z0-9_\-\.]+)+/';
         $expression = preg_replace_callback($patternNullSafe, function ($matches) use ($contextVar) {
             $varName = $matches[1];
-            if (in_array($varName, ['this', '_SERVER', '_SESSION', '_GET', '_POST', 'GLOBALS'])) {
-                $result = '$' . $varName;
-            } else {
-                $result = "({$contextVar}['{$varName}'] ?? null)";
-            }
+            $result = in_array($varName, ['this', '_SERVER', '_SESSION', '_GET', '_POST', 'GLOBALS'])
+                ? '$' . $varName
+                : "({$contextVar}['{$varName}'] ?? null)";
 
-            $remaining = substr($matches[0], strlen($varName) + 1);
-            $parts = explode('?.', ltrim($remaining, '?'));
+            $parts = explode('?.', substr($matches[0], strlen($varName) + 2));
             foreach ($parts as $part) {
                 if ($part === '') continue;
                 $result = "\\DGLab\\Services\\Superpowers\\Runtime\\Runtime::access({$result}, '{$part}', true)";
@@ -43,18 +34,15 @@ class ExpressionTranspiler
             return $result;
         }, $expression);
 
-        // Support for standard dot notation: $user.profile.name
+        // 2. Handle standard dot notation: $user.profile.name
         $pattern = '/\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(\.[a-zA-Z0-9_\-\.]+)+/';
         $expression = preg_replace_callback($pattern, function ($matches) use ($contextVar) {
             $varName = $matches[1];
-            if (in_array($varName, ['this', '_SERVER', '_SESSION', '_GET', '_POST', 'GLOBALS'])) {
-                $result = '$' . $varName;
-            } else {
-                $result = "({$contextVar}['{$varName}'] ?? null)";
-            }
+            $result = in_array($varName, ['this', '_SERVER', '_SESSION', '_GET', '_POST', 'GLOBALS'])
+                ? '$' . $varName
+                : "({$contextVar}['{$varName}'] ?? null)";
 
-            $remaining = substr($matches[0], strlen($varName) + 1);
-            $parts = explode('.', trim($remaining, '.'));
+            $parts = explode('.', substr($matches[0], strlen($varName) + 2));
             foreach ($parts as $part) {
                 if ($part === '') continue;
                 $result = "\\DGLab\\Services\\Superpowers\\Runtime\\Runtime::access({$result}, '{$part}', false)";
@@ -62,17 +50,15 @@ class ExpressionTranspiler
             return $result;
         }, $expression);
 
-        // Simple variable access: $user -> $__ctx['user']
-        $expression = preg_replace_callback('/(?<![a-zA-Z0-9_\$])\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/', function ($matches) use ($contextVar) {
-            $varName = $matches[1];
-            if (strpos($contextVar, '$' . $varName) === 0) {
+        // 3. Simple variable access: $user -> $__ctx['user']
+        $expression = preg_replace_callback('/(?<![a-zA-Z0-9_\\\\\$\\\'])(\$)([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/', function ($matches) use ($contextVar) {
+            $varName = $matches[2];
+            if ($varName === '__ctx' || $varName === '__persisted' || $varName === '__g') {
                 return '$' . $varName;
             }
             if (in_array($varName, ['this', '_SERVER', '_SESSION', '_GET', '_POST', 'GLOBALS'])) {
                 return '$' . $varName;
             }
-            // Skip variables that look like they've already been transpiled (contain ['...'])
-            // but the regex should handle this via negative lookbehind.
             return "({$contextVar}['{$varName}'] ?? null)";
         }, $expression);
 
