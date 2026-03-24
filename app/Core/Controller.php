@@ -40,7 +40,7 @@ abstract class Controller
     {
         return Response::json($data, $status, $headers);
     }
-        protected function view(string $template, array $data = [], int $status = 200): Response
+    protected function view(string $template, array $data = [], int $status = 200): Response
     {
         $view = app()->get(View::class);
 
