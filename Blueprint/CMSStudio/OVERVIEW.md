@@ -14,11 +14,11 @@ CMS Studio operates on a **Hub-and-Spoke** model. A central "Studio Home" (Hub) 
 - **Search App**: A unified interface for managing search indices and performance (Utilizing the `SearchService`).
 - **Control App**: System-wide overrides, manual job triggers, and emergency kill switches.
 
-## The "Fusion of All" Aesthetic
-The Studio UI is a lossless fusion of three distinct design philosophies:
-1. **The IDE (Pro-Tool)**: Command palettes (Cmd+K), keyboard-first navigation, and high-density data views for speed.
-2. **The Visual Architect (No-Code)**: Node-based schema modeling and live "Instant Previews" of content rendering.
-3. **The Command Center (Observable)**: Real-time activity streams, glowing status indicators, and telemetry overlays on content resources.
+## The "Pure Superpowers" Ecosystem
+The Studio UI is built exclusively using the **Superpowers SPA** framework:
+- **Zero Node.js**: No Webpack, Vite, or npm in the build pipeline. All assets bundled via `AssetBundler`.
+- **Reactive SuperPHP**: Components (`<s:ui:card>`, `<s:architect:canvas>`) use server-side diffing and DOM morphing.
+- **SPA Navigation**: Transitions between Studio Apps are handled via `superpowers.nav.js` with zero-refresh fragment loading.
 
 ## Phased Implementation Roadmap
 
@@ -34,3 +34,6 @@ The Studio UI is a lossless fusion of three distinct design philosophies:
 
 ## Headless First, Observable Always
 Everything managed in CMS Studio is accessible via a standardized, token-secured REST API. Every interaction is meticulously logged via the `EventDispatcher` for full system transparency, and secure file delivery is guaranteed by the `DownloadService` drivers.
+
+## Legacy Decommissioning
+As CMS Studio reaches parity, the legacy `Base CMS` and `AdminPanel` directories will be decommissioned as per the **[Decommissioning Plan](../DECOMMISSIONING_PLAN.md)**.

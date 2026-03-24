@@ -7,25 +7,29 @@ Design a visual, no-code environment for modeling dynamic content structures. Th
 Responsibilities:
 - **Field Definitions**: Primitive types (`string`, `text`, `number`, `boolean`, `date`) and complex types (`rich-text`, `media-reference`, `content-reference`).
 - **Validation Engine**: Enforce rules defined in the Content Type schema (e.g., `required`, `regex`, `min/max`).
-- **Relational Field Manager**: Links one `ContentEntry` to another.
+- `SchemaService::validate($data, $schema)` integrated with `AuditService` for validation failures.
 
-## 3.2 Database Schema: Structural Foundation
+## 3.2 Database Schema: Hybrid EAV Foundation
+- **`content_types`**: ID, tenant_id, name, slug, description, version, is_published, created_at.
 - **`content_type_fields`**: ID, content_type_id, name, slug, field_type, validation_rules (JSON), sort_order, is_translatable.
+- **`content_entries`**: ID, content_type_id, tenant_id, status (draft, published, archived), version_id, created_by, updated_at.
 - **`content_values`**: ID, entry_id, field_id, value (TEXT), created_at.
-- **`Hybrid Storage`**: Utilize a **Hybrid EAV approach** for maximum compatibility and granularity, while allowing a `meta` field for overflow JSON data.
+- **`content_meta`**: ID, entry_id, metadata (JSON) for overflow and plugin data.
 
-## 3.3 Visual Architect (SuperPHP Reactive Canvas)
+## 3.3 Visual Architect (SuperPHP Reactive Components)
 - **SuperPHP "Canvas" Components**:
-    - `<s:architect-canvas>`: A reactive, node-based modeling environment.
-    - `<s:architect-field-toolbox>`: A drag-and-drop library of field types with real-time configuration sidebars.
-- **Canvas-Driven Modeling**: Visualize the relationships between different content types.
-- **Schema Simulation**: A "Preview" button to see how the generated form will look in the Content App in real-time.
+    - `<s:architect:canvas>`: A reactive modeling environment with `@persist($schema)`.
+    - `<s:architect:field-toolbox>`: Drag-and-drop library of field types.
+    - `<s:architect:field-config>`: Sidebar for setting validation rules and translation flags.
+- **Real-time Previews**: `<s:architect:preview>` updates on-the-fly as the schema is modified.
 
-## 3.4 Schema Versioning & Mutation
-- **Structural Immutability**: Once a content type is "Released," structural changes (like changing a field type from `number` to `text`) are locked or require a formal migration.
-- **Versioned Blueprints**: Every change to a `ContentType` schema creates a new version, allowing for historical data integrity.
-- **Mutation Tracking**: Every schema change is dispatched as an `Event` to the `EventDispatcher` for full auditability.
+## 3.4 Event-Driven Schema Mutation
+- **Events**:
+    - `cms.schema.created`: Fired when a new content type is defined.
+    - `cms.schema.mutated`: Fired on every field update (High Severity Audit).
+    - `cms.schema.released`: Fired when a version is locked for production.
+- **Versioning**: Every mutation increments the `version` in `content_types`, archiving the previous `content_type_fields` set.
 
-## 3.5 Security & Governance
-- **Role-Based Architecture**: Only users with the `architect` role can access this app.
-- **Tenant Isolation**: Schemas are tenant-specific or globally shared based on the `tenant_id` context.
+## 3.5 Security & Tenancy
+- **Tenancy**: Strictly uses `TenancyService::requireTenant()` for all CRUD operations.
+- **Authorization**: Requires `architect` role or `cms.schema.manage` permission.

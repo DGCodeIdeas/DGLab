@@ -1,41 +1,33 @@
-# Phase 5: Server Observability & Telemetry
+# Phase 5: Server Observability & Telemetry (Pulse App)
 
 ## Goals
-Implement real-time server-side monitoring and observability for the entire DGLab ecosystem. This phase establishes the "Pulse App" with server-side telemetry.
+Establish a real-time command center for server-side telemetry, monitoring system health, logs, background jobs, and performance metrics. This phase introduces the "Pulse App," fed by the **EventDispatcher** audit streams.
 
-## 5.1 Real-Time Error Tracking
-- **Error Dashboard**: A centralized view of PHP errors, exceptions, and warnings.
-- **Error Deduplication**: Grouping identical errors to reduce noise.
-- **SuperPHP Source Maps**: Utilize the `SourceMapResolver` and `ErrorReporter` to show precise source code locations for template errors.
+## 5.1 Telemetry Aggregator Service
+Responsibilities:
+- **Event Streaming**: Listen for all dot-notation events from the `EventDispatcher`.
+- **Metrics Collection**: Aggregate latency, throughput, and error rates (from `AuditService`).
+- **Resource Monitoring**: Track CPU, memory, and disk usage for the host environment.
+- **Log Aggregator**: Tail and filter the system logs via a unified API.
 
-## 5.2 Job & Background Task Monitoring
-- **Job Status**: Real-time status of asynchronous tasks (e.g., `Job` table in the database).
-- **Processing Time**: Analytics on how long specific types of jobs (like asset obfuscation or cleanup) take to complete.
-- **Failure Analysis**: Detailed logs for failed jobs, including stack traces and input data.
+## 5.2 Pulse App: Real-Time Dashboard (SuperPHP Reactive)
+- **SuperPHP Components**:
+    - `<s:pulse:live-feed>`: A scrolling stream of events from the `EventDispatcher`.
+    - `<s:pulse:latency-chart>`: A reactive SVG chart showing response times.
+    - `<s:pulse:resource-grid>`: Real-time gauges for CPU and Memory usage.
+    - `<s:pulse:job-queue>`: Interactive list of pending and completed background jobs.
+- **Auto-Refresh**: Components use `@persist($metrics)` and `superpowers:state-changed` for real-time updates without polling.
 
-## 5.3 System Resource Usage
-- **CPU & Memory**: Monitoring of server-side resource consumption.
-- **Disk Space**: Visualization of disk usage, specifically for `storage/uploads` and `storage/cache/assets/`.
-- **Threshold Alerts**: Notifications when disk space falls below 10% or memory usage exceeds 90%.
+## 5.3 System Log Explorer
+- **Unified Log API**: Search and filter logs across categories (auth, database, file, ai).
+- **Log Levels**: Color-coded output based on RFC 5424 severity (Emergency, Alert, Critical, Error, Warning, Notice, Informational, Debug).
+- **Audit Trace**: Click an event in the Pulse feed to view the corresponding `AuditService` log entry and request context.
 
-## 5.4 Database Health & Performance
-- **Connection Stats**: Active vs. idle connections in the pool.
-- **Slow Query Log**: Identification of SQL queries taking longer than 1000ms.
-- **Database Size**: Tracking the growth of database tables over time.
+## 5.4 Event-Driven Alerts
+- **Thresholds**: Define rules for automatic alerts (e.g., `error_rate > 5%` within 1 minute).
+- **Dispatching**: Alert events (`pulse.alert.triggered`) are dispatched for notification services.
+- **Emergency Actions**: Integrated "Kill Switch" for immediate system shutdown or maintenance mode.
 
-## 5.5 Alerting & Notifications
-- **Threshold Alerts**: Notifications (e.g., email, Slack, or Webhook) when critical errors occur.
-- **EventDispatcher Integration**: All alerts are dispatched as `Events` to allow for flexible auditing and notification routing.
-
-## 5.6 User Interface: The "Pulse App" (Server View)
-- **"Command Center" Vibe**: Like a NASA control room.
-- **SuperPHP Reactive Components**:
-    - `<s:pulse-server-metrics>`: A high-density dashboard for managing server-side metrics.
-    - `<s:pulse-log-stream>`: Real-time scrolling logs of all server-side interactions fed by `EventDispatcher`.
-    - `<s:pulse-telemetry-charts>`: High-density charts showing CPU, Memory, and Disk trends.
-- **Glowing Status Indicators**: Bright, glowing green/yellow/red indicators for every core service.
-- **Unified Timeline**: A time-axis view that shows content edits (from Phase 4) and server spikes on the same graph.
-
-## 5.7 Security & Isolation
-- **Monitoring Data Isolation**: Ensure all server-side metrics are strictly bound to their respective tenant contexts where applicable.
-- **Log Masking**: Automated masking of sensitive data (e.g., passwords, keys) in all monitoring logs.
+## 5.5 Security & Tenancy
+- **Tenancy**: Pulse metrics are scoped to the current tenant, while the "Global Admin" can see aggregated cross-tenant telemetry.
+- **Authorization**: Requires `admin` role or `pulse.view` permission.
