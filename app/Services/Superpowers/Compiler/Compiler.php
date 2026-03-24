@@ -19,6 +19,7 @@ use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
 use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
 use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 
 class Compiler
 {
@@ -35,34 +36,15 @@ class Compiler
     {
         $this->deps = [];
         $this->reac = false;
-
-        $code = "<?php\n";
-        $code .= "\$__ctx = [];\n";
+        $code = "<?php\n\$__ctx = [];\n\$__persisted = [];\n";
         $code .= "if (isset(\$__state)) \$this->getEngine('super.php')->getInterpreter()->getState()->import(\$__state);\n";
         $code .= "foreach (\$data as \$__k => \$__v) if (substr(\$__k, 0, 2) !== '__') \$__ctx[\$__k] = \$__v;\n";
-
-        $lifecycle = $this->cLife($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
-        $code .= $lifecycle;
-
-        $code .= "if (isset(\$__action)) {\n";
-        $code .= "  (function() use (&\$__ctx, \$__action) {\n";
-        $code .= "    extract(\$__ctx, EXTR_REFS);\n";
-        $code .= "    if (isset(\$\$__action) && is_callable(\$\$__action)) {\n";
-        $code .= "      \$\$__action();\n";
-        $code .= "      \$__vars = get_defined_vars(); foreach (\$__vars as \$__k => \$__v) ";
-        $code .= "if (!in_array(\$__k, ['this', 'data', 'code', 'vars', 'n', 't', 'c', 'nodes', 'types', '__ctx', '__action', '__vars'])) ";
-        $code .= "  \$__ctx[\$__k] = \$__v;\n";
-        $code .= "    }\n";
-        $code .= "  })->call(\$this);\n";
-        $code .= "}\n";
-
-        $code .= "ob_start();\n";
-        $code .= $this->cN($ast);
-        $code .= "\$__output = ob_get_clean();\n";
-
-        $rendered = $this->cLife($ast, [RenderedNode::class]);
-        $code .= "ob_start();\n" . $rendered . "\$__output .= ob_get_clean();\n";
-
+        $code .= $this->cLife($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
+        $code .= "if (isset(\$__action)) {\n  (function() use (&\$__ctx, \$__action, &\$__persisted) {\n    extract(\$__ctx, EXTR_REFS);\n";
+        $code .= "    if (isset(\$\$__action) && is_callable(\$\$__action)) {\n      \$\$__action();\n      \$__vars = get_defined_vars(); foreach (\$__vars as \$__k => \$__v) ";
+        $code .= "if (!in_array(\$__k, ['this', 'data', 'code', 'vars', 'n', 't', 'c', 'nodes', 'types', '__ctx', '__action', '__vars', '__persisted'])) \$__ctx[\$__k] = \$__v;\n    }\n  })->call(\$this);\n}\n";
+        $code .= "ob_start();\n" . $this->cN($ast) . "\$__output = ob_get_clean();\n";
+        $code .= "ob_start();\n" . $this->cLife($ast, [RenderedNode::class]) . "\$__output .= ob_get_clean();\n";
         if ($this->reac) {
             $code .= "\$__state_obj = \$this->getEngine('super.php')->getInterpreter()->getState();\n";
             $code .= "foreach (\$__ctx as \$__k => \$__v) if (!is_callable(\$__v)) \$__state_obj->set(\$__k, \$__v);\n";
@@ -70,10 +52,9 @@ class Compiler
             $code .= "\$__view_attr = isset(\$__view) ? \" s-view='\$__view'\" : \"\";\n";
             $code .= "\$__output = \"<div s-data='\$__enc' s-id='\" . uniqid() . \"'\$__view_attr>\$__output</div>\";\n";
         }
-
-        $code .= "if (isset(\$__extendedLayout)) return \$this->render(\$__extendedLayout, array_merge(\$data, \$__ctx), null);\n";
-        $code .= "return \$__output;\n";
-
+        $code .= "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStoreInterface::class);\n";
+        $code .= "foreach (\$__persisted as \$__pvar) if (array_key_exists(\$__pvar, \$__ctx)) if (\$__g->get(\$__pvar, '__ABSENT__') !== \$__ctx[\$__pvar]) \$__g->set(\$__pvar, \$__ctx[\$__pvar]);\n";
+        $code .= "if (isset(\$__extendedLayout)) return \$this->render(\$__extendedLayout, array_merge(\$data, \$__ctx), null);\nreturn \$__output;\n";
         return $code;
     }
 
@@ -91,13 +72,10 @@ class Compiler
                     if ($n instanceof ExtendsNode) {
                         $c .= "/* line:$n->line */ \$__extendedLayout = " . var_export($n->layout, true) . ";\n";
                     } else {
-                        $c .= "/* line:$n->line */ (function() use (&\$__ctx) {\n";
-                        $c .= "  extract(\$__ctx, EXTR_REFS);\n";
+                        $c .= "/* line:$n->line */ (function() use (&\$__ctx, &\$__persisted) {\n  extract(\$__ctx, EXTR_REFS);\n";
                         $c .= "  " . $this->processDirectivesInPHP($n->code) . "\n";
                         $c .= "  \$__vars = get_defined_vars(); foreach (\$__vars as \$__k => \$__v) ";
-                        $c .= "if (!in_array(\$__k, ['this', 'data', 'code', 'vars', 'n', 't', 'c', 'nodes', 'types', '__ctx', '__vars'])) ";
-                        $c .= "  \$__ctx[\$__k] = \$__v;\n";
-                        $c .= "})->call(\$this);\n";
+                        $c .= "if (!in_array(\$__k, ['this', 'data', 'code', 'vars', 'n', 't', 'c', 'nodes', 'types', '__ctx', '__vars', '__persisted'])) \$__ctx[\$__k] = \$__v;\n})->call(\$this);\n";
                     }
                 }
             }
@@ -110,11 +88,14 @@ class Compiler
 
     private function processDirectivesInPHP(string $code): string
     {
-        // Replace @global('key', 'var') with PHP code
-        return preg_replace_callback('/@global\s*\(\s*[\'"](.*?)[\'"]\s*(?:,\s*[\'"](.*?)[\'"]\s*)?\)/', function($m) {
-            $key = $m[1];
-            $var = $m[2] ?? $key;
-            return "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStore::class); \${$var} = \$__g->get('{$key}');";
+        $code = preg_replace_callback('/@global\s*\(\s*[\'"](.*?)[\'"]\s*(?:,\s*[\'"](.*?)[\'"]\s*)?\)/', function ($m) {
+            $k = $m[1];
+            $v = $m[2] ?? $k;
+            return "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStoreInterface::class); \${$v} = \$__g->get('{$k}');";
+        }, $code);
+        return preg_replace_callback('/@persist\s*\(\s*\$(.*?)\s*\)/', function ($m) {
+            $v = $m[1];
+            return "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStoreInterface::class); \$__persisted[] = '{$v}'; if (\$__g->get('{$v}', '__ABSENT__') !== '__ABSENT__') \${$v} = \$__g->get('{$v}');";
         }, $code);
     }
 
@@ -123,8 +104,7 @@ class Compiler
         $c = "";
         foreach ($nodes as $n) {
             $c .= $this->cOne($n);
-        }
-        return $c;
+        } return $c;
     }
 
     private function cOne(Node $n): string
@@ -150,16 +130,15 @@ class Compiler
         }
         if ($n instanceof DirectiveNode) {
             if ($n->name === 'prefetch') {
-                $val = $n->expression ? "(" . $this->tr->transpile($n->expression, '$__ctx') . ")" : "'true'";
-                return "/* line:$n->line */ echo ' data-prefetch=\"' . \\DGLab\\Core\\View::e((string)$val) . '\"';\n";
+                $v = $n->expression ? "(" . $this->tr->transpile($n->expression, '$__ctx') . ")" : "'true'";
+                return "/* line:$n->line */ echo ' data-prefetch=\"' . \\DGLab\\Core\\View::e((string)$v) . '\"';\n";
             }
             if ($n->name === 'transition') {
-                $val = $n->expression ? "(" . $this->tr->transpile($n->expression, '$__ctx') . ")" : "'fade'";
-                return "/* line:$n->line */ echo ' data-transition=\"' . \\DGLab\\Core\\View::e((string)$val) . '\"';\n";
+                $v = $n->expression ? "(" . $this->tr->transpile($n->expression, '$__ctx') . ")" : "'fade'";
+                return "/* line:$n->line */ echo ' data-transition=\"' . \\DGLab\\Core\\View::e((string)$v) . '\"';\n";
             }
             if ($n->name === 'if') {
-                $expr = $this->tr->transpile($n->expression, '$__ctx');
-                $html = "/* line:$n->line */ if ($expr): \n";
+                $html = "/* line:$n->line */ if (" . $this->tr->transpile($n->expression, '$__ctx') . "): \n";
                 foreach ($n->children as $child) {
                     if ($child instanceof DirectiveNode && $child->name === 'else') {
                         $html .= " else: \n";
@@ -169,29 +148,14 @@ class Compiler
                         $html .= $this->cOne($child);
                     }
                 }
-                $html .= " endif;\n";
-                return $html;
+                return $html . " endif;\n";
             }
             if ($n->name === 'foreach') {
                 preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $n->expression, $m);
                 $expr = $this->tr->transpile($m[1], '$__ctx');
                 $itemVar = trim($m[2], '$ ');
-                $c = "/* line:$n->line */ if (is_iterable($expr)): ";
-                $c .= "foreach ($expr as \$__key => \$__val): ";
-                // Push local scope
-                $c .= "\$__old_val = \$__ctx['$itemVar'] ?? null; \$__ctx['$itemVar'] = &\$__val; ";
-                $c .= $this->cN($n->children);
-                // Pop local scope
-                $c .= "\$__ctx['$itemVar'] = \$__old_val; ";
-                $c .= "endforeach; endif;\n";
-                return $c;
-            }
-            if ($n->name === 'global') {
-                $p = explode(',', $n->expression);
-                $key = trim($p[0], "'\" ");
-                $var = isset($p[1]) ? trim($p[1], "'\"$ ") : $key;
-                $c = "/* line:$n->line */ \$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStore::class);\n";
-                $c .= "\$__ctx['$var'] = \$__g->get('$key');\n";
+                $c = "/* line:$n->line */ if (is_iterable($expr)): foreach ($expr as \$__key => \$__val): \$__old_val = \$__ctx['$itemVar'] ?? null; \$__ctx['$itemVar'] = &\$__val; ";
+                $c .= $this->cN($n->children) . "\$__ctx['$itemVar'] = \$__old_val; endforeach; endif;\n";
                 return $c;
             }
         }
@@ -200,38 +164,29 @@ class Compiler
             $this->deps[] = $vn;
             $c = "/* line:$n->line */ \$__p = [];\n";
             foreach ($n->props as $name => $p) {
-                $val = $p['dynamic'] ? "(" . $this->tr->transpile($p['value'], '$__ctx') . ")" : var_export($p['value'], true);
-                $c .= "\$__p['$name'] = $val;\n";
+                $c .= "\$__p['$name'] = " . ($p['dynamic'] ? "(" . $this->tr->transpile($p['value'], '$__ctx') . ")" : var_export($p['value'], true)) . ";\n";
             }
-            $c .= "\$__p['slot'] = (function() use (&\$__ctx, &\$__p) { \n";
-            $c .= "  ob_start();\n";
-            $default_slot_content = "";
+            $c .= "\$__p['slot'] = (function() use (&\$__ctx, &\$__p) { ob_start(); \n";
+            $ds = "";
             foreach ($n->children as $child) {
                 if ($child instanceof SlotNode) {
-                    $c .= "  \$__p['$child->name'] = (function() use (&\$__ctx) { ob_start(); " . $this->cN($child->children) . " return ob_get_clean(); })->call(\$this);\n";
+                    $c .= "\$__p['$child->name'] = (function() use (&\$__ctx) { ob_start(); " . $this->cN($child->children) . " return ob_get_clean(); })->call(\$this);\n";
                 } else {
-                    $default_slot_content .= $this->cOne($child);
+                    $ds .= $this->cOne($child);
                 }
             }
-            $c .= $default_slot_content;
-            $c .= "  return ob_get_clean();\n";
-            $c .= "})->call(\$this);\n";
-            $c .= "echo \$this->render('$vn', \$__p, null);\n";
-            return $c;
+            return $c . $ds . " return ob_get_clean(); })->call(\$this);\necho \$this->render('$vn', \$__p, null);\n";
         }
         if ($n instanceof ReactiveNode) {
             $this->reac = true;
             $c = "/* line:$n->line */ echo '<$n->tagName';\n";
             foreach ($n->attributes as $name => $val) {
-                $val_expr = var_export($val, true);
-                $c .= "echo ' $name=\"' . \\DGLab\\Core\\View::e((string)$val_expr) . '\"';\n";
+                $c .= "echo ' $name=\"' . \\DGLab\\Core\\View::e((string)" . var_export($val, true) . ") . '\"';\n";
             }
             foreach ($n->reactiveAttributes as $ev => $ac) {
-                $ac_expr = var_export($ac, true);
-                $c .= "echo ' s-on:$ev=\"' . \\DGLab\\Core\\View::e((string)$ac_expr) . '\"';\n";
+                $c .= "echo ' s-on:$ev=\"' . \\DGLab\\Core\\View::e((string)" . var_export($ac, true) . ") . '\"';\n";
             }
-            $c .= "echo \">\"; " . $this->cN($n->children) . " echo \"</$n->tagName>\";\n";
-            return $c;
+            return $c . "echo \">\"; " . $this->cN($n->children) . " echo \"</$n->tagName>\";\n";
         }
         return "";
     }

@@ -2,11 +2,6 @@
 
 namespace DGLab\Services\Superpowers\Lexer;
 
-/**
- * Class Token
- *
- * Represents a single token identified by the Lexer.
- */
 class Token
 {
     public const T_TEXT = 'TEXT';
@@ -20,7 +15,8 @@ class Token
     public const T_MOUNT_BLOCK = 'MOUNT_BLOCK';
     public const T_RENDERED_BLOCK = 'RENDERED_BLOCK';
     public const T_CLEANUP_BLOCK = 'CLEANUP_BLOCK';
-    public const T_REACTIVE_TAG = 'REACTIVE_TAG'; // For <button @click="...">
+    public const T_REACTIVE_TAG = 'REACTIVE_TAG';
+    public const T_TAG_CLOSE = 'TAG_CLOSE';
 
     public string $type;
     public string $value;
