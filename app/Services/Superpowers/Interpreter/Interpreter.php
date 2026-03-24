@@ -22,13 +22,8 @@ use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Runtime\StateContainer;
 use DGLab\Services\Superpowers\Runtime\DebugCollector;
 use DGLab\Services\Superpowers\Transpiler\ExpressionTranspiler;
-use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 
-/**
- * Class Interpreter
- *
- * Executes AST nodes and generates output.
- */
 class Interpreter
 {
     private StateContainer $state;
@@ -56,15 +51,12 @@ class Interpreter
         if (isset($data['__state'])) {
             $this->state->import($data['__state']);
         }
-
         foreach ($data as $k => $v) {
             if (substr($k, 0, 2) !== '__') {
                 $this->state->set($k, $v);
             }
         }
-
         $this->processLifecycle($ast, [SetupNode::class, MountNode::class, ExtendsNode::class]);
-
         if (isset($data['__action'])) {
             $action = $data['__action'];
             $scope = $this->state->all();
@@ -75,24 +67,19 @@ class Interpreter
                 }
             }
         }
-
         $output = $this->interpretNodes($ast);
         $output .= $this->processLifecycle($ast, [RenderedNode::class]);
-
         if ($this->state->isModified()) {
-             $encrypted = $this->state->export();
-             $viewName = $data['__view'] ?? null;
-             $viewAttr = $viewName ? " s-view='{$viewName}'" : "";
-             $output = "<div s-data='{$encrypted}' s-id='" . uniqid() . "'{$viewAttr}>{$output}</div>";
+             $enc = $this->state->export();
+            $vn = $data['__view'] ?? null;
+            $va = $vn ? " s-view='{$vn}'" : "";
+             $output = "<div s-data='{$enc}' s-id='" . uniqid() . "'{$va}>{$output}</div>";
         }
-
         $layout = $this->state->get('__extendedLayout');
         if ($layout) {
-             $this->state->remove('__extendedLayout');
-             $output = $this->view->render($layout, array_merge($data, $this->state->all()));
-             return $output;
+            $this->state->remove('__extendedLayout');
+            return $this->view->render($layout, array_merge($data, $this->state->all()));
         }
-
         return $output;
     }
 
@@ -103,7 +90,7 @@ class Interpreter
             foreach ($types as $type) {
                 if ($node instanceof $type) {
                     if ($node instanceof ExtendsNode) {
-                         $this->state->set('__extendedLayout', $node->layout);
+                        $this->state->set('__extendedLayout', $node->layout);
                     } else {
                         $this->executeLifecycle($node->code);
                     }
@@ -119,170 +106,159 @@ class Interpreter
     private function executeLifecycle(string $code): void
     {
         $scope = $this->state->all();
+        $__persisted = [];
+        $__g = Application::getInstance()->get(GlobalStateStoreInterface::class);
+        $code = preg_replace_callback('/@global\s*\(\s*[\'"](.*?)[\'"]\s*(?:,\s*[\'"](.*?)[\'"]\s*)?\)/', function ($m) use ($__g, &$scope) {
+            $k = $m[1];
+            $v = $m[2] ?? $k;
+            $scope[$v] = $__g->get($k);
+            return "";
+        }, $code);
+        $code = preg_replace_callback('/@persist\s*\(\s*\$(.*?)\s*\)/', function ($m) use ($__g, &$scope, &$__persisted) {
+            $v = $m[1];
+            $__persisted[] = $v;
+            $stored = $__g->get($v, '__ABSENT__');
+            if ($stored !== '__ABSENT__') {
+                $scope[$v] = $stored;
+            }
+            return "";
+        }, $code);
         extract($scope);
-
         eval($code);
-
         $vars = get_defined_vars();
         foreach ($vars as $k => $v) {
-            if (!in_array($k, ['this', 'code', 'scope', 'vars'])) {
+            if (!in_array($k, ['this', 'code', 'scope', 'vars', '__persisted', '__g'])) {
                 $this->state->set($k, $v);
+                if (in_array($k, $__persisted)) {
+                    if ($__g->get($k, '__ABSENT__') !== $v) {
+                        $__g->set($k, $v);
+                    }
+                }
             }
         }
     }
 
     public function interpretNodes(array $nodes): string
     {
-        $output = "";
-        foreach ($nodes as $node) {
-            $output .= $this->interpretNode($node);
-        }
-        return $output;
+        $o = "";
+        foreach ($nodes as $n) {
+            $o .= $this->interpretNode($n);
+        } return $o;
     }
 
-    private function interpretNode(Node $node): string
+    private function interpretNode(Node $n): string
     {
-        if ($node instanceof TextNode) {
-            return $node->content;
+        if ($n instanceof TextNode) {
+            return $n->content;
         }
-
-        if ($node instanceof SetupNode || $node instanceof MountNode || $node instanceof RenderedNode || $node instanceof CleanupNode || $node instanceof ExtendsNode) {
+        if ($n instanceof SetupNode || $n instanceof MountNode || $n instanceof RenderedNode || $n instanceof CleanupNode || $n instanceof ExtendsNode) {
             return "";
         }
-
-        if ($node instanceof ExpressionNode) {
-            $val = $this->evaluate($node->expression);
-            return $node->escaped ? View::e((string)$val) : (string)$val;
+        if ($n instanceof ExpressionNode) {
+            $v = $this->evaluate($n->expression);
+            return $n->escaped ? View::e((string)$v) : (string)$v;
         }
-
-        if ($node instanceof DirectiveNode) {
-            return $this->interpretDirective($node);
+        if ($n instanceof DirectiveNode) {
+            return $this->interpretDirective($n);
         }
-
-        if ($node instanceof ComponentNode) {
-            return $this->interpretComponent($node);
+        if ($n instanceof ComponentNode) {
+            return $this->interpretComponent($n);
         }
-
-        if ($node instanceof ReactiveNode) {
-             return $this->interpretReactive($node);
+        if ($n instanceof ReactiveNode) {
+            return $this->interpretReactive($n);
         }
-
-                if ($node instanceof SectionNode) {
-             $content = $this->interpretNodes($node->children);
-             $this->view->setSection($node->name, $content);
-             return "";
+        if ($n instanceof SectionNode) {
+            $this->view->setSection($n->name, $this->interpretNodes($n->children));
+            return "";
         }
-
-        if ($node instanceof YieldNode) {
-             return $this->view->yield($node->name, (string)$node->default);
+        if ($n instanceof YieldNode) {
+            return $this->view->yield($n->name, (string)$n->default);
         }
-
-                if ($node instanceof FragmentNode) {
-             return '<div data-fragment="' . View::e($node->id) . '">' . $this->interpretNodes($node->children) . '</div>';
+        if ($n instanceof FragmentNode) {
+            return '<div data-fragment="' . View::e($n->id) . '">' . $this->interpretNodes($n->children) . '</div>';
         }
-
-        if ($node instanceof SlotNode) {
-             return $this->interpretNodes($node->children);
+        if ($n instanceof SlotNode) {
+            return $this->interpretNodes($n->children);
         }
-
         return "";
     }
 
-    private function interpretDirective(DirectiveNode $node): string
+    private function interpretDirective(DirectiveNode $n): string
     {
-        switch ($node->name) {
+        switch ($n->name) {
             case 'if':
-                if ($this->evaluate($node->expression)) {
-                    return $this->interpretNodes($node->children);
-                }
-                return "";
+                return $this->evaluate($n->expression) ? $this->interpretNodes($n->children) : "";
             case 'foreach':
-                preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $node->expression, $matches);
-                $items = $this->evaluate($matches[1]);
-                $as = $matches[2];
-                $output = "";
+                preg_match('/^\s*(.*?)\s+as\s+(.*?)\s*$/s', $n->expression, $m);
+                $items = $this->evaluate($m[1]);
+                $as = trim($m[2], '$ ');
+                $o = "";
                 if (is_iterable($items)) {
-                    foreach ($items as $item) {
-                        $this->state->set(trim($as, '$'), $item);
-                        $output .= $this->interpretNodes($node->children);
+                    foreach ($items as $i) {
+                        $this->state->set($as, $i);
+                        $o .= $this->interpretNodes($n->children);
                     }
                 }
-                return $output;
-                        case 'prefetch':
-                $val = $node->expression ? $this->evaluate($node->expression) : 'true';
-                return ' data-prefetch="' . View::e((string)$val) . '"';
+                return $o;
+            case 'prefetch':
+                return ' data-prefetch="' . View::e((string)($n->expression ? $this->evaluate($n->expression) : 'true')) . '"';
             case 'transition':
-                $val = $node->expression ? $this->evaluate($node->expression) : 'fade';
-                return ' data-transition="' . View::e((string)$val) . '"';
+                return ' data-transition="' . View::e((string)($n->expression ? $this->evaluate($n->expression) : 'fade')) . '"';
             case 'global':
-                $p = explode(',', $node->expression);
-                $key = trim($p[0], "'\" ");
-                $var = isset($p[1]) ? trim($p[1], "'\"\$ ") : $key;
-                $g = Application::getInstance()->get(GlobalStateStore::class);
-                $this->state->set($var, $g->get($key));
+                $p = explode(',', $n->expression);
+                $k = trim($p[0], "'\" ");
+                $v = isset($p[1]) ? trim($p[1], "'\"$ ") : $k;
+                $this->state->set($v, Application::getInstance()->get(GlobalStateStoreInterface::class)->get($k));
                 return "";
             default:
                 return "";
         }
     }
 
-    private function interpretComponent(ComponentNode $node): string
+    private function interpretComponent(ComponentNode $n): string
     {
-        $tagName = $node->tagName;
-        if (str_starts_with($tagName, 'layout:')) {
-            $viewName = 'layouts/' . substr($tagName, 7);
-        } else {
-            $viewName = $tagName;
+        $vn = str_starts_with($n->tagName, 'layout:') ? 'layouts/' . substr($n->tagName, 7) : $n->tagName;
+        $p = [];
+        foreach ($n->props as $name => $prop) {
+            $p[$name] = $prop['dynamic'] ? $this->evaluate($prop['value']) : $prop['value'];
         }
-
-        $props = [];
-        foreach ($node->props as $name => $prop) {
-            $props[$name] = $prop['dynamic'] ? $this->evaluate($prop['value']) : $prop['value'];
-        }
-
-        // Handle named slots
-        $defaultSlot = "";
-        foreach ($node->children as $child) {
-            if ($child instanceof SlotNode) {
-                $props[$child->name] = $this->interpretNodes($child->children);
+        $ds = "";
+        foreach ($n->children as $c) {
+            if ($c instanceof SlotNode) {
+                $p[$c->name] = $this->interpretNodes($c->children);
             } else {
-                $defaultSlot .= $this->interpretNode($child);
+                $ds .= $this->interpretNode($c);
             }
         }
-        $props['slot'] = $defaultSlot;
-
+        $p['slot'] = $ds;
         if ($this->debugCollector) {
-            $this->debugCollector->recordComponent($viewName, $props);
+            $this->debugCollector->recordComponent($vn, $p);
         }
-
-        return $this->view->render($viewName, $props, null);
+        return $this->view->render($vn, $p, null);
     }
 
-    private function interpretReactive(ReactiveNode $node): string
+    private function interpretReactive(ReactiveNode $n): string
     {
         $this->state->markModified();
-        $html = "<{$node->tagName}";
-        foreach ($node->attributes as $name => $value) {
-            $html .= " {$name}=\"" . View::e((string)$value) . "\"";
+        $h = "<{$n->tagName}";
+        foreach ($n->attributes as $name => $v) {
+            $h .= " {$name}=\"" . View::e((string)$v) . "\"";
         }
-        foreach ($node->reactiveAttributes as $event => $action) {
-            $html .= " s-on:{$event}=\"" . View::e((string)$action) . "\"";
+        foreach ($n->reactiveAttributes as $e => $a) {
+            $h .= " s-on:{$e}=\"" . View::e((string)$a) . "\"";
         }
-        $html .= ">";
-        $html .= $this->interpretNodes($node->children);
-        $html .= "</{$node->tagName}>";
-        return $html;
+        return $h . ">" . $this->interpretNodes($n->children) . "</{$n->tagName}>";
     }
 
-    private function evaluate(string $expression)
+    private function evaluate(string $expr)
     {
-        $transpiled = $this->transpiler->transpile($expression);
-        $scope = $this->state->all();
-        extract($scope);
+        $t = $this->transpiler->transpile($expr);
+        $s = $this->state->all();
+        extract($s);
         try {
-            return eval("return {$transpiled};");
+            return eval("return {$t};");
         } catch (\Throwable $e) {
-             return null;
+            return null;
         }
     }
 }

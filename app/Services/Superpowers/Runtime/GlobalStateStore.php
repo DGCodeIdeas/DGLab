@@ -2,13 +2,7 @@
 
 namespace DGLab\Services\Superpowers\Runtime;
 
-/**
- * Class GlobalStateStore
- *
- * Manages shared application state across SuperPHP components.
- * Persistent via Session.
- */
-class GlobalStateStore
+class GlobalStateStore implements GlobalStateStoreInterface
 {
     private const SESSION_KEY = '_superpowers_global_state';
     private array $state = [];
@@ -20,13 +14,16 @@ class GlobalStateStore
 
     public function set(string $key, mixed $value): void
     {
+        if (!$this->isSerializable($value)) {
+            throw new \InvalidArgumentException("Value for key '{$key}' is not serializable.");
+        }
         $this->state[$key] = $value;
         $this->save();
     }
 
     public function get(string $key, mixed $default = null): mixed
     {
-        return $this->state[$key] ?? $default;
+        return array_key_exists($key, $this->state) ? $this->state[$key] : $default;
     }
 
     public function all(): array
@@ -53,10 +50,29 @@ class GlobalStateStore
         }
     }
 
-    private function save(): void
+    public function save(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
             $_SESSION[self::SESSION_KEY] = $this->state;
         }
+    }
+
+    private function isSerializable(mixed $value): bool
+    {
+        if (is_scalar($value) || is_null($value)) {
+            return true;
+        }
+        if (is_resource($value) || $value instanceof \Closure) {
+            return false;
+        }
+        if (is_array($value)) {
+            foreach ($value as $v) {
+                if (!$this->isSerializable($v)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return true;
     }
 }
