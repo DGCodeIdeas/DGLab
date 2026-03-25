@@ -1,13 +1,13 @@
 # MangaScript Studio: AI Orchestration Ecosystem
 
 ## Overview
-MangaScript is a premier "Studio App" within the DGLab framework, specializing in the high-fidelity transformation of novels into detailed manga scripts. It leverages the framework's core services—Auth (Phases 1-4), Tenancy, EventDispatcher, CMS, and DownloadService—to provide a secure, scalable, and reactive multi-modal experience.
+MangaScript is a premier "Studio App" within the **CMS Studio** framework, specializing in the high-fidelity transformation of novels into detailed manga scripts. It leverages the framework's core services—Auth (Phases 1-4), Tenancy, EventDispatcher, CMS, and DownloadService—to provide a secure, scalable, and reactive multi-modal experience.
 
-## Strategic Vision
-Instead of a simple utility, MangaScript is refactored into a full-scale "Workspace" that integrates:
+## Strategic Vision: A Studio App
+Instead of a standalone utility, MangaScript is fully integrated into the **CMS Studio Hub-and-Spoke** model as the "AI Orchestrator" spoke.
 - **Intelligent LLM Orchestration**: Using `llm_unified.php` and `llm_categorization.php` for dynamic model selection.
 - **CMS Integration**: Leveraging the "Hybrid EAV" strategy for script versioning and metadata management.
-- **SuperPHP Reactive UI**: A modern, interactive frontend built with `<s:components>` and real-time state synchronization.
+- **SuperPHP Reactive UI**: A modern, interactive workspace built with `<s:components>` and real-time state synchronization.
 - **Event-Driven Pipeline**: Background processing of massive novels via the `EventDispatcher`.
 - **Secure Delivery**: Distribution of final scripts through the `DownloadService` with signed, expiring URLs.
 
