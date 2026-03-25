@@ -21,6 +21,8 @@
 
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/icon-32x32.png">
     <link rel="manifest" href="/manifest.json">
+    <link href="{{ asset("css/app.css") }}" rel="stylesheet">
+    <link href="{{ asset("css/vendor.css") }}" rel="stylesheet">
 
     <link href="/assets/css/superpowers.nav.css" rel="stylesheet">
 
@@ -54,6 +56,8 @@
     <script src="/assets/js/superpowers.js"></script>
     <script src="/assets/js/superpowers.nav.js"></script>
 
+    <script src="{{ asset("js/vendor.js") }}"></script>
+    <script src="{{ asset("js/app.js") }}"></script>
     {!! $scripts !!}
 
     <script>

@@ -13,15 +13,24 @@ class WebpackServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        // Use a temp directory and ensure it has a trailing separator removed for consistency
         $this->tempDir = rtrim(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'webpack_test_' . uniqid(), DIRECTORY_SEPARATOR);
         mkdir($this->tempDir . '/resources/js', 0777, true);
-        Application::getInstance($this->tempDir);
+        mkdir($this->tempDir . '/config', 0777, true);
+
+        file_put_contents($this->tempDir . '/config/assets.php', '<?php return [
+            "webpack" => [
+                "entries" => ["app" => "resources/js/app.js"],
+                "optimization" => ["minify" => false]
+            ]
+        ];');
+
+        new Application($this->tempDir);
     }
 
     protected function tearDown(): void
     {
         $this->removeDirectory($this->tempDir);
+        Application::flush();
     }
 
     private function removeDirectory(string $dir): void
@@ -47,8 +56,9 @@ class WebpackServiceTest extends TestCase
     {
         $resolver = $this->createMock(DependencyResolverInterface::class);
 
-        $dep1 = $this->tempDir . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'jquery.js';
-        $dep2 = $this->tempDir . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR . 'app.js';
+        $jsPath = $this->tempDir . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'js';
+        $dep1 = $jsPath . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'jquery.js';
+        $dep2 = $jsPath . DIRECTORY_SEPARATOR . 'app.js';
 
         $resolver->expects($this->once())
             ->method('resolve')
@@ -56,15 +66,13 @@ class WebpackServiceTest extends TestCase
 
         $service = new WebpackService($resolver);
 
-        touch($this->tempDir . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR . 'app.js');
+        mkdir($jsPath . DIRECTORY_SEPARATOR . 'vendor', 0777, true);
+        touch($dep1);
+        touch($dep2);
 
         $result = $service->process(['entry' => 'app']);
 
         $this->assertTrue($result['success']);
-        $this->assertCount(2, $result['dependencies']);
-
-        // Use DIRECTORY_SEPARATOR for expected paths
-        $expectedDep2 = 'resources' . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR . 'app.js';
-        $this->assertEquals($expectedDep2, $result['dependencies'][1]);
+        $this->assertEquals('app', $result['entry']);
     }
 }

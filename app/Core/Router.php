@@ -17,6 +17,7 @@
 
 namespace DGLab\Core;
 
+use DGLab\Services\AssetService;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 
 /**
@@ -303,7 +304,15 @@ class Router
     {
         $method = $request->getMethod();
         $path = $request->getPath();
-
+        if (str_starts_with($path, "/assets/")) {
+            $parts = explode("/", trim($path, "/"));
+            if (count($parts) >= 3) {
+                $type = $parts[1];
+                $file = implode("/", array_slice($parts, 2));
+                Application::getInstance()->get(AssetService::class)->serveAsset($type, $file);
+                return new Response("", 200);
+            }
+        }
         // Find matching route
         $route = $this->matchRoute($method, $path);
 
