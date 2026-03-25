@@ -1,0 +1,286 @@
+/**
+ * DGLab PWA - Main Stylesheet
+ *
+ * Custom styles built on top of Bootstrap 5.
+ */
+
+// ==================== Variables ====================
+
+// Brand Colors
+$primary: #0d6efd;
+$secondary: #6c757d;
+$success: #198754;
+$info: #0dcaf0;
+$warning: #ffc107;
+$danger: #dc3545;
+$light: #f8f9fa;
+$dark: #212529;
+
+// Custom Variables
+$border-radius-lg: 1rem;
+$box-shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+$box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+$box-shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+
+// ==================== Base Styles ====================
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f8f9fa;
+}
+
+main {
+    flex: 1;
+}
+
+// ==================== Typography ====================
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+}
+
+.lead {
+    font-weight: 400;
+}
+
+// ==================== Components ====================
+
+// Cards
+.card {
+    border: none;
+    border-radius: $border-radius-lg;
+    box-shadow: $box-shadow-sm;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+        box-shadow: $box-shadow;
+    }
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-weight: 600;
+}
+
+// Service Cards
+.service-card {
+    cursor: pointer;
+
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: $box-shadow-lg;
+    }
+}
+
+// Buttons
+.btn {
+    font-weight: 500;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1.25rem;
+
+    &-lg {
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+.btn-primary {
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+
+    &:hover {
+        box-shadow: 0 6px 8px rgba(13, 110, 253, 0.3);
+    }
+}
+
+// Upload Zone
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: $border-radius-lg;
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    &:hover,
+    &.dragover {
+        border-color: $primary;
+        background-color: rgba(13, 110, 253, 0.02);
+    }
+}
+
+// Progress Bar
+.progress {
+    border-radius: 1rem;
+    background-color: #e9ecef;
+    overflow: hidden;
+}
+
+.progress-bar {
+    border-radius: 1rem;
+    transition: width 0.3s ease;
+}
+
+// Form Check Cards
+.form-check.card {
+    padding: 0;
+    overflow: hidden;
+
+    .form-check-input {
+        margin: 1rem 0 0 1rem;
+    }
+
+    .form-check-label {
+        padding: 1rem;
+        padding-left: 2.5rem;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    &:has(.form-check-input:checked) {
+        border-color: $primary;
+        background-color: rgba(13, 110, 253, 0.02);
+    }
+}
+
+// ==================== Navigation ====================
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+// ==================== Hero Section ====================
+
+.hero-section {
+    background: linear-gradient(135deg, $primary 0%, darken($primary, 15%) 100%);
+    color: white;
+
+    .btn-light {
+        color: $primary;
+
+        &:hover {
+            background-color: rgba(255,255,255,0.95);
+        }
+    }
+}
+
+// ==================== Footer ====================
+
+footer {
+    margin-top: auto;
+}
+
+// ==================== Utilities ====================
+
+// Min height utilities
+.min-vh-50 {
+    min-height: 50vh;
+}
+
+.min-vh-75 {
+    min-height: 75vh;
+}
+
+// Border dashed
+.border-dashed {
+    border-style: dashed !important;
+}
+
+// Toast container
+.toast-container {
+    z-index: 1060;
+}
+
+// Loading overlay
+#loading-overlay {
+    backdrop-filter: blur(4px);
+}
+
+// ==================== Offline Styles ====================
+
+body.offline {
+    .online-only {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+// ==================== Animations ====================
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+// ==================== Responsive ====================
+
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 3rem 0;
+
+        h1 {
+            font-size: 2rem;
+        }
+    }
+
+    .service-card {
+        margin-bottom: 1rem;
+    }
+}
+
+// ==================== Print Styles ====================
+
+@media print {
+    .navbar,
+    footer,
+    .btn,
+    #toast-container,
+    #loading-overlay {
+        display: none !important;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+}
+
+// ==================== Accessibility ====================
+
+// Focus styles
+*:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+}
+
+// Reduced motion
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+    .card {
+        border: 2px solid currentColor;
+    }
+}

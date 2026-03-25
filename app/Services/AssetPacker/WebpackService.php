@@ -60,7 +60,7 @@ class WebpackService extends BaseService implements ServiceInterface
         return $this->validateAgainstSchema($input, $this->getInputSchema());
     }
 
-            public function process(array $input, ?callable $progressCallback = null): array
+    public function process(array $input, ?callable $progressCallback = null): array
     {
         $this->reportProgress($progressCallback, 10, 'Initializing resolution');
 
@@ -104,9 +104,11 @@ class WebpackService extends BaseService implements ServiceInterface
         $mapFilename = "$outputFilename.map";
 
         $bundleContent .= "\n//# sourceMappingURL=$mapFilename";
-
-        $outputPath = $basePath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'js';
-        if (!is_dir($outputPath)) mkdir($outputPath, 0755, true);
+        $assetsPath = $basePath . DIRECTORY_SEPARATOR . "public" . DIRECTORY_SEPARATOR . "assets";
+        $outputPath = $assetsPath . DIRECTORY_SEPARATOR . "js";
+        if (!is_dir($outputPath)) {
+            mkdir($outputPath, 0755, true);
+        }
 
         $this->cleanupOldVersions($outputPath, $entryKey);
 
@@ -118,24 +120,24 @@ class WebpackService extends BaseService implements ServiceInterface
         $this->reportProgress($progressCallback, 100, 'Build complete');
 
         return [
-            'success' => true,
-            'entry' => $entryKey,
-            'output' => $outputFilename,
-            'hash' => $hash,
-            'count' => count($dependencies),
+        'success' => true,
+        'entry' => $entryKey,
+        'output' => $outputFilename,
+        'hash' => $hash,
+        'count' => count($dependencies),
         ];
     }
 
-        private function bundle(array $dependencies): array
+    private function bundle(array $dependencies): array
     {
         $content = "/** DGLab Asset Bundle **/
 ";
         $map = [
-            'version' => 3,
-            'file' => '',
-            'sources' => [],
-            'names' => [],
-            'mappings' => ''
+        'version' => 3,
+        'file' => '',
+        'sources' => [],
+        'names' => [],
+        'mappings' => ''
         ];
 
         $lineOffset = 2; // Initial header lines
@@ -197,8 +199,8 @@ class WebpackService extends BaseService implements ServiceInterface
         $content .= "})();";
 
         return [
-            'content' => $content,
-            'map' => $map
+        'content' => $content,
+        'map' => $map
         ];
     }
 
@@ -212,8 +214,10 @@ class WebpackService extends BaseService implements ServiceInterface
 
     private function getModuleId(string $path): string
     {
-        $basePath = Application::getInstance()->getBasePath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR;
-        $id = str_replace($basePath, '', $path);
+        $basePath = Application::getInstance()->getBasePath();
+        $jsPath = $basePath . DIRECTORY_SEPARATOR . "resources" . DIRECTORY_SEPARATOR . "js";
+        $jsResourcesPath = $jsPath . DIRECTORY_SEPARATOR;
+        $id = str_replace($jsResourcesPath, "", $path);
         return str_replace(DIRECTORY_SEPARATOR, '/', $id);
     }
 
