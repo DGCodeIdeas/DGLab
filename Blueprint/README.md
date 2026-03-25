@@ -13,6 +13,7 @@ To build a high-performance, ultra-flexible, and meticulously observable ecosyst
 | **DownloadService** | ✅ COMPLETED | 5 | 5 |
 | **EventDispatcher** | ✅ COMPLETED | 5 | 5 |
 | **AssetBundler** | ✅ COMPLETED | 5 | 5 |
+| **Test Suite** | 🏗️ PLANNED | 0 | 10 |
 | **CMS Studio** | 🏗️ IN PROGRESS | 2 | 9 |
 | **MangaScript** | 🏗️ IN PROGRESS | 1 | 5 |
 | **CMS (Legacy)** | 🚫 SUPERSEDED | - | - |
@@ -27,6 +28,7 @@ To build a high-performance, ultra-flexible, and meticulously observable ecosyst
 - **[DownloadService](./DownloadService/OVERVIEW.md)**: Secure, driver-based file delivery system with lifecycle management and audit trails.
 - **[EventDispatcher](./EventDispatcher/OVERVIEW.md)**: Foundational engine for synchronous and asynchronous event-driven communication.
 - **[AssetBundler](./AssetBundler/OVERVIEW.md)**: Pure PHP alternative to Webpack for JS dependency resolution and bundling.
+- **[Test Suite](./TestSuite/OVERVIEW.md)**: A 10-phase "Fortress of Reliability" blueprint for pure PHP, Node-free testing of reactive SPAs and multi-tenant services.
 
 ### Specialized Applications
 - **[CMS Studio](./CMSStudio/OVERVIEW.md)**: The unified command center, fusing Headless CMS flexibility with Admin Panel observability.
