@@ -2,6 +2,7 @@
 
 namespace DGLab\Tests\Integration;
 
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Download\DownloadManager;
 use DGLab\Database\DownloadToken;
 use DGLab\Core\Request;

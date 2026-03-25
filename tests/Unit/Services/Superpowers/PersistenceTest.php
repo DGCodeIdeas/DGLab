@@ -8,7 +8,7 @@ use DGLab\Core\Application;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
 
-class PersistenceTest extends TestCase
+class PersistenceTest extends \DGLab\Tests\TestCase
 {
     private View $view;
 
@@ -16,7 +16,7 @@ class PersistenceTest extends TestCase
     {
         parent::setUp();
         $this->view = new View();
-        Application::getInstance()->set(GlobalStateStoreInterface::class, function() {
+        Application::getInstance()->set(GlobalStateStoreInterface::class, function () {
             return new GlobalStateStore();
         });
         if (session_status() === PHP_SESSION_ACTIVE) {

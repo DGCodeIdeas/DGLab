@@ -2,9 +2,8 @@
 
 namespace DGLab\Tests\Unit\Services\Auth;
 
-use PHPUnit\Framework\TestCase;
 use DGLab\Services\Auth\PasswordService;
-use DGLab\Core\Application;
+use DGLab\Tests\TestCase;
 
 class PasswordServiceTest extends TestCase
 {
@@ -12,6 +11,7 @@ class PasswordServiceTest extends TestCase
 
     protected function setUp(): void
     {
+        parent::setUp();
         $this->service = new PasswordService();
     }
 

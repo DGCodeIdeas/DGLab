@@ -8,7 +8,7 @@ use DGLab\Core\View;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 
-class GlobalStateTest extends TestCase
+class GlobalStateTest extends \DGLab\Tests\TestCase
 {
     private View $view;
     private string $vPath;
@@ -16,7 +16,9 @@ class GlobalStateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (!isset($_SESSION)) $_SESSION = [];
+        if (!isset($_SESSION)) {
+            $_SESSION = [];
+        }
 
         $app = Application::getInstance();
         $app->setConfig('superpowers.mode', 'interpreted');

@@ -2,7 +2,7 @@
 
 namespace DGLab\Tests\Integration\Services\Auth;
 
-use DGLab\Tests\Integration\IntegrationTestCase;
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Auth\Repositories\UserRepository;
 use DGLab\Models\User;
 use DGLab\Database\Migration;

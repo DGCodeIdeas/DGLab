@@ -2,7 +2,7 @@
 
 namespace DGLab\Tests\Integration\Services\Auth;
 
-use DGLab\Tests\Integration\IntegrationTestCase;
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Auth\MfaService;
 use DGLab\Services\Auth\VerificationService;
 use DGLab\Services\Auth\RateLimiter;
@@ -76,7 +76,9 @@ class SecurityLifecycleTest extends IntegrationTestCase
         $limiter->hit($key);
         $this->assertEquals(1, $limiter->attempts($key));
 
-        for ($i = 0; $i < 5; $i++) $limiter->hit($key);
+        for ($i = 0; $i < 5; $i++) {
+            $limiter->hit($key);
+        }
         $this->assertTrue($limiter->tooManyAttempts($key, 5));
 
         $limiter->resetAttempts($key);

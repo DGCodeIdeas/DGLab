@@ -2,53 +2,41 @@
 
 namespace DGLab\Tests\Integration\Core;
 
-use DGLab\Core\Application;
 use DGLab\Core\BaseEvent;
 use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\EventDispatcher;
-use DGLab\Database\Connection;
-use PHPUnit\Framework\TestCase;
+use DGLab\Tests\IntegrationTestCase;
 
-class AsyncTestEvent extends BaseEvent {}
+class AsyncTestEvent extends BaseEvent
+{
+}
 
-class AsyncTestListener {
+class AsyncTestListener
+{
     public static int $handled = 0;
-    public function handle(EventInterface $event) {
+    public function handle(EventInterface $event)
+    {
         self::$handled++;
     }
 }
 
-class AsyncEventTest extends TestCase
+class AsyncEventTest extends IntegrationTestCase
 {
-    protected Application $app;
     protected EventDispatcher $dispatcher;
-    protected Connection $db;
 
     protected function setUp(): void
     {
-        Application::flush();
-        $this->app = Application::getInstance();
+        parent::setUp();
 
-        // Setup in-memory SQLite
-        $config = [
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => ':memory:',
-                ]
-            ]
-        ];
-        $this->db = new Connection($config);
-        $this->app->singleton(Connection::class, $this->db);
-        $this->app->singleton(\DGLab\Core\EventDrivers\QueueDriver::class, function() {
-            return new \DGLab\Core\EventDrivers\QueueDriver($this->app);
-        });
+        // Register listener in container
+        $this->app->set(AsyncTestListener::class, fn() => new AsyncTestListener());
 
         // Run migrations
-        require_once 'database/migrations/2026_03_12_000001_create_event_queue_table.php';
-        $migration = new \CreateEventQueueTable($this->db);
-        $migration->up();
+        if (file_exists('database/migrations/2026_03_12_000001_create_event_queue_table.php')) {
+            require_once 'database/migrations/2026_03_12_000001_create_event_queue_table.php';
+            $migration = new \CreateEventQueueTable($this->db);
+            $migration->up();
+        }
 
         $this->dispatcher = $this->app->get(EventDispatcher::class);
         AsyncTestListener::$handled = 0;

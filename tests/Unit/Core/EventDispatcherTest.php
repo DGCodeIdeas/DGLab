@@ -7,41 +7,52 @@ use DGLab\Core\BaseEvent;
 use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\EventDispatcher;
 use DGLab\Database\Connection;
-use PHPUnit\Framework\TestCase;
+use DGLab\Tests\TestCase;
 
-class TestEvent extends BaseEvent {}
-class StoppableTestEvent extends BaseEvent {}
+class TestEvent extends BaseEvent
+{
+}
+class StoppableTestEvent extends BaseEvent
+{
+}
 
-class TestListener {
+class TestListener
+{
     public static int $called = 0;
-    public function handle(EventInterface $event) {
+    public function handle(EventInterface $event)
+    {
         self::$called++;
     }
 }
 
-class DependencyListener {
+class DependencyListener
+{
     public static ?Application $injected = null;
-    public function __construct(Application $app) {
+    public function __construct(Application $app)
+    {
         self::$injected = $app;
     }
-    public function handle(EventInterface $event) {
+    public function handle(EventInterface $event)
+    {
         // ...
     }
 }
 
 class EventDispatcherTest extends TestCase
 {
-    protected Application $app;
     protected EventDispatcher $dispatcher;
 
     protected function setUp(): void
     {
-        Application::flush();
-        $this->app = Application::getInstance();
+        parent::setUp();
+
+        // Register class listeners in container so they can be resolved
+        $this->app->set(TestListener::class, fn() => new TestListener());
+        $this->app->set(DependencyListener::class, fn($app) => new DependencyListener($app));
 
         // Mock Connection for QueueDriver
         $db = $this->createMock(Connection::class);
-        $this->app->singleton(Connection::class, $db);
+        $this->app->set(Connection::class, $db);
 
         $this->dispatcher = $this->app->get(EventDispatcher::class);
         TestListener::$called = 0;
@@ -76,8 +87,12 @@ class EventDispatcherTest extends TestCase
     public function test_it_respects_priorities()
     {
         $results = [];
-        $this->dispatcher->listen(TestEvent::class, function() use (&$results) { $results[] = 'low'; }, 0);
-        $this->dispatcher->listen(TestEvent::class, function() use (&$results) { $results[] = 'high'; }, 100);
+        $this->dispatcher->listen(TestEvent::class, function () use (&$results) {
+            $results[] = 'low';
+        }, 0);
+        $this->dispatcher->listen(TestEvent::class, function () use (&$results) {
+            $results[] = 'high';
+        }, 100);
 
         $this->dispatcher->dispatch(new TestEvent());
         $this->assertEquals(['high', 'low'], $results);
@@ -86,12 +101,12 @@ class EventDispatcherTest extends TestCase
     public function test_it_can_stop_propagation()
     {
         $called = 0;
-        $this->dispatcher->listen(StoppableTestEvent::class, function(StoppableTestEvent $event) use (&$called) {
+        $this->dispatcher->listen(StoppableTestEvent::class, function (StoppableTestEvent $event) use (&$called) {
             $called++;
             $event->stopPropagation();
         }, 100);
 
-        $this->dispatcher->listen(StoppableTestEvent::class, function(StoppableTestEvent $event) use (&$called) {
+        $this->dispatcher->listen(StoppableTestEvent::class, function (StoppableTestEvent $event) use (&$called) {
             $called++;
         }, 0);
 
@@ -101,7 +116,8 @@ class EventDispatcherTest extends TestCase
 
     public function test_it_can_remove_listeners()
     {
-        $listener = function() {};
+        $listener = function () {
+        };
         $this->dispatcher->listen(TestEvent::class, $listener);
         $this->assertCount(1, $this->dispatcher->getListenersForEvent(new TestEvent()));
 

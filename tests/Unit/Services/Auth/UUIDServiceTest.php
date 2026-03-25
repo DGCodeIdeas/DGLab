@@ -5,7 +5,7 @@ namespace DGLab\Tests\Unit\Services\Auth;
 use PHPUnit\Framework\TestCase;
 use DGLab\Services\Auth\UUIDService;
 
-class UUIDServiceTest extends TestCase
+class UUIDServiceTest extends \DGLab\Tests\TestCase
 {
     private UUIDService $service;
 

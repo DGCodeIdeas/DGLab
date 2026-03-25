@@ -9,6 +9,7 @@ use DGLab\Core\Contracts\EventSubscriberInterface;
 use DGLab\Core\EventDrivers\QueueDriver;
 use DGLab\Core\EventDrivers\SyncDriver;
 use DGLab\Core\Utils\PatternMatcher;
+use DGLab\Core\EventAuditService;
 use PDOException;
 
 /**

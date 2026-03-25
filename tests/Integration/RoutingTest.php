@@ -2,6 +2,7 @@
 
 namespace DGLab\Tests\Integration;
 
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Core\Router;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 
@@ -14,10 +15,10 @@ class RoutingTest extends IntegrationTestCase
         $router = $this->app->get(Router::class);
 
         // Register controllers in the container for tests
-        $this->app->singleton(\DGLab\Controllers\HomeController::class, function() {
+        $this->app->singleton(\DGLab\Controllers\HomeController::class, function () {
             return new \DGLab\Controllers\HomeController();
         });
-        $this->app->singleton(\DGLab\Controllers\ServicesController::class, function() {
+        $this->app->singleton(\DGLab\Controllers\ServicesController::class, function () {
             return new \DGLab\Controllers\ServicesController();
         });
 

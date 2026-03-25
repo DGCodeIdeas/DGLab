@@ -75,49 +75,67 @@ class Application
     }
 
     /**
-     * Register the core services.
+     * Register the core services using lazy loading.
      *
      * @return void
      */
-    protected function registerBaseServices(): void
+    public function registerBaseServices(): void
     {
         $this->set(Application::class, $this);
+
         $this->set(Request::class, function () {
             return new Request();
         });
-        $this->set(Router::class, function () {
-            return new Router($this);
+
+        $this->set(Router::class, function ($app) {
+            return new Router($app);
         });
-        $this->set(View::class, function () {
-            return new View($this);
+
+        $this->set(View::class, function ($app) {
+            return new View($app);
         });
-        $this->set(Connection::class, function () {
-            return new Connection($this->config('database') ?? []);
+
+        $this->set(Connection::class, function ($app) {
+            return new Connection($app->config('database') ?? []);
         });
+
         $this->set(LoggerInterface::class, function () {
             return new Logger();
         });
-        $this->set(DispatcherInterface::class, function () {
-            return new EventDispatcher($this);
+
+        $this->set(DispatcherInterface::class, function ($app) {
+            return new EventDispatcher($app);
         });
-        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, function () {
-            return new \DGLab\Core\EventDrivers\SyncDriver($this);
+
+        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, function ($app) {
+            return new \DGLab\Core\EventDrivers\SyncDriver($app);
         });
-        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, function () {
-            return new \DGLab\Core\EventDrivers\QueueDriver($this);
+
+        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, function ($app) {
+            return new \DGLab\Core\EventDrivers\QueueDriver($app);
         });
-        $this->set(AuditService::class, function () {
+
+        $this->set(AuditService::class, function ($app) {
             return new AuditService(
-                $this->get(Connection::class),
-                $this->get(Request::class),
-                $this->has(\DGLab\Services\Tenancy\TenancyService::class) ?
-                    $this->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
-                $this->has(\DGLab\Services\Auth\AuthManager::class) ?
-                    $this->get(\DGLab\Services\Auth\AuthManager::class) : null
+                $app->get(Connection::class),
+                $app->get(Request::class),
+                $app->has(\DGLab\Services\Tenancy\TenancyService::class) ?
+                    $app->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
+                $app->has(\DGLab\Services\Auth\AuthManager::class) ?
+                    $app->get(\DGLab\Services\Auth\AuthManager::class) : null
             );
         });
-        $this->set(\DGLab\Services\Download\AuditService::class, function () {
-            return new \DGLab\Services\Download\AuditService($this->get(AuditService::class));
+
+        $this->set(\DGLab\Services\Download\AuditService::class, function ($app) {
+            return new \DGLab\Services\Download\AuditService($app->get(AuditService::class));
+        });
+
+        // Response Factory
+        $this->set(ResponseFactoryInterface::class, function () {
+            return new ResponseFactory();
+        });
+        $this->set(ResponseFactory::class, function () {
+            return new ResponseFactory();
         });
     }
 
@@ -147,9 +165,9 @@ class Application
             $router = $this->get(Router::class);
             return $router->dispatch($request);
         } catch (RouteNotFoundException $e) {
-            return new Response("404 Not Found", 404);
+            return $this->get(ResponseFactoryInterface::class)->create("404 Not Found", 404);
         } catch (\Exception $e) {
-            return new Response("500 Internal Server Error: " . $e->getMessage(), 500);
+            return $this->get(ResponseFactoryInterface::class)->create("500 Internal Server Error: " . $e->getMessage(), 500);
         }
     }
 
@@ -165,7 +183,12 @@ class Application
             throw new InvalidArgumentException("Service not found: {$id}");
         }
 
-        if (is_callable($this->services[$id])) {
+        if (is_callable($this->services[$id]) && !(is_object($this->services[$id]) && $this->services[$id] instanceof \Closure)) {
+             // Standard check, but wait... is_callable returns true for closures.
+        }
+
+        // Correct lazy loading implementation
+        if ($this->services[$id] instanceof \Closure) {
             $this->services[$id] = ($this->services[$id])($this);
         }
 
@@ -328,5 +351,37 @@ class Application
     public static function flush(): void
     {
         static::$instance = null;
+
+        // Flush major facades that hold static state
+        if (class_exists(\DGLab\Facades\Auth::class)) {
+            $ref = new \ReflectionClass(\DGLab\Facades\Auth::class);
+            if ($ref->hasProperty('manager')) {
+                $prop = $ref->getProperty('manager');
+                $prop->setAccessible(true);
+                $prop->setValue(null, null);
+            }
+        }
+
+        if (class_exists(\DGLab\Facades\Event::class)) {
+            $ref = new \ReflectionClass(\DGLab\Facades\Event::class);
+            if ($ref->hasProperty('dispatcher')) {
+                $prop = $ref->getProperty('dispatcher');
+                $prop->setAccessible(true);
+                $prop->setValue(null, null);
+            }
+        }
+
+        // Flush major service singletons
+        if (class_exists(\DGLab\Database\Connection::class)) {
+            \DGLab\Database\Connection::clearInstance();
+        }
+
+        if (class_exists(\DGLab\Database\Model::class)) {
+            \DGLab\Database\Model::clearConnection();
+        }
+
+        if (class_exists(\DGLab\Services\Download\DownloadManager::class)) {
+            \DGLab\Services\Download\DownloadManager::reset();
+        }
     }
 }

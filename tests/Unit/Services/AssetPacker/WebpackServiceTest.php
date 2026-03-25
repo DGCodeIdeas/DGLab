@@ -7,7 +7,7 @@ use DGLab\Services\AssetPacker\DependencyResolverInterface;
 use DGLab\Core\Application;
 use PHPUnit\Framework\TestCase;
 
-class WebpackServiceTest extends TestCase
+class WebpackServiceTest extends \DGLab\Tests\TestCase
 {
     private string $tempDir;
 
@@ -35,7 +35,9 @@ class WebpackServiceTest extends TestCase
 
     private function removeDirectory(string $dir): void
     {
-        if (!is_dir($dir)) return;
+        if (!is_dir($dir)) {
+            return;
+        }
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . DIRECTORY_SEPARATOR . $file;

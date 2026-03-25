@@ -2,7 +2,7 @@
 
 namespace DGLab\Tests\Integration\Services\Auth;
 
-use DGLab\Tests\Integration\IntegrationTestCase;
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Auth\AuthManager;
 use DGLab\Services\Auth\AuthorizationService;
 use DGLab\Services\Tenancy\TenancyService;
@@ -15,7 +15,7 @@ class AuthorizationTest extends IntegrationTestCase
 {
     private AuthManager $auth;
     private TenancyService $tenancy;
-    private $db;
+    protected Connection $db;
 
     protected function setUp(): void
     {
