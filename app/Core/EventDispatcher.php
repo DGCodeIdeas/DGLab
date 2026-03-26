@@ -42,7 +42,7 @@ class EventDispatcher implements DispatcherInterface
     /**
      * @var QueueDriver The queue driver for async events.
      */
-    protected QueueDriver $queueDriver;
+    protected EventDriverInterface $queueDriver;
 
     /**
      * EventDispatcher constructor.

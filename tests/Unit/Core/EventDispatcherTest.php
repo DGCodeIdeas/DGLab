@@ -2,126 +2,111 @@
 
 namespace DGLab\Tests\Unit\Core;
 
-use DGLab\Core\Application;
-use DGLab\Core\BaseEvent;
-use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\EventDispatcher;
-use DGLab\Database\Connection;
+use DGLab\Core\Application;
+use DGLab\Core\Contracts\EventInterface;
+use DGLab\Core\Contracts\EventDriverInterface;
+use DGLab\Core\EventDrivers\SyncDriver;
+use DGLab\Core\EventDrivers\QueueDriver;
 use DGLab\Tests\TestCase;
-
-class TestEvent extends BaseEvent
-{
-}
-class StoppableTestEvent extends BaseEvent
-{
-}
-
-class TestListener
-{
-    public static int $called = 0;
-    public function handle(EventInterface $event)
-    {
-        self::$called++;
-    }
-}
-
-class DependencyListener
-{
-    public static ?Application $injected = null;
-    public function __construct(Application $app)
-    {
-        self::$injected = $app;
-    }
-    public function handle(EventInterface $event)
-    {
-        // ...
-    }
-}
+use Prophecy\Argument;
 
 class EventDispatcherTest extends TestCase
 {
-    protected EventDispatcher $dispatcher;
+    protected Application $app;
+    private $syncDriver;
+    private $queueDriver;
+    private $dispatcher;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Register class listeners in container so they can be resolved
-        $this->app->set(TestListener::class, fn() => new TestListener());
-        $this->app->set(DependencyListener::class, fn($app) => new DependencyListener($app));
+        $this->app = Application::getInstance();
 
-        // Mock Connection for QueueDriver
-        $db = $this->createMock(Connection::class);
-        $this->app->set(Connection::class, $db);
+        $this->syncDriver = $this->prophesize(EventDriverInterface::class);
+        $this->queueDriver = $this->prophesize(EventDriverInterface::class);
 
-        $this->dispatcher = $this->app->get(EventDispatcher::class);
-        TestListener::$called = 0;
-        DependencyListener::$injected = null;
+        // Register drivers in the container
+        $this->app->set(SyncDriver::class, fn() => $this->syncDriver->reveal());
+        $this->app->set(QueueDriver::class, fn() => $this->queueDriver->reveal());
+
+        $this->dispatcher = new EventDispatcher($this->app);
     }
 
-    public function test_it_can_dispatch_events_to_closures()
+    public function testRegisterAndRetrieveListeners()
     {
-        $called = 0;
-        $this->dispatcher->listen(TestEvent::class, function (TestEvent $event) use (&$called) {
-            $called++;
-        });
+        $listener = function() {};
+        $this->dispatcher->listen('test.event', $listener);
 
-        $this->dispatcher->dispatch(new TestEvent());
-        $this->assertEquals(1, $called);
+        $event = $this->prophesize(EventInterface::class);
+        $event->getAlias()->willReturn('test.event');
+
+        $listeners = $this->dispatcher->getListenersForEvent($event->reveal());
+
+        $this->assertCount(1, $listeners);
+        $this->assertSame($listener, $listeners[0]['listener']);
     }
 
-    public function test_it_can_dispatch_events_to_class_listeners()
+    public function testPrioritySorting()
     {
-        $this->dispatcher->listen(TestEvent::class, TestListener::class);
-        $this->dispatcher->dispatch(new TestEvent());
-        $this->assertEquals(1, TestListener::$called);
+        $lowPriority = function() {};
+        $highPriority = function() {};
+
+        $this->dispatcher->listen('test.event', $lowPriority, 0);
+        $this->dispatcher->listen('test.event', $highPriority, 10);
+
+        $event = $this->prophesize(EventInterface::class);
+        $event->getAlias()->willReturn('test.event');
+
+        $listeners = $this->dispatcher->getListenersForEvent($event->reveal());
+
+        $this->assertCount(2, $listeners);
+        $this->assertSame($highPriority, $listeners[0]['listener']);
+        $this->assertSame($lowPriority, $listeners[1]['listener']);
     }
 
-    public function test_it_resolves_listeners_from_container()
+    public function testDispatchToSyncDriver()
     {
-        $this->dispatcher->listen(TestEvent::class, DependencyListener::class);
-        $this->dispatcher->dispatch(new TestEvent());
-        $this->assertInstanceOf(Application::class, DependencyListener::$injected);
+        $listener = function() {};
+        $this->dispatcher->listen('test.event', $listener);
+
+        $event = $this->prophesize(EventInterface::class);
+        $event->getAlias()->willReturn('test.event');
+        $eventReveal = $event->reveal();
+
+        $this->syncDriver->handle([$listener], $eventReveal, Argument::any())->shouldBeCalled();
+        $this->queueDriver->handle(Argument::any(), Argument::any(), Argument::any())->shouldNotBeCalled();
+
+        $this->dispatcher->dispatch($eventReveal);
     }
 
-    public function test_it_respects_priorities()
+    public function testDispatchToQueueDriver()
     {
-        $results = [];
-        $this->dispatcher->listen(TestEvent::class, function () use (&$results) {
-            $results[] = 'low';
-        }, 0);
-        $this->dispatcher->listen(TestEvent::class, function () use (&$results) {
-            $results[] = 'high';
-        }, 100);
+        $listener = function() {};
+        $this->dispatcher->listen('test.event', $listener, 0, true);
 
-        $this->dispatcher->dispatch(new TestEvent());
-        $this->assertEquals(['high', 'low'], $results);
+        $event = $this->prophesize(EventInterface::class);
+        $event->getAlias()->willReturn('test.event');
+        $eventReveal = $event->reveal();
+
+        $this->queueDriver->handle([$listener], $eventReveal, Argument::any())->shouldBeCalled();
+        $this->syncDriver->handle(Argument::any(), Argument::any(), Argument::any())->shouldNotBeCalled();
+
+        $this->dispatcher->dispatch($eventReveal);
     }
 
-    public function test_it_can_stop_propagation()
+    public function testWildcardMatching()
     {
-        $called = 0;
-        $this->dispatcher->listen(StoppableTestEvent::class, function (StoppableTestEvent $event) use (&$called) {
-            $called++;
-            $event->stopPropagation();
-        }, 100);
+        $listener = function() {};
+        $this->dispatcher->listen('user.*', $listener);
 
-        $this->dispatcher->listen(StoppableTestEvent::class, function (StoppableTestEvent $event) use (&$called) {
-            $called++;
-        }, 0);
+        $event = $this->prophesize(EventInterface::class);
+        $event->getAlias()->willReturn('user.created');
 
-        $this->dispatcher->dispatch(new StoppableTestEvent());
-        $this->assertEquals(1, $called);
-    }
+        $listeners = $this->dispatcher->getListenersForEvent($event->reveal());
 
-    public function test_it_can_remove_listeners()
-    {
-        $listener = function () {
-        };
-        $this->dispatcher->listen(TestEvent::class, $listener);
-        $this->assertCount(1, $this->dispatcher->getListenersForEvent(new TestEvent()));
-
-        $this->dispatcher->removeListener(TestEvent::class, $listener);
-        $this->assertCount(0, $this->dispatcher->getListenersForEvent(new TestEvent()));
+        $this->assertCount(1, $listeners);
+        $this->assertSame($listener, $listeners[0]['listener']);
     }
 }

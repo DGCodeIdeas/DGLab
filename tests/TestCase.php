@@ -4,6 +4,7 @@ namespace DGLab\Tests;
 
 use DGLab\Core\Application;
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use Prophecy\PhpUnit\ProphecyTrait;
 use Psr\Log\LoggerInterface;
 use DGLab\Core\Logger;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
@@ -28,6 +29,8 @@ use DGLab\Core\Router;
  */
 abstract class TestCase extends BaseTestCase
 {
+    use ProphecyTrait;
+
     protected Application $app;
 
     protected function setUp(): void

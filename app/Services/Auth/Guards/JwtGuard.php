@@ -59,6 +59,22 @@ class JwtGuard implements AuthGuardInterface
     {
         return false;
     }
+    public function attempt(array $credentials = [], bool $remember = false): bool
+    {
+        return false;
+    }
+    public function login(User $user, bool $remember = false): mixed
+    {
+        $this->setUser($user);
+        return $this->createToken($user);
+    }
+    public function createToken(User $user): string
+    {
+        $keyService = Application::getInstance()->get(KeyManagementService::class);
+        $key = config('auth.jwt.algo') === 'RS256' ? $keyService->getKey(config('auth.jwt.key_name'), 'private') : config('auth.jwt.secret');
+        $payload = [ 'iss' => config('app.url', 'http://localhost'), 'sub' => $user->id, 'iat' => time(), 'exp' => time() + (config('auth.jwt.ttl', 60) * 60), 'nbf' => time(), 'jti' => bin2hex(random_bytes(16)), ];
+        return $this->jwtService->encode($payload, $key, config('auth.jwt.algo', 'HS256'));
+    }
     public function setUser(User $user): void
     {
         $this->user = $user;
@@ -66,13 +82,6 @@ class JwtGuard implements AuthGuardInterface
     public function logout(): void
     {
         $this->user = null;
-    }
-    public function login(User $user): string
-    {
-        $keyService = Application::getInstance()->get(KeyManagementService::class);
-        $key = config('auth.jwt.algo') === 'RS256' ? $keyService->getKey(config('auth.jwt.key_name'), 'private') : config('auth.jwt.secret');
-        $payload = [ 'iss' => config('app.url', 'http://localhost'), 'sub' => $user->id, 'iat' => time(), 'exp' => time() + (config('auth.jwt.ttl', 60) * 60), 'nbf' => time(), 'jti' => bin2hex(random_bytes(16)), ];
-        return $this->jwtService->encode($payload, $key, config('auth.jwt.algo', 'HS256'));
     }
     protected function getTokenFromRequest(): ?string
     {

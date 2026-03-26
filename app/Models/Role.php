@@ -5,6 +5,11 @@ namespace DGLab\Models;
 use DGLab\Database\Model;
 use DGLab\Database\Connection;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $description
+ */
 class Role extends Model
 {
     protected ?string $table = 'roles';

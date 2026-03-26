@@ -364,7 +364,7 @@ abstract class BaseService implements ServiceInterface
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
 
-        return $finfo->file($path);
+        $type = $finfo->file($path); return $type !== false ? $type : null;
     }
 
     /**

@@ -33,7 +33,12 @@ class TenancyService
     public function tenantId(): ?int
     {
         $tenant = $this->getCurrentTenant();
-        return $tenant ? $tenant->id : null;
+        return $tenant ? (int)$tenant->id : null;
+    }
+
+    public function getCurrentTenantId(): ?int
+    {
+        return $this->tenantId();
     }
 
     protected function identify(): ?Tenant

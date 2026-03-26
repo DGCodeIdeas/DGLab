@@ -206,8 +206,23 @@ abstract class Model
     /**
      * Set an attribute
      */
+    /**
+     * Synchronize original attributes with current attributes
+     */
+    public function syncOriginal(): self
+    {
+        $this->original = $this->attributes;
+        return $this;
+    }
+
     public function setAttribute(string $key, mixed $value): self
     {
+        $method = 'set' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
+        if (method_exists($this, $method)) {
+            $this->$method($value);
+            return $this;
+        }
+
         if ($key === 'id') {
             $this->attributes[$this->primaryKey] = $value;
         } else {
@@ -222,11 +237,14 @@ abstract class Model
      */
     public function getAttribute(string $key): mixed
     {
-        if (isset($this->attributes[$key])) {
-            return $this->attributes[$key];
+        $value = $this->attributes[$key] ?? null;
+
+        $method = 'get' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
+        if (method_exists($this, $method)) {
+            return $this->$method($value);
         }
 
-        return null;
+        return $value;
     }
 
     /**

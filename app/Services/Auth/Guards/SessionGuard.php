@@ -80,13 +80,14 @@ class SessionGuard implements AuthGuardInterface
         return false;
     }
 
-    public function login(User $user, bool $remember = false): void
+    public function login(User $user, bool $remember = false): mixed
     {
         $this->updateSession($user->id);
         if ($remember) {
             $this->ensureRememberTokenIsSet($user);
         }
         $this->setUser($user);
+        return null;
     }
 
     protected function updateSession(int $id): void

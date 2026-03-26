@@ -7,6 +7,23 @@ use DGLab\Core\Application;
 use DGLab\Services\Auth\AuthorizationService;
 use DGLab\Services\Auth\Gate;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property string $email
+ * @property string $username
+ * @property string|null $phone_number
+ * @property string $password_hash
+ * @property string $password_algo
+ * @property string|null $display_name
+ * @property string|null $avatar_url
+ * @property string $status
+ * @property bool $mfa_enabled
+ * @property string|null $mfa_secret
+ * @property string|null $mfa_backup_codes
+ * @property string|null $last_login_at
+ * @property string|null $deleted_at
+ */
 class User extends Model
 {
     protected ?string $table = 'users';

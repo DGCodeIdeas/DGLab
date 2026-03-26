@@ -19,7 +19,7 @@ class PermissionMiddleware implements MiddlewareInterface
         $this->responseFactory = $responseFactory;
     }
 
-    public function handle(Request $request, \Closure $next, string $permission = ''): Response
+    public function handle(Request $request, callable $next, string $permission = ''): Response
     {
         if (!$this->auth->check() || !$this->auth->can($permission)) {
             return $this->responseFactory->json(['error' => 'Forbidden'], 403);
