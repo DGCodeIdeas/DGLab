@@ -4,6 +4,9 @@ namespace DGLab\Services\Auth;
 
 use DGLab\Core\Cache;
 
+/**
+ * Simple Rate Limiter
+ */
 class RateLimiter
 {
     protected Cache $cache;
@@ -15,32 +18,18 @@ class RateLimiter
 
     public function tooManyAttempts(string $key, int $maxAttempts): bool
     {
-        return $this->attempts($key) >= $maxAttempts;
+        return $this->cache->get($key, 0) >= $maxAttempts;
     }
 
     public function hit(string $key, int $decaySeconds = 60): int
     {
-        $count = $this->cache->increment($key);
-        if ($count === 1) {
-            $this->cache->set($key, 1, $decaySeconds);
-        }
-        return $count;
+        $hits = $this->cache->get($key, 0) + 1;
+        $this->cache->set($key, $hits, $decaySeconds);
+        return $hits;
     }
 
-    public function attempts(string $key): int
+    public function clear(string $key): void
     {
-        return (int) $this->cache->get($key, 0);
-    }
-
-    public function resetAttempts(string $key): void
-    {
-        $this->cache->delete($key);
-    }
-
-    public function availableIn(string $key, int $decaySeconds): int
-    {
-        // Simple implementation: return decaySeconds if too many attempts
-        // Real implementation would track first hit time
-        return $decaySeconds;
+        $this->cache->forget($key);
     }
 }

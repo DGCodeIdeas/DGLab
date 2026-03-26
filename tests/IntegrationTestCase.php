@@ -5,58 +5,47 @@ namespace DGLab\Tests;
 use DGLab\Core\Application;
 use DGLab\Core\Router;
 use DGLab\Database\Connection;
+use DGLab\Database\Migration;
+use DGLab\Database\Model;
 
-/**
- * Base class for integration tests requiring a full service container and database.
- */
 abstract class IntegrationTestCase extends TestCase
 {
-    /**
-     * @var Connection The database connection instance.
-     */
     protected Connection $db;
+    protected bool $runMigrations = true;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Boot the full application context
         $this->bootIntegrationEnvironment();
+        if ($this->runMigrations) {
+            (new Migration($this->db))->run();
+        }
+        $this->db->beginTransaction();
     }
 
-    /**
-     * Initialize the full integration environment.
-     */
     protected function bootIntegrationEnvironment(): void
     {
-        // Load configurations
         $this->app->loadConfig();
+        $dbConfig = ['default' => 'sqlite', 'connections' => ['sqlite' => ['driver' => 'sqlite', 'database' => ':memory:']]];
 
-        // Database Configuration (Override from env if present)
-        $dbConfig = [
-            'default' => getenv('DB_CONNECTION') ?: 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => getenv('DB_DATABASE') ?: ':memory:',
-                ],
-            ],
-        ];
+        // Push config to app
+        $this->app->setConfig('database', $dbConfig);
 
         $this->db = new Connection($dbConfig);
-        $this->app->set(Connection::class, fn() => $this->db);
+        $this->app->singleton(Connection::class, fn() => $this->db);
         Connection::setInstance($this->db);
-
-        // Core Services Boot
-        $this->app->set(Router::class, fn($app) => new Router($app));
-
-        // Call the application boot to run provider boots
+        Model::setConnection($this->db);
+        $this->app->singleton(Router::class, fn($app) => new Router($app));
         $this->app->boot();
     }
 
     protected function tearDown(): void
     {
+        if (isset($this->db)) {
+            $this->db->rollBack();
+        }
         Connection::clearInstance();
+        Model::clearConnection();
         parent::tearDown();
     }
 }

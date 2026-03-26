@@ -13,7 +13,7 @@ use DGLab\Services\Auth\Gate;
  * @property string $email
  * @property string $username
  * @property string|null $phone_number
- * @property string $password_hash
+ * @property string|null $password_hash
  * @property string $password_algo
  * @property string|null $display_name
  * @property string|null $avatar_url
@@ -32,7 +32,7 @@ class User extends Model
         'display_name', 'avatar_url', 'status', 'mfa_enabled', 'mfa_secret',
         'mfa_backup_codes', 'last_login_at'
     ];
-    protected array $guarded = ['id', 'password_hash'];
+    protected array $guarded = ['id'];
 
     public function can(string $permission, array $arguments = []): bool
     {

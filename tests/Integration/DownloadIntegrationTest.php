@@ -38,17 +38,14 @@ class DownloadIntegrationTest extends IntegrationTestCase
             ]);
 
             if (!class_exists('CreateDownloadTokensTable')) {
-                require_once __DIR__ . '/../../database/migrations/2024_01_01_000004_create_download_tokens_table.php';
             }
             (new CreateDownloadTokensTable(self::$persistentDb))->up();
 
             if (!class_exists('AddIsPermanentToDownloadTokens')) {
-                require_once __DIR__ . '/../../database/migrations/2024_01_01_000005_add_is_permanent_to_download_tokens.php';
             }
             (new AddIsPermanentToDownloadTokens(self::$persistentDb))->up();
 
             if (!class_exists('CreateDownloadLogsTable')) {
-                require_once __DIR__ . '/../../database/migrations/2024_01_01_000006_create_download_logs_table.php';
             }
             (new CreateDownloadLogsTable(self::$persistentDb))->up();
         }

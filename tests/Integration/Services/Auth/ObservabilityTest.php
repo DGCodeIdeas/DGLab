@@ -1,82 +1,50 @@
 <?php
 
-namespace DGLab\Tests\Integration\Services\Auth;
+namespace DGLab\Tests\Integration;
 
 use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Auth\AuthManager;
+use DGLab\Services\Auth\Repositories\UserRepository;
 use DGLab\Models\User;
-use DGLab\Database\Connection;
-use DGLab\Database\MigrationBlueprint;
-use DGLab\Core\AuditService;
 
 class ObservabilityTest extends IntegrationTestCase
 {
+    private AuthManager $auth;
+    private UserRepository $users;
+
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setupSchema();
-
-        // Ensure AuthManager is registered correctly
-        $this->app->set(AuthManager::class, fn($app) => new AuthManager($app));
+        $this->users = new UserRepository();
+        $this->app->singleton(\DGLab\Core\Request::class, fn() => $this->createRequest());
+        $this->auth = new AuthManager($this->app);
     }
 
-    private function setupSchema()
+    public function testAuthManagerLogsLoginSuccess()
     {
-        $u = new MigrationBlueprint('users');
-        $u->id();
-        $u->string('uuid')->unique();
-        $u->string('email')->unique();
-        $u->string('password_hash');
-        $u->string('status', 20)->default('active');
-        $u->timestamps();
-        $this->db->statement($u->toSql());
+        $hash = password_hash('pass', PASSWORD_DEFAULT);
+        $user = $this->users->create([
+            'uuid' => 'obs-success',
+            'email' => 'obs@test.com',
+            'password_hash' => $hash,
+            'status' => 'active'
+        ]);
+        $user->password_hash = $hash;
+        $user->save();
 
-        $this->db->statement("CREATE TABLE IF NOT EXISTS audit_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tenant_id INTEGER,
-            user_id INTEGER,
-            category TEXT,
-            event_type TEXT,
-            identifier TEXT,
-            status_code INTEGER,
-            ip_address TEXT,
-            user_agent TEXT,
-            metadata TEXT,
-            latency_ms INTEGER,
-            created_at DATETIME
-        )");
+        $this->fakeEvents();
+        $this->auth->attempt(['email' => 'obs@test.com', 'password' => 'pass']);
+
+        $this->assertEventDispatched('auth.login.success');
+        $this->assertAuditLogged('auth.login.success', ['identifier' => 'obs@test.com']);
     }
 
-    public function test_auth_manager_logs_login_success()
+    public function testAuthManagerLogsLoginFailure()
     {
-        $password = 'secret';
-        $this->db->insert("INSERT INTO users (uuid, email, password_hash, status) VALUES (?, ?, ?, ?)", ['obs-1', 'obs@test.com', password_hash($password, PASSWORD_DEFAULT), 'active']);
+        $this->fakeEvents();
+        $this->auth->attempt(['email' => 'wrong@test.com', 'password' => 'pass']);
 
-        $this->app->setConfig('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
-        $this->app->setConfig('auth.providers.users', ['driver' => 'database', 'model' => User::class]);
-        $this->app->setConfig('auth.defaults.guard', 'web');
-
-        $auth = $this->app->get(AuthManager::class);
-        $auth->attempt(['login' => 'obs@test.com', 'password' => $password]);
-
-        $log = $this->db->selectOne("SELECT * FROM audit_logs WHERE event_type = 'auth.login.success'");
-
-        $this->assertNotNull($log, "Audit log for login.success should exist");
-        $this->assertEquals('obs@test.com', $log['identifier']);
-    }
-
-    public function test_auth_manager_logs_login_failure()
-    {
-        $this->app->setConfig('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
-        $this->app->setConfig('auth.providers.users', ['driver' => 'database', 'model' => User::class]);
-        $this->app->setConfig('auth.defaults.guard', 'web');
-
-        $auth = $this->app->get(AuthManager::class);
-        $auth->attempt(['login' => 'wrong@test.com', 'password' => 'wrong']);
-
-        $log = $this->db->selectOne("SELECT * FROM audit_logs WHERE event_type = 'auth.login.failed'");
-
-        $this->assertNotNull($log);
-        $this->assertEquals('wrong@test.com', $log['identifier']);
+        $this->assertEventDispatched('auth.login.failed');
+        $this->assertAuditLogged('auth.login.failed', ['identifier' => 'wrong@test.com']);
     }
 }

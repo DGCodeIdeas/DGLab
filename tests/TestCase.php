@@ -23,198 +23,142 @@ use DGLab\Services\Auth\KeyManagementService;
 use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Core\EventDispatcher;
 use DGLab\Core\Router;
+use DGLab\Tests\Unit\Core\EventFake;
+use DGLab\Facades\Event;
 
-/**
- * Base test case for all DGLab tests.
- */
 abstract class TestCase extends BaseTestCase
 {
     use ProphecyTrait;
 
     protected Application $app;
+    protected ?EventFake $eventFake = null;
 
     protected function setUp(): void
     {
         parent::setUp();
-
         if (!defined('PHPUNIT_RUNNING')) {
             define('PHPUNIT_RUNNING', true);
         }
-
-        // Reset application state
         $this->resetApplication();
     }
 
     protected function tearDown(): void
     {
-        // Handle filesystem cleanup if configured
-        if (getenv('TEST_STORAGE_CLEANUP') === 'true') {
-            $this->cleanupTestStorage();
-        }
-
-        // Reset static connections
         Model::clearConnection();
         Application::flush();
-
         parent::tearDown();
     }
 
-    /**
-     * Resets the application container and registers common test services.
-     */
     protected function resetApplication(): void
     {
         Application::flush();
         $this->app = new Application(dirname(__DIR__));
-
-        // Base services from Application core (Refactored for lazy loading)
         $this->app->registerBaseServices();
-
-        // Register additional test-specific services or overrides
         $this->registerBaseTestServices();
     }
 
-    /**
-     * Registers common mocks and services used in tests.
-     */
     protected function registerBaseTestServices(): void
     {
-        // Use a test storage directory
         $testStorage = __DIR__ . '/storage';
         if (!is_dir($testStorage)) {
             mkdir($testStorage, 0777, true);
         }
 
-        // Logs
-        $logPath = $testStorage . '/logs';
-        if (!is_dir($logPath)) {
-            mkdir($logPath, 0777, true);
-        }
-        $this->app->set(LoggerInterface::class, fn() => new Logger($logPath));
-        $this->app->set(Logger::class, fn() => new Logger($logPath));
-
-        // Cache
-        $cachePath = $testStorage . '/cache';
-        if (!is_dir($cachePath)) {
-            mkdir($cachePath, 0777, true);
-        }
-        $this->app->set(Cache::class, fn() => new Cache($cachePath));
-
-        // Event Dispatcher (Ensure both ID and Interface are registered)
-        $this->app->set(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
-        $this->app->set(EventDispatcher::class, fn($app) => new EventDispatcher($app));
-
-        // Global State Store
-        $g = new GlobalStateStore();
-        $this->app->set(GlobalStateStore::class, fn() => $g);
-        $this->app->set(GlobalStateStoreInterface::class, fn() => $g);
-
-        // Security & Services
-        $this->app->set(EncryptionService::class, fn() => new EncryptionService('12345678901234567890123456789012'));
-        $this->app->set(AssetService::class, fn() => new AssetService());
-        $this->app->set(ServiceRegistry::class, fn() => new ServiceRegistry());
-        $this->app->set(UUIDService::class, fn() => new UUIDService());
-        $this->app->set(JWTService::class, fn() => new JWTService());
-        $this->app->set(KeyManagementService::class, fn($app) => new KeyManagementService($app->getBasePath() . '/storage/keys'));
-
-        // Default Database Connection (In-Memory)
-        $this->app->set(Connection::class, function () {
-            return new Connection([
-                'default' => 'sqlite',
-                'connections' => [
-                    'sqlite' => [
-                        'driver' => 'sqlite',
-                        'database' => ':memory:',
-                    ],
-                ],
-            ]);
-        });
-
-        // Register repositories often needed by Auth
-        $this->app->set(UserRepository::class, function ($app) {
-            return new UserRepository($app->get(UUIDService::class));
-        });
-
-        // Register RateLimiter
-        $this->app->set(RateLimiter::class, function ($app) {
-            return new RateLimiter($app->get(Cache::class));
-        });
-
-        // Disable runtime injection by default in tests
+        $this->app->singleton(LoggerInterface::class, fn() => new Logger($testStorage . '/logs'));
+        $this->app->singleton(Logger::class, fn() => new Logger($testStorage . '/logs'));
+        $this->app->singleton(Cache::class, fn() => new Cache($testStorage . '/cache'));
+        $this->app->singleton(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
+        $this->app->singleton(EventDispatcher::class, fn($app) => new EventDispatcher($app));
+        $this->app->singleton(GlobalStateStore::class, fn() => new GlobalStateStore());
+        $this->app->singleton(GlobalStateStoreInterface::class, fn($app) => $app->get(GlobalStateStore::class));
+        $this->app->singleton(EncryptionService::class, fn() => new EncryptionService('12345678901234567890123456789012'));
+        $this->app->singleton(AssetService::class, fn() => new AssetService());
+        $this->app->singleton(ServiceRegistry::class, fn() => new ServiceRegistry());
+        $this->app->singleton(UUIDService::class, fn() => new UUIDService());
+        $this->app->singleton(JWTService::class, fn() => new JWTService());
+        $this->app->singleton(KeyManagementService::class, fn($app) => new KeyManagementService($app->getBasePath() . '/storage/keys'));
+        $this->app->singleton(Connection::class, fn() => new Connection(['default' => 'sqlite', 'connections' => ['sqlite' => ['driver' => 'sqlite', 'database' => ':memory:']]]));
+        $this->app->singleton(UserRepository::class, fn($app) => new UserRepository($app->get(UUIDService::class)));
+        $this->app->singleton(RateLimiter::class, fn($app) => new RateLimiter($app->get(Cache::class)));
         $this->app->setConfig('superpowers.reactivity.inject_runtime', false);
     }
 
-    /**
-     * Helper to mock a service in the container.
-     */
-    protected function mockService(string $id, callable $mockCallback): void
+    protected function fakeEvents(): void
     {
-        $this->app->set($id, $mockCallback);
+        $realDispatcher = $this->app->get(DispatcherInterface::class);
+        $this->eventFake = new EventFake($realDispatcher);
+        $this->app->set(DispatcherInterface::class, $this->eventFake);
+        $this->app->set(EventDispatcher::class, $this->eventFake);
     }
 
-    /**
-     * Register a dummy route for testing.
-     */
-    protected function addTestRoute(string $method, string $uri, callable|array|string $handler): void
+    protected function assertEventDispatched(string $alias, ?callable $callback = null): void
     {
-        $router = $this->app->get(Router::class);
-        $router->addRoute(strtoupper($method), $uri, $handler);
-    }
-
-    /**
-     * Clean up the test storage directory.
-     */
-    protected function cleanupTestStorage(): void
-    {
-        $testStorage = __DIR__ . '/storage';
-        if (!is_dir($testStorage)) {
-            return;
+        if (!$this->eventFake) {
+            $this->fail("Events must be faked.");
         }
+        $this->eventFake->assertDispatched($alias, $callback);
+    }
 
-        $files = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($testStorage, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
+    protected function assertEventNotDispatched(string $alias): void
+    {
+        if (!$this->eventFake) {
+            $this->fail("Events must be faked.");
+        }
+        $this->eventFake->assertNotDispatched($alias);
+    }
 
-        foreach ($files as $file) {
-            if ($file->getFilename() === '.gitignore') {
-                continue;
+    public function createRequest(string $method = 'GET', string $uri = '/', array $params = [], array $server = []): \DGLab\Core\Request
+    {
+        return new \DGLab\Core\Request($method === 'GET' ? $params : [], $method !== 'GET' ? $params : [], [], array_merge(['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri], $server));
+    }
+
+    protected function call(string $method, string $uri, array $params = [], array $headers = []): \DGLab\Core\Response
+    {
+        $server = [];
+        foreach ($headers as $k => $v) {
+            $k = strtoupper(str_replace('-', '_', $k));
+            if ($k !== 'CONTENT_TYPE' && $k !== 'REMOTE_ADDR') {
+                $k = 'HTTP_' . $k;
             }
-            $todo = ($file->isDir() ? 'rmdir' : 'unlink');
-            @$todo($file->getRealPath());
+            $server[$k] = $v;
         }
+        $request = $this->createRequest($method, $uri, $params, $server);
+        $this->app->set(\DGLab\Core\Request::class, $request);
+        return $this->app->get(Router::class)->dispatch($request);
     }
 
-    /**
-     * Utility to create a mock request object.
-     */
-    protected function createRequest(
-        string $method = 'GET',
-        string $path = '/',
-        array $query = [],
-        array $post = [],
-        array $server = []
-    ): \DGLab\Core\Request {
-        return new \DGLab\Core\Request($query, $post, [], array_merge([
-            'REQUEST_METHOD' => $method,
-            'REQUEST_URI' => $path,
-        ], $server), []);
-    }
-
-    /**
-     * Assert response status code
-     */
-    protected function assertStatus(\DGLab\Core\Response $response, int $status): void
+    protected function addTestRoute(string $method, string $uri, $handler): void
     {
-        $this->assertEquals($status, $response->getStatusCode());
+        $this->app->get(Router::class)->addRoute(strtoupper($method), $uri, $handler);
     }
 
-    /**
-     * Assert response is JSON
-     */
-    protected function assertJsonResponse(\DGLab\Core\Response $response): array
+    protected function get(string $u, array $p = [], array $h = [])
     {
-        $this->assertEquals('application/json', $response->getHeader('Content-Type'));
-        return json_decode($response->getContent(), true);
+        return $this->call('GET', $u, $p, $h);
+    }
+    protected function post(string $u, array $p = [], array $h = [])
+    {
+        return $this->call('POST', $u, $p, $h);
+    }
+    protected function assertStatus($r, $s)
+    {
+        $this->assertEquals($s, $r->getStatusCode(), "Got {$r->getStatusCode()}: " . $r->getContent());
+    }
+    protected function assertJsonResponse($r)
+    {
+        $this->assertEquals('application/json', $r->getHeader('Content-Type'));
+        return json_decode($r->getContent(), true);
+    }
+
+    protected function assertAuditLogged(string $e, array $ex = []): void
+    {
+        $db = $this->app->get(Connection::class);
+        $sql = "SELECT * FROM audit_logs WHERE event_type = ?";
+        $b = [$e];
+        foreach ($ex as $k => $v) {
+            $sql .= " AND {$k} = ?";
+            $b[] = $v;
+        }
+        $this->assertNotNull($db->selectOne($sql, $b), "Audit entry [{$e}] not found.");
     }
 }

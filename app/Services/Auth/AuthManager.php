@@ -5,19 +5,14 @@ namespace DGLab\Services\Auth;
 use DGLab\Core\Application;
 use DGLab\Core\AuditService;
 use DGLab\Services\Auth\Contracts\AuthGuardInterface;
+use DGLab\Core\Contracts\DispatcherInterface;
 use InvalidArgumentException;
 use DGLab\Core\Request;
 
-/**
- * AuthManager
- *
- * Orchestrates multiple authentication guards and standardized event dispatching.
- */
 class AuthManager
 {
     protected Application $app;
     protected array $guards = [];
-    protected array $customCreators = [];
 
     public function __construct(Application $app)
     {
@@ -26,9 +21,23 @@ class AuthManager
 
     public function guard(?string $name = null): AuthGuardInterface
     {
-        $name = $name ?: $this->getDefaultDriver();
+        $name = $name ?: $this->app->config('auth.defaults.guard', 'web');
         if (!isset($this->guards[$name])) {
-            $this->guards[$name] = $this->resolve($name);
+            $config = $this->app->config("auth.guards.{$name}");
+            if (!$config) {
+                throw new InvalidArgumentException("Guard [{$name}] not defined.");
+            }
+            $driver = $config['driver'];
+            $provider = $this->app->get(\DGLab\Services\Auth\Repositories\UserRepository::class);
+            $req = $this->app->get(Request::class);
+
+            if ($driver === 'session') {
+                $this->guards[$name] = new \DGLab\Services\Auth\Guards\SessionGuard($name, $provider, $req);
+            } elseif ($driver === 'jwt') {
+                $this->guards[$name] = new \DGLab\Services\Auth\Guards\JwtGuard($provider, $req, $this->app->get(JWTService::class));
+            } else {
+                $this->guards[$name] = new \DGLab\Services\Auth\Guards\OpaqueTokenGuard($provider, $req);
+            }
         }
         return $this->guards[$name];
     }
@@ -49,94 +58,31 @@ class AuthManager
     public function attempt(array $credentials = [], bool $remember = false): bool
     {
         $guard = $this->guard();
-        if (method_exists($guard, 'attempt')) {
-            $success = $guard->attempt($credentials, $remember);
-            if ($success) {
-                $this->onLoginSuccess($guard->user());
-            } else {
-                $this->onLoginFailure($credentials['login'] ?? ($credentials['email'] ?? 'unknown'));
+        if ($guard->attempt($credentials, $remember)) {
+            $user = $guard->user();
+            if ($this->app->has(AuditService::class)) {
+                $this->app->get(AuditService::class)->log('auth', 'auth.login.success', $user->email);
             }
-            return $success;
+            $this->app->get(DispatcherInterface::class)->dispatch(new \DGLab\Core\GenericEvent('auth.login.success', ['user_id' => $user->id]));
+            return true;
         }
+        $idnt = $credentials['email'] ?? ($credentials['login'] ?? 'unknown');
+        if ($this->app->has(AuditService::class)) {
+            $this->app->get(AuditService::class)->log('auth', 'auth.login.failed', $idnt);
+        }
+        $this->app->get(DispatcherInterface::class)->dispatch(new \DGLab\Core\GenericEvent('auth.login.failed', ['identifier' => $idnt]));
         return false;
-    }
-
-    protected function onLoginSuccess($user): void
-    {
-        $this->app->get(AuditService::class)->log('auth', 'auth.login.success', $user->email);
-        event('auth.login.success', ['user_id' => $user->id]);
-    }
-
-    protected function onLoginFailure(string $identifier): void
-    {
-        $this->app->get(AuditService::class)->log('auth', 'auth.login.failed', $identifier);
-        event('auth.login.failed', ['identifier' => $identifier]);
     }
 
     public function logout(): void
     {
         $user = $this->user();
         if ($user) {
-            $this->app->get(AuditService::class)->log('auth', 'auth.logout', $user->email);
-            event('auth.logout', ['user_id' => $user->id]);
+            if ($this->app->has(AuditService::class)) {
+                $this->app->get(AuditService::class)->log('auth', 'auth.logout', $user->email);
+            }
+            $this->app->get(DispatcherInterface::class)->dispatch(new \DGLab\Core\GenericEvent('auth.logout', ['user_id' => $user->id]));
         }
         $this->guard()->logout();
-    }
-
-    public function can(string $ability, array $arguments = [])
-    {
-        return $this->app->get(Gate::class)->check($ability, $arguments);
-    }
-
-    protected function resolve(string $name): AuthGuardInterface
-    {
-        $config = config("auth.guards.{$name}");
-        if (is_null($config)) {
-            throw new InvalidArgumentException("Auth guard [{$name}] is not defined.");
-        }
-        $driverMethod = 'create' . ucfirst($config['driver']) . 'Driver';
-        if (method_exists($this, $driverMethod)) {
-            return $this->{$driverMethod}($name, $config);
-        }
-        throw new InvalidArgumentException("Auth driver [{$config['driver']}] for guard [{$name}] is not supported.");
-    }
-
-    protected function createSessionDriver(string $name, array $config)
-    {
-        $provider = $this->createUserProvider($config['provider'] ?? null);
-        return new \DGLab\Services\Auth\Guards\SessionGuard($name, $provider, $this->app->get(Request::class));
-    }
-
-    protected function createTokenDriver(string $name, array $config)
-    {
-        $provider = $this->createUserProvider($config['provider'] ?? null);
-        return new \DGLab\Services\Auth\Guards\OpaqueTokenGuard($provider, $this->app->get(Request::class));
-    }
-
-    protected function createJwtDriver(string $name, array $config)
-    {
-        $provider = $this->createUserProvider($config['provider'] ?? null);
-        return new \DGLab\Services\Auth\Guards\JwtGuard($provider, $this->app->get(Request::class), $this->app->get(JWTService::class));
-    }
-
-    public function createUserProvider(?string $provider = null)
-    {
-        $config = config("auth.providers." . ($provider ?: 'users'));
-        if (is_null($config)) {
-            throw new InvalidArgumentException("Authentication user provider [{$provider}] is not defined.");
-        }
-        if ($config['driver'] === 'database') {
-            return $this->app->get(\DGLab\Services\Auth\Repositories\UserRepository::class);
-        }
-        throw new InvalidArgumentException("Authentication user provider driver [{$config['driver']}] is not supported.");
-    }
-
-    public function getDefaultDriver(): string
-    {
-        return config('auth.defaults.guard', 'web');
-    }
-    public function __call(string $method, array $parameters)
-    {
-        return $this->guard()->$method(...$parameters);
     }
 }
