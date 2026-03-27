@@ -205,5 +205,24 @@ class Application
         if (class_exists(\DGLab\Services\Download\DownloadManager::class)) {
             \DGLab\Services\Download\DownloadManager::reset();
         }
+        if (class_exists(\DGLab\Services\Superpowers\Runtime\CleanupManager::class)) {
+            $refl = new \ReflectionClass(\DGLab\Services\Superpowers\Runtime\CleanupManager::class);
+            if ($refl->hasProperty('instance')) {
+                $p = $refl->getProperty('instance');
+                $p->setAccessible(true);
+                $p->setValue(null, null);
+            }
+        }
+        if (class_exists(\DGLab\Services\Superpowers\Runtime\DebugCollector::class)) {
+            $refl = new \ReflectionClass(\DGLab\Services\Superpowers\Runtime\DebugCollector::class);
+            if ($refl->hasProperty('instance')) {
+                $p = $refl->getProperty('instance');
+                $p->setAccessible(true);
+                $p->setValue(null, null);
+            }
+        }
+        if (class_exists(\DGLab\Services\MangaScript\AI\ProviderFactory::class)) {
+            \DGLab\Services\MangaScript\AI\ProviderFactory::reset();
+        }
     }
 }

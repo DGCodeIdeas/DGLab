@@ -32,9 +32,16 @@ abstract class TestCase extends BaseTestCase
 
     protected Application $app;
     protected ?EventFake $eventFake = null;
+    protected ?string $tempStorage = null;
 
     protected function setUp(): void
     {
+        $this->tempStorage = sys_get_temp_dir() . '/dg_test_' . uniqid();
+        mkdir($this->tempStorage, 0777, true);
+        mkdir($this->tempStorage . '/logs', 0777, true);
+        mkdir($this->tempStorage . '/cache', 0777, true);
+        mkdir($this->tempStorage . '/keys', 0777, true);
+
         parent::setUp();
         if (!defined('PHPUNIT_RUNNING')) {
             define('PHPUNIT_RUNNING', true);
@@ -46,7 +53,20 @@ abstract class TestCase extends BaseTestCase
     {
         Model::clearConnection();
         Application::flush();
+        if ($this->tempStorage && is_dir($this->tempStorage)) {
+            $this->recursiveDelete($this->tempStorage);
+        }
         parent::tearDown();
+    }
+
+    private function recursiveDelete(string $dir): void
+    {
+        if (!is_dir($dir)) return;
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            (is_dir("$dir/$file")) ? $this->recursiveDelete("$dir/$file") : unlink("$dir/$file");
+        }
+        rmdir($dir);
     }
 
     protected function resetApplication(): void
@@ -59,14 +79,11 @@ abstract class TestCase extends BaseTestCase
 
     protected function registerBaseTestServices(): void
     {
-        $testStorage = __DIR__ . '/storage';
-        if (!is_dir($testStorage)) {
-            mkdir($testStorage, 0777, true);
-        }
+        $storage = $this->tempStorage;
 
-        $this->app->singleton(LoggerInterface::class, fn() => new Logger($testStorage . '/logs'));
-        $this->app->singleton(Logger::class, fn() => new Logger($testStorage . '/logs'));
-        $this->app->singleton(Cache::class, fn() => new Cache($testStorage . '/cache'));
+        $this->app->singleton(LoggerInterface::class, fn() => new Logger($storage . '/logs'));
+        $this->app->singleton(Logger::class, fn() => new Logger($storage . '/logs'));
+        $this->app->singleton(Cache::class, fn() => new Cache($storage . '/cache'));
         $this->app->singleton(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
         $this->app->singleton(EventDispatcher::class, fn($app) => new EventDispatcher($app));
         $this->app->singleton(GlobalStateStore::class, fn() => new GlobalStateStore());
@@ -76,11 +93,12 @@ abstract class TestCase extends BaseTestCase
         $this->app->singleton(ServiceRegistry::class, fn() => new ServiceRegistry());
         $this->app->singleton(UUIDService::class, fn() => new UUIDService());
         $this->app->singleton(JWTService::class, fn() => new JWTService());
-        $this->app->singleton(KeyManagementService::class, fn($app) => new KeyManagementService($app->getBasePath() . '/storage/keys'));
+        $this->app->singleton(KeyManagementService::class, fn($app) => new KeyManagementService($storage . '/keys'));
         $this->app->singleton(Connection::class, fn() => new Connection(['default' => 'sqlite', 'connections' => ['sqlite' => ['driver' => 'sqlite', 'database' => ':memory:']]]));
         $this->app->singleton(UserRepository::class, fn($app) => new UserRepository($app->get(UUIDService::class)));
         $this->app->singleton(RateLimiter::class, fn($app) => new RateLimiter($app->get(Cache::class)));
         $this->app->setConfig('superpowers.reactivity.inject_runtime', false);
+        $this->app->setConfig('storage.path', $storage);
     }
 
     protected function fakeEvents(): void
@@ -160,5 +178,11 @@ abstract class TestCase extends BaseTestCase
             $b[] = $v;
         }
         $this->assertNotNull($db->selectOne($sql, $b), "Audit entry [{$e}] not found.");
+    }
+
+
+    protected function mockService(string $id, mixed $mock): void
+    {
+        $this->app->set($id, $mock);
     }
 }

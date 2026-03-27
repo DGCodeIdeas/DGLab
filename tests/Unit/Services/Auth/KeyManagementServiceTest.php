@@ -8,34 +8,22 @@ use RuntimeException;
 
 class KeyManagementServiceTest extends TestCase
 {
-    private string $tempStorage;
+    protected ?string $tempStorage = null;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->tempStorage = sys_get_temp_dir() . '/dglab_keys_' . uniqid();
-        mkdir($this->tempStorage, 0700, true);
-
-        // Mock config to use our temp storage
+        // Mock config to use our base temp storage
         $this->app->setConfig("auth.key_storage_path", $this->tempStorage);
     }
 
     protected function tearDown(): void
     {
-        $this->removeDirectory($this->tempStorage);
         parent::tearDown();
     }
 
-    private function removeDirectory(string $dir): void
-    {
-        if (!is_dir($dir)) return;
-        $files = array_diff(scandir($dir), ['.', '..']);
-        foreach ($files as $file) {
-            (is_dir("$dir/$file")) ? $this->removeDirectory("$dir/$file") : unlink("$dir/$file");
-        }
-        rmdir($dir);
-    }
+
 
     public function testGenerateAndGetKeys()
     {
