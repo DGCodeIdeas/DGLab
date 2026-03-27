@@ -6,7 +6,7 @@ use DGLab\Services\AssetPacker\DependencyResolver;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-class DependencyResolverTest extends TestCase
+class DependencyResolverTest extends \DGLab\Tests\TestCase
 {
     private string $tempDir;
     private DependencyResolver $resolver;
@@ -25,7 +25,9 @@ class DependencyResolverTest extends TestCase
 
     private function removeDirectory(string $dir): void
     {
-        if (!is_dir($dir)) return;
+        if (!is_dir($dir)) {
+            return;
+        }
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . DIRECTORY_SEPARATOR . $file;

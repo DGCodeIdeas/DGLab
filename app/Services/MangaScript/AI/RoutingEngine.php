@@ -3,7 +3,7 @@
 namespace DGLab\Services\MangaScript\AI;
 
 use DGLab\Core\Application;
-use DGLab\Core\Exceptions\LLMProviderException;
+use DGLab\Services\MangaScript\AI\LLMProviderException;
 
 /**
  * MangaScript Routing Engine 3.0

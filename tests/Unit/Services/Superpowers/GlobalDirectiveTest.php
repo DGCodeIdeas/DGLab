@@ -9,7 +9,7 @@ use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 use DGLab\Core\Application;
 
-class GlobalDirectiveTest extends TestCase
+class GlobalDirectiveTest extends \DGLab\Tests\TestCase
 {
     private View $view;
     private string $vPath;

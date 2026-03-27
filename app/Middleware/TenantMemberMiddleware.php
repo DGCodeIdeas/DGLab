@@ -5,6 +5,7 @@ namespace DGLab\Middleware;
 use DGLab\Core\MiddlewareInterface;
 use DGLab\Core\Request;
 use DGLab\Core\Response;
+use DGLab\Core\ResponseFactoryInterface;
 use DGLab\Services\Auth\AuthManager;
 use DGLab\Services\Tenancy\TenancyService;
 
@@ -12,20 +13,22 @@ class TenantMemberMiddleware implements MiddlewareInterface
 {
     protected AuthManager $auth;
     protected TenancyService $tenancy;
+    protected ResponseFactoryInterface $responseFactory;
 
-    public function __construct(AuthManager $auth, TenancyService $tenancy)
+    public function __construct(AuthManager $auth, TenancyService $tenancy, ResponseFactoryInterface $responseFactory)
     {
         $this->auth = $auth;
         $this->tenancy = $tenancy;
+        $this->responseFactory = $responseFactory;
     }
 
-    public function handle(Request $request, \Closure $next): Response
+    public function handle(Request $request, callable $next): Response
     {
         $user = $this->auth->user();
         $tenantId = $this->tenancy->tenantId();
 
         if (!$user || !$tenantId) {
-            return new Response(json_encode(['error' => 'Unauthorized or missing tenant context']), 403, ['Content-Type' => 'application/json']);
+            return $this->responseFactory->json(['error' => 'Unauthorized or missing tenant context'], 403);
         }
 
         // Check if user is a member of this tenant (has any role in it)
@@ -33,13 +36,11 @@ class TenantMemberMiddleware implements MiddlewareInterface
 
         // More direct check for "any role in this tenant"
         if (!$isMember) {
-             // Fallback to checking if they have at least one entry in tenant_user_roles
-             // This could be implemented in AuthorizationService as isMemberOf($tenantId)
              $isMember = $this->checkTenantMembership($user->id, $tenantId);
         }
 
         if (!$isMember) {
-            return new Response(json_encode(['error' => 'Forbidden: You do not have access to this tenant']), 403, ['Content-Type' => 'application/json']);
+            return $this->responseFactory->json(['error' => 'Forbidden: You do not have access to this tenant'], 403);
         }
 
         return $next($request);

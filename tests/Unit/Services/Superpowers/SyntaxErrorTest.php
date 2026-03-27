@@ -7,7 +7,7 @@ use DGLab\Services\Superpowers\Parser\Parser;
 use DGLab\Services\Superpowers\Exceptions\SyntaxException;
 use DGLab\Tests\TestCase;
 
-class SyntaxErrorTest extends TestCase
+class SyntaxErrorTest extends \DGLab\Tests\TestCase
 {
     private Lexer $lexer;
     private Parser $parser;

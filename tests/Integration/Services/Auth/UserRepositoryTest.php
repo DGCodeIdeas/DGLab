@@ -2,7 +2,7 @@
 
 namespace DGLab\Tests\Integration\Services\Auth;
 
-use DGLab\Tests\Integration\IntegrationTestCase;
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Auth\Repositories\UserRepository;
 use DGLab\Models\User;
 use DGLab\Database\Migration;
@@ -19,9 +19,6 @@ class UserRepositoryTest extends IntegrationTestCase
         $db = $this->app->get(Connection::class);
 
         // Only run the users migration to avoid issues with other legacy migrations
-        require_once __DIR__ . '/../../../../database/migrations/2026_03_13_000001_create_users_table.php';
-        $m = new \CreateUsersTable($db);
-        $m->up();
 
         $this->repository = new UserRepository();
     }

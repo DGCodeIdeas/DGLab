@@ -185,7 +185,7 @@ class SuperpowersEngine implements ViewEngineInterface
 
         $view = $this->view;
 
-        $render = (function () use ($compiledFile, $data) {
+        $render = (function () use ($compiledFile, $data, $view) {
             $__action = $data['__action'] ?? null;
             $__state = $data['__state'] ?? null;
             $__view = $data['__view'] ?? null;
@@ -196,7 +196,7 @@ class SuperpowersEngine implements ViewEngineInterface
             ob_start();
             try {
                 $__ret = include $compiledFile;
-                $this->trigger('mount');
+                $view->on('mount', fn() => null);
                 if ($__ret !== 1 && $__ret !== true) {
                     ob_end_clean();
                     return $__ret;

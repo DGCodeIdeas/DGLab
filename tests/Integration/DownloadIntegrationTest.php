@@ -2,6 +2,7 @@
 
 namespace DGLab\Tests\Integration;
 
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Download\DownloadManager;
 use DGLab\Services\Download\Download;
 use DGLab\Core\Request;
@@ -37,17 +38,14 @@ class DownloadIntegrationTest extends IntegrationTestCase
             ]);
 
             if (!class_exists('CreateDownloadTokensTable')) {
-                require_once __DIR__ . '/../../database/migrations/2024_01_01_000004_create_download_tokens_table.php';
             }
             (new CreateDownloadTokensTable(self::$persistentDb))->up();
 
             if (!class_exists('AddIsPermanentToDownloadTokens')) {
-                require_once __DIR__ . '/../../database/migrations/2024_01_01_000005_add_is_permanent_to_download_tokens.php';
             }
             (new AddIsPermanentToDownloadTokens(self::$persistentDb))->up();
 
             if (!class_exists('CreateDownloadLogsTable')) {
-                require_once __DIR__ . '/../../database/migrations/2024_01_01_000006_create_download_logs_table.php';
             }
             (new CreateDownloadLogsTable(self::$persistentDb))->up();
         }
@@ -98,7 +96,9 @@ class DownloadIntegrationTest extends IntegrationTestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('attachment; filename="legacy.txt"', $response->getHeader('Content-Disposition'));
 
-        if (file_exists($file)) unlink($file);
+        if (file_exists($file)) {
+            unlink($file);
+        }
     }
 
     public function test_facade_temporary_url()
@@ -119,7 +119,9 @@ class DownloadIntegrationTest extends IntegrationTestCase
 
         $this->assertEquals(200, $response->getStatusCode());
 
-        if (file_exists($file)) unlink($file);
+        if (file_exists($file)) {
+            unlink($file);
+        }
     }
 
     public function test_epub_font_changer_returns_secure_url()
@@ -136,16 +138,17 @@ class DownloadIntegrationTest extends IntegrationTestCase
 
         // Partially mock the service to bypass parsing but keep the process() return logic
         $service = new class extends EpubFontChanger {
-             public function process(array $input, ?callable $progressCallback = null): array {
-                 return [
-                     'success' => true,
-                     'download_url' => \DGLab\Services\Download\Download::temporaryUrl('dummy-out.epub', 60, 'temp'),
-                     'output_path' => '/tmp/dummy-out.epub',
-                     'filename' => 'dummy-out.epub',
-                     'file_size' => 123,
-                     'metadata' => ['title' => 'test']
-                 ];
-             }
+            public function process(array $input, ?callable $progressCallback = null): array
+            {
+                return [
+                    'success' => true,
+                    'download_url' => \DGLab\Services\Download\Download::temporaryUrl('dummy-out.epub', 60, 'temp'),
+                    'output_path' => '/tmp/dummy-out.epub',
+                    'filename' => 'dummy-out.epub',
+                    'file_size' => 123,
+                    'metadata' => ['title' => 'test']
+                ];
+            }
         };
 
         $result = $service->process([
@@ -156,6 +159,8 @@ class DownloadIntegrationTest extends IntegrationTestCase
         $this->assertArrayHasKey('download_url', $result);
         $this->assertStringContainsString('/s/', $result['download_url']);
 
-        if (file_exists($dummyEpub)) unlink($dummyEpub);
+        if (file_exists($dummyEpub)) {
+            unlink($dummyEpub);
+        }
     }
 }

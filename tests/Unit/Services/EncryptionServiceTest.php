@@ -5,7 +5,7 @@ namespace DGLab\Tests\Unit\Services;
 use DGLab\Services\Encryption\EncryptionService;
 use PHPUnit\Framework\TestCase;
 
-class EncryptionServiceTest extends TestCase
+class EncryptionServiceTest extends \DGLab\Tests\TestCase
 {
     private string $key = '12345678901234567890123456789012';
 

@@ -3,7 +3,6 @@
 namespace DGLab\Core;
 
 use DGLab\Services\Auth\AuthManager;
-use DGLab\Services\Auth\Gate;
 
 abstract class Controller
 {
@@ -36,25 +35,30 @@ abstract class Controller
         return $this->response;
     }
 
+    protected function getResponseFactory(): ResponseFactoryInterface
+    {
+        return $this->app->get(ResponseFactoryInterface::class);
+    }
+
     protected function json(array $data, int $status = 200, array $headers = []): Response
     {
-        return Response::json($data, $status, $headers);
+        return $this->getResponseFactory()->json($data, $status, $headers);
     }
     protected function view(string $template, array $data = [], int $status = 200): Response
     {
-        $view = app()->get(View::class);
+        $view = $this->app->get(View::class);
 
         $fragment = $this->request->getHeader('X-Superpowers-Fragment');
         if ($fragment) {
             $view->setFragmentMode($fragment === 'true' ? 'content' : $fragment);
         }
 
-        return new Response($view->render($template, $data), $status);
+        return $this->getResponseFactory()->create($view->render($template, $data), $status);
     }
 
     protected function redirect(string $url, int $status = 302): Response
     {
-        return Response::redirect($url, $status);
+        return $this->getResponseFactory()->redirect($url, $status);
     }
     protected function redirectToRoute(string $name, array $parameters = [], int $status = 302): Response
     {
@@ -130,7 +134,7 @@ abstract class Controller
     {
         $_SESSION['old'] = $input;
     }
-    protected function clearOldInput(): void
+    protected function deleteOldInput(): void
     {
         unset($_SESSION['old']);
     }
@@ -151,11 +155,5 @@ abstract class Controller
     protected function abort(int $code, string $message = ''): never
     {
         throw new \RuntimeException($message, $code);
-    }
-    protected function beforeAction(string $action): void
-    {
-    }
-    protected function afterAction(string $action, mixed $result): void
-    {
     }
 }

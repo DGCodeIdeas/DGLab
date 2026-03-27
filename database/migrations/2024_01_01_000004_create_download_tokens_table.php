@@ -18,7 +18,7 @@ class CreateDownloadTokensTable implements MigrationInterface
         $blueprint = new MigrationBlueprint('download_tokens');
 
         $blueprint->id();
-        $blueprint->string('token', 64)->unique(['token']);
+        $blueprint->string('token', 64)->unique();
         $blueprint->string('file_path');
         $blueprint->string('driver', 50);
         $blueprint->timestamp('expires_at');

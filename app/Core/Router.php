@@ -206,7 +206,7 @@ class Router
      * @param callable|array|string $handler The route handler
      * @return Route The created route
      */
-    private function addRoute(string $method, string $pattern, callable|array|string $handler): Route
+    public function addRoute(string $method, string $pattern, callable|array|string $handler): Route
     {
         // Apply group attributes
         $pattern = $this->applyGroupPrefix($pattern);

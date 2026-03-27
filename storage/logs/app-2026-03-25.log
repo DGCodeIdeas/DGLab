@@ -103,3 +103,1076 @@
 [2026-03-25 11:05:44.491038] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
 [2026-03-25 11:05:44.492568] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
 [2026-03-25 11:05:44.492668] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.944350] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.946099] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.947378] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.947478] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.950077] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.950131] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.950172] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.950246] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.950286] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.950313] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.950352] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.950378] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.951559] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.951607] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.951660] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:09.951690] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:09.979663] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.979837] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.981494] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.981590] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.982011] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.983545] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.983632] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.983701] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.983761] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.985234] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.985360] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.985490] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.985593] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.986946] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.987029] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.987100] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.987147] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.987241] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.987509] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.988948] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.990362] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:09.990445] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.247881] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.248581] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.249897] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.249956] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.252440] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.252493] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.252532] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.252560] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.252590] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.252615] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.252725] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.252764] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.253959] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.254008] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.254059] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:52.254089] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:52.258692] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.258803] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.260124] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.260212] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.260717] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.262155] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.262259] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.262379] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.262453] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.263901] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.263983] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.264041] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.264101] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.265494] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.265582] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.265640] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.265688] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.265736] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.265982] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.267282] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.268803] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:52.268890] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.436382] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.437219] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.438438] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.438837] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.438891] app.DEBUG: Generated temporary download token for: expired.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:51:54.438979] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.439079] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.439465] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:51:54.439621] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.439797] app.DEBUG: Deleted physical file: expired.txt {"service":"download-cleanup"}
+[2026-03-25 11:51:54.439881] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.439959] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 7 bytes {"service":"download-cleanup"}
+[2026-03-25 11:51:54.440196] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.443033] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.443264] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.443312] app.DEBUG: Generated temporary download token for: permanent.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:51:54.443375] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.443449] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.443482] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:51:54.443552] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.443611] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:51:54.443666] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.446044] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:51:54.446199] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.446382] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.446462] app.DEBUG: Deleted orphaned file: orphaned.txt {"service":"download-cleanup"}
+[2026-03-25 11:51:54.446497] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 8 bytes {"service":"download-cleanup"}
+[2026-03-25 11:51:54.446565] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.448920] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:51:54.449022] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.449084] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:51:54.449211] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.451615] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.451741] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.451776] app.DEBUG: Generated temporary download token for: dryrun.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:51:54.451835] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.451906] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.451936] app.INFO: Starting Download Service cleanup... [DRY RUN] {"service":"download-cleanup"}
+[2026-03-25 11:51:54.452003] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.452052] app.DEBUG: Deleted physical file: dryrun.txt {"service":"download-cleanup"}
+[2026-03-25 11:51:54.452149] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 6 bytes {"service":"download-cleanup"}
+[2026-03-25 11:51:54.452228] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.452282] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.455026] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.455313] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.455638] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.456567] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.456602] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.513252] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:51:54.513614] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.513683] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.516511] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.516546] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.517604] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:51:54.517802] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.517857] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.521287] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.521329] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.521605] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.521664] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.531126] app.WARNING: File not found during download: test.txt on driver: local {"service":"download"}
+[2026-03-25 11:51:54.533561] app.WARNING: File not found during download: non-existent.txt on driver: local {"service":"download"}
+[2026-03-25 11:51:54.538853] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.539159] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.539331] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.539401] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.540419] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:51:54.540705] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.541029] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.541079] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.543834] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.544770] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:51:54.544898] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.544941] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.549172] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.549235] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:51:54.549355] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.549450] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.549489] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.553820] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.554763] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.554838] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.554864] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.554884] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:51:54.555808] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:51:54.555978] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.560218] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.560263] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.560283] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:51:54.560373] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:51:54.560518] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.564265] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.564302] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.564322] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:51:54.564435] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.564469] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:51:54.564612] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.564791] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.565632] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:51:54.565774] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.565821] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:51:54.565935] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.569526] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:51:54.569561] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:51:54.569581] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:51:54.569682] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.569714] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:51:54.569792] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.569836] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:51:54.569957] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.582346] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:54.605349] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:54.607827] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:51:54.625718] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:51:54.650532] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.650856] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.651162] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.726924] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.731636] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.731812] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.731939] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.732046] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.736340] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.736508] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.736692] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.807968] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.813306] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.813582] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.813813] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.814108] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.814333] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.814504] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.814920] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.815120] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.815214] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.815269] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.815314] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.815356] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.815403] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.816396] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.816515] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.816603] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.816751] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.822492] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.822648] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.894515] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.899696] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.899963] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.905759] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.906029] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.911955] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912268] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912385] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912594] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912749] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912840] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912901] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.912961] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.917665] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.917973] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.925794] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.926089] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.931471] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.931650] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.931747] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.931842] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.931930] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.932021] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:51:54.938520] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.607055] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.608197] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.610003] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.610069] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.614186] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.614249] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.614305] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.614333] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.614362] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.614386] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.614413] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.614485] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.616004] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.616055] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.616106] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.616178] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.623072] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.623310] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.624870] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.624972] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.625591] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.627229] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.627348] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.627419] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.627511] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.629037] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.629183] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.629256] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.629323] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.630725] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.630889] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.631008] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.631114] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.631232] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.631545] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.633021] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.635037] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.635182] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.802064] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.802485] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.803393] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.803646] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.803688] app.DEBUG: Generated temporary download token for: expired.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:52:37.803751] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.803828] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.804207] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:52:37.804322] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.804492] app.DEBUG: Deleted physical file: expired.txt {"service":"download-cleanup"}
+[2026-03-25 11:52:37.804588] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.804787] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 7 bytes {"service":"download-cleanup"}
+[2026-03-25 11:52:37.805021] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.807438] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.807581] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.807619] app.DEBUG: Generated temporary download token for: permanent.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:52:37.807679] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.807750] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.807790] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:52:37.807862] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.807923] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:52:37.807981] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.810334] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:52:37.810452] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.810592] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.810672] app.DEBUG: Deleted orphaned file: orphaned.txt {"service":"download-cleanup"}
+[2026-03-25 11:52:37.810706] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 8 bytes {"service":"download-cleanup"}
+[2026-03-25 11:52:37.810776] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.813738] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:52:37.813854] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.813917] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:52:37.813979] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.816240] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.816380] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.816416] app.DEBUG: Generated temporary download token for: dryrun.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:52:37.816477] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.816562] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.816596] app.INFO: Starting Download Service cleanup... [DRY RUN] {"service":"download-cleanup"}
+[2026-03-25 11:52:37.816759] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.816829] app.DEBUG: Deleted physical file: dryrun.txt {"service":"download-cleanup"}
+[2026-03-25 11:52:37.816879] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 6 bytes {"service":"download-cleanup"}
+[2026-03-25 11:52:37.816954] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.817013] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.819818] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.820039] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.820383] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.821473] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.821521] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.824368] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:52:37.824612] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.824744] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.827800] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.827845] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.829024] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:52:37.829296] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.829358] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.832907] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.832951] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.833299] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.833371] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.844461] app.WARNING: File not found during download: test.txt on driver: local {"service":"download"}
+[2026-03-25 11:52:37.848464] app.WARNING: File not found during download: non-existent.txt on driver: local {"service":"download"}
+[2026-03-25 11:52:37.854591] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.855166] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.855396] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.855516] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.857236] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:52:37.857557] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.857897] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.857949] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.860714] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.861743] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:52:37.861890] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.861935] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.865491] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.865599] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:52:37.865759] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.865880] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.865920] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.870347] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.871805] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.871965] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.872009] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.872041] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:52:37.873716] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:52:37.873983] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.878391] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.878431] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.878452] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:52:37.878584] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:52:37.878771] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.883466] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.883550] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.883586] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:52:37.883826] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.883895] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:52:37.884028] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.884255] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.885534] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:52:37.885722] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.885775] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:52:37.885915] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.890040] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:52:37.890091] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:52:37.890163] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:52:37.890315] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.890366] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:52:37.890482] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.890540] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:52:37.890776] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.909230] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.936024] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.941193] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:52:37.964414] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:52:37.986620] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.986972] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:37.987266] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.065331] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.071081] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.071374] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.071514] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.071638] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.076042] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.076279] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.076451] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.149604] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.155311] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.155629] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.155903] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.156246] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.156832] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157026] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157472] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157646] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157713] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157765] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157812] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157855] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.157901] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.159219] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.159343] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.159434] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.159500] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.164166] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.164338] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.239001] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.244670] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.244998] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.251840] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.252151] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.259502] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.259835] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.259971] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.260244] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.260338] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.260414] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.260477] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.260538] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.267737] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.268000] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.277018] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.277349] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.286881] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.287168] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.287294] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.287406] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.287503] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.287575] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:52:38.294240] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.642599] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.643326] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.644620] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.644770] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.647057] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.647112] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.647154] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.647231] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.647268] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.647295] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.647327] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.647353] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.648561] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.648623] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.648752] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:09.648787] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:09.653892] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.654013] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.655552] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.655682] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.656092] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.657696] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.657796] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.657868] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.657928] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.659321] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.659419] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.659480] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.659544] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.661112] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.661251] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.661319] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.661377] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.661428] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.661713] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.663149] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.664581] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.664734] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.904373] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.905630] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.906699] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.907006] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.907054] app.DEBUG: Generated temporary download token for: expired.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:55:09.907122] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.907265] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.907764] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:55:09.907881] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.908058] app.DEBUG: Deleted physical file: expired.txt {"service":"download-cleanup"}
+[2026-03-25 11:55:09.908176] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.908251] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 7 bytes {"service":"download-cleanup"}
+[2026-03-25 11:55:09.908445] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.913329] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.913505] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.913545] app.DEBUG: Generated temporary download token for: permanent.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:55:09.913610] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.913698] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.913732] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:55:09.913821] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.913886] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:55:09.913948] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.917699] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:55:09.917830] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.917955] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.918038] app.DEBUG: Deleted orphaned file: orphaned.txt {"service":"download-cleanup"}
+[2026-03-25 11:55:09.918073] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 8 bytes {"service":"download-cleanup"}
+[2026-03-25 11:55:09.918193] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.920419] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:55:09.920533] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.920596] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:55:09.920757] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.923014] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.923207] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.923260] app.DEBUG: Generated temporary download token for: dryrun.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:55:09.923327] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.923404] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.923436] app.INFO: Starting Download Service cleanup... [DRY RUN] {"service":"download-cleanup"}
+[2026-03-25 11:55:09.923508] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.923561] app.DEBUG: Deleted physical file: dryrun.txt {"service":"download-cleanup"}
+[2026-03-25 11:55:09.923610] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 6 bytes {"service":"download-cleanup"}
+[2026-03-25 11:55:09.923667] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.923717] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.926606] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.926840] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.927176] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.928015] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.928048] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.931093] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:55:09.931374] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.931438] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.933892] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.933927] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.934960] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:55:09.935188] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.935341] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.938878] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.938918] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.939254] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.939320] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.949343] app.WARNING: File not found during download: test.txt on driver: local {"service":"download"}
+[2026-03-25 11:55:09.951725] app.WARNING: File not found during download: non-existent.txt on driver: local {"service":"download"}
+[2026-03-25 11:55:09.957259] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.957549] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.957712] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.957796] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.958924] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:55:09.959231] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.959576] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.959627] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.962098] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.963082] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:55:09.963264] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.963315] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.965609] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.965666] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:55:09.965794] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.965906] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.965946] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.968866] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.969172] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.969270] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.969296] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.969316] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:55:09.970362] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:55:09.970562] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.972884] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.972918] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.972940] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:55:09.973045] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:55:09.973246] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.975431] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.975463] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.975483] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:55:09.975615] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.975648] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:55:09.975750] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.975829] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.976781] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:55:09.976941] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.976989] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:55:09.977107] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.979327] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:55:09.979359] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:55:09.979387] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:55:09.979550] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.979589] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:55:09.979680] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.979729] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:55:09.979863] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:09.987743] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:10.003733] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:10.006255] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:55:10.020900] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:55:10.032965] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.033220] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.033383] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.106700] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.109739] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.109936] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.110071] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.110255] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.112940] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.113109] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.113324] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.187284] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.190935] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.191160] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.191327] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.191450] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.191572] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.191672] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.191924] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192071] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192190] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192261] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192307] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192350] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192397] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192789] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.192914] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.193005] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.193070] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.195731] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.195874] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.268916] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.272045] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.272273] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.275335] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.275526] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.278456] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.278648] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.278762] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.278965] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.279047] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.279167] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.279238] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.279301] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.281865] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.282036] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.285457] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.285677] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.288218] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.288382] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.288477] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.288580] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.288728] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.288822] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:55:10.291790] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.171156] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.171913] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.173294] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.173354] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.175881] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.175934] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.175976] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.176005] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.176036] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.176062] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.176091] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.176116] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.177435] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.177488] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.177540] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.177678] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.182657] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.182802] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.184287] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.184384] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.184955] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.186394] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.186480] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.186549] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.186730] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.188149] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.188241] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.188301] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.188365] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.189913] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.190000] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.190060] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.190122] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.190171] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.190442] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.192071] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.193509] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.193654] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.345900] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.346265] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.347106] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.347346] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.347387] app.DEBUG: Generated temporary download token for: expired.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:56:43.347452] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.347526] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.347885] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:56:43.347992] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.348152] app.DEBUG: Deleted physical file: expired.txt {"service":"download-cleanup"}
+[2026-03-25 11:56:43.348228] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.348281] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 7 bytes {"service":"download-cleanup"}
+[2026-03-25 11:56:43.348448] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.350974] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.351103] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.351140] app.DEBUG: Generated temporary download token for: permanent.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:56:43.351199] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.351269] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.351300] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:56:43.351368] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.351428] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:56:43.351484] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.353967] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:56:43.354080] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.354199] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.354269] app.DEBUG: Deleted orphaned file: orphaned.txt {"service":"download-cleanup"}
+[2026-03-25 11:56:43.354302] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 8 bytes {"service":"download-cleanup"}
+[2026-03-25 11:56:43.354373] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.356498] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:56:43.356727] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.356807] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:56:43.356871] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.359106] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.359238] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.359274] app.DEBUG: Generated temporary download token for: dryrun.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:56:43.359341] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.359413] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.359444] app.INFO: Starting Download Service cleanup... [DRY RUN] {"service":"download-cleanup"}
+[2026-03-25 11:56:43.359510] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.359614] app.DEBUG: Deleted physical file: dryrun.txt {"service":"download-cleanup"}
+[2026-03-25 11:56:43.359680] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 6 bytes {"service":"download-cleanup"}
+[2026-03-25 11:56:43.359745] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.359796] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.362516] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.362830] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.363123] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.363993] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.364027] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.366897] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:56:43.367093] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.367152] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.369518] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.369612] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.370542] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:56:43.370769] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.370826] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.374210] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.374249] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.374520] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.374635] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.384294] app.WARNING: File not found during download: test.txt on driver: local {"service":"download"}
+[2026-03-25 11:56:43.386783] app.WARNING: File not found during download: non-existent.txt on driver: local {"service":"download"}
+[2026-03-25 11:56:43.392138] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.392403] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.392593] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.392767] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.393888] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:56:43.394131] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.394445] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.394493] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.397016] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.398041] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:56:43.398181] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.398225] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.400460] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.400573] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:56:43.400808] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.400924] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.400966] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.403758] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.404001] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.404072] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.404098] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.404117] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:56:43.405139] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:56:43.405322] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.407675] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.407708] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.407728] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:56:43.407835] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:56:43.407992] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.410261] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.410296] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.410316] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:56:43.410444] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.410478] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:56:43.410634] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.410741] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.411748] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:56:43.411909] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.411957] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:56:43.412080] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.414359] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:56:43.414393] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:56:43.414414] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:56:43.414528] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.414615] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:56:43.414731] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.414781] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:56:43.414924] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.423511] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.442128] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.444499] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:56:43.459137] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:56:43.471106] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.471325] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.471474] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.547206] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.550168] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.550337] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.550461] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.550634] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.553236] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.553392] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.553517] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.626173] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.629595] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.629784] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.629922] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.630040] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.630157] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.630254] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.630495] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631093] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631195] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631248] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631292] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631333] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631379] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631735] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631836] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631932] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.631997] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.635358] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.635502] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.707876] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.711019] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.711187] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.714201] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.714368] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.718043] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.718439] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.718594] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.718807] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.718902] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.718975] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.719031] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.719089] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.721644] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.721812] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.724869] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.725173] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.727651] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.727812] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.727917] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.728023] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.728097] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.728162] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:56:43.730887] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.839982] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.840753] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.842018] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.842078] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.844361] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.844415] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.844456] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.844485] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.844516] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.844542] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.844571] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.844596] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.845879] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.845933] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.845984] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:36.846014] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:36.849484] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.849602] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.851764] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.851872] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.852320] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.853796] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.853887] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.853966] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.854027] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.855459] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.855546] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.855607] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.855671] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.857076] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.857216] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.857296] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.857351] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.857404] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.857664] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.859291] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.860807] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:36.860902] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.004058] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.004477] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.005396] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.005628] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.005671] app.DEBUG: Generated temporary download token for: expired.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:58:37.005746] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.005822] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.006208] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:58:37.006330] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.006487] app.DEBUG: Deleted physical file: expired.txt {"service":"download-cleanup"}
+[2026-03-25 11:58:37.006565] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.006618] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 7 bytes {"service":"download-cleanup"}
+[2026-03-25 11:58:37.006788] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.009076] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.009247] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.009295] app.DEBUG: Generated temporary download token for: permanent.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:58:37.009356] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.009429] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.009460] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:58:37.009529] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.009589] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:58:37.009645] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.011887] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:58:37.011993] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.012185] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.012277] app.DEBUG: Deleted orphaned file: orphaned.txt {"service":"download-cleanup"}
+[2026-03-25 11:58:37.012313] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 8 bytes {"service":"download-cleanup"}
+[2026-03-25 11:58:37.012382] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.014642] app.INFO: Starting Download Service cleanup... {"service":"download-cleanup"}
+[2026-03-25 11:58:37.014739] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.014798] app.INFO: Cleanup completed. Tokens: 0, Files: 0, Reclaimed: 0 bytes {"service":"download-cleanup"}
+[2026-03-25 11:58:37.014852] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.017164] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.017297] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.017334] app.DEBUG: Generated temporary download token for: dryrun.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:58:37.017391] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.017463] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.017493] app.INFO: Starting Download Service cleanup... [DRY RUN] {"service":"download-cleanup"}
+[2026-03-25 11:58:37.017558] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.017609] app.DEBUG: Deleted physical file: dryrun.txt {"service":"download-cleanup"}
+[2026-03-25 11:58:37.017657] app.INFO: Cleanup completed. Tokens: 1, Files: 1, Reclaimed: 6 bytes {"service":"download-cleanup"}
+[2026-03-25 11:58:37.017739] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.017828] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.020499] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.020798] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.021091] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.021942] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.021982] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.024931] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:58:37.025189] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.025254] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.027606] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.027637] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.028603] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:58:37.028841] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.028898] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.032241] app.DEBUG: Registered local storage driver [local] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.032285] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.032550] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.032608] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.042013] app.WARNING: File not found during download: test.txt on driver: local {"service":"download"}
+[2026-03-25 11:58:37.044455] app.WARNING: File not found during download: non-existent.txt on driver: local {"service":"download"}
+[2026-03-25 11:58:37.049779] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.050042] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.050276] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.050354] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.051459] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:58:37.051698] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.052003] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.052052] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.054536] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.055496] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:58:37.055622] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.055665] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.057894] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.057946] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:58:37.058064] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.058208] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.058263] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.060964] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.061344] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.061420] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.061446] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.061465] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:58:37.062361] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:58:37.062529] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.064745] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.064784] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.064805] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:58:37.064897] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:58:37.065037] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.067296] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.067328] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.067348] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:58:37.067456] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.067489] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:58:37.067582] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.067661] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.068453] app.DEBUG: Event Dispatched: download.success (ID: N/A)
+[2026-03-25 11:58:37.068596] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.068776] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:58:37.068918] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.071011] app.DEBUG: Registered local storage driver [local] with root: /app/storage/app {"service":"download"}
+[2026-03-25 11:58:37.071042] app.DEBUG: Registered local storage driver [temp] with root: /app/storage/uploads/temp {"service":"download"}
+[2026-03-25 11:58:37.071062] app.DEBUG: Registered local storage driver [public] with root: /app/public/assets {"service":"download"}
+[2026-03-25 11:58:37.071206] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.071245] app.DEBUG: Generated temporary download token for: secure.txt (Driver: local) {"service":"download"}
+[2026-03-25 11:58:37.071339] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.071384] app.DEBUG: Event Dispatched: download.failed (ID: N/A)
+[2026-03-25 11:58:37.071512] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.078578] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:37.094155] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:37.096306] app.DEBUG: Event Dispatched: route.matched (ID: N/A)
+[2026-03-25 11:58:37.110690] app.DEBUG: Event Dispatched: request.handled (ID: N/A)
+[2026-03-25 11:58:37.122447] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.122650] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.122787] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.196809] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.199823] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.199985] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.200179] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.200305] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.202866] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.203028] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.203219] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.275447] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.278809] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.278980] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.279156] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.279325] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.279446] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.279551] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.279805] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.279947] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280008] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280056] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280213] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280273] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280323] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280785] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280909] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.280998] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.281062] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.283774] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.283912] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.355981] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.359218] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.359397] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.363495] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.363766] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.367909] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368241] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368361] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368569] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368715] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368808] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368870] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.368931] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.371401] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.371564] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.375259] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.375451] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.378052] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.378282] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.378386] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.378481] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.378554] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.378618] app.DEBUG: Event Dispatched: query.executed (ID: N/A)
+[2026-03-25 11:58:37.382381] app.DEBUG: Event Dispatched: query.executed (ID: N/A)

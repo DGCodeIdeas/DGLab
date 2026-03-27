@@ -6,7 +6,7 @@ use DGLab\Services\Superpowers\Parser\Linter;
 use DGLab\Services\Superpowers\Exceptions\SyntaxException;
 use DGLab\Tests\TestCase;
 
-class LinterTest extends TestCase
+class LinterTest extends \DGLab\Tests\TestCase
 {
     private Linter $linter;
 

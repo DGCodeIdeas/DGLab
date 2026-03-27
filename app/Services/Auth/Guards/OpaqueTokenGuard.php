@@ -53,6 +53,15 @@ class OpaqueTokenGuard implements AuthGuardInterface
     {
         return false;
     }
+    public function attempt(array $credentials = [], bool $remember = false): bool
+    {
+        return false;
+    }
+    public function login(User $user, bool $remember = false): mixed
+    {
+        $this->setUser($user);
+        return null;
+    }
     public function setUser(User $user): void
     {
         $this->user = $user;

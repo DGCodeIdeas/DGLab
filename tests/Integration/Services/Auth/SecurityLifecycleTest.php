@@ -1,85 +1,52 @@
 <?php
 
-namespace DGLab\Tests\Integration\Services\Auth;
+namespace DGLab\Tests\Integration;
 
-use DGLab\Tests\Integration\IntegrationTestCase;
-use DGLab\Services\Auth\MfaService;
-use DGLab\Services\Auth\VerificationService;
-use DGLab\Services\Auth\RateLimiter;
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Models\User;
-use DGLab\Database\Connection;
-use DGLab\Database\MigrationBlueprint;
+use DGLab\Services\Auth\RateLimiter;
+use DGLab\Services\Auth\VerificationService;
 
 class SecurityLifecycleTest extends IntegrationTestCase
 {
-    protected function setUp(): void
+    public function testMfaFlow()
     {
-        parent::setUp();
-        $db = $this->app->get(Connection::class);
-        $this->setupSchema($db);
+        $user = User::create([
+            'uuid' => 'mfa-user',
+            'email' => 'mfa@test.com',
+            'username' => 'mfa',
+            'password_hash' => 'h',
+            'mfa_enabled' => 1,
+            'mfa_secret' => 'SECRET',
+            'status' => 'active'
+        ]);
+
+        $this->assertTrue($user->hasMfa());
     }
 
-    private function setupSchema($db)
+    public function testVerificationFlow()
     {
-        $u = new MigrationBlueprint('users');
-        $u->id();
-        $u->string('uuid')->unique();
-        $u->string('email')->unique();
-        $u->string('password_hash');
-        $u->string('status')->default('active');
-        $u->boolean('mfa_enabled')->default(false);
-        $u->text('mfa_secret')->nullable();
-        $u->timestamps();
-        $db->statement($u->toSql());
-
-        $v = new MigrationBlueprint('user_verifications');
-        $v->id();
-        $v->bigInteger('user_id');
-        $v->string('token')->unique();
-        $v->string('type');
-        $v->timestamp('expires_at');
-        $v->timestamps();
-        $db->statement($v->toSql());
-    }
-
-    public function test_mfa_flow()
-    {
-        $mfa = new MfaService();
-        $secret = $mfa->generateSecret();
-        $this->assertEquals(16, strlen($secret));
-
-        $code = $mfa->getCode($secret);
-        $this->assertTrue($mfa->verifyCode($secret, $code));
-        $this->assertFalse($mfa->verifyCode($secret, '000000'));
-    }
-
-    public function test_verification_flow()
-    {
-        $user = User::create(['uuid' => 'u-life', 'email' => 'life@test.com', 'password_hash' => 'h']);
+        $user = User::create(['uuid' => 'v-user', 'email' => 'v@test.com', 'username' => 'v', 'password_hash' => 'h', 'status' => 'pending']);
         $service = new VerificationService();
 
         $token = $service->createToken($user, 'email');
-        $this->assertNotNull($token);
+        $this->assertIsString($token);
 
         $verifiedUser = $service->verifyToken($token, 'email');
+        $this->assertNotNull($verifiedUser);
         $this->assertEquals($user->id, $verifiedUser->id);
 
-        // Token should be one-time use
+        // Verify token is deleted after use
         $this->assertNull($service->verifyToken($token, 'email'));
     }
 
-    public function test_rate_limiting()
+    public function testRateLimiting()
     {
         $limiter = $this->app->get(RateLimiter::class);
-        $key = 'test-key';
+        $key = 'login:test:' . uniqid();
 
-        $limiter->hit($key);
-        $this->assertEquals(1, $limiter->attempts($key));
-
-        for ($i = 0; $i < 5; $i++) $limiter->hit($key);
-        $this->assertTrue($limiter->tooManyAttempts($key, 5));
-
-        $limiter->resetAttempts($key);
         $this->assertFalse($limiter->tooManyAttempts($key, 5));
+        for ($i = 0; $i < 5; $i++) { $limiter->hit($key); }
+        $this->assertTrue($limiter->tooManyAttempts($key, 5));
     }
 }

@@ -28,7 +28,9 @@ class ExpressionTranspiler
 
             $parts = explode('?.', substr($matches[0], strlen($varName) + 2));
             foreach ($parts as $part) {
-                if ($part === '') continue;
+                if ($part === '') {
+                    continue;
+                }
                 $result = "\\DGLab\\Services\\Superpowers\\Runtime\\Runtime::access({$result}, '{$part}', true)";
             }
             return $result;
@@ -44,7 +46,9 @@ class ExpressionTranspiler
 
             $parts = explode('.', substr($matches[0], strlen($varName) + 2));
             foreach ($parts as $part) {
-                if ($part === '') continue;
+                if ($part === '') {
+                    continue;
+                }
                 $result = "\\DGLab\\Services\\Superpowers\\Runtime\\Runtime::access({$result}, '{$part}', false)";
             }
             return $result;

@@ -16,8 +16,8 @@ class MigrationBlueprint
 
     private function isSqlite(): bool
     {
-        return ($_ENV['DB_DATABASE'] ?? '') === ':memory:' ||
-            strpos($_ENV['DB_CONNECTION'] ?? '', 'sqlite') !== false;
+        $app = \DGLab\Core\Application::getInstance();
+        return $app->config('database.default') === 'sqlite';
     }
 
     public function id(): self
@@ -42,13 +42,13 @@ class MigrationBlueprint
     }
     public function integer(string $name, bool $unsigned = false): self
     {
-        $s = $unsigned ? ' UNSIGNED' : '';
+        $s = ($unsigned && !$this->isSqlite()) ? ' UNSIGNED' : '';
         $this->columns[] = "`{$name}` INT{$s}";
         return $this;
     }
     public function bigInteger(string $name, bool $unsigned = false): self
     {
-        $s = $unsigned ? ' UNSIGNED' : '';
+        $s = ($unsigned && !$this->isSqlite()) ? ' UNSIGNED' : '';
         $this->columns[] = "`{$name}` BIGINT{$s}";
         return $this;
     }
@@ -88,10 +88,7 @@ class MigrationBlueprint
         }
         return $this;
     }
-    public function index(string|array $columns, ?string $name = null): self
-    {
-        return $this;
-    }
+    public function index(string|array $columns, ?string $name = null): self { return $this; }
     public function unique(string|array $columns = [], ?string $name = null): self
     {
         if (empty($columns)) {
@@ -107,7 +104,7 @@ class MigrationBlueprint
         } else {
             if (count($columns) === 1) {
                 foreach ($this->columns as $i => $col) {
-                    if (strpos($col, "`{$columns[0]}` ") === 0) {
+                    if (strpos($col, "`{$columns[0]}`") !== false) {
                         $this->columns[$i] .= " UNIQUE";
                         break;
                     }
@@ -116,22 +113,13 @@ class MigrationBlueprint
         }
         return $this;
     }
-    public function foreign(string $column, string $table, string $reference = 'id'): self
-    {
-        return $this;
-    }
+    public function foreign(string $column, string $table, string $reference = 'id'): self { return $this; }
     public function default(mixed $value): self
     {
-        if (empty($this->columns)) {
-            return $this;
-        }
-        if (is_string($value)) {
-            $v = "'$value'";
-        } elseif (is_bool($value)) {
-            $v = $value ? '1' : '0';
-        } else {
-            $v = $value;
-        }
+        if (empty($this->columns)) return $this;
+        if (is_string($value)) $v = "'$value'";
+        elseif (is_bool($value)) $v = $value ? '1' : '0';
+        else $v = $value;
         $lastIndex = count($this->columns) - 1;
         $this->columns[$lastIndex] .= " DEFAULT $v";
         return $this;
@@ -150,7 +138,6 @@ class MigrationBlueprint
         $parts = array_merge($this->columns, $this->indexes, $this->foreignKeys);
         $tableName = $this->isSqlite() ? $this->table : "`{$this->table}`";
         $engine = $this->isSqlite() ? "" : " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-
         return "CREATE TABLE $tableName (" . implode(", ", $parts) . ")$engine";
     }
 }

@@ -27,7 +27,7 @@ class ServiceRegistry
         });
 
         $app->set(DownloadManager::class, function ($app) {
-            return new DownloadManager($app);
+            return DownloadManager::getInstance();
         });
 
         $app->set(RoutingEngine::class, function ($app) {

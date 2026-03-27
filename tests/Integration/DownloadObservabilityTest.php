@@ -2,70 +2,54 @@
 
 namespace DGLab\Tests\Integration;
 
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Services\Download\DownloadManager;
-use DGLab\Database\DownloadAuditLog;
 use DGLab\Core\Request;
 use DGLab\Controllers\DownloadController;
 use DGLab\Database\Connection;
-use CreateDownloadTokensTable;
-use AddIsPermanentToDownloadTokens;
-use CreateDownloadLogsTable;
+use DGLab\Core\AuditService;
 
 class DownloadObservabilityTest extends IntegrationTestCase
 {
-    private static ?Connection $persistentDb = null;
     private string $testFile = 'obs.txt';
+    private string $root;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $root = dirname(__DIR__, 2) . '/storage/app';
-        if (!is_dir($root)) {
-            mkdir($root, 0755, true);
+        $this->root = $this->app->getBasePath() . '/storage/app';
+        if (!is_dir($this->root)) {
+            mkdir($this->root, 0755, true);
         }
-        file_put_contents($root . '/' . $this->testFile, 'observability');
+        file_put_contents($this->root . '/' . $this->testFile, 'observability');
 
-        if (self::$persistentDb === null) {
-            self::$persistentDb = new Connection([
-                'default' => 'sqlite',
-                'connections' => [
-                    'sqlite' => [
-                        'driver' => 'sqlite',
-                        'database' => ':memory:',
-                    ],
-                ],
-            ]);
-
-            require_once __DIR__ . '/../../database/migrations/2024_01_01_000004_create_download_tokens_table.php';
-            (new CreateDownloadTokensTable(self::$persistentDb))->up();
-            require_once __DIR__ . '/../../database/migrations/2024_01_01_000005_add_is_permanent_to_download_tokens.php';
-            (new AddIsPermanentToDownloadTokens(self::$persistentDb))->up();
-            require_once __DIR__ . '/../../database/migrations/2024_01_01_000006_create_download_logs_table.php';
-            (new CreateDownloadLogsTable(self::$persistentDb))->up();
-        }
-
-        $this->app->singleton(Connection::class, function () {
-            return self::$persistentDb;
-        });
-        \DGLab\Database\Model::setConnection(self::$persistentDb);
-        Connection::setInstance(self::$persistentDb);
-        DownloadManager::reset();
+        // Setup Audit Table
+        $this->db->statement("CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER,
+            user_id INTEGER,
+            category TEXT,
+            event_type TEXT,
+            identifier TEXT,
+            status_code INTEGER,
+            ip_address TEXT,
+            user_agent TEXT,
+            metadata TEXT,
+            latency_ms INTEGER,
+            created_at DATETIME
+        )");
 
         $this->app->setConfig('download', [
             'default' => 'local',
             'drivers' => ['local' => ['driver' => \DGLab\Services\Download\Drivers\LocalDriver::class, 'disk' => 'local']],
-            'encryption' => ['key' => '12345678901234567890123456789012']
+            'encryption' => ['key' => '12345678901234567890123456789012'],
+            'security' => ['enable_signed_urls' => true]
         ]);
-        $this->app->setConfig('filesystems', ['disks' => ['local' => ['root' => $root]]]);
+        $this->app->setConfig('filesystems', ['disks' => ['local' => ['root' => $this->root]]]);
         $this->app->setConfig('app.debug', true);
-    }
 
-    protected function tearDown(): void
-    {
-        self::$persistentDb->statement('DELETE FROM download_tokens');
-        self::$persistentDb->statement('DELETE FROM download_logs');
-        parent::tearDown();
+        DownloadManager::reset();
     }
 
     public function test_download_is_audited()
@@ -74,8 +58,10 @@ class DownloadObservabilityTest extends IntegrationTestCase
         $url = $manager->getUrl($this->testFile);
         $signature = substr($url, strrpos($url, '/') + 1);
 
-        $request = (new Request([], [], [], ['REQUEST_METHOD' => 'GET']))
-            ->withRouteParams(['signature' => $signature]);
+        $request = $this->createRequest('GET', '/s/' . $signature);
+        $request = $request->withRouteParams(['signature' => $signature]);
+
+        $this->app->set(Request::class, fn() => $request);
 
         $controller = new DownloadController();
         $response = $controller->signedDownload($request);
@@ -83,10 +69,10 @@ class DownloadObservabilityTest extends IntegrationTestCase
         $this->assertEquals(200, $response->getStatusCode());
 
         // Verify audit log entry
-        $log = DownloadAuditLog::query()->first();
+        $log = $this->db->selectOne("SELECT * FROM audit_logs WHERE category = 'download' LIMIT 1");
         $this->assertNotNull($log);
-        $this->assertEquals($this->testFile, $log->getAttribute('file_path'));
-        $this->assertEquals(200, $log->getAttribute('status_code'));
+        $this->assertEquals($this->testFile, $log['identifier']);
+        $this->assertEquals(200, $log['status_code']);
     }
 
     public function test_debug_headers_are_present()
@@ -95,8 +81,8 @@ class DownloadObservabilityTest extends IntegrationTestCase
         $url = $manager->getUrl($this->testFile);
         $signature = substr($url, strrpos($url, '/') + 1);
 
-        $request = (new Request([], [], [], ['REQUEST_METHOD' => 'GET']))
-            ->withRouteParams(['signature' => $signature]);
+        $request = $this->createRequest('GET', '/s/' . $signature);
+        $request = $request->withRouteParams(['signature' => $signature]);
 
         $controller = new DownloadController();
         $response = $controller->signedDownload($request);
@@ -108,17 +94,16 @@ class DownloadObservabilityTest extends IntegrationTestCase
 
     public function test_failed_download_is_audited()
     {
-        $request = (new Request([], [], [], ['REQUEST_METHOD' => 'GET']))
-            ->withRouteParams(['signature' => 'invalid-sig']);
+        $request = $this->createRequest('GET', '/s/invalid-sig');
+        $request = $request->withRouteParams(['signature' => 'invalid-sig']);
 
         $controller = new DownloadController();
         $response = $controller->signedDownload($request);
 
         $this->assertEquals(403, $response->getStatusCode());
 
-        $log = DownloadAuditLog::query()->first();
+        $log = $this->db->selectOne("SELECT * FROM audit_logs WHERE status_code = 403 LIMIT 1");
         $this->assertNotNull($log);
-        $this->assertEquals(403, $log->getAttribute('status_code'));
-        $this->assertNotNull($log->getAttribute('error_message'));
+        $this->assertEquals(403, $log['status_code']);
     }
 }

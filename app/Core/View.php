@@ -51,6 +51,7 @@ class View
         [$viewFile, $engine] = $this->resolveView($template);
 
         $content = $engine->render($viewFile, $data);
+        $this->trigger("mount");
 
         if ($this->fragmentMode !== null) {
             return $this->yield($this->fragmentMode);

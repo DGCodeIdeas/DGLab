@@ -5,23 +5,26 @@ namespace DGLab\Middleware;
 use DGLab\Core\MiddlewareInterface;
 use DGLab\Core\Request;
 use DGLab\Core\Response;
+use DGLab\Core\ResponseFactoryInterface;
 use DGLab\Services\Auth\RateLimiter;
 
 class RateLimitMiddleware implements MiddlewareInterface
 {
     protected RateLimiter $limiter;
+    protected ResponseFactoryInterface $responseFactory;
 
-    public function __construct(RateLimiter $limiter)
+    public function __construct(RateLimiter $limiter, ResponseFactoryInterface $responseFactory)
     {
         $this->limiter = $limiter;
+        $this->responseFactory = $responseFactory;
     }
 
-    public function handle(Request $request, \Closure $next): Response
+    public function handle(Request $request, callable $next): Response
     {
         $key = sha1($request->getServer('REMOTE_ADDR') . '|' . $request->getUri());
 
         if ($this->limiter->tooManyAttempts($key, 60)) { // Default 60 per minute
-            return new Response(json_encode(['error' => 'Too many requests']), 429, ['Content-Type' => 'application/json']);
+            return $this->responseFactory->json(['error' => 'Too many requests'], 429);
         }
 
         $this->limiter->hit($key);

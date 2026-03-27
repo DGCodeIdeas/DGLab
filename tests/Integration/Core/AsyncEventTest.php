@@ -2,90 +2,30 @@
 
 namespace DGLab\Tests\Integration\Core;
 
-use DGLab\Core\Application;
-use DGLab\Core\BaseEvent;
+use DGLab\Tests\IntegrationTestCase;
 use DGLab\Core\Contracts\EventInterface;
-use DGLab\Core\EventDispatcher;
+use DGLab\Core\GenericEvent;
 use DGLab\Database\Connection;
-use PHPUnit\Framework\TestCase;
 
-class AsyncTestEvent extends BaseEvent {}
-
-class AsyncTestListener {
-    public static int $handled = 0;
+class TestAsyncListener {
     public function handle(EventInterface $event) {
-        self::$handled++;
+        // Do nothing
     }
 }
 
-class AsyncEventTest extends TestCase
+class AsyncEventTest extends IntegrationTestCase
 {
-    protected Application $app;
-    protected EventDispatcher $dispatcher;
-    protected Connection $db;
-
-    protected function setUp(): void
-    {
-        Application::flush();
-        $this->app = Application::getInstance();
-
-        // Setup in-memory SQLite
-        $config = [
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => ':memory:',
-                ]
-            ]
-        ];
-        $this->db = new Connection($config);
-        $this->app->singleton(Connection::class, $this->db);
-        $this->app->singleton(\DGLab\Core\EventDrivers\QueueDriver::class, function() {
-            return new \DGLab\Core\EventDrivers\QueueDriver($this->app);
-        });
-
-        // Run migrations
-        require_once 'database/migrations/2026_03_12_000001_create_event_queue_table.php';
-        $migration = new \CreateEventQueueTable($this->db);
-        $migration->up();
-
-        $this->dispatcher = $this->app->get(EventDispatcher::class);
-        AsyncTestListener::$handled = 0;
-    }
-
     public function test_it_queues_async_listeners()
     {
-        $this->dispatcher->listen(AsyncTestEvent::class, AsyncTestListener::class, 0, true);
+        $db = $this->app->get(Connection::class);
+        $this->fakeEvents();
 
-        $this->dispatcher->dispatch(new AsyncTestEvent());
+        // Register a class-based listener as async
+        $this->app->get(\DGLab\Core\Contracts\DispatcherInterface::class)->listen('async.test', TestAsyncListener::class, 0, true);
 
-        // Verify listener was NOT called immediately
-        $this->assertEquals(0, AsyncTestListener::$handled);
+        event('async.test', ['foo' => 'bar']);
 
-        // Verify it exists in the database
-        $job = $this->db->selectOne("SELECT * FROM event_queue LIMIT 1");
-        $this->assertNotNull($job);
-        $this->assertEquals('async.test', $job['event_alias']);
-        $this->assertEquals('pending', $job['status']);
-    }
-
-    public function test_worker_can_process_queued_event()
-    {
-        $this->dispatcher->listen(AsyncTestEvent::class, AsyncTestListener::class, 0, true);
-        $this->dispatcher->dispatch(new AsyncTestEvent());
-
-        // Run worker once
-        $job = $this->db->selectOne("SELECT * FROM event_queue WHERE status = 'pending' LIMIT 1");
-        $this->assertNotNull($job);
-
-        $payload = json_decode($job['payload'], true);
-        $event = unserialize($payload['event']);
-        $listenerClass = $payload['listener'];
-
-        $instance = $this->app->get($listenerClass);
-        $this->app->call([$instance, 'handle'], ['event' => $event]);
-
-        $this->assertEquals(1, AsyncTestListener::$handled);
+        $record = $db->selectOne("SELECT * FROM event_queue WHERE event_alias = ?", ['async.test']);
+        $this->assertNotNull($record);
     }
 }

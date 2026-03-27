@@ -338,7 +338,7 @@ abstract class BaseService implements ServiceInterface
     /**
      * Get maximum file size
      */
-    protected function getMaxFileSize(): int
+    public function getMaxFileSize(): int
     {
         return $this->config('max_file_size', 52428800); // 50MB default
     }
@@ -364,7 +364,7 @@ abstract class BaseService implements ServiceInterface
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
 
-        return $finfo->file($path);
+        $type = $finfo->file($path); return $type !== false ? $type : null;
     }
 
     /**

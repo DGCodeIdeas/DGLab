@@ -7,7 +7,7 @@ use DGLab\Core\View;
 use DGLab\Services\Superpowers\SuperpowersEngine;
 use DGLab\Core\Application;
 
-class SuperpowersTest extends TestCase
+class SuperpowersTest extends \DGLab\Tests\TestCase
 {
     private View $view;
     private string $vPath;
@@ -170,7 +170,9 @@ class SuperpowersTest extends TestCase
     protected function tearDown(): void
     {
         $files = glob($this->vPath . 'ut_*');
-        foreach($files as $f) @unlink($f);
+        foreach ($files as $f) {
+            @unlink($f);
+        }
         @unlink($this->vPath . 'components/ut_alert.super.php');
         @unlink($this->vPath . 'components/ut_card.super.php');
         @unlink($this->vPath . 'components/ut_node.super.php');

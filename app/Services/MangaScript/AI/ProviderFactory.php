@@ -345,4 +345,27 @@ class ProviderFactory
 
         return $summary;
     }
+
+
+    /**
+     * Reset the factory to its default state
+     */
+    public static function reset(): void
+    {
+        self::$providers = [
+        'openai' => OpenAiProvider::class,
+        'anthropic' => AnthropicProvider::class,
+        'google' => GoogleProvider::class,
+        'mistral' => MistralProvider::class,
+        'together' => TogetherProvider::class,
+        'openrouter' => OpenRouterProvider::class,
+        'ollama' => OllamaProvider::class,
+        'deepseek' => DeepSeekProvider::class,
+        'groq' => GroqProvider::class,
+        'cohere' => CohereProvider::class,
+        'xai' => XaiProvider::class,
+        'bedrock' => BedrockProvider::class,
+        'azure_openai' => AzureOpenAiProvider::class,
+    ];
+    }
 }
