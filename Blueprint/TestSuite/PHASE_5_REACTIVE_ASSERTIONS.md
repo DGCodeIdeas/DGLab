@@ -21,6 +21,6 @@ Provide specialized, deep-level assertions for verifying the behavior of reactiv
 - This creates a test that renders a single component with various props and asserts the resulting HTML/Reactivity metadata.
 
 ## Success Criteria
-- [ ] Comprehensive test coverage for the `SuperpowersEngine`'s fragment detection logic.
-- [ ] Successful verification of a complex multi-step reactive form (`@persist` -> submit -> redirect).
-- [ ] Zero regressions in the SuperPHP diffing/patching logic.
+- [x] Comprehensive test coverage for the `SuperpowersEngine`'s fragment detection logic.
+- [x] Successful verification of a complex multi-step reactive form (`@persist` -> submit -> redirect).
+- [x] Zero regressions in the SuperPHP diffing/patching logic.
