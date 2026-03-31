@@ -1,0 +1,1 @@
+<div s-data="base64"> <reactive:div>Test</reactive:div> </div>

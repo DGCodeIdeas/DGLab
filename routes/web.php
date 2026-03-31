@@ -14,6 +14,7 @@ $router->post('/_superpowers/action', [ActionController::class, 'handle'], 'supe
 // Existing routes...
 $router->get('/', [HomeController::class, 'index'], 'home');
 $router->get('/login', [AuthController::class, 'showLogin'], 'login');
+$router->get('/test/morph', [DGLabControllersTestController::class, 'morph']);
 
 $router->get('/services', [ServicesController::class, 'index'], 'services.index');
 $router->get('/services/{id}', [ServicesController::class, 'show'], 'services.show');

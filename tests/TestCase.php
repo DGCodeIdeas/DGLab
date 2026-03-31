@@ -25,13 +25,17 @@ use DGLab\Core\EventDispatcher;
 use DGLab\Core\Router;
 use DGLab\Tests\Unit\Core\EventFake;
 use DGLab\Facades\Event;
+use DGLab\Tests\Concerns\MakesReactiveAssertions;
+use DGLab\Core\Response;
 
 abstract class TestCase extends BaseTestCase
 {
     use ProphecyTrait;
+    use MakesReactiveAssertions;
 
     protected Application $app;
     protected ?EventFake $eventFake = null;
+    protected ?Response $lastResponse = null;
     protected ?string $tempStorage = null;
 
     protected function setUp(): void
@@ -61,7 +65,9 @@ abstract class TestCase extends BaseTestCase
 
     private function recursiveDelete(string $dir): void
     {
-        if (!is_dir($dir)) return;
+        if (!is_dir($dir)) {
+            return;
+        }
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             (is_dir("$dir/$file")) ? $this->recursiveDelete("$dir/$file") : unlink("$dir/$file");
@@ -130,7 +136,7 @@ abstract class TestCase extends BaseTestCase
         return new \DGLab\Core\Request($method === 'GET' ? $params : [], $method !== 'GET' ? $params : [], [], array_merge(['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri], $server));
     }
 
-    protected function call(string $method, string $uri, array $params = [], array $headers = []): \DGLab\Core\Response
+    protected function call(string $method, string $uri, array $params = [], array $headers = []): Response
     {
         $server = [];
         foreach ($headers as $k => $v) {
@@ -142,7 +148,15 @@ abstract class TestCase extends BaseTestCase
         }
         $request = $this->createRequest($method, $uri, $params, $server);
         $this->app->set(\DGLab\Core\Request::class, $request);
-        return $this->app->get(Router::class)->dispatch($request);
+
+        $response = $this->app->get(Router::class)->dispatch($request);
+
+        if (!($response instanceof Response)) {
+            $response = new Response((string)$response);
+        }
+
+        $this->lastResponse = $response;
+        return $this->lastResponse;
     }
 
     protected function addTestRoute(string $method, string $uri, $handler): void
