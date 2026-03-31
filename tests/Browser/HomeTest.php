@@ -3,33 +3,37 @@
 namespace DGLab\Tests\Browser;
 
 use DGLab\Tests\BrowserTestCase;
+use DGLab\Tests\PageObjects\DashboardPage;
+use DGLab\Tests\PageObjects\NavigationComponent;
 
+/**
+ * @group browser
+ */
 class HomeTest extends BrowserTestCase
 {
     public function testHomePageLoads()
     {
         $client = static::createPantherClient(['browser' => 'chrome']);
-        $crawler = $client->request('GET', '/');
+        $dashboard = new DashboardPage($client);
+        $dashboard->open();
 
         $this->assertPageTitleContains('DGLab');
-        $this->assertSelectorTextContains('h1', 'Digital Lab Tools');
+        $this->assertTrue($dashboard->isVisible());
     }
 
     public function testSPALinkNavigation()
     {
         $client = static::createPantherClient(['browser' => 'chrome']);
-        $client->request('GET', '/');
+        $dashboard = new DashboardPage($client);
+        $nav = new NavigationComponent($client);
 
-        // Ensure we are on home
-        $this->assertSelectorTextContains('h1', 'Digital Lab Tools');
+        $dashboard->open();
+        $this->assertTrue($dashboard->isVisible());
 
-        // Click "Get Started" which has @prefetch (data-prefetch)
-        $client->clickLink('Get Started');
+        // Use NavigationComponent to click "Get Started"
+        $nav->clickLink('Get Started');
 
-        // Wait for fragment transition
-        $client->waitFor('h2');
-
-        // Verify URL changed but page didn't full reload (optional, check data-fragment-loaded)
+        // Verify URL changed but page didn't full reload
         $this->assertStringContainsString('/services', $client->getCurrentURL());
     }
 }
