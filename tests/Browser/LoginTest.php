@@ -6,6 +6,9 @@ use DGLab\Tests\BrowserTestCase;
 use DGLab\Tests\PageObjects\LoginPage;
 use DGLab\Models\User;
 
+/**
+ * @group browser
+ */
 class LoginTest extends BrowserTestCase
 {
     public function testUserCanLogin()
@@ -24,8 +27,20 @@ class LoginTest extends BrowserTestCase
 
         $loginPage->login('browser@test.com', 'password123');
 
-        // 2. Wait for redirect and verify
+        // Verify successful login
         $client->waitFor('.navbar');
         $this->assertStringNotContainsString('/login', $client->getCurrentURL());
+    }
+
+    public function testLoginWithInvalidCredentials()
+    {
+        $client = static::createPantherClient(['browser' => 'chrome']);
+        $loginPage = new LoginPage($client);
+
+        $loginPage->login('wrong@test.com', 'badpassword');
+
+        // Verify error message is visible
+        $this->assertNotNull($loginPage->getErrorMessage());
+        $this->assertStringContainsString('/login', $client->getCurrentURL());
     }
 }
