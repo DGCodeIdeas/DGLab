@@ -54,6 +54,19 @@ class Application
         $this->set(\DGLab\Services\Download\AuditService::class, fn($app) => new \DGLab\Services\Download\AuditService($app->get(AuditService::class)));
         $this->set(ResponseFactoryInterface::class, fn() => new ResponseFactory());
         $this->set(ResponseFactory::class, fn() => new ResponseFactory());
+
+        $this->set(\DGLab\Services\Nexus\NexusClient::class, function ($app) {
+            return new \DGLab\Services\Nexus\NexusClient(
+                $app->config("redis.nexus") ?: $app->config("redis.default"),
+                $app->get(\Psr\Log\LoggerInterface::class)
+            );
+        });
+        $this->set(\DGLab\Core\EventDrivers\BroadcastDriver::class, function ($app) {
+            return new \DGLab\Core\EventDrivers\BroadcastDriver($app->get(\DGLab\Services\Nexus\NexusClient::class));
+        });
+        $this->set(\DGLab\Core\EventDrivers\NexusBroadcastDriver::class, function ($app) {
+            return new \DGLab\Core\EventDrivers\NexusBroadcastDriver($app->get(\DGLab\Services\Nexus\NexusClient::class));
+        });
     }
 
     public function boot(): void

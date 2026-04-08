@@ -1,6 +1,7 @@
 <?php
 
 use DGLab\Core\EventDrivers\SyncDriver;
+use DGLab\Core\EventDrivers\BroadcastDriver;
 
 /**
  * Event Dispatcher Configuration
@@ -25,6 +26,8 @@ return [
      * Optional: Map specific events to specific drivers.
      */
     'map' => [
-        // 'UserRegistered' => QueueDriver::class,
+        'job.progress' => BroadcastDriver::class,
+        'console.log' => BroadcastDriver::class,
+        'user.notification' => BroadcastDriver::class,
     ],
 ];

@@ -22,19 +22,22 @@ class NexusServer
     protected LoggerInterface $logger;
     protected string $host;
     protected int $port;
+    protected array $redisConfig;
 
     public function __construct(
         ConnectionManagerInterface $connectionManager,
         HandshakeValidator $validator,
         LoggerInterface $logger,
         string $host = '0.0.0.0',
-        int $port = 8080
+        int $port = 8080,
+        array $redisConfig = []
     ) {
         $this->connectionManager = $connectionManager;
         $this->validator = $validator;
         $this->logger = $logger;
         $this->host = $host;
         $this->port = $port;
+        $this->redisConfig = $redisConfig;
     }
 
     /**
@@ -44,13 +47,99 @@ class NexusServer
     {
         $this->server = new Server($this->host, $this->port);
 
+        // Set Swoole server settings if needed
+        $this->server->set([
+            'worker_num' => 1, // Single worker for dev/consistency
+        ]);
+
         $this->server->on('handshake', [$this, 'onHandshake']);
         $this->server->on('open', [$this, 'onOpen']);
         $this->server->on('message', [$this, 'onMessage']);
         $this->server->on('close', [$this, 'onClose']);
+        $this->server->on('WorkerStart', [$this, 'onWorkerStart']);
 
         $this->logger->info("Nexus WebSocket Server starting on {$this->host}:{$this->port}");
         $this->server->start();
+    }
+
+    /**
+     * Start Redis listener coroutine on worker start.
+     */
+    public function onWorkerStart(Server $server, int $workerId): void
+    {
+        if (empty($this->redisConfig)) {
+            $this->logger->warning("No Redis configuration provided for Nexus. Pub/Sub disabled.");
+            return;
+        }
+
+        go(function () {
+            $broker = new RedisBroker(
+                $this->redisConfig['host'],
+                $this->redisConfig['port'],
+                $this->redisConfig['password'] ?? null,
+                $this->redisConfig['database'] ?? 0,
+                $this->logger
+            );
+
+            $this->logger->info("Starting Redis listener coroutine...");
+
+            $broker->subscribe(['nexus_broadcast'], function ($channel, $payload) {
+                $this->handleRedisMessage($payload);
+            });
+        });
+    }
+
+    /**
+     * Handle messages received from Redis.
+     */
+    protected function handleRedisMessage(string $payload): void
+    {
+        $this->logger->debug("Redis message received: {$payload}");
+
+        try {
+            $data = json_decode($payload, true);
+            if (!$data || !isset($data['topic'])) {
+                return;
+            }
+
+            $topic = $data['topic'];
+
+            // For Phase Two, we fan-out to all connected clients that might be interested.
+            // In a more advanced version, we'd have a TopicRouter/SubscriptionManager.
+            // For now, we'll check if the message targets a specific user or is global.
+
+            foreach ($this->connectionManager->all() as $fd => $info) {
+                if ($this->shouldSendToClient($topic, $data, $info)) {
+                    $this->server->push($fd, $payload);
+                }
+            }
+        } catch (Throwable $e) {
+            $this->logger->error("Error handling Redis message: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Determine if a message should be sent to a specific client.
+     */
+    protected function shouldSendToClient(string $topic, array $data, array $clientInfo): bool
+    {
+        // Topic patterns:
+        // user.{userId}.console
+        // job.{jobId}.progress (might need permission check, but for now we look at payload.userId if present)
+        // global.*
+
+        if (str_starts_with($topic, 'user.')) {
+            $parts = explode('.', $topic);
+            $targetUserId = $parts[1] ?? null;
+            return (string)$targetUserId === (string)$clientInfo['user_id'];
+        }
+
+        if (isset($data['payload']['userId'])) {
+            return (string)$data['payload']['userId'] === (string)$clientInfo['user_id'];
+        }
+
+        // Default to true for global or unhandled topics for now
+        return true;
     }
 
     /**
@@ -91,7 +180,7 @@ class NexusServer
         }
 
         $key = $request->header['sec-websocket-key'];
-        if (0 === preg_match('#^[+/0-9A-Za-z]{21}[AQgw]==$#', $key) || 16 !== strlen(base64_decode($key))) {
+        if (0 === preg_match('#^[+/0-9A-Za-z]{21}[AQgw]==0', $key) || 16 !== strlen(base64_decode($key))) {
             return false;
         }
 

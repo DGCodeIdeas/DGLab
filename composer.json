@@ -18,7 +18,8 @@
         "doctrine/dbal": "^3.0",
         "monolog/monolog": "^2.0",
         "psr/container": "^2.0",
-        "psr/log": "^2.0"
+        "psr/log": "^2.0",
+        "predis/predis": "^2.0"
     },
     "require-dev": {
         "phpspec/prophecy-phpunit": "^2.0",

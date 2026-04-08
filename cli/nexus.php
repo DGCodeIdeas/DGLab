@@ -40,7 +40,7 @@ switch ($action) {
 
         echo "Starting Nexus WebSocket Server on $host:$port...\n";
 
-        // Manually assemble dependencies for Phase One
+        // Manually assemble dependencies
         $connectionManager = new SwooleConnectionManager();
         $jwtService = new JWTService();
         $userRepository = new UserRepository();
@@ -52,15 +52,18 @@ switch ($action) {
             config('auth.jwt.algo', 'HS256')
         );
 
+        $redisConfig = config('redis.nexus') ?: config('redis.default');
+
         $server = new NexusServer(
             $connectionManager,
             $validator,
             $app->get(LoggerInterface::class),
             $host,
-            $port
+            $port,
+            $redisConfig
         );
 
-        // Store PID in a way Swoole can manage if needed, or manually here
+        // Store PID
         file_put_contents($pidFile, getmypid());
 
         try {

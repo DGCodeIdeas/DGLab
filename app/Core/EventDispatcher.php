@@ -22,9 +22,6 @@ class EventDispatcher implements DispatcherInterface
     public function dispatch(EventInterface $event): EventInterface
     {
         $listeners = $this->getListenersForEvent($event);
-        if (empty($listeners)) {
-            return $event;
-        }
 
         $sync = [];
         $async = [];
@@ -41,6 +38,12 @@ class EventDispatcher implements DispatcherInterface
         }
         if (!empty($async)) {
             $this->app->get(\DGLab\Core\EventDrivers\QueueDriver::class)->handle($async, $event);
+        }
+
+        $map = $this->app->config("events.map", []);
+        $alias = $event->getAlias();
+        if (isset($map[$alias]) && $map[$alias] === \DGLab\Core\EventDrivers\BroadcastDriver::class) {
+            $this->app->get(\DGLab\Core\EventDrivers\BroadcastDriver::class)->handle([], $event);
         }
 
         return $event;
