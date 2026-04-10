@@ -18,7 +18,10 @@ Adding server-side support for @prefetch and @transition to optimize SPA feel.
 Building superpowers.nav.js to intercept navigation and manage History API.
 
 ### [Phase 3: Asset Pipeline I - Pure-PHP Bundling (COMPLETED)](PHASE_3_ASSET_PIPELINE_BUNDLING.md)
-Finalizing the WebpackService for dependency-ordered concatenation and hashing.
+Finalizing the AssetPipelineService for dependency-ordered concatenation and hashing.
+
+### [Phase 11: Frontend Vendor Integration - Lit.dev (COMPLETED)](../FrontendVendor/LitIntegration.md)
+Integrating Lit.dev for high-performance reactive web components using Import Maps.
 
 ### [Phase 4: Asset Pipeline II - Pure-PHP DX (COMPLETED)](PHASE_4_ASSET_PIPELINE_DX.md)
 Implementing Source Map generation and full removal of Node.js dependencies.

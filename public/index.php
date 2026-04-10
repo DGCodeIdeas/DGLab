@@ -73,6 +73,10 @@ $app->singleton(\DGLab\Services\AssetService::class, function () {
     return new \DGLab\Services\AssetService();
 });
 
+$app->singleton(\DGLab\Services\AssetPacker\ImportMapGenerator::class, function () {
+    return new \DGLab\Services\AssetPacker\ImportMapGenerator();
+});
+
 $app->singleton(\DGLab\Core\View::class, function () {
     return new \DGLab\Core\View();
 });

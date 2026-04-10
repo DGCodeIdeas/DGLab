@@ -85,13 +85,14 @@ class Compiler
         return $c;
     }
 
-    private function processDirectivesInPHP(string $code): string
+    public function processDirectivesInPHP(string $code): string
     {
         $code = preg_replace_callback('/@global\s*\(\s*[\'"](.*?)[\'"]\s*(?:,\s*[\'"](.*?)[\'"]\s*)?\)/', function ($m) {
             $k = $m[1];
             $v = $m[2] ?? $k;
             return "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStoreInterface::class); \${$v} = \$__g->get('{$k}'); \$__ctx['{$v}'] = \${$v};";
         }, $code);
+        $code = preg_replace('/@importmap/', "echo \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\AssetPacker\\ImportMapGenerator::class)->render();", $code);
         return preg_replace_callback('/@persist\s*\(\s*\$(.*?)\s*\)/', function ($m) {
             $v = $m[1];
             return "\$__g = \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\Superpowers\\Runtime\\GlobalStateStoreInterface::class); \$__persisted[] = '{$v}'; if (\$__g->get('{$v}', '__ABSENT__') !== '__ABSENT__') \${$v} = \$__g->get('{$v}');";
@@ -138,6 +139,9 @@ class Compiler
             if ($n->name === 'prefetch') {
                 $v = $n->expression ? "(" . $this->tr->transpile($n->expression, '$__ctx') . ")" : "'true'";
                 return "/* line:$n->line */ echo ' data-prefetch=\"' . \\DGLab\\Core\\View::e((string)$v) . '\"';\n";
+            }
+            if ($n->name === 'importmap') {
+                return "/* line:$n->line */ echo \\DGLab\\Core\\Application::getInstance()->get(\\DGLab\\Services\\AssetPacker\\ImportMapGenerator::class)->render();\n";
             }
             if ($n->name === 'transition') {
                 $v = $n->expression ? "(" . $this->tr->transpile($n->expression, '$__ctx') . ")" : "'fade'";

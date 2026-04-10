@@ -1,4 +1,4 @@
-# Asset Bundler: Pure-PHP Frontend Pipeline
+# Asset Pipeline (formerly Asset Bundler): Pure-PHP Frontend Pipeline
 
 ## Project Vision
 To provide a completely Node-free, high-performance asset bundling solution as a core service within the DGLab framework. This service enables developers to use modern JavaScript (ES6 modules) and CSS while maintaining a zero-dependency production environment.
@@ -25,3 +25,6 @@ Generating VLQ-encoded source maps for bundled JS and CSS to ensure easy debuggi
 
 ### [Phase 5: Integration & Node Removal (COMPLETED)](PHASE_5_INTEGRATION_REMOVAL.md)
 Full framework integration, decommissioning node_modules, and providing the build-assets CLI tool.
+
+### [Phase 6: ESM-First & Import Maps (COMPLETED)](../FrontendVendor/AssetPipeline.md)
+Evolving the pipeline to support bundless ESM and native browser import maps.

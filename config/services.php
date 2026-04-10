@@ -3,7 +3,7 @@ return [
     'services' => [
         'download-service' => \DGLab\Services\Download\DownloadService::class,
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
-        'webpack' => \DGLab\Services\AssetPacker\WebpackService::class,
+        'pipeline' => \DGLab\Services\AssetPacker\AssetPipelineService::class,
         'manga-script' => \DGLab\Services\MangaScript\MangaScriptService::class,
         'superpowers-global-state' => \DGLab\Services\Superpowers\Runtime\GlobalStateStore::class,
     ],

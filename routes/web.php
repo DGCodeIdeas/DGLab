@@ -18,3 +18,7 @@ $router->get('/test/morph', [DGLabControllersTestController::class, 'morph']);
 
 $router->get('/services', [ServicesController::class, 'index'], 'services.index');
 $router->get('/services/{id}', [ServicesController::class, 'show'], 'services.show');
+
+$router->get('/test-lit', function() {
+    return view('test_lit');
+});

@@ -1,4 +1,12 @@
 {
-    "app.js": "js/app.dd82d79c9d17.js",
-    "vendor.js": "js/vendor.fec7a3ad00a3.js"
+    "app.js": "js/app.js",
+    "vendor.js": "js/vendor.fec7a3ad00a3.js",
+    "LitTestList.js": "js/components/LitTestList.js",
+    "LitTestCounter.js": "js/components/LitTestCounter.js",
+    "LitTestFetch.js": "js/components/LitTestFetch.js",
+    "LitTestOffline.js": "js/components/LitTestOffline.js",
+    "lit_test_list.js": "js/components/LitTestList.js",
+    "lit_test_counter.js": "js/components/LitTestCounter.js",
+    "lit_test_fetch.js": "js/components/LitTestFetch.js",
+    "lit_test_offline.js": "js/components/LitTestOffline.js"
 }

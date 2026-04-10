@@ -68,7 +68,7 @@ parameters:
         - '#Parameter \#2 \$timestamp of function date expects int\|null, int\|false given.#'
         - '#Parameter \#2 \$listener of method DGLab\\Core\\Contracts\\DispatcherInterface::(listen|removeListener)\(\) expects .* given.#'
         - '#Parameter \#1 \$content of method DGLab\\Services\\AssetPacker\\DependencyResolver::extractDependencies\(\) expects string, string\|false given.#'
-        - '#Parameter \#1 \$content of method DGLab\\Services\\AssetPacker\\WebpackService::transformModule\(\) expects string, string\|false given.#'
+        - '#Parameter \#1 \$content of method DGLab\\Services\\AssetPacker\\AssetPipelineService::transformModule\(\) expects string, string\|false given.#'
         - '#Argument of an invalid type array<int, string>\|false supplied for foreach.*#'
         - '#Property DGLab\\Services\\AssetService::\$(scssPath|jsPath|fontsPath) \(string\) does not accept string\|false.#'
         - '#Parameter \#1 \$source of method ScssPhp\\ScssPhp\\Compiler::compileString\(\) expects string, string\|false given.#'

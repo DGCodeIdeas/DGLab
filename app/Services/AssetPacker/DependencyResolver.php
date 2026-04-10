@@ -3,16 +3,27 @@
 namespace DGLab\Services\AssetPacker;
 
 use RuntimeException;
+use DGLab\Core\Application;
 
 class DependencyResolver implements DependencyResolverInterface
 {
     private array $resolved = [];
     private array $visiting = [];
     private string $basePath;
+    private array $vendorMap = [];
 
     public function __construct(?string $basePath = null)
     {
-        $this->basePath = $basePath ?? (dirname(__DIR__, 3) . '/resources/js');
+        $this->basePath = $basePath ?? (Application::getInstance()->getBasePath() . '/resources/js');
+        $this->loadVendorMap();
+    }
+
+    private function loadVendorMap(): void
+    {
+        $path = Application::getInstance()->getBasePath() . '/config/vendor_map.php';
+        if (file_exists($path)) {
+            $this->vendorMap = include $path;
+        }
     }
 
     /**
@@ -36,11 +47,19 @@ class DependencyResolver implements DependencyResolverInterface
         }
 
         if (isset($this->visiting[$path])) {
-            throw new RuntimeException("Circular dependency detected: " . $path . " is part of a cycle.");
+            throw new RuntimeException("Circular dependency detected: " . $path);
+        }
+
+        // If it's a vendor path from the map, don't traverse into it
+        $basePath = Application::getInstance()->getBasePath();
+        if (strpos($path, $basePath . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'vendor') === 0) {
+            $this->resolved[] = $path;
+            return;
         }
 
         if (!file_exists($path)) {
-            throw new RuntimeException("File not found: " . $path);
+             // In ESM mode, we allow unresolved bare imports as the browser handles them via import map
+             return;
         }
 
         $this->visiting[$path] = true;
@@ -50,7 +69,9 @@ class DependencyResolver implements DependencyResolverInterface
 
         foreach ($dependencies as $dependency) {
             $normalizedDep = $this->normalizePath($dependency, dirname($path));
-            $this->traverse($normalizedDep);
+            if ($normalizedDep) {
+                $this->traverse($normalizedDep);
+            }
         }
 
         unset($this->visiting[$path]);
@@ -60,47 +81,34 @@ class DependencyResolver implements DependencyResolverInterface
     private function extractDependencies(string $content): array
     {
         $dependencies = [];
-
-        // Match comments, imports/requires, and standalone strings.
-        // We order them carefully:
-        // 1. Comments (to skip everything in them)
-        // 2. Import from (matches import ... from path)
-        // 3. Export from (matches export ... from path)
-        // 4. Dynamic Import (matches import(path))
-        // 5. Require (matches require(path))
-        // 6. Import only (matches import path)
-        // 7. Standalone strings (to skip them and avoid matching their content)
         $pattern = '/\/\/[^\n]*|\/\*.*?\*\/|' .
             '(?P<if>\bimport\s+(?:[^"\']+\s+from\s+)(?P<q1>[\'"])(?P<p1>[^\'"]+)(?P=q1))|' .
             '(?P<ef>\bexport\s+(?:[^"\']+\s+from\s+)(?P<q5>[\'"])(?P<p5>[^\'"]+)(?P=q5))|' .
             '(?P<di>\bimport\(\s*(?P<q3>[\'"])(?P<p3>[^\'"]+)(?P=q3)\s*\))|' .
             '(?P<re>\brequire\(\s*(?P<q2>[\'"])(?P<p2>[^\'"]+)(?P=q2)\s*\))|' .
-            '(?P<io>\bimport\s+(?P<q4>[\'"])(?P<p4>[^\'"]+)(?P=q4))|' .
-            '(?P<sdq>"(?:[^"\\\\]|\\\\.)*")|' .
-            '(?P<ssq>\'(?:[^\'\\\\]|\\\\.)*\')|' .
-            '(?P<sbt>`(?:[^`\\\\]|\\\\.)*`)/ms';
+            '(?P<io>\bimport\s+(?P<q4>[\'"])(?P<p4>[^\'"]+)(?P=q4))/ms';
 
         if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
-                if (!empty($match['p1'])) {
-                    $dependencies[] = $match['p1'];
-                } elseif (!empty($match['p5'])) {
-                    $dependencies[] = $match['p5'];
-                } elseif (!empty($match['p2'])) {
-                    $dependencies[] = $match['p2'];
-                } elseif (!empty($match['p3'])) {
-                    $dependencies[] = $match['p3'];
-                } elseif (!empty($match['p4'])) {
-                    $dependencies[] = $match['p4'];
-                }
+                if (!empty($match['p1'])) $dependencies[] = $match['p1'];
+                elseif (!empty($match['p5'])) $dependencies[] = $match['p5'];
+                elseif (!empty($match['p2'])) $dependencies[] = $match['p2'];
+                elseif (!empty($match['p3'])) $dependencies[] = $match['p3'];
+                elseif (!empty($match['p4'])) $dependencies[] = $match['p4'];
             }
         }
 
         return array_unique($dependencies);
     }
 
-    private function normalizePath(string $path, ?string $currentDir = null): string
+    private function normalizePath(string $path, ?string $currentDir = null): ?string
     {
+        // Check vendor map first
+        if (isset($this->vendorMap[$path])) {
+            $p = $this->vendorMap[$path];
+            return Application::getInstance()->getBasePath() . DIRECTORY_SEPARATOR . 'public' . str_replace('/', DIRECTORY_SEPARATOR, $p);
+        }
+
         if (str_starts_with($path, '@/')) {
             $path = $this->basePath . DIRECTORY_SEPARATOR . substr($path, 2);
         } elseif (str_starts_with($path, './') || str_starts_with($path, '../')) {
@@ -114,17 +122,9 @@ class DependencyResolver implements DependencyResolverInterface
         $parts = explode(DIRECTORY_SEPARATOR, $path);
         $safe = [];
         foreach ($parts as $part) {
-            if ($part === '' && empty($safe)) {
-                $safe[] = '';
-                continue;
-            }
-            if ($part === '.' || $part === '') {
-                continue;
-            }
-            if ($part === '..') {
-                array_pop($safe);
-                continue;
-            }
+            if ($part === '' && empty($safe)) { $safe[] = ''; continue; }
+            if ($part === '.' || $part === '') continue;
+            if ($part === '..') { array_pop($safe); continue; }
             $safe[] = $part;
         }
         $normalized = implode(DIRECTORY_SEPARATOR, $safe);
@@ -133,7 +133,7 @@ class DependencyResolver implements DependencyResolverInterface
             $normalized = DIRECTORY_SEPARATOR . $normalized;
         }
 
-        if (!str_ends_with($normalized, '.js')) {
+        if (!str_contains(basename($normalized), '.')) {
             $normalized .= '.js';
         }
 

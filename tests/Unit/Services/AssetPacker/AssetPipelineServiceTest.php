@@ -2,23 +2,23 @@
 
 namespace DGLab\Tests\Unit\Services\AssetPacker;
 
-use DGLab\Services\AssetPacker\WebpackService;
+use DGLab\Services\AssetPacker\AssetPipelineService;
 use DGLab\Services\AssetPacker\DependencyResolverInterface;
 use DGLab\Core\Application;
 use PHPUnit\Framework\TestCase;
 
-class WebpackServiceTest extends \DGLab\Tests\TestCase
+class AssetPipelineServiceTest extends \DGLab\Tests\TestCase
 {
     private string $tempDir;
 
     protected function setUp(): void
     {
-        $this->tempDir = rtrim(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'webpack_test_' . uniqid(), DIRECTORY_SEPARATOR);
+        $this->tempDir = rtrim(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'pipeline_test_' . uniqid(), DIRECTORY_SEPARATOR);
         mkdir($this->tempDir . '/resources/js', 0777, true);
         mkdir($this->tempDir . '/config', 0777, true);
 
         file_put_contents($this->tempDir . '/config/assets.php', '<?php return [
-            "webpack" => [
+            "pipeline" => [
                 "entries" => ["app" => "resources/js/app.js"],
                 "optimization" => ["minify" => false]
             ]
@@ -48,9 +48,9 @@ class WebpackServiceTest extends \DGLab\Tests\TestCase
 
     public function testGetMetadata(): void
     {
-        $service = new WebpackService();
-        $this->assertEquals('webpack', $service->getId());
-        $this->assertEquals('PHP Asset Bundler', $service->getName());
+        $service = new AssetPipelineService();
+        $this->assertEquals('pipeline', $service->getId());
+        $this->assertEquals('PHP Asset Pipeline', $service->getName());
         $this->assertNotEmpty($service->getDescription());
     }
 
@@ -66,7 +66,7 @@ class WebpackServiceTest extends \DGLab\Tests\TestCase
             ->method('resolve')
             ->willReturn([$dep1, $dep2]);
 
-        $service = new WebpackService($resolver);
+        $service = new AssetPipelineService($resolver);
 
         mkdir($jsPath . DIRECTORY_SEPARATOR . 'vendor', 0777, true);
         touch($dep1);

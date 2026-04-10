@@ -6,7 +6,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use DGLab\Core\Application;
-use DGLab\Services\AssetPacker\WebpackService;
+use DGLab\Services\AssetPacker\AssetPipelineService;
 
 $basePath = dirname(__DIR__);
 $app = new Application($basePath);
@@ -15,18 +15,22 @@ require_once $basePath . '/app/Helpers/functions.php';
 echo "DGLab Asset Builder (Node-Free)\n";
 echo "===============================\n\n";
 
-$webpack = new WebpackService();
-$config = require $basePath . '/config/assets.php';
-$entries = array_keys($config['webpack']['entries'] ?? []);
+$pipeline = new AssetPipelineService();
+$config = config('assets.pipeline');
+$entries = array_keys($config['entries'] ?? []);
 
 foreach ($entries as $entry) {
     echo "Building entry: {$entry}\n";
     try {
-        $result = $webpack->process(['entry' => $entry], function($percent, $message) {
+        $result = $pipeline->process(['entry' => $entry], function($percent, $message) {
             echo "  [{$percent}%] {$message}...\n";
         });
         if ($result['success']) {
-            echo "  ✓ Built {$result['output']} ({$result['hash']})\n";
+            if (isset($result['output'])) {
+                echo "  ✓ Built {$result['output']} ({$result['hash']})\n";
+            } else {
+                echo "  ✓ Processed {$result['count']} files in ESM mode\n";
+            }
         }
     } catch (Exception $e) {
         echo "  ✗ Error: " . $e->getMessage() . "\n";
@@ -43,8 +47,6 @@ if (file_exists($swPath)) {
     if (file_exists($manifestPath)) {
         $manifest = json_decode(file_get_contents($manifestPath), true);
         foreach ($manifest as $source => $hashed) {
-            // Replace e.g. /assets/js/app.js with /assets/js/app.HASH.js
-            // But in sw.js they might be just 'app.js' strings in an array
             $swContent = preg_replace(
                 '/([\'"])\/assets\/(css|js)\/' . preg_quote($source, '/') . '([\'"])/',
                 "$1/assets/$hashed$3",
