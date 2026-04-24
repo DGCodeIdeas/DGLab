@@ -6,6 +6,8 @@ This directory contains the master blueprint and detailed specifications for the
 
 - **[MASTER_BLUEPRINT.json](./MASTER_BLUEPRINT.json)**: A structured JSON representation of all 81 phases, including their status, objectives, and source files.
 - **[MD_SPECS/](./MD_SPECS/)**: A collection of 81 Markdown files, one for each phase, providing detailed technical requirements and implementation guidelines.
+- **[ANALYSIS_REPORT.md](./ANALYSIS_REPORT.md)**: A detailed codebase audit mapping the current physical state to the phased roadmap.
+- **[OPERATIONS_GUIDE.md](./OPERATIONS_GUIDE.md)**: Phased granular instructions for setup, deployment, and maintenance across Development, Production, and Maintenance stages.
 
 ## Category Summary
 
