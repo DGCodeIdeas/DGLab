@@ -18,6 +18,7 @@ To build a high-performance, ultra-flexible, and meticulously observable ecosyst
 | **MangaScript** | 🏗️ IN PROGRESS | 1 | 5 |
 | **CMS (Legacy)** | 🚫 SUPERSEDED | - | - |
 | **AdminPanel (Legacy)** | 🚫 SUPERSEDED | - | - |
+| **Documentation Service** | 🏗️ PLANNED | 0 | 18 |
 
 ## Directory Map
 
@@ -31,6 +32,7 @@ To build a high-performance, ultra-flexible, and meticulously observable ecosyst
 - **[Test Suite](./TestSuite/OVERVIEW.md)**: A 10-phase "Fortress of Reliability" blueprint for pure PHP, Node-free testing of reactive SPAs and multi-tenant services.
 
 ### Specialized Applications
+- **[Documentation Service](./DocumentationService/OVERVIEW.md)**: Filesystem-backed reactive documentation studio with AI-powered search.
 - **[CMS Studio](./CMSStudio/OVERVIEW.md)**: The unified command center, fusing Headless CMS flexibility with Admin Panel observability.
 - **[MangaScript](./MangaScript/OVERVIEW.md)**: AI orchestration service for novel-to-manga script conversion.
 

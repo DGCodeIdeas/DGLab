@@ -23,6 +23,7 @@ This directory contains the master blueprint and detailed specifications for the
 | **Nexus** | 5 | ✅ COMPLETED (CORE) |
 | **StudioExpansion** | 6 | 🏗️ PLANNED |
 | **AdminPanel** | 5 | ✅ COMPLETED (LEGACY) |
+| **DocumentationService** | 18 | 🏗️ PLANNED |
 
 ## Implementation Principles
 
