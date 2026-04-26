@@ -1773,5 +1773,185 @@
     "file": "Blueprint/AdminPanel/PHASE_5_MANAGEMENT_TOOLS.md",
     "status": "COMPLETED",
     "category": "AdminPanel"
+  },
+  {
+    "phase": "1",
+    "title": "Markdown Foundation",
+    "tasks": [
+      "Implement as defined in PHASE_1_MARKDOWN_FOUNDATION.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_1_MARKDOWN_FOUNDATION.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "2",
+    "title": "Filesystem Discovery & Routing",
+    "tasks": [
+      "Implement as defined in PHASE_2_FILESYSTEM_DISCOVERY_ROUTING.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_2_FILESYSTEM_DISCOVERY_ROUTING.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "3",
+    "title": "Frontmatter & Blueprints",
+    "tasks": [
+      "Implement as defined in PHASE_3_FRONTMATTER_BLUEPRINTS.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_3_FRONTMATTER_BLUEPRINTS.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "4",
+    "title": "Navigation Manifests",
+    "tasks": [
+      "Implement as defined in PHASE_4_NAVIGATION_MANIFESTS.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_4_NAVIGATION_MANIFESTS.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "5",
+    "title": "Interactive Dashboard",
+    "tasks": [
+      "Implement as defined in PHASE_5_INTERACTIVE_DASHBOARD.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_5_INTERACTIVE_DASHBOARD.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "6",
+    "title": "Reactive SPA Navigation",
+    "tasks": [
+      "Implement as defined in PHASE_6_REACTIVE_SPA_NAVIGATION.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_6_REACTIVE_SPA_NAVIGATION.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "7",
+    "title": "Nexus Live-Reload",
+    "tasks": [
+      "Implement as defined in PHASE_7_NEXUS_LIVE_RELOAD.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_7_NEXUS_LIVE_RELOAD.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "8",
+    "title": "Visuals & Diagrams",
+    "tasks": [
+      "Implement as defined in PHASE_8_VISUALS_DIAGRAMS.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_8_VISUALS_DIAGRAMS.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "9",
+    "title": "Full-Text Search Indexing",
+    "tasks": [
+      "Implement as defined in PHASE_9_SEARCH_INDEXING.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_9_SEARCH_INDEXING.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "10",
+    "title": "Global Search UI",
+    "tasks": [
+      "Implement as defined in PHASE_10_GLOBAL_SEARCH_UI.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_10_GLOBAL_SEARCH_UI.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "11",
+    "title": "Versioning & Cross-Links",
+    "tasks": [
+      "Implement as defined in PHASE_11_VERSIONING_CROSS_LINKS.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_11_VERSIONING_CROSS_LINKS.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "12",
+    "title": "Tenant Isolation & RBAC",
+    "tasks": [
+      "Implement as defined in PHASE_12_TENANT_ISOLATION_RBAC.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_12_TENANT_ISOLATION_RBAC.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "13",
+    "title": "Static Site Export",
+    "tasks": [
+      "Implement as defined in PHASE_13_STATIC_SITE_EXPORT.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_13_STATIC_SITE_EXPORT.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "14",
+    "title": "Git Metadata Integration",
+    "tasks": [
+      "Implement as defined in PHASE_14_GIT_METADATA_INTEGRATION.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_14_GIT_METADATA_INTEGRATION.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "15",
+    "title": "Observability & Auditing",
+    "tasks": [
+      "Implement as defined in PHASE_15_OBSERVABILITY_AUDITING.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_15_OBSERVABILITY_AUDITING.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "16",
+    "title": "AI Search Pipeline (RAG)",
+    "tasks": [
+      "Implement as defined in PHASE_16_AI_SEARCH_PIPELINE_RAG.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_16_AI_SEARCH_PIPELINE_RAG.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "17",
+    "title": "DocStudio AI Assistant",
+    "tasks": [
+      "Implement as defined in PHASE_17_DOCSTUDIO_AI_ASSISTANT.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_17_DOCSTUDIO_AI_ASSISTANT.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
+  },
+  {
+    "phase": "18",
+    "title": "Final Saturation & Hardening",
+    "tasks": [
+      "Implement as defined in PHASE_18_FINAL_SATURATION.md"
+    ],
+    "file": "Blueprint/DocumentationService/PHASE_18_FINAL_SATURATION.md",
+    "status": "PLANNED",
+    "category": "DocumentationService"
   }
 ]
