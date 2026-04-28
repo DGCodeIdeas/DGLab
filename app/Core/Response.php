@@ -1,25 +1,11 @@
 <?php
 
-/**
- * DGLab HTTP Response
- *
- * PSR-7 inspired HTTP response abstraction.
- * Provides immutable modification methods and helper methods for common responses.
- *
- * @package DGLab\Core
- */
-
 namespace DGLab\Core;
 
 /**
- * Class Response
+ * Response Class
  *
- * Represents an HTTP response with:
- * - Status code management
- * - Header management
- * - JSON responses
- * - File downloads with resume support
- * - Caching headers
+ * Handles HTTP responses, headers, cookies, and various response formats.
  */
 class Response
 {
@@ -44,67 +30,68 @@ class Response
         403 => 'Forbidden',
         404 => 'Not Found',
         405 => 'Method Not Allowed',
-        409 => 'Conflict',
+        416 => 'Requested Range Not Satisfiable',
         422 => 'Unprocessable Entity',
         429 => 'Too Many Requests',
         500 => 'Internal Server Error',
-        502 => 'Bad Gateway',
+        501 => 'Not Implemented',
         503 => 'Service Unavailable',
     ];
 
     /**
-     * Response content
+     * @var string Response content
      */
-    private string $content = '';
+    protected string $content;
 
     /**
-     * HTTP status code
+     * @var int HTTP status code
      */
-    private int $statusCode = 200;
+    protected int $statusCode;
 
     /**
-     * Response headers
+     * @var array HTTP headers
      */
-    private array $headers = [];
+    protected array $headers;
 
     /**
-     * HTTP version
+     * @var array Cookies to be set
      */
-    private string $version = '1.1';
+    protected array $cookies = [];
 
     /**
-     * Cookies to set
+     * @var string HTTP protocol version
      */
-    private array $cookies = [];
+    protected string $version = '1.1';
 
     /**
-     * Create a new Response instance
+     * Constructor
      */
-    public function __construct(?string $content = '', int $status = 200, array $headers = [])
+    public function __construct(string $content = '', int $statusCode = 200, array $headers = [])
     {
-        $this->content = $content ?? '';
-        $this->statusCode = $status;
+        $this->content = $content;
+        $this->statusCode = $statusCode;
         $this->headers = $headers;
     }
 
     /**
      * Create a JSON response
      */
-    public static function json(array $data, int $status = 200, array $headers = []): self
+    public static function json(array $data, int $statusCode = 200, array $headers = []): self
     {
+        $content = json_encode($data);
         $headers['Content-Type'] = 'application/json';
 
-        return new self(json_encode($data), $status, $headers);
+        return new self($content, $statusCode, $headers);
     }
 
     /**
      * Create a redirect response
      */
-    public static function redirect(string $url, int $status = 302, array $headers = []): self
+    public static function redirect(string $url, int $statusCode = 302, array $headers = []): self
     {
         $headers['Location'] = $url;
 
-        return new self('', $status, $headers);
+        return new self('', $statusCode, $headers);
     }
 
     /**
@@ -116,9 +103,10 @@ class Response
             throw new \RuntimeException("File not found: {$file}");
         }
 
-        $filename = $name ?? basename($file);
+        $filename = $name ?: basename($file);
         $filesize = filesize($file);
         $mimeType = mime_content_type($file);
+
         if ($mimeType === false) {
             $mimeType = 'application/octet-stream';
         }
@@ -127,7 +115,9 @@ class Response
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Content-Length' => $filesize,
-            'Cache-Control' => 'no-cache, must-revalidate',
+            'Pragma' => 'public',
+            'Expires' => '0',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
         ], $headers);
 
         $response = new self('', 200, $headers);
@@ -137,7 +127,7 @@ class Response
     }
 
     /**
-     * Create a file stream response (with resume support)
+     * Create a file stream response (inline)
      */
     public static function stream(string $file, ?string $name = null, array $headers = []): self
     {
@@ -145,9 +135,10 @@ class Response
             throw new \RuntimeException("File not found: {$file}");
         }
 
-        $filename = $name ?? basename($file);
+        $filename = $name ?: basename($file);
         $filesize = filesize($file);
         $mimeType = mime_content_type($file);
+
         if ($mimeType === false) {
             $mimeType = 'application/octet-stream';
         }
@@ -264,6 +255,9 @@ class Response
      */
     public function getContent(): string
     {
+        if (isset($this->filePath) && empty($this->content)) {
+            return file_get_contents($this->filePath);
+        }
         return $this->content;
     }
 
@@ -565,5 +559,10 @@ class Response
     public function isUnauthorized(): bool
     {
         return $this->statusCode === 401;
+    }
+
+    public function hasHeader(string $name): bool
+    {
+        return isset($this->headers[$name]);
     }
 }
