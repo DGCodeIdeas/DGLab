@@ -178,22 +178,106 @@ abstract class TestCase extends BaseTestCase
     }
     protected function assertJsonResponse($r)
     {
-        $this->assertEquals('application/json', $r->getHeader('Content-Type'));
-        return json_decode($r->getContent(), true);
+        $this->assertEquals('application/json', $r->getHeader('Content-Type'), "Response is not JSON.");
+        $data = json_decode($r->getContent(), true);
+        $this->assertIsArray($data, "Failed to decode JSON response.");
+        return $data;
+    }
+
+    protected function assertRedirect(?string $uri = null)
+    {
+        $this->assertTrue($this->lastResponse->isRedirect(), "Response is not a redirect.");
+        if ($uri !== null) {
+            $this->assertEquals($uri, $this->lastResponse->getHeader('Location'));
+        }
+    }
+
+    protected function assertHeader(string $headerName, $value = null)
+    {
+        $this->assertTrue($this->lastResponse->hasHeader($headerName), "Header [{$headerName}] not found.");
+        if ($value !== null) {
+            $this->assertEquals($value, $this->lastResponse->getHeader($headerName));
+        }
+    }
+
+    protected function assertSee(string $value, bool $escape = true)
+    {
+        $content = $this->lastResponse->getContent();
+        if ($escape) {
+            $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        }
+        $this->assertStringContainsString($value, $content);
+    }
+
+    protected function assertDontSee(string $value, bool $escape = true)
+    {
+        $content = $this->lastResponse->getContent();
+        if ($escape) {
+            $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        }
+        $this->assertStringNotContainsString($value, $content);
+    }
+
+    protected function assertDatabaseHas(string $table, array $data): void
+    {
+        $db = $this->app->get(Connection::class);
+        $where = [];
+        $bindings = [];
+        foreach ($data as $key => $value) {
+            $where[] = "{$key} = ?";
+            $bindings[] = $value;
+        }
+        $sql = "SELECT COUNT(*) as count FROM {$table} WHERE " . implode(' AND ', $where);
+        $result = $db->selectOne($sql, $bindings);
+        $this->assertGreaterThan(0, $result['count'], "Record not found in [{$table}] with: " . json_encode($data));
+    }
+
+    protected function assertDatabaseMissing(string $table, array $data): void
+    {
+        $db = $this->app->get(Connection::class);
+        $where = [];
+        $bindings = [];
+        foreach ($data as $key => $value) {
+            $where[] = "{$key} = ?";
+            $bindings[] = $value;
+        }
+        $sql = "SELECT COUNT(*) as count FROM {$table} WHERE " . implode(' AND ', $where);
+        $result = $db->selectOne($sql, $bindings);
+        $this->assertEquals(0, $result['count'], "Record found in [{$table}] with: " . json_encode($data));
     }
 
     protected function assertAuditLogged(string $e, array $ex = []): void
     {
         $db = $this->app->get(Connection::class);
-        $sql = "SELECT * FROM audit_logs WHERE event_type = ?";
-        $b = [$e];
+        $where = ["event_type = ?"];
+        $bindings = [$e];
         foreach ($ex as $k => $v) {
-            $sql .= " AND {$k} = ?";
-            $b[] = $v;
+            $where[] = "{$k} = ?";
+            $bindings[] = $v;
         }
-        $this->assertNotNull($db->selectOne($sql, $b), "Audit entry [{$e}] not found.");
+        $sql = "SELECT * FROM audit_logs WHERE " . implode(' AND ', $where);
+        $this->assertNotNull($db->selectOne($sql, $bindings), "Audit entry [{$e}] not found with expected attributes.");
     }
 
+    protected function assertEventAudited(string $eventClass, ?string $alias = null): void
+    {
+        $db = $this->app->get(Connection::class);
+        $where = ["event_class = ?"];
+        $bindings = [$eventClass];
+        if ($alias) {
+            $where[] = "event_alias = ?";
+            $bindings[] = $alias;
+        }
+        $sql = "SELECT * FROM event_audit_logs WHERE " . implode(' AND ', $where);
+        $this->assertNotNull($db->selectOne($sql, $bindings), "Event audit entry for [{$eventClass}] not found.");
+    }
+
+    protected function assertListenerLogged(string $listener, string $status = 'success'): void
+    {
+        $db = $this->app->get(Connection::class);
+        $sql = "SELECT * FROM listener_execution_logs WHERE listener = ? AND status = ?";
+        $this->assertNotNull($db->selectOne($sql, [$listener, $status]), "Listener log entry for [{$listener}] with status [{$status}] not found.");
+    }
 
     protected function mockService(string $id, mixed $mock): void
     {

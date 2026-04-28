@@ -44,12 +44,11 @@ class EventAuditService
     {
         try {
             return $this->db->insert(
-                "INSERT INTO event_audit_logs (event_class, event_alias, dispatch_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO event_audit_logs (event_class, event_alias, dispatch_id, created_at) VALUES (?, ?, ?, ?)",
                 [
                     get_class($event),
                     $event->getAlias(),
                     $this->currentDispatchId,
-                    date('Y-m-d H:i:s'),
                     date('Y-m-d H:i:s')
                 ]
             );
@@ -81,7 +80,7 @@ class EventAuditService
     ): void {
         try {
             $this->db->insert(
-                "INSERT INTO listener_execution_logs (audit_id, listener, driver, status, latency_ms, error_message, stack_trace, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO listener_execution_logs (audit_id, listener, driver, status, latency_ms, error_message, stack_trace, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     $auditId,
                     $listener,
@@ -90,7 +89,6 @@ class EventAuditService
                     $latencyMs,
                     $errorMessage,
                     $stackTrace,
-                    date('Y-m-d H:i:s'),
                     date('Y-m-d H:i:s')
                 ]
             );

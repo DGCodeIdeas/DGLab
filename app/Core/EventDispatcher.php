@@ -7,6 +7,7 @@ use DGLab\Core\Contracts\EventDriverInterface;
 use DGLab\Core\Contracts\EventInterface;
 use DGLab\Core\Contracts\EventSubscriberInterface;
 use DGLab\Core\Utils\PatternMatcher;
+use DGLab\Core\EventAuditService;
 
 class EventDispatcher implements DispatcherInterface
 {
@@ -21,6 +22,11 @@ class EventDispatcher implements DispatcherInterface
 
     public function dispatch(EventInterface $event): EventInterface
     {
+        $auditId = null;
+        if ($this->app->has(EventAuditService::class)) {
+            $auditId = $this->app->get(EventAuditService::class)->logDispatch($event);
+        }
+
         $listeners = $this->getListenersForEvent($event);
         if (empty($listeners)) {
             return $event;
@@ -37,10 +43,10 @@ class EventDispatcher implements DispatcherInterface
         }
 
         if (!empty($sync)) {
-            $this->app->get(\DGLab\Core\EventDrivers\SyncDriver::class)->handle($sync, $event);
+            $this->app->get(\DGLab\Core\EventDrivers\SyncDriver::class)->handle($sync, $event, $auditId);
         }
         if (!empty($async)) {
-            $this->app->get(\DGLab\Core\EventDrivers\QueueDriver::class)->handle($async, $event);
+            $this->app->get(\DGLab\Core\EventDrivers\QueueDriver::class)->handle($async, $event, $auditId);
         }
 
         return $event;

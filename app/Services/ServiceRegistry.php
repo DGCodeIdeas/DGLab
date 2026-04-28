@@ -8,6 +8,7 @@ use DGLab\Services\Tenancy\TenancyService;
 use DGLab\Services\Download\DownloadManager;
 use DGLab\Services\MangaScript\MangaScriptService;
 use DGLab\Services\MangaScript\AI\RoutingEngine;
+use DGLab\Core\Request;
 
 /**
  * Service Registry
@@ -23,7 +24,7 @@ class ServiceRegistry
         });
 
         $app->set(TenancyService::class, function ($app) {
-            return new TenancyService($app->get(\DGLab\Database\Connection::class));
+            return new TenancyService($app->get(Request::class));
         });
 
         $app->set(DownloadManager::class, function ($app) {
