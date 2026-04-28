@@ -52,7 +52,10 @@ class SessionGuard implements AuthGuardInterface
     public function attempt(array $c = [], bool $r = false): bool
     {
         if ($this->validate($c)) {
-            $this->login($this->provider->findByIdentifier($c['email'] ?? ($c['login'] ?? '')), $r);
+            $u = $this->provider->findByIdentifier($c['email'] ?? ($c['login'] ?? ''));
+            if ($u) {
+                $this->login($u, $r);
+            }
             return true;
         }
         return false;
@@ -66,6 +69,11 @@ class SessionGuard implements AuthGuardInterface
     public function setUser(User $u): void
     {
         $this->user = $u;
+    }
+    public function can(string $permission, array $arguments = []): bool
+    {
+        $user = $this->user();
+        return $user && $user->can($permission, $arguments);
     }
     public function logout(): void
     {

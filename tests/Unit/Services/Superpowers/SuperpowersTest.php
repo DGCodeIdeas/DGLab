@@ -15,7 +15,7 @@ class SuperpowersTest extends \DGLab\Tests\TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->view = new View();
+        $this->view = new View(Application::getInstance());
         $this->vPath = Application::getInstance()->getBasePath() . '/resources/views/';
         @mkdir($this->vPath . 'components', 0777, true);
         @mkdir($this->vPath . 'layouts', 0777, true);

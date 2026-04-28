@@ -66,6 +66,11 @@ class OpaqueTokenGuard implements AuthGuardInterface
     {
         $this->user = $user;
     }
+    public function can(string $permission, array $arguments = []): bool
+    {
+        $user = $this->user();
+        return $user && $user->can($permission, $arguments) && $this->tokenCan($permission);
+    }
     public function logout(): void
     {
         $token = $this->getTokenFromRequest();

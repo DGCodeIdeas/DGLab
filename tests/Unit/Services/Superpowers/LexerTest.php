@@ -117,4 +117,24 @@ class LexerTest extends TestCase
         $this->assertNotNull($expToken);
         $this->assertEquals(3, $expToken->line, "Expression token should be on line 3");
     }
+
+    public function testTokenizeAllLifecycleBlocks()
+    {
+        $template = "~setup { s } ~ ~mount { m } ~ ~rendered { r } ~ ~cleanup { c } ~";
+        $tokens = $this->lexer->tokenize($template);
+        $this->assertCount(4, $tokens);
+        $this->assertEquals(Token::T_SETUP_BLOCK, $tokens[0]->type);
+        $this->assertEquals(Token::T_MOUNT_BLOCK, $tokens[1]->type);
+        $this->assertEquals(Token::T_RENDERED_BLOCK, $tokens[2]->type);
+        $this->assertEquals(Token::T_CLEANUP_BLOCK, $tokens[3]->type);
+    }
+
+    public function testTokenizeLegacyLifecycle()
+    {
+        $template = "~setup my legacy code ~";
+        $tokens = $this->lexer->tokenize($template);
+        $this->assertCount(1, $tokens);
+        $this->assertEquals(Token::T_SETUP_BLOCK, $tokens[0]->type);
+        $this->assertEquals("my legacy code", $tokens[0]->value);
+    }
 }

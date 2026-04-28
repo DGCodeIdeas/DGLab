@@ -146,7 +146,7 @@ class Lexer
         return $this->m(self::P['SELF'], Token::T_COMPONENT_SELF_CLOSING);
     }
 
-    private function m($p, $t): bool
+    private function m(string $p, string $t): bool
     {
         if (preg_match($p, $this->input, $matches)) {
             $this->pushToken($t, $matches[0]);

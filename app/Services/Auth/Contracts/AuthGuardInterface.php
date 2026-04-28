@@ -15,4 +15,5 @@ interface AuthGuardInterface
     public function setUser(User $user): void;
     public function login(User $user, bool $remember = false): mixed;
     public function logout(): void;
+    public function can(string $permission, array $arguments = []): bool;
 }
