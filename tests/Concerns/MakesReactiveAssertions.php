@@ -4,6 +4,7 @@ namespace DGLab\Tests\Concerns;
 
 use DGLab\Core\Application;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
+use DGLab\Services\Encryption\EncryptionService;
 use DOMDocument;
 use DOMXPath;
 
@@ -105,13 +106,25 @@ trait MakesReactiveAssertions
             $this->fail("No reactive component (s-data) found in response.");
         }
 
+        $encryption = Application::getInstance()->get(EncryptionService::class);
+
         $found = false;
         foreach ($nodes as $node) {
             $sData = $node->getAttribute('s-data');
-            $state = json_decode(base64_decode($sData), true);
-            if (isset($state[$key]) && $state[$key] === $expectedValue) {
-                $found = true;
-                break;
+            try {
+                $payload = $encryption->decrypt($sData);
+                $state = json_decode($payload, true);
+                if (isset($state[$key]) && $state[$key] === $expectedValue) {
+                    $found = true;
+                    break;
+                }
+            } catch (\Exception $e) {
+                // Fallback to base64 for unencrypted tests if any
+                $state = json_decode(base64_decode($sData), true);
+                if (isset($state[$key]) && $state[$key] === $expectedValue) {
+                    $found = true;
+                    break;
+                }
             }
         }
 
@@ -119,5 +132,53 @@ trait MakesReactiveAssertions
             $found,
             "Global state '{$key}' with value '" . var_export($expectedValue, true) . "' not found."
         );
+    }
+
+    protected function assertComponentRendered(string $name, array $props = [], $response = null): void
+    {
+        $response = $response ?? $this->lastResponse;
+        $content = $response ? $response->getContent() : '';
+
+        if (!$content && method_exists($this, 'getLastOutput')) {
+            $content = $this->getLastOutput();
+        }
+
+        if (!$content) {
+            $this->fail('No content to assert against.');
+        }
+
+        $dom = new DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8"><div>' . $content . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $xpath = new DOMXPath($dom);
+
+        $nodes = $xpath->query("//*[@s-component='{$name}']");
+
+        if ($nodes->length === 0) {
+            $this->fail("Component '{$name}' not found in response.");
+        }
+
+        if (!empty($props)) {
+            $foundProps = false;
+            foreach ($nodes as $node) {
+                $sProps = $node->getAttribute('s-props');
+                if ($sProps) {
+                    $decodedProps = json_decode(base64_decode($sProps), true);
+                    $match = true;
+                    foreach ($props as $key => $value) {
+                        if (!isset($decodedProps[$key]) || $decodedProps[$key] !== $value) {
+                            $match = false;
+                            break;
+                        }
+                    }
+                    if ($match) {
+                        $foundProps = true;
+                        break;
+                    }
+                }
+            }
+            $this->assertTrue($foundProps, "Component '{$name}' found but with different props than expected.");
+        } else {
+            $this->assertTrue(true);
+        }
     }
 }

@@ -5,6 +5,8 @@ namespace DGLab\Tests\Integration;
 use DGLab\Tests\TestCase;
 use DGLab\Core\View;
 use DGLab\Core\Response;
+use DGLab\Services\Encryption\EncryptionService;
+use DGLab\Core\Application;
 
 class ReactiveAssertionTest extends TestCase
 {
@@ -41,9 +43,10 @@ class ReactiveAssertionTest extends TestCase
     public function test_global_state_injected_assertion()
     {
         $this->addTestRoute('GET', '/test/injected-assertion', function () {
-            $view = new View();
+            $encryption = Application::getInstance()->get(EncryptionService::class);
+            $sData = $encryption->encrypt(json_encode(['user' => 'Jules']));
             // Directly use s-data in a div to test the assertion logic
-            return '<div s-data="eyJ1c2VyIjoiSnVsZXMifQ=="> <div id="comp">Hello Jules</div> </div>';
+            return '<div s-data="' . $sData . '"> <div id="comp">Hello Jules</div> </div>';
         });
 
         $this->get('/test/injected-assertion');
