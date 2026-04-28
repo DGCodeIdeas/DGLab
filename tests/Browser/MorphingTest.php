@@ -4,6 +4,9 @@ namespace DGLab\Tests\Browser;
 
 use DGLab\Tests\BrowserTestCase;
 
+/**
+ * @group browser
+ */
 class MorphingTest extends BrowserTestCase
 {
     public function test_dom_morphing_on_click()
