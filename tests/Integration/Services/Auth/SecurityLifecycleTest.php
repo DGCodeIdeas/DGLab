@@ -1,6 +1,6 @@
 <?php
 
-namespace DGLab\Tests\Integration;
+namespace DGLab\Tests\Integration\Services\Auth;
 
 use DGLab\Tests\IntegrationTestCase;
 use DGLab\Models\User;

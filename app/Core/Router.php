@@ -310,7 +310,7 @@ class Router
                 $type = $parts[1];
                 $file = implode("/", array_slice($parts, 2));
                 Application::getInstance()->get(AssetService::class)->serveAsset($type, $file);
-                return new Response("", 200);
+                return Application::getInstance()->get(ResponseFactoryInterface::class)->create("", 200);
             }
         }
         // Find matching route
