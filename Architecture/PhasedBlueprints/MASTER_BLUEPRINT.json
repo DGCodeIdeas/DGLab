@@ -922,7 +922,7 @@
       "Database connection for tests must default to `sqlite::memory:` or a local `dglab_test.sqlite` that is migrated on setup."
     ],
     "file": "Blueprint/TestSuite/PHASE_1_FOUNDATIONS.md",
-    "status": "PLANNED",
+    "status": "COMPLETED",
     "category": "TestSuite"
   },
   {
@@ -942,7 +942,7 @@
       "**Database Models**: Verification of relationships, accessors, and mutators (without database hits)."
     ],
     "file": "Blueprint/TestSuite/PHASE_2_UNIT_COVERAGE.md",
-    "status": "PLANNED",
+    "status": "COMPLETED",
     "category": "TestSuite"
   },
   {
@@ -962,7 +962,7 @@
       "**MangaScript AI Orchestration**: Script Submission -> Event Dispatch -> Worker Processing -> Result Delivery."
     ],
     "file": "Blueprint/TestSuite/PHASE_3_INTEGRATION_ORCHESTRATION.md",
-    "status": "PLANNED",
+    "status": "COMPLETED",
     "category": "TestSuite"
   },
   {
@@ -995,7 +995,7 @@
       "**PHPUnit Orchestration**: Updated `phpunit.xml` with a dedicated `Browser` test suite and `browser` group tagging for granular execution control."
     ],
     "file": "Blueprint/TestSuite/PHASE_4_BROWSER_AUTOMATION.md",
-    "status": "PLANNED",
+    "status": "COMPLETED",
     "category": "TestSuite"
   },
   {
@@ -1014,7 +1014,7 @@
       "This creates a test that renders a single component with various props and asserts the resulting HTML/Reactivity metadata."
     ],
     "file": "Blueprint/TestSuite/PHASE_5_REACTIVE_ASSERTIONS.md",
-    "status": "PLANNED",
+    "status": "COMPLETED",
     "category": "TestSuite"
   },
   {
