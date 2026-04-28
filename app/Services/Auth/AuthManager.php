@@ -60,10 +60,12 @@ class AuthManager
         $guard = $this->guard();
         if ($guard->attempt($credentials, $remember)) {
             $user = $guard->user();
-            if ($this->app->has(AuditService::class)) {
-                $this->app->get(AuditService::class)->log('auth', 'auth.login.success', $user->email);
+            if ($user) {
+                if ($this->app->has(AuditService::class)) {
+                    $this->app->get(AuditService::class)->log('auth', 'auth.login.success', $user->email);
+                }
+                $this->app->get(DispatcherInterface::class)->dispatch(new \DGLab\Core\GenericEvent('auth.login.success', ['user_id' => $user->id]));
             }
-            $this->app->get(DispatcherInterface::class)->dispatch(new \DGLab\Core\GenericEvent('auth.login.success', ['user_id' => $user->id]));
             return true;
         }
         $idnt = $credentials['email'] ?? ($credentials['login'] ?? 'unknown');
@@ -84,5 +86,10 @@ class AuthManager
             $this->app->get(DispatcherInterface::class)->dispatch(new \DGLab\Core\GenericEvent('auth.logout', ['user_id' => $user->id]));
         }
         $this->guard()->logout();
+    }
+
+    public function can(string $permission, array $arguments = []): bool
+    {
+        return $this->guard()->can($permission, $arguments);
     }
 }

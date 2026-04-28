@@ -98,4 +98,60 @@ class ParserTest extends TestCase
         $tokens = $this->lexer->tokenize('</s:unknown>');
         $this->parser->parse($tokens);
     }
+
+    public function testParseYield()
+    {
+        $tokens = $this->lexer->tokenize('@yield("content")');
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\YieldNode::class, $ast[0]);
+    }
+
+    public function testParseSection()
+    {
+        $tokens = $this->lexer->tokenize('@section("sidebar")Side@endsection');
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\SectionNode::class, $ast[0]);
+    }
+
+    public function testParseFragment()
+    {
+        $tokens = $this->lexer->tokenize('@fragment("my-frag")Frag Content@endfragment');
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\FragmentNode::class, $ast[0]);
+        $this->assertEquals('my-frag', $ast[0]->id);
+    }
+
+    public function testParseExtends()
+    {
+        $tokens = $this->lexer->tokenize('@extends("layouts.app")');
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode::class, $ast[0]);
+        $this->assertEquals('layouts.app', $ast[0]->layout);
+    }
+
+    public function testParseSlot()
+    {
+        $tokens = $this->lexer->tokenize('<s:slot:header>Header Content</s:slot:header>');
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\SlotNode::class, $ast[0]);
+        $this->assertEquals('header', $ast[0]->name);
+    }
+
+    public function testParseOtherDirectives()
+    {
+        $tokens = $this->lexer->tokenize('@foreach($items as $item)Item@endforeach');
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode::class, $ast[0]);
+        $this->assertEquals('foreach', $ast[0]->name);
+    }
+
+    public function testParseLifecycleBlocks()
+    {
+        $tokens = $this->lexer->tokenize("~setup { s } ~ ~mount { m } ~ ~rendered { r } ~ ~cleanup { c } ~");
+        $ast = $this->parser->parse($tokens);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\SetupNode::class, $ast[0]);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\MountNode::class, $ast[1]);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\RenderedNode::class, $ast[2]);
+        $this->assertInstanceOf(\DGLab\Services\Superpowers\Parser\Nodes\CleanupNode::class, $ast[3]);
+    }
 }

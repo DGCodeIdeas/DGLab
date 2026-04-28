@@ -28,7 +28,7 @@ class GlobalStateTest extends \DGLab\Tests\TestCase
         $app->singleton(GlobalStateStore::class, fn() => $g);
         $app->singleton(GlobalStateStoreInterface::class, fn() => $g);
 
-        $this->view = new View();
+        $this->view = new View(Application::getInstance());
     }
 
     public function test_global_directive_injects_state()

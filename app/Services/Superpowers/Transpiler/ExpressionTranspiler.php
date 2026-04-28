@@ -18,6 +18,11 @@ class ExpressionTranspiler
      */
     public function transpile(string $expression, string $contextVar = '$__ctx'): string
     {
+        // Protected from transpiling variables inside single-quoted strings
+        if (preg_match("/^'.*'$/", $expression) || preg_match('/^".*"$/', $expression)) {
+            return $expression;
+        }
+
         // 1. Handle null-safe dot notation: $user?.profile?.name
         $patternNullSafe = '/\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(\?\.[a-zA-Z0-9_\-\.]+)+/';
         $expression = preg_replace_callback($patternNullSafe, function ($matches) use ($contextVar) {
@@ -26,7 +31,7 @@ class ExpressionTranspiler
                 ? '$' . $varName
                 : "({$contextVar}['{$varName}'] ?? null)";
 
-            $parts = explode('?.', substr($matches[0], strlen($varName) + 2));
+            $parts = explode('?.', substr($matches[0], strlen($varName) + 1));
             foreach ($parts as $part) {
                 if ($part === '') {
                     continue;
@@ -44,7 +49,7 @@ class ExpressionTranspiler
                 ? '$' . $varName
                 : "({$contextVar}['{$varName}'] ?? null)";
 
-            $parts = explode('.', substr($matches[0], strlen($varName) + 2));
+            $parts = explode('.', substr($matches[0], strlen($varName) + 1));
             foreach ($parts as $part) {
                 if ($part === '') {
                     continue;

@@ -22,7 +22,7 @@ class GlobalDirectiveTest extends \DGLab\Tests\TestCase
         $app->setConfig('superpowers.mode', 'interpreted');
         $this->vPath = $app->getBasePath() . '/resources/views/';
 
-        $this->view = new View();
+        $this->view = new View(Application::getInstance());
         @mkdir($this->vPath, 0777, true);
     }
 

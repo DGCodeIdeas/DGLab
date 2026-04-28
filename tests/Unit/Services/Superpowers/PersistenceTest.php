@@ -15,7 +15,7 @@ class PersistenceTest extends \DGLab\Tests\TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->view = new View();
+        $this->view = new View(Application::getInstance());
         Application::getInstance()->set(GlobalStateStoreInterface::class, function () {
             return new GlobalStateStore();
         });

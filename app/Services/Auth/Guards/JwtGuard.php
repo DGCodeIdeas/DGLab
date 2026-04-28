@@ -87,6 +87,10 @@ class JwtGuard implements AuthGuardInterface
     {
         $this->user = $user;
     }
+    public function can(string $permission, array $arguments = []): bool
+    {
+        return $this->user() && $this->user()->can($permission, $arguments);
+    }
     public function logout(): void
     {
         $this->user = null;
