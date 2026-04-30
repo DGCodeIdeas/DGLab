@@ -1953,5 +1953,67 @@
     "file": "Blueprint/DocumentationService/PHASE_18_FINAL_SATURATION.md",
     "status": "PLANNED",
     "category": "DocumentationService"
+  },
+  {
+    "phase": "1",
+    "title": "Foundation & Abstraction",
+    "tasks": [
+      "Define EncryptionServiceInterface and EncryptionDriverInterface",
+      "Implement EncryptionManager for driver registration",
+      "Create backward-compatible OpenSSLDriver",
+      "Achieve 100% unit test coverage"
+    ],
+    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "2",
+    "title": "Binary Headers & Versioning",
+    "tasks": [
+      "Implement binary header protocol",
+      "Support graceful upgrade for legacy payloads",
+      "Logic for metadata-based key/driver selection"
+    ],
+    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "3",
+    "title": "Advanced Driver Ecosystem (Sodium)",
+    "tasks": [
+      "Implement XChaCha20-Poly1305 SodiumDriver",
+      "Integrate HKDF for context-aware keys",
+      "Add Argon2id support"
+    ],
+    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "4",
+    "title": "Streaming & Large File Support",
+    "tasks": [
+      "Implement StreamableInterface",
+      "Support chunked AEAD for large assets",
+      "Integrate with DownloadService"
+    ],
+    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "5",
+    "title": "Enterprise Hardening & Rotation",
+    "tasks": [
+      "CLI for key rotation",
+      "Background re-encryption jobs",
+      "Audit logging integration",
+      "FIPS compliance mode"
+    ],
+    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
   }
 ]
