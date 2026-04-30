@@ -1956,63 +1956,65 @@
   },
   {
     "phase": "1",
-    "title": "Foundation & Abstraction",
+    "title": "Foundation & Core Infrastructure",
     "tasks": [
-      "Define EncryptionServiceInterface and EncryptionDriverInterface",
-      "Implement EncryptionManager for driver registration",
-      "Create backward-compatible OpenSSLDriver",
-      "Achieve 100% unit test coverage"
+      "Implement EncryptionManager and Driver Interfaces",
+      "Develop OpenSSL and Sodium drivers",
+      "Create Database-backed Key Registry table and provider",
+      "Implement Binary Header Processor (Envelope Protocol)",
+      "Add Legacy Payload detection and routing"
     ],
-    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_1_FOUNDATION.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "2",
-    "title": "Binary Headers & Versioning",
+    "title": "Searchable Models & Blind Indexing",
     "tasks": [
-      "Implement binary header protocol",
-      "Support graceful upgrade for legacy payloads",
-      "Logic for metadata-based key/driver selection"
+      "Implement #[Encrypted] PHP 8+ Attribute",
+      "Develop HasEncryption trait for transparent Model hooks",
+      "Implement BlindIndexService with HMAC-SHA256",
+      "Intercept QueryBuilder for searchable encrypted columns"
     ],
-    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_2_SEARCHABLE_MODELS.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "3",
-    "title": "Advanced Driver Ecosystem (Sodium)",
+    "title": "Cloud KMS & Enterprise Resilience",
     "tasks": [
-      "Implement XChaCha20-Poly1305 SodiumDriver",
-      "Integrate HKDF for context-aware keys",
-      "Add Argon2id support"
+      "Implement AWS KMS Driver with Envelope Encryption",
+      "Implement HashiCorp Vault Driver (Transit API)",
+      "Develop StreamingEncryptionService for large files",
+      "Implement Circuit Breaker and Retry logic for KMS drivers"
     ],
-    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_3_CLOUD_ENVELOPE.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "4",
-    "title": "Streaming & Large File Support",
+    "title": "Asymmetric Encryption & Key Exchange",
     "tasks": [
-      "Implement StreamableInterface",
-      "Support chunked AEAD for large assets",
-      "Integrate with DownloadService"
+      "Implement Asymmetric Driver (RSA-OAEP, X25519)",
+      "Develop Asymmetric Key Management (PKCS#8/PEM)",
+      "Support Sealed Box primitives"
     ],
-    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_4_ASYMMETRIC.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "5",
-    "title": "Enterprise Hardening & Rotation",
+    "title": "Digital Signatures & Audit Provenance",
     "tasks": [
-      "CLI for key rotation",
-      "Background re-encryption jobs",
-      "Audit logging integration",
-      "FIPS compliance mode"
+      "Implement SigningService (Ed25519)",
+      "Integrate signatures with EventAuditService",
+      "Develop audit log verification tools"
     ],
-    "file": "Blueprint/EncryptionService/PHASED_IMPLEMENTATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_5_SIGNATURES_AUDIT.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   }
