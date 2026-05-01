@@ -22,10 +22,14 @@ class Cache
         $file = $this->getFilePath($key);
         if (file_exists($file)) {
             $content = file_get_contents($file);
-            if (!$content) return $default;
+            if (!$content) {
+                return $default;
+            }
 
             $data = @unserialize($content);
-            if ($data === false) return $default;
+            if ($data === false) {
+                return $default;
+            }
 
             if ($data['expires'] > time()) {
                 return $data['value'];

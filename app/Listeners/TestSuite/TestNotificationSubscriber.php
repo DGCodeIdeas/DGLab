@@ -11,7 +11,9 @@ use Psr\Log\LoggerInterface;
 
 class TestNotificationSubscriber implements EventSubscriberInterface
 {
-    public function __construct(protected LoggerInterface $logger) {}
+    public function __construct(protected LoggerInterface $logger)
+    {
+    }
 
     public function subscribe(DispatcherInterface $dispatcher): void
     {
