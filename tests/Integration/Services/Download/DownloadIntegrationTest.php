@@ -54,6 +54,7 @@ class DownloadIntegrationTest extends IntegrationTestCase
 
     public function test_token_based_download_flow()
     {
+        $this->enableQueryLogging();
         $tokenRaw = 'test-token-123';
         $hashedToken = hash('sha256', $tokenRaw);
 
@@ -93,6 +94,9 @@ class DownloadIntegrationTest extends IntegrationTestCase
             'identifier' => 'test.txt',
             'status_code' => 200
         ]);
+
+        // Setup (1) + Token lookup (1) + use count update (1) + audit log (1) + Assertions (2)
+        $this->assertQueryCountLessThan(7);
     }
 
     public function test_invalid_token_download_audit()
