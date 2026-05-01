@@ -18,3 +18,16 @@ $router->get('/test/morph', [DGLabControllersTestController::class, 'morph']);
 
 $router->get('/services', [ServicesController::class, 'index'], 'services.index');
 $router->get('/services/{id}', [ServicesController::class, 'show'], 'services.show');
+
+// Health check endpoint for CI/CD
+$router->get('/health', function() {
+    $reportFile = dirname(__DIR__) . '/storage/reports/health.json';
+    $factory = \DGLab\Core\Application::getInstance()->get(\DGLab\Core\ResponseFactory::class);
+
+    if (file_exists($reportFile)) {
+        $data = json_decode(file_get_contents($reportFile), true);
+        return $factory->json($data);
+    }
+
+    return $factory->json(['status' => 'unknown', 'message' => 'Health report not found'], 404);
+});

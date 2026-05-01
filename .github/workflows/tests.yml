@@ -17,16 +17,6 @@ jobs:
       matrix:
         php-version: ['8.1', '8.2']
 
-    services:
-      # Optional: MySQL if integration tests need a real DB (SQLite used by default in BrowserTestCase)
-      # mysql:
-      #   image: mysql:8.0
-      #   env:
-      #     MYSQL_ROOT_PASSWORD: password
-      #     MYSQL_DATABASE: dglab_test
-      #   ports:
-      #     - 3306:3306
-
     steps:
     - uses: actions/checkout@v4
 
@@ -35,40 +25,25 @@ jobs:
       with:
         php-version: ${{ matrix.php-version }}
         extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite, zip, gd
-        coverage: xdebug # Enable if coverage reporting is needed
-
-    - name: Get Composer Cache Directory
-      id: composer-cache
-      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-    - name: Cache Composer dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-composer-
+        coverage: xdebug
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 
-    - name: Cache Panther drivers
-      uses: actions/cache@v4
-      with:
-        path: ./drivers
-        key: ${{ runner.os }}-panther-${{ hashFiles('composer.lock') }}
-
-    - name: Run Static Analysis (PHPStan)
+    - name: Run Static Analysis
       run: composer run analyse
 
-    - name: Run Coding Standards Check (PHPCS)
+    - name: Run Coding Standards
       run: composer run cs
 
-    - name: Run Unit & Integration Tests
-      run: vendor/bin/phpunit --exclude-group browser
+    - name: Run Test Suite (Unified CLI)
+      run: php cli/test.php run --stop-on-failure --testdox
 
-    - name: Run Browser Tests
-      run: vendor/bin/phpunit --group browser
-      env:
-        PANTHER_NO_HEADLESS: 0
-        PANTHER_CHROME_ARGUMENTS: "--headless --no-sandbox --disable-dev-shm-usage"
+    - name: Generate Health Report
+      run: php cli/test.php health
+
+    - name: Upload Test Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports-${{ matrix.php-version }}
+        path: storage/reports/

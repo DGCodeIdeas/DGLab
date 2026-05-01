@@ -1,0 +1,6 @@
+[2026-05-01 22:44:12.701026] app.INFO: TestSuite started: Unit {"argv":["cli\/test.php","run","--unit","--filter=ApplicationTest"]}
+[2026-05-01 22:44:12.844356] app.INFO: TestSuite finished: Unit - [PASSED] {"exit_code":0}
+[2026-05-01 22:45:44.642854] app.ERROR: TestSuite critical failure: HealthCheck {"reason":"One or more suites failed in health report","context":[]}
+[2026-05-01 22:48:30.565881] app.ERROR: TestSuite critical failure: HealthCheck {"reason":"One or more suites failed in health report","context":[]}
+[2026-05-01 22:51:05.741784] app.INFO: TestSuite started: Integration {"argv":["cli\/test.php","run","--unit","--integration","--stop-on-failure"]}
+[2026-05-01 22:51:07.299458] app.INFO: TestSuite finished: Integration - [PASSED] {"exit_code":0}

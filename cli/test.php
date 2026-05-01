@@ -3,6 +3,12 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use DGLab\Core\Application;
+use DGLab\Core\Contracts\DispatcherInterface;
+use DGLab\Events\TestSuite\TestSuiteStarted;
+use DGLab\Events\TestSuite\TestSuiteFinished;
+use DGLab\Events\TestSuite\TestSuiteFailed;
+use DGLab\Listeners\TestSuite\TestNotificationSubscriber;
+use Psr\Log\LoggerInterface;
 
 /**
  * TestSuite CLI - Entry Point
@@ -13,7 +19,19 @@ class TestCLI {
 
     public function __construct() {
         $this->app = new Application(dirname(__DIR__));
+        $this->setupNotifications();
         $this->registerCommands();
+    }
+
+    private function setupNotifications() {
+        if ($this->app->has(DispatcherInterface::class)) {
+            $dispatcher = $this->app->get(DispatcherInterface::class);
+            $logger = $this->app->get(LoggerInterface::class);
+            $subscriber = new TestNotificationSubscriber($logger);
+            $dispatcher->listen(TestSuiteStarted::class, [$subscriber, 'onTestStarted']);
+            $dispatcher->listen(TestSuiteFinished::class, [$subscriber, 'onTestFinished']);
+            $dispatcher->listen(TestSuiteFailed::class, [$subscriber, 'onTestFailed']);
+        }
     }
 
     private function registerCommands() {
@@ -69,6 +87,13 @@ class TestCLI {
     private function executeTests(array $argv) {
         echo "\033[1mTestSuite: Running Tests\033[0m\n";
 
+        $suiteName = 'Full Suite';
+        if ($this->hasOption($argv, '--unit')) $suiteName = 'Unit';
+        if ($this->hasOption($argv, '--integration')) $suiteName = 'Integration';
+        if ($this->hasOption($argv, '--browser')) $suiteName = 'Browser';
+
+        $this->dispatch(new TestSuiteStarted($suiteName, ['argv' => $argv]));
+
         $args = [];
         if ($this->hasOption($argv, '--unit')) $args[] = '--testsuite Unit';
         if ($this->hasOption($argv, '--integration')) $args[] = '--testsuite Integration';
@@ -91,34 +116,54 @@ class TestCLI {
         if ($this->hasOption($argv, '--testdox')) $args[] = '--testdox';
 
         if ($this->hasOption($argv, '--parallel') && function_exists('pcntl_fork')) {
-            $this->runParallel($args);
+            $success = $this->runParallel($args);
+            $this->dispatch(new TestSuiteFinished($suiteName, $success, ['mode' => 'parallel']));
             return;
         }
 
         $cmd = "vendor/bin/phpunit --colors=always " . implode(' ', $args);
-        passthru($cmd);
+        passthru($cmd, $resultCode);
+
+        $success = $resultCode === 0;
+        $this->dispatch(new TestSuiteFinished($suiteName, $success, ['exit_code' => $resultCode]));
+
+        if (!$success) {
+            $this->dispatch(new TestSuiteFailed($suiteName, "PHPUnit exited with code $resultCode"));
+            exit($resultCode);
+        }
     }
 
-    private function runParallel(array $args) {
-        echo "\033[34m[PARALLEL MODE]\033[0m Splitting Unit tests...\n";
+    private function dispatch($event) {
+        if ($this->app->has(DispatcherInterface::class)) {
+            $this->app->get(DispatcherInterface::class)->dispatch($event);
+        }
+    }
+
+    private function runParallel(array $args): bool {
+        echo "\033[34m[PARALLEL MODE]\033[0m Splitting tests...\n";
 
         $files = [];
-        $unitPath = $this->app->getBasePath() . '/tests/Unit';
-        if (is_dir($unitPath)) {
-            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($unitPath));
-            foreach ($it as $file) {
-                if ($file->isFile() && str_ends_with($file->getFilename(), 'Test.php')) {
-                    $files[] = $file->getPathname();
-                }
+        $testPath = $this->app->getBasePath() . '/tests';
+
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($testPath));
+        foreach ($it as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), 'Test.php')) {
+                $filePath = $file->getPathname();
+                if (str_contains(implode(' ', $args), '--testsuite Unit') && !str_contains($filePath, '/Unit/')) continue;
+                if (str_contains(implode(' ', $args), '--testsuite Integration') && !str_contains($filePath, '/Integration/')) continue;
+                if (str_contains(implode(' ', $args), '--testsuite Browser') && !str_contains($filePath, '/Browser/')) continue;
+
+                $files[] = $filePath;
             }
         }
 
         if (empty($files)) {
-            echo "No unit tests found for parallel execution.\n";
-            return;
+            echo "No tests found for parallel execution.\n";
+            return false;
         }
 
-        $chunks = array_chunk($files, ceil(count($files) / 4));
+        $workerCount = 4;
+        $chunks = array_chunk($files, ceil(count($files) / $workerCount));
         $pids = [];
 
         foreach ($chunks as $i => $chunk) {
@@ -149,9 +194,10 @@ class TestCLI {
 
         if ($failed) {
             echo "\n\033[31mFAILURES DETECTED IN PARALLEL RUN\033[0m\n";
-            exit(1);
+            return false;
         } else {
             echo "\n\033[32mALL PARALLEL TESTS PASSED\033[0m\n";
+            return true;
         }
     }
 
@@ -243,28 +289,75 @@ class TestCLI {
     }
 
     private function generateHealthReport() {
-        echo "Generating health report...\n";
+        echo "\033[1mGenerating Phased Health Report...\033[0m\n";
         $reportDir = $this->app->getBasePath() . '/storage/reports';
         if (!is_dir($reportDir)) mkdir($reportDir, 0777, true);
 
-        $output = [];
-        exec("vendor/bin/phpunit --testdox", $output);
-        $content = implode("\n", $output);
-        file_put_contents($reportDir . '/health.txt', $content);
+        $suites = ['Unit', 'Integration', 'Browser'];
+        $results = [];
+        $allPass = true;
 
-        $summary = end($output);
-        $isHealthy = !preg_match('/FAILURES|ERRORS|Failures|Errors/i', $content);
+        foreach ($suites as $suite) {
+            echo "Checking {$suite} suite... ";
+            $output = [];
+            $resultCode = 0;
+            exec("vendor/bin/phpunit --testsuite {$suite} --testdox", $output, $resultCode);
+
+            $suitePass = ($resultCode === 0);
+            if (!$suitePass) $allPass = false;
+
+            $summary = end($output);
+            $results[$suite] = [
+                'status' => $suitePass ? 'PASS' : 'FAIL',
+                'summary' => $summary,
+                'output' => $output
+            ];
+
+            if ($suitePass) echo "[\033[32mOK\033[0m]\n";
+            else echo "[\033[31mFAIL\033[0m]\n";
+        }
+
+        // Try to get coverage if xdebug is available
+        $coverage = 'Unknown (Xdebug missing)';
+        if (extension_loaded('xdebug')) {
+            echo "Generating coverage data... ";
+            $covOutput = [];
+            exec("XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-text | grep 'Lines:'", $covOutput);
+            if (!empty($covOutput)) {
+                $coverage = trim($covOutput[0]);
+                echo "[\033[32mOK\033[0m]\n";
+            } else {
+                echo "[\033[33mFAILED\033[0m]\n";
+            }
+        }
 
         $jsonReport = [
             'timestamp' => date('c'),
-            'summary' => $summary,
-            'status' => $isHealthy ? 'healthy' : 'unhealthy'
+            'status' => $allPass ? 'healthy' : 'unhealthy',
+            'suites' => $results,
+            'coverage' => $coverage
         ];
+
         file_put_contents($reportDir . '/health.json', json_encode($jsonReport, JSON_PRETTY_PRINT));
 
+        $txtReport = "DGLab TestSuite Health Report\n";
+        $txtReport .= "============================\n";
+        $txtReport .= "Timestamp: " . date('Y-m-d H:i:s') . "\n";
+        $txtReport .= "Status: " . ($allPass ? 'HEALTHY' : 'UNHEALTHY') . "\n";
+        $txtReport .= "Coverage: {$coverage}\n\n";
+
+        foreach ($results as $name => $data) {
+            $txtReport .= "[$name] Status: {$data['status']}\n";
+            $txtReport .= "Summary: {$data['summary']}\n\n";
+        }
+
+        file_put_contents($reportDir . '/health.txt', $txtReport);
+
         echo "[\033[32mOK\033[0m] Report saved to storage/reports/health.txt and health.json\n";
-        if (!$isHealthy) echo "\033[31mStatus: UNHEALTHY\033[0m\n";
-        else echo "\033[32mStatus: HEALTHY\033[0m\n";
+
+        if (!$allPass) {
+            $this->dispatch(new TestSuiteFailed('HealthCheck', 'One or more suites failed in health report'));
+        }
     }
 
     private function getFilesystemHash() {
@@ -297,6 +390,7 @@ class TestCLI {
 
     private function getStub($name, $data = []) {
         $stubPath = dirname(__DIR__) . "/resources/stubs/{$name}.stub";
+        if (!file_exists($stubPath)) return "Stub not found: {$name}";
         $content = file_get_contents($stubPath);
         foreach ($data as $k => $v) { $content = str_replace(["{{ $k }}", "{{$k}}"], (string)$v, $content); }
         return $content;
