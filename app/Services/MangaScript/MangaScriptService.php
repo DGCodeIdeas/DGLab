@@ -26,23 +26,71 @@ class MangaScriptService extends BaseService implements ChunkedServiceInterface
         parent::__construct();
     }
 
-    public function getId(): string { return self::SERVICE_ID; }
-    public function getName(): string { return 'MangaScript'; }
-    public function getDescription(): string { return 'Convert novels to manga scripts'; }
-    public function getIcon(): string { return 'fa-book'; }
-    public function getInputSchema(): array { return []; }
-    public function validate(array $input): array { return $input; }
-    public function supportsChunking(): bool { return false; }
-    public function estimateTime(array $input): int { return 60; }
-    public function getConfig(): array { return []; }
+    public function getId(): string
+    {
+        return self::SERVICE_ID;
+    }
+    public function getName(): string
+    {
+        return 'MangaScript';
+    }
+    public function getDescription(): string
+    {
+        return 'Convert novels to manga scripts';
+    }
+    public function getIcon(): string
+    {
+        return 'fa-book';
+    }
+    public function getInputSchema(): array
+    {
+        return [];
+    }
+    public function validate(array $input): array
+    {
+        return $input;
+    }
+    public function supportsChunking(): bool
+    {
+        return false;
+    }
+    public function estimateTime(array $input): int
+    {
+        return 60;
+    }
+    public function getConfig(): array
+    {
+        return [];
+    }
 
-    public function initializeChunkedProcess(array $metadata): array { return []; }
-    public function processChunk(string $sessionId, int $chunkIndex, string $chunkData): array { return []; }
-    public function finalizeChunkedProcess(string $sessionId): array { return []; }
-    public function cancelChunkedProcess(string $sessionId): bool { return true; }
-    public function getChunkedStatus(string $sessionId): array { return []; }
-    public function getChunkSize(): int { return 1024 * 1024; }
-    public function isChunkValid(string $sessionId, int $chunkIndex, string $chunkData): bool { return true; }
+    public function initializeChunkedProcess(array $metadata): array
+    {
+        return [];
+    }
+    public function processChunk(string $sessionId, int $chunkIndex, string $chunkData): array
+    {
+        return [];
+    }
+    public function finalizeChunkedProcess(string $sessionId): array
+    {
+        return [];
+    }
+    public function cancelChunkedProcess(string $sessionId): bool
+    {
+        return true;
+    }
+    public function getChunkedStatus(string $sessionId): array
+    {
+        return [];
+    }
+    public function getChunkSize(): int
+    {
+        return 1024 * 1024;
+    }
+    public function isChunkValid(string $sessionId, int $chunkIndex, string $chunkData): bool
+    {
+        return true;
+    }
 
     /**
      * Process a novel into a manga script

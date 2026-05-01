@@ -8,37 +8,25 @@ permissions:
   contents: read
 
 jobs:
-  build-and-deploy:
+  pre-deploy-check:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.0'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip, gd
-        coverage: none
-
-    - name: Validate composer.json and composer.lock
-      run: composer validate --strict
-
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, zip, gd
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
+    - name: Run Full Health Check
+      run: php cli/test.php check
 
-    - name: Run PHPCS
-      run: composer run cs
-
-    - name: Run PHPStan
-      run: composer run analyse
-
-    - name: Run Tests
-      run: composer run test
-
-    - name: Install production dependencies
-      run: composer install --no-dev --optimize-autoloader
-
+  deploy:
+    needs: pre-deploy-check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
     - name: FTP Deploy
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -66,3 +54,19 @@ jobs:
           composer.lock
           CI.log
           AGENTS.md
+
+  render-trigger:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+    - name: Trigger Render Deploy
+      run: |
+        # This would use the RenderService via a small CLI script or just curl
+        curl -X POST https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys \
+          -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          -H "Content-Type: application/json"

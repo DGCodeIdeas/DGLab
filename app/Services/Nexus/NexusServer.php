@@ -139,7 +139,6 @@ class NexusServer
                     'meta' => ['request_id' => $data['meta']['request_id'] ?? null]
                 ]));
             }
-
         } catch (Throwable $e) {
             $this->logger->error("Error processing message: " . $e->getMessage());
         }

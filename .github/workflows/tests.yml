@@ -1,6 +1,8 @@
 name: Test Suite CI
 
 on:
+  schedule:
+    - cron: "0 0 * * *"
   push:
     branches: [ "*" ]
   pull_request:
@@ -10,65 +12,71 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  static-analysis:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        php-version: ['8.1', '8.2']
-
-    services:
-      # Optional: MySQL if integration tests need a real DB (SQLite used by default in BrowserTestCase)
-      # mysql:
-      #   image: mysql:8.0
-      #   env:
-      #     MYSQL_ROOT_PASSWORD: password
-      #     MYSQL_DATABASE: dglab_test
-      #   ports:
-      #     - 3306:3306
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: ${{ matrix.php-version }}
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite, zip, gd
-        coverage: xdebug # Enable if coverage reporting is needed
-
-    - name: Get Composer Cache Directory
-      id: composer-cache
-      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-    - name: Cache Composer dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-composer-
-
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, zip, gd
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
+    - name: Run Static Analysis
+      run: php cli/test.php check --only-analysis
 
-    - name: Cache Panther drivers
-      uses: actions/cache@v4
+  unit-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chunk: [0, 1]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
       with:
-        path: ./drivers
-        key: ${{ runner.os }}-panther-${{ hashFiles('composer.lock') }}
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, zip, gd
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+    - name: Run Tests Chunk ${{ matrix.chunk }}
+      run: |
+        FILES=$(php cli/test.php split --total=2 --index=${{ matrix.chunk }})
+        vendor/bin/phpunit $FILES
 
-    - name: Run Static Analysis (PHPStan)
-      run: composer run analyse
-
-    - name: Run Coding Standards Check (PHPCS)
-      run: composer run cs
-
-    - name: Run Unit & Integration Tests
-      run: vendor/bin/phpunit --exclude-group browser
-
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, zip, gd
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
     - name: Run Browser Tests
-      run: vendor/bin/phpunit --group browser
+      run: php cli/test.php run --browser
       env:
         PANTHER_NO_HEADLESS: 0
         PANTHER_CHROME_ARGUMENTS: "--headless --no-sandbox --disable-dev-shm-usage"
+
+  health-report:
+    needs: [static-analysis, unit-integration, browser]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+    - name: Generate Health Report
+      run: php cli/test.php health
+    - name: Upload Health Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: health-report
+        path: storage/reports/

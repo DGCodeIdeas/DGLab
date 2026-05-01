@@ -1,32 +1,41 @@
 <?php
 
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../app/Core/Application.php';
 
 use DGLab\Core\Application;
+use DGLab\Events\TestSuite\TestFailed;
+use DGLab\Core\Contracts\DispatcherInterface;
+use DGLab\Listeners\TestSuite\LogTestFailure;
 
-/**
- * TestSuite CLI - Entry Point
- */
 class TestCLI {
-    private Application $app;
-    private array $commands = [];
+    private $app;
+    private $commands = [
+        'run'     => 'Run tests (unit, integration, browser)',
+        'make'    => 'Scaffold a new test file',
+        'parallel'=> 'Run tests in parallel (local)',
+        'split'   => 'Split tests into chunks for CI (returns file list)',
+        'coverage'=> 'Generate code coverage report',
+        'watch'   => 'Watch for changes and re-run tests',
+        'health'  => 'Generate a full health report',
+        'check'   => 'Full suite check (Analysis + Tests + Health)',
+        'help'    => 'Display help information'
+    ];
 
     public function __construct() {
-        $this->app = new Application(dirname(__DIR__));
-        $this->registerCommands();
-    }
+        $this->app = new Application(__DIR__ . '/..');
+        $this->app->boot();
 
-    private function registerCommands() {
-        $this->commands = [
-            'run'                   => 'Execute tests. Filters: --unit, --integration, --browser, --group=X. Flags: --stop-on-failure, --parallel',
-            'make:test'             => 'Scaffold a new unit test. Usage: make:test <name>',
-            'make:component-test'   => 'Scaffold a new component test. Usage: make:component-test <component>',
-            'make:integration-test' => 'Scaffold a new integration test. Usage: make:integration-test <name>',
-            'make:browser-test'     => 'Scaffold a new browser test. Usage: make:browser-test <name>',
-            'coverage'              => 'Generate and display code coverage summary.',
-            'watch'                 => 'Watch for file changes and re-run tests.',
-            'health'                => 'Generate a health dashboard report in storage/reports/.'
-        ];
+        // Manual registration for CLI
+        try {
+            $dispatcher = $this->app->get(DispatcherInterface::class);
+            $dispatcher->listen('test_suite.failed', function($event) {
+                $listener = new LogTestFailure($this->app->get(\Psr\Log\LoggerInterface::class));
+                $listener->handle($event);
+            });
+        } catch (\Exception $e) {
+            // Event system not fully ready
+        }
     }
 
     public function run(array $argv) {
@@ -36,17 +45,14 @@ class TestCLI {
             case 'run':
                 $this->executeTests($argv);
                 break;
-            case 'make:test':
-                $this->makeTest($argv[2] ?? null, 'unit', $argv);
+            case 'make':
+                $this->makeTest($argv[2] ?? null, $argv[3] ?? 'unit', $argv);
                 break;
-            case 'make:component-test':
-                $this->makeTest($argv[2] ?? null, 'component', $argv);
+            case 'parallel':
+                $this->runParallel(array_slice($argv, 2));
                 break;
-            case 'make:integration-test':
-                $this->makeTest($argv[2] ?? null, 'integration', $argv);
-                break;
-            case 'make:browser-test':
-                $this->makeTest($argv[2] ?? null, 'browser', $argv);
+            case 'split':
+                $this->splitTests($argv);
                 break;
             case 'coverage':
                 $this->runCoverage($argv);
@@ -56,6 +62,9 @@ class TestCLI {
                 break;
             case 'health':
                 $this->generateHealthReport();
+                break;
+            case 'check':
+                $this->runFullCheck($argv);
                 break;
             case 'help':
                 $this->displayHelp();
@@ -90,35 +99,47 @@ class TestCLI {
         if ($this->hasOption($argv, '--stop-on-failure') || $this->hasOption($argv, '--fail-fast')) $args[] = '--stop-on-failure';
         if ($this->hasOption($argv, '--testdox')) $args[] = '--testdox';
 
-        if ($this->hasOption($argv, '--parallel') && function_exists('pcntl_fork')) {
-            $this->runParallel($args);
-            return;
-        }
-
         $cmd = "vendor/bin/phpunit --colors=always " . implode(' ', $args);
-        passthru($cmd);
+        passthru($cmd, $resultCode);
+
+        if ($resultCode !== 0) {
+            $this->notifyFailure('PHPUnit Tests', 'Tests failed with exit code ' . $resultCode);
+            exit($resultCode);
+        }
+    }
+
+    private function splitTests(array $argv) {
+        $total = (int)$this->getOption($argv, 'total') ?: 1;
+        $index = (int)$this->getOption($argv, 'index') ?: 0;
+
+        $files = $this->getTestFiles();
+        sort($files);
+
+        if (empty($files)) return;
+
+        $chunks = array_chunk($files, ceil(count($files) / $total));
+        $chunk = $chunks[$index] ?? [];
+
+        echo implode(' ', array_map('escapeshellarg', $chunk));
     }
 
     private function runParallel(array $args) {
-        echo "\033[34m[PARALLEL MODE]\033[0m Splitting Unit tests...\n";
-
-        $files = [];
-        $unitPath = $this->app->getBasePath() . '/tests/Unit';
-        if (is_dir($unitPath)) {
-            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($unitPath));
-            foreach ($it as $file) {
-                if ($file->isFile() && str_ends_with($file->getFilename(), 'Test.php')) {
-                    $files[] = $file->getPathname();
-                }
-            }
+        if (!function_exists('pcntl_fork')) {
+            echo "\033[31mError: pcntl extension is required for parallel execution.\033[0m\n";
+            exit(1);
         }
 
+        echo "\033[34m[PARALLEL MODE]\033[0m Splitting tests...\n";
+
+        $files = $this->getTestFiles();
+
         if (empty($files)) {
-            echo "No unit tests found for parallel execution.\n";
+            echo "No tests found for parallel execution.\n";
             return;
         }
 
-        $chunks = array_chunk($files, ceil(count($files) / 4));
+        $workers = (int)$this->getOption($args, 'workers') ?: 4;
+        $chunks = array_chunk($files, ceil(count($files) / $workers));
         $pids = [];
 
         foreach ($chunks as $i => $chunk) {
@@ -149,9 +170,39 @@ class TestCLI {
 
         if ($failed) {
             echo "\n\033[31mFAILURES DETECTED IN PARALLEL RUN\033[0m\n";
+            $this->notifyFailure('Parallel Tests', 'One or more workers failed.');
             exit(1);
         } else {
             echo "\n\033[32mALL PARALLEL TESTS PASSED\033[0m\n";
+        }
+    }
+
+    private function getTestFiles() {
+        $files = [];
+        $paths = [
+            $this->app->getBasePath() . '/tests/Unit',
+            $this->app->getBasePath() . '/tests/Integration'
+        ];
+
+        foreach ($paths as $path) {
+            if (is_dir($path)) {
+                $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
+                foreach ($it as $file) {
+                    if ($file->isFile() && str_ends_with($file->getFilename(), 'Test.php')) {
+                        $files[] = $file->getPathname();
+                    }
+                }
+            }
+        }
+        return $files;
+    }
+
+    private function notifyFailure(string $type, string $message, array $details = []) {
+        try {
+            $dispatcher = $this->app->get(DispatcherInterface::class);
+            $dispatcher->dispatch(new TestFailed($type, $message, $details));
+        } catch (\Exception $e) {
+            // Silently fail if event system is not fully ready
         }
     }
 
@@ -247,24 +298,99 @@ class TestCLI {
         $reportDir = $this->app->getBasePath() . '/storage/reports';
         if (!is_dir($reportDir)) mkdir($reportDir, 0777, true);
 
-        $output = [];
-        exec("vendor/bin/phpunit --testdox", $output);
-        $content = implode("\n", $output);
-        file_put_contents($reportDir . '/health.txt', $content);
-
-        $summary = end($output);
-        $isHealthy = !preg_match('/FAILURES|ERRORS|Failures|Errors/i', $content);
-
-        $jsonReport = [
+        $results = [
             'timestamp' => date('c'),
-            'summary' => $summary,
-            'status' => $isHealthy ? 'healthy' : 'unhealthy'
+            'tests' => $this->runUnitAndIntegrationForHealth(),
+            'static_analysis' => $this->runStaticAnalysisForHealth(),
+            'coding_standards' => $this->runCSForHealth()
         ];
-        file_put_contents($reportDir . '/health.json', json_encode($jsonReport, JSON_PRETTY_PRINT));
+
+        $isHealthy = $results['tests']['passed'] &&
+                     $results['static_analysis']['passed'] &&
+                     $results['coding_standards']['passed'];
+
+        $results['status'] = $isHealthy ? 'healthy' : 'unhealthy';
+
+        file_put_contents($reportDir . '/health.json', json_encode($results, JSON_PRETTY_PRINT));
+
+        $txtReport = "DGLab TestSuite Health Report\n";
+        $txtReport .= "=============================\n";
+        $txtReport .= "Timestamp: " . $results['timestamp'] . "\n";
+        $txtReport .= "Status: " . strtoupper($results['status']) . "\n\n";
+
+        $txtReport .= "Tests: " . ($results['tests']['passed'] ? "PASS" : "FAIL") . "\n";
+        $txtReport .= "Static Analysis: " . ($results['static_analysis']['passed'] ? "PASS" : "FAIL") . "\n";
+        $txtReport .= "Coding Standards: " . ($results['coding_standards']['passed'] ? "PASS" : "FAIL") . "\n";
+
+        file_put_contents($reportDir . '/health.txt', $txtReport);
 
         echo "[\033[32mOK\033[0m] Report saved to storage/reports/health.txt and health.json\n";
-        if (!$isHealthy) echo "\033[31mStatus: UNHEALTHY\033[0m\n";
-        else echo "\033[32mStatus: HEALTHY\033[0m\n";
+
+        if (!$isHealthy) {
+            echo "\033[31mStatus: UNHEALTHY\033[0m\n";
+            $this->notifyFailure('Health Report', 'System is unhealthy based on automated checks.');
+        } else {
+            echo "\033[32mStatus: HEALTHY\033[0m\n";
+        }
+    }
+
+    private function runUnitAndIntegrationForHealth() {
+        $output = [];
+        $phpunit = $this->app->getBasePath() . '/vendor/bin/phpunit';
+        exec("$phpunit --exclude-group browser --testdox", $output, $resultCode);
+        return [
+            'passed' => $resultCode === 0,
+            'summary' => end($output) ?: 'No tests found'
+        ];
+    }
+
+    private function runStaticAnalysisForHealth() {
+        $output = [];
+        $phpstan = $this->app->getBasePath() . '/vendor/bin/phpstan';
+        exec("$phpstan analyse app/ --level=5 --no-progress", $output, $resultCode);
+        return [
+            'passed' => $resultCode === 0,
+            'output' => implode("\n", $output)
+        ];
+    }
+
+    private function runCSForHealth() {
+        $output = [];
+        $phpcs = $this->app->getBasePath() . '/vendor/bin/phpcs';
+        exec("$phpcs --standard=PSR12 app/", $output, $resultCode);
+        return [
+            'passed' => $resultCode === 0,
+            'output' => implode("\n", $output)
+        ];
+    }
+
+    private function runFullCheck(array $argv) {
+        echo "\033[1mStarting Full Suite Check...\033[0m\n";
+        $base = $this->app->getBasePath();
+
+        $onlyAnalysis = $this->hasOption($argv, '--only-analysis');
+
+        echo "\n\033[36m1. Running Static Analysis (PHPStan)...\033[0m\n";
+        passthru("$base/vendor/bin/phpstan analyse app/ --level=5", $rc1);
+        if ($rc1 !== 0) $this->notifyFailure('Static Analysis', 'PHPStan detected issues.');
+
+        echo "\n\033[36m2. Checking Coding Standards (PHPCS)...\033[0m\n";
+        passthru("$base/vendor/bin/phpcs --standard=PSR12 app/", $rc2);
+        if ($rc2 !== 0) $this->notifyFailure('Coding Standards', 'PHPCS detected violations.');
+
+        if ($onlyAnalysis) {
+            if ($rc1 !== 0 || $rc2 !== 0) exit(1);
+            return;
+        }
+
+        echo "\n\033[36m3. Running Unit & Integration Tests...\033[0m\n";
+        passthru("$base/vendor/bin/phpunit --exclude-group browser", $rc3);
+        if ($rc3 !== 0) $this->notifyFailure('PHPUnit Tests', 'Tests failed.');
+
+        echo "\n\033[36m4. Generating Health Report...\033[0m\n";
+        $this->generateHealthReport();
+
+        if ($rc1 !== 0 || $rc2 !== 0 || $rc3 !== 0) exit(1);
     }
 
     private function getFilesystemHash() {
@@ -297,6 +423,9 @@ class TestCLI {
 
     private function getStub($name, $data = []) {
         $stubPath = dirname(__DIR__) . "/resources/stubs/{$name}.stub";
+        if (!file_exists($stubPath)) {
+            return "<?php\n\nnamespace {{ namespace }};\n\nuse DGLab\Tests\TestCase;\n\nclass {{ class }} extends TestCase\n{\n    public function test_example()\n    {\n        \$this->assertTrue(true);\n    }\n}\n";
+        }
         $content = file_get_contents($stubPath);
         foreach ($data as $k => $v) { $content = str_replace(["{{ $k }}", "{{$k}}"], (string)$v, $content); }
         return $content;

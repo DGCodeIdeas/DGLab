@@ -15,11 +15,20 @@ class Event
         return Application::getInstance()->get(DispatcherInterface::class);
     }
 
-    public static function dispatch(EventInterface $event): void { static::getDispatcher()->dispatch($event); }
-    public static function subscribe(EventSubscriberInterface $subscriber): void { static::getDispatcher()->addSubscriber($subscriber); }
+    public static function dispatch(EventInterface $event): void
+    {
+        static::getDispatcher()->dispatch($event);
+    }
+    public static function subscribe(EventSubscriberInterface $subscriber): void
+    {
+        static::getDispatcher()->addSubscriber($subscriber);
+    }
     public static function listen(string $eventName, $listener, int $priority = 0, bool $async = false): void
     {
         static::getDispatcher()->listen($eventName, $listener, $priority, $async);
     }
-    public static function removeListener(string $eventName, $listener): void { static::getDispatcher()->removeListener($eventName, $listener); }
+    public static function removeListener(string $eventName, $listener): void
+    {
+        static::getDispatcher()->removeListener($eventName, $listener);
+    }
 }
