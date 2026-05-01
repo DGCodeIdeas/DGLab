@@ -1956,65 +1956,217 @@
   },
   {
     "phase": "1",
-    "title": "Foundation & Core Infrastructure",
+    "title": "Interface Contracts & Driver Registry",
     "tasks": [
-      "Implement EncryptionManager and Driver Interfaces",
-      "Develop OpenSSL and Sodium drivers",
-      "Create Database-backed Key Registry table and provider",
-      "Implement Binary Header Processor (Envelope Protocol)",
-      "Add Legacy Payload detection and routing"
+      "Define EncryptionDriverInterface",
+      "Define EncryptionManagerInterface",
+      "Implement EncryptionManager singleton"
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_1_FOUNDATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_01_INTERFACE_CONTRACTS.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "2",
-    "title": "Searchable Models & Blind Indexing",
+    "title": "Binary Envelope Specification",
     "tasks": [
-      "Implement #[Encrypted] PHP 8+ Attribute",
-      "Develop HasEncryption trait for transparent Model hooks",
-      "Implement BlindIndexService with HMAC-SHA256",
-      "Intercept QueryBuilder for searchable encrypted columns"
+      "Define DG header format",
+      "Implement HeaderProcessor",
+      "Create PayloadContainer DTO"
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_2_SEARCHABLE_MODELS.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_02_BINARY_ENVELOPE.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "3",
-    "title": "Cloud KMS & Enterprise Resilience",
+    "title": "Unit Testing Infrastructure",
     "tasks": [
-      "Implement AWS KMS Driver with Envelope Encryption",
-      "Implement HashiCorp Vault Driver (Transit API)",
-      "Develop StreamingEncryptionService for large files",
-      "Implement Circuit Breaker and Retry logic for KMS drivers"
+      "Create EncryptionTestCase",
+      "Implement MockEncryptionDriver",
+      "Add KAT vectors"
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_3_CLOUD_ENVELOPE.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_03_TEST_INFRASTRUCTURE.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "4",
-    "title": "Asymmetric Encryption & Key Exchange",
+    "title": "Legacy Migration Bridge",
     "tasks": [
-      "Implement Asymmetric Driver (RSA-OAEP, X25519)",
-      "Develop Asymmetric Key Management (PKCS#8/PEM)",
-      "Support Sealed Box primitives"
+      "Detect non-prefixed payloads",
+      "Implement LegacyOpenSSLDriver",
+      "Develop MigrateEncryptionJob"
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_4_ASYMMETRIC.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_04_LEGACY_MIGRATION.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "5",
-    "title": "Digital Signatures & Audit Provenance",
+    "title": "OpenSSL AES-256-GCM Driver",
     "tasks": [
-      "Implement SigningService (Ed25519)",
-      "Integrate signatures with EventAuditService",
-      "Develop audit log verification tools"
+      "Implement OpenSslGcmDriver",
+      "Support AAD",
+      "Benchmark performance"
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_5_SIGNATURES_AUDIT.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_05_OPENSSL_GCM_DRIVER.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "6",
+    "title": "Sodium XChaCha20-Poly1305 Driver",
+    "tasks": [
+      "Verify sodium extension",
+      "Implement SodiumXChaChaDriver",
+      "Verify 192-bit nonce"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_06_SODIUM_CHACHA_DRIVER.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "7",
+    "title": "KDF & HKDF Utilities",
+    "tasks": [
+      "Implement Argon2Kdf",
+      "Implement HkdfService",
+      "Integrate into Manager"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_07_KDF_HKDF_UTILITIES.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "8",
+    "title": "#[Encrypted] Attribute & Reflection",
+    "tasks": [
+      "Define Encrypted attribute",
+      "Develop AttributeResolver",
+      "Apply to CMS models"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_08_ENCRYPTED_ATTRIBUTE.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "9",
+    "title": "Model Hydration & HasEncryption Trait",
+    "tasks": [
+      "Implement HasEncryption trait",
+      "Hook into getter/setter",
+      "Add decryption caching"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_09_MODEL_LIFECYCLE_HOOKS.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "10",
+    "title": "Query Builder Hooks",
+    "tasks": [
+      "Intercept where clauses",
+      "Prevent cleartext leaks",
+      "Implement whereEncrypted() foundation"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_10_QUERY_BUILDER_HOOKS.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "11",
+    "title": "Blind Index Generation",
+    "tasks": [
+      "Implement BlindIndexService",
+      "Automatic _bidx population",
+      "Update migration generator"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_11_BLIND_INDEX_GENERATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "12",
+    "title": "Deterministic Search DSL",
+    "tasks": [
+      "Implement AesSivDriver",
+      "Add whereEncrypted macro",
+      "Support whereInEncrypted"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_12_DETERMINISTIC_SEARCH_DSL.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "13",
+    "title": "Key Registry, Shamir & MPC",
+    "tasks": [
+      "Create encryption_keys migration",
+      "Implement Shamir recovery tools",
+      "Enterprise MPC hooks"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_13_KEY_REGISTRY_SHAMIR_MPC.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "14",
+    "title": "Rotation & Re-encryption",
+    "tasks": [
+      "CLI rotation command",
+      "Grace period logic",
+      "Batch re-encryption job"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_14_ROTATION_RE_ENCRYPTION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "15",
+    "title": "Cloud KMS Drivers",
+    "tasks": [
+      "Implement AwsKmsDriver",
+      "Implement VaultTransitDriver",
+      "Add circuit breakers"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_15_CLOUD_KMS_DRIVERS.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "16",
+    "title": "Multi-Tenant Isolation",
+    "tasks": [
+      "Implement TenantKeyProvider",
+      "CMK overrides in tenant config",
+      "Context-aware derivation"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_16_MULTI_TENANT_ISOLATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "17",
+    "title": "Asymmetric & PQC Signatures",
+    "tasks": [
+      "Implement AsymmetricManager",
+      "Implement SigningService",
+      "Hybrid Kyber PQC"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_17_ASYMMETRIC_PQC_SIGNATURES.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "18",
+    "title": "Hardening & Compliance",
+    "tasks": [
+      "Red-teaming framework",
+      "Automated crypto audit CI",
+      "FIPS mode validation"
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_18_HARDENING_COMPLIANCE.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   }
