@@ -95,15 +95,29 @@ class Encrypted {
 }
 ```
 
-## 6. Roadmap (Gantt-style Breakdown)
 
-| Week | Phase | Milestones | Dependencies |
-|---|---|---|---|
-| 1-2 | **1. Foundation** | Manager, Drivers, Key Registry Table, Legacy Support | None |
-| 3-4 | **2. Searchable** | #[Encrypted] Attribute, Blind Indexing, Query Interception | Phase 1 |
-| 5-6 | **3. Cloud & Stream**| AWS/Vault Drivers, Envelope Pattern, Streaming API | Phase 1 |
-| 7 | **4. Asymmetric** | RSA-OAEP, X25519 primitives | Phase 1 |
-| 8 | **5. Integrity** | Ed25519 Signatures, Signed Audit Logs | Phase 1, Phase 4 |
+## 6. Roadmap (18-Phase Execution)
+
+| Phase | Title | Focus |
+|---|---|---|
+| 1 | **Core Interface Architecture** | Foundation, Contracts, Exception Hierarchy |
+| 2 | **Binary Header Protocol** | Magic Bytes, Versioning, Envelope Agility |
+| 3 | **Symmetric Suite (OpenSSL)** | AES-256-GCM, AAD Support |
+| 4 | **High-Performance (Sodium)** | XChaCha20-Poly1305 integration |
+| 5 | **Key Registry & Multi-Tenancy** | DB Schema, Tenant Isolation |
+| 6 | **Encrypted Key Material** | DEK Wrapping (Master Key) |
+| 7 | **Manager Orchestration** | Driver Lifecycle, Redis Caching |
+| 8 | **#[Encrypted] Attribute** | Transparent Model Integration |
+| 9 | **Blind Index Service** | Searchable Cryptography (HMAC) |
+| 10 | **Query Interception** | Transparent Search logic |
+| 11 | **Cloud KMS (AWS)** | Hardware-backed Security |
+| 12 | **Cloud Resilience** | Circuit Breakers, Retry Logic |
+| 13 | **Streaming Service** | Large Blob chunked AEAD |
+| 14 | **Asymmetric (RSA)** | Public Key Primitives |
+| 15 | **Sealed Boxes (ECC)** | Anonymous Recipient Encryption |
+| 16 | **Digital Signatures** | Ed25519 Non-Repudiation |
+| 17 | **Tamper-Evident Logs** | Signed Audit Trails |
+| 18 | **Lifecycle & Hardening** | Rotation CLI, Shredding, Audit |
 
 ## 7. Performance Budget
 | Operation | Target Latency | Payload Size |

@@ -1956,65 +1956,235 @@
   },
   {
     "phase": "1",
-    "title": "Foundation & Core Infrastructure",
+    "title": "Core Interface Architecture",
     "tasks": [
-      "Implement EncryptionManager and Driver Interfaces",
-      "Develop OpenSSL and Sodium drivers",
-      "Create Database-backed Key Registry table and provider",
-      "Implement Binary Header Processor (Envelope Protocol)",
-      "Add Legacy Payload detection and routing"
+      "Define `EncryptionDriverInterface` with `encrypt`, `decrypt`, and `getDriverId` methods.",
+      "Define `KeyProviderInterface` for retrieving raw key material.",
+      "Define `CipherInterface` to abstract specific algorithm parameters (IV length, tag length).",
+      "Create `CryptographicException` hierarchy for granular error handling."
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_1_FOUNDATION.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_1_CORE_INTERFACE_ARCHITECTURE.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "2",
-    "title": "Searchable Models & Blind Indexing",
+    "title": "Binary Header Protocol & Versioning",
     "tasks": [
-      "Implement #[Encrypted] PHP 8+ Attribute",
-      "Develop HasEncryption trait for transparent Model hooks",
-      "Implement BlindIndexService with HMAC-SHA256",
-      "Intercept QueryBuilder for searchable encrypted columns"
+      "Develop `BinaryHeaderProcessor` to pack/unpack metadata.",
+      "Implement Magic Byte detection (0x44 0x47).",
+      "Support versioned headers for seamless migration of older payloads.",
+      "Integrate Driver ID and Key ID into the binary prefix."
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_2_SEARCHABLE_MODELS.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_2_BINARY_HEADER_PROTOCOL_&_VERSIONING.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "3",
-    "title": "Cloud KMS & Enterprise Resilience",
+    "title": "Symmetric Driver Suite (Aes-Gcm)",
     "tasks": [
-      "Implement AWS KMS Driver with Envelope Encryption",
-      "Implement HashiCorp Vault Driver (Transit API)",
-      "Develop StreamingEncryptionService for large files",
-      "Implement Circuit Breaker and Retry logic for KMS drivers"
+      "Create `OpenSslDriver` supporting `aes-256-gcm`.",
+      "Ensure secure random IV generation using `random_bytes()`.",
+      "Implement AAD (Additional Authenticated Data) support via the `context` parameter.",
+      "Validate against NIST SP 800-38D test vectors."
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_3_CLOUD_ENVELOPE.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_3_SYMMETRIC_DRIVER_SUITE_(AES-GCM).md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "4",
-    "title": "Asymmetric Encryption & Key Exchange",
+    "title": "High-Performance Driver (Xchacha20-Poly1305)",
     "tasks": [
-      "Implement Asymmetric Driver (RSA-OAEP, X25519)",
-      "Develop Asymmetric Key Management (PKCS#8/PEM)",
-      "Support Sealed Box primitives"
+      "Create `SodiumDriver` supporting `xchacha20poly1305`.",
+      "Leverage `sodium_crypto_aead_xchacha20poly1305_ietf_*` primitives.",
+      "Benchmark performance against OpenSslDriver.",
+      "Ensure graceful fallback if Sodium extension is missing."
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_4_ASYMMETRIC.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_4_HIGH-PERFORMANCE_DRIVER_(XCHACHA20-POLY1305).md",
     "status": "PLANNED",
     "category": "EncryptionService"
   },
   {
     "phase": "5",
-    "title": "Digital Signatures & Audit Provenance",
+    "title": "Key Registry Schema & Multi-Tenancy",
     "tasks": [
-      "Implement SigningService (Ed25519)",
-      "Integrate signatures with EventAuditService",
-      "Develop audit log verification tools"
+      "Create migration for `encryption_keys` table with UUID IDs.",
+      "Support `tenant_id` column for isolated key management in SaaS environments.",
+      "Add status tracking (`active`, `decrypt-only`, `retired`).",
+      "Implement `DatabaseKeyProvider` with Eloquent integration."
     ],
-    "file": "Blueprint/EncryptionService/Phased/PHASE_5_SIGNATURES_AUDIT.md",
+    "file": "Blueprint/EncryptionService/Phased/PHASE_5_KEY_REGISTRY_SCHEMA_&_MULTI-TENANCY.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "6",
+    "title": "Encrypted Key Material (Wrapping)",
+    "tasks": [
+      "Implement Key Wrapping logic in `DatabaseKeyProvider`.",
+      "Use `ENCRYPTION_MASTER_WRAPPING_KEY` from environment to protect key material.",
+      "Add integrity checks for the wrapping key to prevent accidental data loss.",
+      "Implement `KmsKeyProvider` interface for future cloud integration."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_6_ENCRYPTED_KEY_MATERIAL_(WRAPPING).md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "7",
+    "title": "Manager & Registry Orchestration",
+    "tasks": [
+      "Implement `EncryptionManager` to coordinate the lifecycle of encryption operations.",
+      "Support dynamic driver registration.",
+      "Implement automatic key resolution based on payload headers.",
+      "Integrate Redis caching for `DatabaseKeyProvider` to minimize DB lookups."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_7_MANAGER_&_REGISTRY_ORCHESTRATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "8",
+    "title": "Encrypted Attribute & Model Trait",
+    "tasks": [
+      "Implement `#[Encrypted]` PHP 8+ Attribute.",
+      "Develop `HasEncryption` trait with `getAttribute` and `setAttribute` overrides.",
+      "Support automatic serialization for non-string types (arrays, objects).",
+      "Handle 'dirty' attribute detection for encrypted fields."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_8_ENCRYPTED_ATTRIBUTE_&_MODEL_TRAIT.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "9",
+    "title": "Blind Index Service (Hmac-Sha256)",
+    "tasks": [
+      "Create `BlindIndexService` for generating deterministic hashes.",
+      "Implement HMAC-SHA256 with per-column salts.",
+      "Add support for 'fast-lookup' columns in the `HasEncryption` trait.",
+      "Verify collision resistance and statistical distribution."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_9_BLIND_INDEX_SERVICE_(HMAC-SHA256).md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "10",
+    "title": "Query Builder Interception",
+    "tasks": [
+      "Intercept `QueryBuilder` where/find calls on encrypted columns.",
+      "Automatically redirect queries to `_bidx` companion columns.",
+      "Transform lookup values into blind index hashes before execution.",
+      "Add logging for search operations on sensitive fields."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_10_QUERY_BUILDER_INTERCEPTION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "11",
+    "title": "Cloud Kms Driver (Aws Kms)",
+    "tasks": [
+      "Implement `AwsKmsDriver` using the AWS PHP SDK.",
+      "Support `GenerateDataKey` and `Decrypt` API calls.",
+      "Map `EncryptionContext` to AWS KMS Context.",
+      "Handle IAM permission failures gracefully."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_11_CLOUD_KMS_DRIVER_(AWS_KMS).md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "12",
+    "title": "Resilient Cloud Operations",
+    "tasks": [
+      "Implement Circuit Breaker pattern for KMS drivers.",
+      "Add exponential backoff for transient API errors.",
+      "Develop a local fallback mode (optional/restricted) for critical paths.",
+      "Add observability metrics for KMS latency and error rates."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_12_RESILIENT_CLOUD_OPERATIONS.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "13",
+    "title": "Streaming Encryption Service",
+    "tasks": [
+      "Implement `StreamingEncryptionService` using chunked AEAD.",
+      "Support PHP stream wrappers for seamless file I/O.",
+      "Integrate with `AssetService` for encrypted media storage.",
+      "Ensure integrity of individual chunks and the overall stream."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_13_STREAMING_ENCRYPTION_SERVICE.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "14",
+    "title": "Asymmetric Encryption (Rsa-Oaep)",
+    "tasks": [
+      "Create `AsymmetricDriver` using OpenSSL RSA-OAEP.",
+      "Implement PKCS#8 key loading and management.",
+      "Support PEM format for external key import/export.",
+      "Develop CLI for generating RSA key pairs."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_14_ASYMMETRIC_ENCRYPTION_(RSA-OAEP).md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "15",
+    "title": "Secure Sealed Boxes (X25519)",
+    "tasks": [
+      "Implement `SealedBoxDriver` using Sodium X25519.",
+      "Support anonymous encryption to a recipient's public key.",
+      "Integrate with the Key Registry for public key distribution.",
+      "Implement Diffie-Hellman key exchange helper methods."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_15_SECURE_SEALED_BOXES_(X25519).md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "16",
+    "title": "Digital Signatures & Non-Repudiation",
+    "tasks": [
+      "Implement `SigningService` using Ed25519.",
+      "Add support for detached signatures.",
+      "Create `#[Signed]` attribute for model fields.",
+      "Integrate signature verification into the Model lifecycle."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_16_DIGITAL_SIGNATURES_&_NON-REPUDIATION.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "17",
+    "title": "Tamper-Evident Audit Logs",
+    "tasks": [
+      "Modify `EventAuditService` to sign entries upon creation.",
+      "Implement a chain-of-trust (Merkle tree or sequential signatures) for log blocks.",
+      "Develop `AuditVerificationTool` to scan for modified records.",
+      "Sign exported audit reports for compliance validation."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_17_TAMPER-EVIDENT_AUDIT_LOGS.md",
+    "status": "PLANNED",
+    "category": "EncryptionService"
+  },
+  {
+    "phase": "18",
+    "title": "Lifecycle & Security Hardening",
+    "tasks": [
+      "Implement automated Key Rotation CLI commands.",
+      "Create a 'Shred' command to securely retire keys and render data unreadable.",
+      "Conduct final security audit and Known-Answer Test (KAT) suite.",
+      "Produce final performance benchmark report."
+    ],
+    "file": "Blueprint/EncryptionService/Phased/PHASE_18_LIFECYCLE_&_SECURITY_HARDENING.md",
     "status": "PLANNED",
     "category": "EncryptionService"
   }
