@@ -1070,7 +1070,7 @@
       "Contrast check for the \"Light/Dark\" mode toggle."
     ],
     "file": "Blueprint/TestSuite/PHASE_8_VISUAL_ACCESSIBILITY.md",
-    "status": "PLANNED",
+    "status": "COMPLETED",
     "category": "TestSuite"
   },
   {

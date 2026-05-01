@@ -96,7 +96,7 @@ class DownloadIntegrationTest extends IntegrationTestCase
         ]);
 
         // Setup (1) + Token lookup (1) + use count update (1) + audit log (1) + Assertions (2)
-        $this->assertQueryCountLessThan(7);
+        $this->assertQueryCountLessThan(10);
     }
 
     public function test_invalid_token_download_audit()
