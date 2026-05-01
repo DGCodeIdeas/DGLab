@@ -222,4 +222,29 @@ class Connection
         $default = $_ENV['DB_CONNECTION'] ?? $this->config['default'] ?? 'mysql';
         return $this->config['connections'][$default]['driver'] ?? 'mysql';
     }
+
+    public function enableQueryLogging(): void
+    {
+        $this->logging = true;
+    }
+
+    public function disableQueryLogging(): void
+    {
+        $this->logging = false;
+    }
+
+    public function flushQueryLog(): void
+    {
+        $this->queryLog = [];
+    }
+
+    public function getQueryLog(): array
+    {
+        return $this->queryLog;
+    }
+
+    public function getQueryCount(): int
+    {
+        return count($this->queryLog);
+    }
 }

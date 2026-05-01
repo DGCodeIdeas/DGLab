@@ -22,6 +22,7 @@ class AuthIntegrationTest extends IntegrationTestCase
 
     public function test_user_registration_and_login_flow()
     {
+        $this->enableQueryLogging();
         $repo = $this->app->get(UserRepository::class);
         $auth = $this->app->get(AuthManager::class);
 
@@ -51,6 +52,10 @@ class AuthIntegrationTest extends IntegrationTestCase
         $auth->logout();
         $this->assertFalse($auth->check());
         $this->assertAuditLogged('auth.logout', ['identifier' => 'jules@example.com']);
+
+        // Assert no N+1 issues in standard flow
+        // Registration (1 insert + some lookups) + Login (1 lookup + 1 audit) + Logout (1 audit)
+        $this->assertQueryCountLessThan(10);
     }
 
     public function test_failed_login_audit()

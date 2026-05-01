@@ -283,4 +283,41 @@ abstract class TestCase extends BaseTestCase
     {
         $this->app->set($id, $mock);
     }
+
+    protected function assertQueryCount(int $expected): void
+    {
+        $db = $this->app->get(Connection::class);
+        $actual = $db->getQueryCount();
+        $this->assertEquals($expected, $actual, "Expected {$expected} queries, but got {$actual}. Log: " . json_encode($db->getQueryLog()));
+    }
+
+    protected function assertQueryCountLessThan(int $expected): void
+    {
+        $db = $this->app->get(Connection::class);
+        $actual = $db->getQueryCount();
+        $this->assertLessThan($expected, $actual, "Expected less than {$expected} queries, but got {$actual}. Log: " . json_encode($db->getQueryLog()));
+    }
+
+    protected function assertExecutionTimeLessThan(float $thresholdMs, callable $callback): mixed
+    {
+        $start = hrtime(true);
+        $result = $callback();
+        $end = hrtime(true);
+
+        $elapsedMs = ($end - $start) / 1000000;
+
+        $this->assertLessThan($thresholdMs, $elapsedMs, "Execution time of {$elapsedMs}ms exceeded threshold of {$thresholdMs}ms.");
+
+        return $result;
+    }
+
+    protected function enableQueryLogging(): void
+    {
+        $this->app->get(Connection::class)->enableQueryLogging();
+    }
+
+    protected function flushQueryLog(): void
+    {
+        $this->app->get(Connection::class)->flushQueryLog();
+    }
 }
