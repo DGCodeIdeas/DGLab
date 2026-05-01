@@ -7,6 +7,9 @@ use DGLab\Core\Request;
 use DGLab\Core\Response;
 use DGLab\Core\ResponseFactoryInterface;
 use DGLab\Services\Auth\AuthManager;
+use DGLab\Core\Contracts\DispatcherInterface;
+use DGLab\Core\GenericEvent;
+use DGLab\Core\Application;
 
 class AuthMiddleware implements MiddlewareInterface
 {
@@ -22,6 +25,13 @@ class AuthMiddleware implements MiddlewareInterface
     public function handle(Request $request, callable $next): Response
     {
         if (!$this->auth->check()) {
+            Application::getInstance()->get(DispatcherInterface::class)->dispatch(
+                new GenericEvent('security.unauthenticated_access', [
+                    'uri' => $request->getUri(),
+                    'ip' => $request->getServer('REMOTE_ADDR')
+                ])
+            );
+
             if ($request->getHeader('Accept') === 'application/json') {
                 return $this->responseFactory->json(['error' => 'Unauthenticated'], 401);
             }
