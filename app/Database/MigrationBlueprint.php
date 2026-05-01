@@ -88,7 +88,10 @@ class MigrationBlueprint
         }
         return $this;
     }
-    public function index(string|array $columns, ?string $name = null): self { return $this; }
+    public function index(string|array $columns, ?string $name = null): self
+    {
+        return $this;
+    }
     public function unique(string|array $columns = [], ?string $name = null): self
     {
         if (empty($columns)) {
@@ -113,13 +116,22 @@ class MigrationBlueprint
         }
         return $this;
     }
-    public function foreign(string $column, string $table, string $reference = 'id'): self { return $this; }
+    public function foreign(string $column, string $table, string $reference = 'id'): self
+    {
+        return $this;
+    }
     public function default(mixed $value): self
     {
-        if (empty($this->columns)) return $this;
-        if (is_string($value)) $v = "'$value'";
-        elseif (is_bool($value)) $v = $value ? '1' : '0';
-        else $v = $value;
+        if (empty($this->columns)) {
+            return $this;
+        }
+        if (is_string($value)) {
+            $v = "'$value'";
+        } elseif (is_bool($value)) {
+            $v = $value ? '1' : '0';
+        } else {
+            $v = $value;
+        }
         $lastIndex = count($this->columns) - 1;
         $this->columns[$lastIndex] .= " DEFAULT $v";
         return $this;

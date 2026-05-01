@@ -1,6 +1,8 @@
 <?php
+
 return [
     'services' => [
+        'render-deployment' => \DGLab\Services\Deployment\RenderService::class,
         'download-service' => \DGLab\Services\Download\DownloadService::class,
         'epub-font-changer' => \DGLab\Services\EpubFontChanger\EpubFontChanger::class,
         'webpack' => \DGLab\Services\AssetPacker\WebpackService::class,
@@ -46,4 +48,8 @@ return [
             'action_format' => 'Concise action descriptions for visual adaptation',
         ],
     ],
+    'render' => [
+        'api_key' => getenv('RENDER_API_KEY'),
+        'service_id' => getenv('RENDER_SERVICE_ID'),
+    ]
 ];
