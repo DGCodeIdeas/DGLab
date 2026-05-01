@@ -1,0 +1,19 @@
+<?php
+
+namespace {{ namespace }};
+
+use DGLab\Tests\TestCase;
+
+class {{ class }} extends TestCase
+{
+    public function test_example()
+    {
+        $this->addTestRoute('GET', '/test-route', function() {
+            return 'OK';
+        });
+
+        $this->get('/test-route');
+        $this->assertStatus($this->lastResponse, 200);
+        $this->assertSee('OK');
+    }
+}
