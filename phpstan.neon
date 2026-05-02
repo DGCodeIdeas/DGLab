@@ -19,7 +19,6 @@ parameters:
         - '#Access to an undefined property DGLab\\Models\\Tenant::\$status.#'
         - '#Strict comparison using === between mixed and null will always evaluate to false.#'
         - '#Parameter \#1 \$num of function dechex expects int, float given.#'
-        - '#Class DGLab\\Services\\Auth\\Social\\AbstractSocialProvider implements unknown interface DGLab\\Services\\Auth\\Contracts\\SocialProviderInterface.#'
         - '#Method DGLab\\Services\\EpubFontChanger\\EpubFontChanger::getFontMediaType\(\) is unused.#'
         - '#Call to an undefined static method DGLab\\Services\\MangaScript\\AI\\LLMProviderException::.*#'
         - '#Parameter \#1 \$config of class DGLab\\Services\\MangaScript\\AI\\Providers\\CustomProvider constructor expects array, string given.#'
