@@ -51,7 +51,7 @@
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
-        "cs": "vendor/bin/phpcs --standard=PSR12 app/",
+        "cs": "vendor/bin/phpcs",
         "analyse": "vendor/bin/phpstan analyse app/ --level=5",
         "migrate": "php cli/migrate.php",
         "deploy": "php cli/deploy.php"

@@ -366,6 +366,6 @@ class ProviderFactory
         'xai' => XaiProvider::class,
         'bedrock' => BedrockProvider::class,
         'azure_openai' => AzureOpenAiProvider::class,
-    ];
+        ];
     }
 }
