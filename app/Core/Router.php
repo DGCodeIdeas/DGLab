@@ -16,9 +16,8 @@
  */
 
 namespace DGLab\Core;
+
 use DGLab\Core\Contracts\ResponseFactoryInterface;
-
-
 use DGLab\Services\AssetService;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 

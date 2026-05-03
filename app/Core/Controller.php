@@ -1,8 +1,8 @@
 <?php
 
 namespace DGLab\Core;
-use DGLab\Core\Contracts\ResponseFactoryInterface;
 
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Services\Auth\AuthManager;
 
 abstract class Controller
