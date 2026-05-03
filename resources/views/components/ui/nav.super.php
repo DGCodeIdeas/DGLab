@@ -1,5 +1,7 @@
 ~setup {
     $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
+    $auth = \DGLab\Core\Application::getInstance()->get(\DGLab\Services\Auth\AuthManager::class);
+    $user = $auth->user();
 }
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
@@ -26,34 +28,20 @@
                         <i class="bi bi-tools me-1"></i> Services
                     </a>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-three-dots me-1"></i> More
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        <li>
-                            <a class="dropdown-item" href="/docs" @prefetch>
-                                <i class="bi bi-book me-2"></i> Documentation
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="/api" @prefetch>
-                                <i class="bi bi-code-slash me-2"></i> API
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="https://github.com/dglab/pwa" target="_blank" rel="noopener">
-                                <i class="bi bi-github me-2"></i> GitHub
-                            </a>
-                        </li>
-                    </ul>
-                </li>
+                @if($user)
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">
+                            <i class="bi bi-box-arrow-right me-1"></i> Logout ({{ $user->username }})
+                        </a>
+                    </li>
+                @else
+                    <li class="nav-item">
+                        <a class="nav-link {{ $currentUri === '/login' ? 'active' : '' }}" href="/login" @prefetch>
+                            <i class="bi bi-person me-1"></i> Login
+                        </a>
+                    </li>
+                @endif
             </ul>
-
-            <button id="install-pwa" class="btn btn-outline-light btn-sm ms-lg-3 d-none">
-                <i class="bi bi-download me-1"></i> Install
-            </button>
         </div>
     </div>
 </nav>

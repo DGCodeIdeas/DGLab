@@ -27,6 +27,13 @@ jobs:
         extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite, zip, gd
         coverage: xdebug
 
+    - name: Setup Chrome and ChromeDriver
+      run: |
+        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
+        echo "Chrome version: $CHROME_VERSION"
+        # In GitHub Actions, ChromeDriver is usually already matched to Chrome.
+        # We'll rely on Panther's ability to download the driver if it's missing or mismatched.
+
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 
