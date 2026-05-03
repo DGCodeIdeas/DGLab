@@ -426,4 +426,55 @@ class GroqProvider extends AbstractLLMProvider
             );
         }
     }
+
+    /**
+     * Get provider identifier
+     */
+    public function getId(): string
+    {
+        return 'groq';
+    }
+
+    /**
+     * Get display name
+     */
+    public function getName(): string
+    {
+        return 'Groq';
+    }
+
+    /**
+     * Get available models
+     */
+    public function getModels(): array
+    {
+        return ->availableModels;
+    }
+
+    /**
+     * Get default model
+     */
+    protected function getDefaultModel(): string
+    {
+        return 'llama-3.3-70b-versatile';
+    }
+
+    /**
+     * Execute a chat completion
+     */
+    public function chat(string $model, array $messages, array $options = []): \DGLab\Services\MangaScript\AI\LLMResponse
+    {
+        return $this->sendWithHistory($messages, null, array_merge($options, ['model' => $model]));
+    }
+
+    /**
+     * Execute streaming chat completion
+     */
+    public function chatStream(string $model, array $messages, array $options = []): \Generator
+    {
+        if (false) {
+            yield '';
+        }
+        throw new \RuntimeException('Streaming not implemented for ' . $this->getName());
+    }
 }

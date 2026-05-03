@@ -438,4 +438,55 @@ class AzureOpenAiProvider extends AbstractLLMProvider
     {
         return $this->resourceName;
     }
+
+    /**
+     * Get provider identifier
+     */
+    public function getId(): string
+    {
+        return 'azure_openai';
+    }
+
+    /**
+     * Get display name
+     */
+    public function getName(): string
+    {
+        return 'Azure OpenAI';
+    }
+
+    /**
+     * Get available models
+     */
+    public function getModels(): array
+    {
+        return ->availableModels;
+    }
+
+    /**
+     * Get default model
+     */
+    protected function getDefaultModel(): string
+    {
+        return 'gpt-4o';
+    }
+
+    /**
+     * Execute a chat completion
+     */
+    public function chat(string $model, array $messages, array $options = []): \DGLab\Services\MangaScript\AI\LLMResponse
+    {
+        return $this->sendWithHistory($messages, null, array_merge($options, ['model' => $model]));
+    }
+
+    /**
+     * Execute streaming chat completion
+     */
+    public function chatStream(string $model, array $messages, array $options = []): \Generator
+    {
+        if (false) {
+            yield '';
+        }
+        throw new \RuntimeException('Streaming not implemented for ' . $this->getName());
+    }
 }

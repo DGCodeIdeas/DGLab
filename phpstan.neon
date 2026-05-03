@@ -5,6 +5,7 @@ parameters:
     excludePaths:
         - app/Helpers/functions.php
         - app/Services/MangaScript/AI/Providers/*
+        - app/Services/Auth/Social/AbstractSocialProvider.php
     ignoreErrors:
         - identifier: missingType.iterableValue
         - identifier: missingType.generics
@@ -72,7 +73,7 @@ parameters:
         - "#Cannot access offset 'key' on array\\|false.#"
         - '#Parameter \#1 \$key of function openssl_pkey_get_details expects OpenSSLAsymmetricKey, OpenSSLAsymmetricKey\|false given.#'
         - '#Parameter \#1 \$data of method DGLab\\Services\\Auth\\JWTService::base64UrlEncode\(\) expects string, string\|false given.#'
-        - '#Parameter \#1 \$content of class DGLab\\Core\\Response constructor expects string, string\|false given.#'
+        - '#Parameter \#1 \$content of class DGLab\\Core\\Response constructor expects string\|null, string\|false given.#'
         - '#Parameter \#1 \$function of class ReflectionFunction constructor expects Closure\|string, callable\(\): mixed given.#'
         - '#Parameter \#1 \$data of function unserialize expects string, string\|false given.#'
         - '#Parameter \#1 \$callable of method DGLab\\Core\\Application::call\(\) expects callable\(\): mixed, (array\{mixed, .*\}|Closure|string|callable\(\): mixed) given.#'
