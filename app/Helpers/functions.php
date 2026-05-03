@@ -6,7 +6,7 @@
 
 use DGLab\Core\Application;
 use DGLab\Core\Response;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Core\View;
 use DGLab\Services\Download\Download;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;

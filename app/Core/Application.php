@@ -8,6 +8,7 @@ use Psr\Log\LoggerInterface;
 use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Database\Connection;
 use DGLab\Core\Exceptions\RouteNotFoundException;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 
 class Application
 {

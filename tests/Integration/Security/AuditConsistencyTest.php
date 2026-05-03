@@ -9,7 +9,7 @@ use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Core\GenericEvent;
 use DGLab\Middleware\AuthMiddleware;
 use DGLab\Middleware\PermissionMiddleware;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Core\Request;
 use DGLab\Services\Auth\AuthorizationService;
 use DGLab\Services\Tenancy\TenancyService;

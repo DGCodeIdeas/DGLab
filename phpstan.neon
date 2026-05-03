@@ -5,7 +5,6 @@ parameters:
     excludePaths:
         - app/Helpers/functions.php
         - app/Services/MangaScript/AI/Providers/*
-        - app/Services/Auth/Social/AbstractSocialProvider.php
     ignoreErrors:
         - identifier: missingType.iterableValue
         - identifier: missingType.generics
@@ -19,7 +18,6 @@ parameters:
         - '#Access to an undefined property DGLab\\Models\\Tenant::\$status.#'
         - '#Strict comparison using === between mixed and null will always evaluate to false.#'
         - '#Parameter \#1 \$num of function dechex expects int, float given.#'
-        - '#Class DGLab\\Services\\Auth\\Social\\AbstractSocialProvider implements unknown interface DGLab\\Services\\Auth\\Contracts\\SocialProviderInterface.#'
         - '#Method DGLab\\Services\\EpubFontChanger\\EpubFontChanger::getFontMediaType\(\) is unused.#'
         - '#Call to an undefined static method DGLab\\Services\\MangaScript\\AI\\LLMProviderException::.*#'
         - '#Parameter \#1 \$config of class DGLab\\Services\\MangaScript\\AI\\Providers\\CustomProvider constructor expects array, string given.#'
@@ -74,7 +72,7 @@ parameters:
         - "#Cannot access offset 'key' on array\\|false.#"
         - '#Parameter \#1 \$key of function openssl_pkey_get_details expects OpenSSLAsymmetricKey, OpenSSLAsymmetricKey\|false given.#'
         - '#Parameter \#1 \$data of method DGLab\\Services\\Auth\\JWTService::base64UrlEncode\(\) expects string, string\|false given.#'
-        - '#Parameter \#1 \$content of class DGLab\\Core\\Response constructor expects string\|null, string\|false given.#'
+        - '#Parameter \#1 \$content of class DGLab\\Core\\Response constructor expects string, string\|false given.#'
         - '#Parameter \#1 \$function of class ReflectionFunction constructor expects Closure\|string, callable\(\): mixed given.#'
         - '#Parameter \#1 \$data of function unserialize expects string, string\|false given.#'
         - '#Parameter \#1 \$callable of method DGLab\\Core\\Application::call\(\) expects callable\(\): mixed, (array\{mixed, .*\}|Closure|string|callable\(\): mixed) given.#'
@@ -92,5 +90,4 @@ parameters:
         - '#Parameter \#1 \$callable of method DGLab\\Core\\Application::call\(\) expects callable\(\): mixed, \(callable\(\): mixed\)\|string given.#'
         - '#Class DGLab\\Core\\Router does not have a constructor.*#'
         - '#Class DGLab\\Core\\View constructor invoked with 1 parameter, 0 required.#'
-        - '#Call to an undefined method DGLab\\Core\\Contracts\\DispatcherInterface::addSubscriber\(\).#'
     reportUnmatchedIgnoredErrors: false

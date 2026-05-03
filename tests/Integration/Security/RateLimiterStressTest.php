@@ -4,7 +4,7 @@ namespace DGLab\Tests\Integration\Security;
 
 use DGLab\Tests\IntegrationTestCase;
 use DGLab\Middleware\RateLimitMiddleware;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Services\Auth\RateLimiter;
 use DGLab\Core\Request;
 

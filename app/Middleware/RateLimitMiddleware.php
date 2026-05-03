@@ -5,7 +5,7 @@ namespace DGLab\Middleware;
 use DGLab\Core\MiddlewareInterface;
 use DGLab\Core\Request;
 use DGLab\Core\Response;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Services\Auth\RateLimiter;
 
 class RateLimitMiddleware implements MiddlewareInterface
