@@ -36,4 +36,12 @@ interface DispatcherInterface
      * @return void
      */
     public function removeListener(string $eventClassOrPattern, $listener): void;
+
+    /**
+     * Add an event subscriber.
+     *
+     * @param EventSubscriberInterface $subscriber
+     * @return void
+     */
+    public function addSubscriber(EventSubscriberInterface $subscriber): void;
 }

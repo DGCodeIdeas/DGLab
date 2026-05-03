@@ -2,6 +2,7 @@
 
 namespace DGLab\Core;
 
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use InvalidArgumentException;
 use RuntimeException;
 use Psr\Log\LoggerInterface;

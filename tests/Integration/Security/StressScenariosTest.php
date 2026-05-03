@@ -9,7 +9,7 @@ use DGLab\Services\Auth\AuthManager;
 use DGLab\Services\Tenancy\TenancyService;
 use DGLab\Services\Auth\AuthorizationService;
 use DGLab\Core\Request;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 
 class StressScenariosTest extends IntegrationTestCase
 {

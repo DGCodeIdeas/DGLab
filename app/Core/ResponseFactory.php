@@ -2,6 +2,8 @@
 
 namespace DGLab\Core;
 
+use DGLab\Core\Contracts\ResponseFactoryInterface;
+
 /**
  * Class ResponseFactory
  */
