@@ -17,7 +17,7 @@ class HomeTest extends BrowserTestCase
         $dashboard = new DashboardPage($client);
         $dashboard->open();
 
-        $this->assertPageTitleContains('DGLab');
+        $this->assertStringContainsString("DGLab", $client->getTitle());
         $this->assertTrue($dashboard->isVisible());
     }
 

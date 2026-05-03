@@ -38,22 +38,32 @@ class Application
     {
         $this->set(Application::class, $this);
         $this->set(Request::class, fn() => new Request());
-        $this->set(Router::class, fn($app) => new Router($app));
-        $this->set(View::class, fn($app) => new View($app));
-        $this->set(Connection::class, fn($app) => new Connection($app->config('database') ?? []));
-        $this->set(LoggerInterface::class, fn() => new Logger());
-        $this->set(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
-        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, fn($app) => new \DGLab\Core\EventDrivers\SyncDriver($app));
-        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, fn($app) => new \DGLab\Core\EventDrivers\QueueDriver($app));
-        $this->set(AuditService::class, fn($app) => new AuditService(
+        $this->singleton(Router::class, fn($app) => new Router());
+        $this->singleton(View::class, fn($app) => new View());
+        $this->singleton(Connection::class, fn($app) => new Connection($app->config('database') ?? []));
+        $this->singleton(LoggerInterface::class, fn() => new Logger());
+        $this->singleton(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
+        $this->singleton(\DGLab\Core\EventDrivers\SyncDriver::class, fn($app) => new \DGLab\Core\EventDrivers\SyncDriver($app));
+        $this->singleton(\DGLab\Core\EventDrivers\QueueDriver::class, fn($app) => new \DGLab\Core\EventDrivers\QueueDriver($app));
+
+        $this->singleton(\DGLab\Services\Auth\Repositories\UserRepository::class, fn() => new \DGLab\Services\Auth\Repositories\UserRepository());
+        $this->singleton(\DGLab\Services\Auth\JWTService::class, fn() => new \DGLab\Services\Auth\JWTService());
+        $this->singleton(\DGLab\Services\Auth\AuthManager::class, fn($app) => new \DGLab\Services\Auth\AuthManager($app));
+
+        $this->singleton(\DGLab\Controllers\AuthController::class, fn($app) => new \DGLab\Controllers\AuthController($app->get(\DGLab\Services\Auth\Repositories\UserRepository::class)));
+        $this->singleton(\DGLab\Controllers\HomeController::class, fn() => new \DGLab\Controllers\HomeController());
+        $this->singleton(\DGLab\Controllers\ServicesController::class, fn() => new \DGLab\Controllers\ServicesController());
+
+        $this->singleton(AuditService::class, fn($app) => new AuditService(
             $app->get(Connection::class),
             $app->get(Request::class),
             $app->has(\DGLab\Services\Tenancy\TenancyService::class) ? $app->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
-            $app->has(\DGLab\Services\Auth\AuthManager::class) ? $app->get(\DGLab\Services\Auth\AuthManager::class) : null
+            $app->get(\DGLab\Services\Auth\AuthManager::class)
         ));
-        $this->set(\DGLab\Services\Download\AuditService::class, fn($app) => new \DGLab\Services\Download\AuditService($app->get(AuditService::class)));
-        $this->set(ResponseFactoryInterface::class, fn() => new ResponseFactory());
-        $this->set(ResponseFactory::class, fn() => new ResponseFactory());
+        $this->singleton(\DGLab\Services\Download\AuditService::class, fn($app) => new \DGLab\Services\Download\AuditService($app->get(AuditService::class)));
+        $this->singleton(ResponseFactoryInterface::class, fn() => new ResponseFactory());
+        $this->singleton(ResponseFactory::class, fn() => new ResponseFactory());
+        $this->singleton(\DGLab\Services\AssetService::class, fn() => new \DGLab\Services\AssetService());
     }
 
     public function boot(): void
@@ -94,7 +104,7 @@ class Application
     public function singleton(string $id, mixed $service = null): void
     {
         if ($service === null) {
-            $this->set($id, fn($app) => new $id($app));
+            $this->set($id, fn($app) => new $id());
         } else {
             $this->set($id, $service);
         }
@@ -152,19 +162,19 @@ class Application
         }
         $params = $reflection->getParameters();
         $finalArgs = [];
-        foreach ($params as $param) {
-            $name = $param->getName();
+        foreach ($params as $paramsItem) {
+            $name = $paramsItem->getName();
             if (isset($args[$name])) {
                 $finalArgs[] = $args[$name];
                 continue;
             }
-            $type = $param->getType();
+            $type = $paramsItem->getType();
             if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
                 $finalArgs[] = $this->get($type->getName());
                 continue;
             }
-            if ($param->isDefaultValueAvailable()) {
-                $finalArgs[] = $param->getDefaultValue();
+            if ($paramsItem->isDefaultValueAvailable()) {
+                $finalArgs[] = $paramsItem->getDefaultValue();
                 continue;
             }
             throw new \RuntimeException("Unable to resolve parameter: {$name}");

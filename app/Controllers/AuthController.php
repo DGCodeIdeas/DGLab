@@ -14,7 +14,13 @@ class AuthController extends BaseController
 
     public function __construct(UserRepository $users)
     {
+        parent::__construct();
         $this->users = $users;
+    }
+
+    public function showLogin(Request $request): Response
+    {
+        return $this->view('auth/login');
     }
 
     public function register(Request $request): Response
@@ -30,32 +36,54 @@ class AuthController extends BaseController
 
         event('auth.registered', ['user_id' => $user->id]);
 
-        return json(['message' => 'Registered successfully', 'user' => $user->toArray()], 201);
+        if ($request->expectsJson()) {
+            return $this->json(['message' => 'Registered successfully', 'user' => $user->toArray()], 201);
+        }
+
+        return $this->redirect('/login');
     }
 
     public function login(Request $request): Response
     {
         $credentials = $request->only(['email', 'password']);
-        $auth = \DGLab\Core\Application::getInstance()->get(AuthManager::class);
+        $auth = $this->auth();
 
         if ($auth->attempt($credentials)) {
             $user = $auth->user();
             $token = $auth->guard()->login($user);
-            return json(['token' => $token]);
+
+            if ($request->expectsJson()) {
+                return $this->json(['token' => $token]);
+            }
+
+            return $this->redirect('/');
         }
 
-        return json(['error' => 'Invalid credentials'], 401);
+        if ($request->expectsJson()) {
+            return $this->json(['error' => 'Invalid credentials'], 401);
+        }
+
+        return $this->view('auth/login', ['error' => 'Invalid credentials']);
     }
 
     public function me(Request $request): Response
     {
-        $auth = \DGLab\Core\Application::getInstance()->get(AuthManager::class);
+        $auth = $this->auth();
         $user = $auth->user();
 
         if (!$user) {
-            return json(['error' => 'Unauthorized'], 401);
+            if ($request->expectsJson()) {
+                return $this->json(['error' => 'Unauthorized'], 401);
+            }
+            return $this->redirect('/login');
         }
 
-        return json(['user' => $user->toArray()]);
+        return $this->json(['user' => $user->toArray()]);
+    }
+
+    public function logout(Request $request): Response
+    {
+        $this->auth()->logout();
+        return $this->redirect('/login');
     }
 }

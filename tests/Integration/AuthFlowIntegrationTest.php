@@ -14,12 +14,11 @@ class AuthFlowIntegrationTest extends IntegrationTestCase
     {
         parent::setUp();
         $this->app->setConfig('auth.defaults.guard', 'jwt');
+        $this->app->setConfig('auth.guards.jwt', ['driver' => 'jwt']);
+
         $this->addTestRoute('POST', '/register', [AuthController::class, 'register']);
         $this->addTestRoute('POST', '/login', [AuthController::class, 'login']);
         $this->addTestRoute('GET', '/me', [AuthController::class, 'me']);
-
-        $this->app->singleton(AuthManager::class, fn($app) => new AuthManager($app));
-        $this->app->singleton(AuthController::class, fn($app) => new AuthController($app->get(UserRepository::class)));
     }
 
     public function testFullAuthFlow()
@@ -31,7 +30,7 @@ class AuthFlowIntegrationTest extends IntegrationTestCase
             'email' => 'integration@test.com',
             'username' => 'testuser',
             'password' => 'password123'
-        ]);
+        ], ['Accept' => 'application/json']);
         $this->assertStatus($response, 201);
         $this->assertEventDispatched('auth.registered');
 
@@ -39,17 +38,21 @@ class AuthFlowIntegrationTest extends IntegrationTestCase
         $response = $this->post('/login', [
             'email' => 'integration@test.com',
             'password' => 'password123'
+        ], ['Accept' => 'application/json']);
+        $this->assertStatus($response, 200);
+        $data = $this->assertJsonResponse($response);
+        $this->assertArrayHasKey('token', $data);
+        $token = $data['token'];
+        $this->assertEventDispatched('auth.login.success');
+        $this->assertAuditLogged('auth.login.success', ['category' => 'auth', 'identifier' => 'integration@test.com']);
+
+        // 3. Authenticated Request
+        $response = $this->get('/me', [], [
+            'Authorization' => 'Bearer ' . $token,
+            'Accept' => 'application/json'
         ]);
         $this->assertStatus($response, 200);
         $data = $this->assertJsonResponse($response);
-        $token = $data['token'];
-        $this->assertEventDispatched('auth.login.success');
-        $this->assertAuditLogged('auth.login.success', ['identifier' => 'integration@test.com']);
-
-        // 3. Authenticated Request
-        $response = $this->get('/me', [], ['Authorization' => 'Bearer ' . $token]);
-        $this->assertStatus($response, 200);
-        $data = $this->assertJsonResponse($response);
-        $this->assertEquals('integration@test.com', $data['user']['email']);
+        $this->assertEquals('testuser', $data['user']['username']);
     }
 }

@@ -8,8 +8,6 @@ use RuntimeException;
 
 class KeyManagementServiceTest extends TestCase
 {
-    protected ?string $tempStorage = null;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -18,16 +16,9 @@ class KeyManagementServiceTest extends TestCase
         $this->app->setConfig("auth.key_storage_path", $this->tempStorage);
     }
 
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-    }
-
-
-
     public function testGenerateAndGetKeys()
     {
-        $service = new KeyManagementService();
+        $service = new KeyManagementService($this->tempStorage);
         $keys = $service->generateKeyPair('test');
 
         $this->assertArrayHasKey('private', $keys);
@@ -41,7 +32,7 @@ class KeyManagementServiceTest extends TestCase
 
     public function testAutoGeneratePrivateKey()
     {
-        $service = new KeyManagementService();
+        $service = new KeyManagementService($this->tempStorage);
 
         // Should generate since private doesn't exist
         $privateKey = $service->getKey('auto', 'private');
@@ -53,7 +44,7 @@ class KeyManagementServiceTest extends TestCase
 
     public function testMissingPublicKeyThrowsException()
     {
-        $service = new KeyManagementService();
+        $service = new KeyManagementService($this->tempStorage);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage("Key file not found");

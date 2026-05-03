@@ -21,7 +21,8 @@ class LoginPage
 
     public function fillCredentials(string $email, string $password): void
     {
-        $this->client->getCrawler()->filter('input[name="email"]')->sendKeys($email);
+        $this->client->waitFor('#email');
+        $this->client->getCrawler()->filter('#email')->sendKeys($email);
         $this->client->getCrawler()->filter('input[name="password"]')->sendKeys($password);
     }
 
@@ -39,7 +40,11 @@ class LoginPage
 
     public function getErrorMessage(): ?string
     {
-        $error = $this->client->getCrawler()->filter('.alert-danger');
-        return $error->count() > 0 ? $error->text() : null;
+        try {
+            $error = $this->client->getCrawler()->filter('.alert-danger');
+            return $error->count() > 0 ? $error->text() : null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

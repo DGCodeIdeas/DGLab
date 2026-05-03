@@ -10,14 +10,7 @@ use DGLab\Services\MangaScript\AI\LLMProviderException;
 /**
  * Cohere LLM Provider
  *
- * Implements the Cohere API for enterprise-grade language models
- * with strong RAG and embedding capabilities.
- *
- * Features:
- * - Command models for generation
- * - Strong multilingual support
- * - Built-in RAG with connectors
- * - Document grounding for factual responses
+ * Implements the Cohere API (v2) for Command R+ and Command R models.
  *
  * @package DGLab\Services\MangaScript\AI\Providers
  */
@@ -36,323 +29,102 @@ class CohereProvider extends AbstractLLMProvider
     /**
      * Default API endpoint
      */
-    protected string $defaultEndpoint = 'https://api.cohere.ai/v2/chat';
+    protected string $defaultEndpoint = 'https://api.cohere.com/v2/chat';
 
     /**
-     * Available models with their specifications
+     * Available models
      */
     protected array $availableModels = [
-        // Command R+ models
-        'command-r-plus-08-2024' => [
-            'context_window' => 128000,
-            'max_output' => 4096,
-            'supports_json_mode' => true,
-            'supports_tools' => true,
-            'supports_rag' => true,
-            'cost_per_1k_input' => 0.0025,
-            'cost_per_1k_output' => 0.01,
-        ],
         'command-r-plus' => [
-            'context_window' => 128000,
+            'context_tokens' => 128000,
             'max_output' => 4096,
             'supports_json_mode' => true,
-            'supports_tools' => true,
-            'supports_rag' => true,
-            'cost_per_1k_input' => 0.0025,
-            'cost_per_1k_output' => 0.01,
-        ],
-
-        // Command R models
-        'command-r-08-2024' => [
-            'context_window' => 128000,
-            'max_output' => 4096,
-            'supports_json_mode' => true,
-            'supports_tools' => true,
-            'supports_rag' => true,
-            'cost_per_1k_input' => 0.00015,
-            'cost_per_1k_output' => 0.0006,
+            'cost_input' => 0.003,
+            'cost_output' => 0.015,
         ],
         'command-r' => [
-            'context_window' => 128000,
+            'context_tokens' => 128000,
             'max_output' => 4096,
             'supports_json_mode' => true,
-            'supports_tools' => true,
-            'supports_rag' => true,
-            'cost_per_1k_input' => 0.00015,
-            'cost_per_1k_output' => 0.0006,
-        ],
-
-        // Command models (legacy)
-        'command' => [
-            'context_window' => 4096,
-            'max_output' => 4096,
-            'supports_json_mode' => false,
-            'supports_tools' => false,
-            'supports_rag' => false,
-            'cost_per_1k_input' => 0.001,
-            'cost_per_1k_output' => 0.002,
-        ],
-        'command-light' => [
-            'context_window' => 4096,
-            'max_output' => 4096,
-            'supports_json_mode' => false,
-            'supports_tools' => false,
-            'supports_rag' => false,
-            'cost_per_1k_input' => 0.0003,
-            'cost_per_1k_output' => 0.0006,
+            'cost_input' => 0.00015,
+            'cost_output' => 0.0006,
         ],
     ];
 
     /**
-     * Default model for this provider
+     * {@inheritdoc}
      */
-    protected string $defaultModel = 'command-r-plus';
+    public function getId(): string
+    {
+        return $this->providerId;
+    }
 
     /**
      * {@inheritdoc}
      */
-    public function send(
-        string $prompt,
-        ?string $systemPrompt = null,
-        array $options = []
-    ): LLMResponse {
-        $model = $options['model'] ?? $this->defaultModel;
-        $this->validateModel($model);
+    public function getName(): string
+    {
+        return $this->providerName;
+    }
 
-        $modelSpec = $this->availableModels[$model];
+    /**
+     * {@inheritdoc}
+     */
+    public function getModels(): array
+    {
+        return $this->availableModels;
+    }
 
-        // Build messages array for v2 API
-        $messages = [];
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDefaultModel(): string
+    {
+        return 'command-r-plus';
+    }
 
-        if ($systemPrompt !== null) {
-            $messages[] = [
-                'role' => 'system',
-                'content' => $systemPrompt,
-            ];
-        }
-
-        $messages[] = [
-            'role' => 'user',
-            'content' => $prompt,
-        ];
+    /**
+     * {@inheritdoc}
+     */
+    public function chat(string $model, array $messages, array $options = []): LLMResponse
+    {
+        $this->validateMessages($messages);
 
         $payload = [
             'model' => $model,
             'messages' => $messages,
-            'temperature' => $options['temperature'] ?? $this->config['default_temperature'] ?? 0.7,
-            'max_tokens' => min(
-                $options['max_tokens'] ?? $this->config['default_max_tokens'] ?? 4096,
-                $modelSpec['max_output']
-            ),
-            'stream' => false,
-        ];
-
-        // Add response format for JSON mode
-        if (($options['json_mode'] ?? false) && $modelSpec['supports_json_mode']) {
-            $payload['response_format'] = ['type' => 'json_object'];
-        }
-
-        // Add safety mode
-        if (isset($options['safety_mode'])) {
-            $payload['safety_mode'] = $options['safety_mode']; // CONTEXTUAL, STRICT, NONE
-        }
-
-        // Add stop sequences
-        if (!empty($options['stop'])) {
-            $payload['stop_sequences'] = $options['stop'];
-        }
-
-        // Add document grounding if provided
-        if (!empty($options['documents'])) {
-            $payload['documents'] = $options['documents'];
-        }
-
-        // Add citation quality
-        if (isset($options['citation_quality'])) {
-            $payload['citation_quality'] = $options['citation_quality'];
-        }
-
-        $startTime = microtime(true);
-
-        try {
-            $response = $this->makeRequest($payload);
-            $latency = (microtime(true) - $startTime) * 1000;
-
-            return $this->parseResponse($response, $model, $latency);
-        } catch (\Exception $e) {
-            throw LLMProviderException::requestFailed(
-                $this->providerId,
-                $model,
-                $e->getMessage(),
-                $e->getCode()
-            );
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function sendWithHistory(
-        array $messages,
-        ?string $systemPrompt = null,
-        array $options = []
-    ): LLMResponse {
-        $model = $options['model'] ?? $this->defaultModel;
-        $this->validateModel($model);
-
-        $modelSpec = $this->availableModels[$model];
-
-        // Build messages array
-        $formattedMessages = [];
-
-        if ($systemPrompt !== null) {
-            $formattedMessages[] = [
-                'role' => 'system',
-                'content' => $systemPrompt,
-            ];
-        }
-
-        foreach ($messages as $message) {
-            $formattedMessages[] = [
-                'role' => $message['role'],
-                'content' => $message['content'],
-            ];
-        }
-
-        $payload = [
-            'model' => $model,
-            'messages' => $formattedMessages,
             'temperature' => $options['temperature'] ?? 0.7,
-            'max_tokens' => min(
-                $options['max_tokens'] ?? 4096,
-                $modelSpec['max_output']
-            ),
+            'max_tokens' => $options['max_tokens'] ?? 4096,
             'stream' => false,
         ];
 
-        if (($options['json_mode'] ?? false) && $modelSpec['supports_json_mode']) {
-            $payload['response_format'] = ['type' => 'json_object'];
-        }
+        $headers = [
+            'Authorization' => 'Bearer ' . $this->getApiKey(),
+            'Content-Type' => 'application/json',
+            'X-Client-Name: DGLab-NovelToMangaScript',
+        ];
 
         $startTime = microtime(true);
-
         try {
-            $response = $this->makeRequest($payload);
+            $response = $this->httpRequest('POST', $this->defaultEndpoint, $headers, $payload);
             $latency = (microtime(true) - $startTime) * 1000;
 
-            return $this->parseResponse($response, $model, $latency);
+            return $this->parseCohereResponse($response, $model, $latency);
         } catch (\Exception $e) {
-            throw LLMProviderException::requestFailed(
-                $this->providerId,
-                $model,
-                $e->getMessage(),
-                $e->getCode()
-            );
+            throw LLMProviderException::requestFailed($this->providerId, $model, $e->getMessage(), (int)$e->getCode());
         }
-    }
-
-    /**
-     * Make HTTP request to Cohere API
-     */
-    protected function makeRequest(array $payload): array
-    {
-        $endpoint = $this->config['endpoint'] ?? $this->defaultEndpoint;
-
-        $ch = curl_init($endpoint);
-
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $this->apiKey,
-                'X-Client-Name: DGLab-NovelToMangaScript',
-            ],
-            CURLOPT_TIMEOUT => $this->config['timeout'] ?? 120,
-            CURLOPT_CONNECTTIMEOUT => $this->config['connect_timeout'] ?? 10,
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-
-        curl_close($ch);
-
-        if ($error) {
-            throw new \RuntimeException("cURL error: {$error}");
-        }
-
-        $data = json_decode($response, true);
-
-        if ($httpCode !== 200) {
-            $errorMessage = $data['message'] ?? 'Unknown error';
-            throw new \RuntimeException("API error ({$httpCode}): {$errorMessage}", $httpCode);
-        }
-
-        return $data;
-    }
-
-    /**
-     * Parse Cohere API response (v2 format)
-     */
-    protected function parseResponse(array $response, string $model, float $latency): LLMResponse
-    {
-        $content = '';
-
-        // v2 API returns message with content array
-        if (isset($response['message']['content'])) {
-            foreach ($response['message']['content'] as $block) {
-                if ($block['type'] === 'text') {
-                    $content .= $block['text'];
-                }
-            }
-        }
-
-        $finishReason = $response['finish_reason'] ?? 'unknown';
-
-        $usage = $response['usage'] ?? [];
-        $inputTokens = $usage['billed_units']['input_tokens'] ?? $usage['tokens']['input_tokens'] ?? 0;
-        $outputTokens = $usage['billed_units']['output_tokens'] ?? $usage['tokens']['output_tokens'] ?? 0;
-
-        // Calculate cost
-        $modelSpec = $this->availableModels[$model];
-        $cost = (($inputTokens / 1000) * $modelSpec['cost_per_1k_input']) +
-                (($outputTokens / 1000) * $modelSpec['cost_per_1k_output']);
-
-        return new LLMResponse(
-            content: $content,
-            provider: $this->providerId,
-            model: $model,
-            inputTokens: $inputTokens,
-            outputTokens: $outputTokens,
-            totalTokens: $inputTokens + $outputTokens,
-            cost: $cost,
-            latencyMs: $latency,
-            finishReason: $finishReason,
-            metadata: [
-                'response_id' => $response['id'] ?? null,
-                'citations' => $response['citations'] ?? [],
-                'search_queries' => $response['search_queries'] ?? [],
-            ]
-        );
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getAvailableModels(): array
+    public function chatStream(string $model, array $messages, array $options = []): \Generator
     {
-        return array_keys($this->availableModels);
-    }
+        $this->validateMessages($messages);
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getModelCapabilities(string $model): array
-    {
-        $this->validateModel($model);
-        return $this->availableModels[$model];
+        // Simplified streaming placeholder
+        $response = $this->chat($model, $messages, $options);
+        yield $response->content;
     }
 
     /**
@@ -368,55 +140,38 @@ class CohereProvider extends AbstractLLMProvider
      */
     public function supportsJsonMode(): bool
     {
-        return true; // Command R models support JSON mode
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function supportsFunctionCalling(): bool
-    {
-        return true; // Command R models support tools
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function supportsVision(): bool
-    {
-        return false; // Cohere doesn't have vision models yet
-    }
-
-    /**
-     * Check if provider supports RAG
-     */
-    public function supportsRag(): bool
-    {
         return true;
     }
 
     /**
-     * Get models that support RAG
+     * Parse Cohere API response (v2 format)
      */
-    public function getRagModels(): array
+    protected function parseCohereResponse(array $response, string $model, float $latency): LLMResponse
     {
-        return array_keys(array_filter(
-            $this->availableModels,
-            fn($spec) => $spec['supports_rag'] ?? false
-        ));
-    }
-
-    /**
-     * Validate model exists
-     */
-    protected function validateModel(string $model): void
-    {
-        if (!isset($this->availableModels[$model])) {
-            throw LLMProviderException::invalidModel(
-                $this->providerId,
-                $model,
-                $this->getAvailableModels()
-            );
+        $content = '';
+        if (isset($response['message']['content'])) {
+            foreach ($response['message']['content'] as $block) {
+                if ($block['type'] === 'text') {
+                    $content .= $block['text'];
+                }
+            }
         }
+
+        $usage = $response['usage'] ?? [];
+        $inputTokens = $usage['tokens']['input_tokens'] ?? 0;
+        $outputTokens = $usage['tokens']['output_tokens'] ?? 0;
+
+        $cost = $this->estimateCost($model, $inputTokens, $outputTokens);
+
+        return new LLMResponse(
+            content: $content,
+            finishReason: $response['finish_reason'] ?? 'stop',
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            modelUsed: $model,
+            providerUsed: $this->providerId,
+            latencyMs: $latency,
+            costUsd: $cost
+        );
     }
 }

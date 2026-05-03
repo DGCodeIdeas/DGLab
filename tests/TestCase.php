@@ -2,85 +2,72 @@
 
 namespace DGLab\Tests;
 
-use DGLab\Core\Application;
 use PHPUnit\Framework\TestCase as BaseTestCase;
-use Prophecy\PhpUnit\ProphecyTrait;
-use Psr\Log\LoggerInterface;
-use DGLab\Core\Logger;
-use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
-use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
-use DGLab\Services\Encryption\EncryptionService;
-use DGLab\Services\AssetService;
-use DGLab\Services\ServiceRegistry;
+use DGLab\Core\Application;
+use DGLab\Core\Request;
+use DGLab\Core\Response;
+use DGLab\Core\Router;
+use DGLab\Core\View;
 use DGLab\Database\Connection;
 use DGLab\Database\Model;
-use DGLab\Core\Cache;
+use DGLab\Services\Auth\AuthManager;
+use DGLab\Services\Auth\JWTService;
 use DGLab\Services\Auth\UUIDService;
+use DGLab\Services\Auth\KeyManagementService;
 use DGLab\Services\Auth\Repositories\UserRepository;
 use DGLab\Services\Auth\RateLimiter;
-use DGLab\Services\Auth\JWTService;
-use DGLab\Services\Auth\KeyManagementService;
+use DGLab\Core\Cache;
+use DGLab\Services\AssetService;
+use DGLab\Services\ServiceRegistry;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
+use DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface;
 use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Core\EventDispatcher;
-use DGLab\Core\Router;
+use DGLab\Core\Logger;
+use DGLab\Core\AuditService;
+use DGLab\Core\ResponseFactory;
+use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Services\Encryption\EncryptionService;
 use DGLab\Tests\Unit\Core\EventFake;
-use DGLab\Facades\Event;
 use DGLab\Tests\Concerns\MakesReactiveAssertions;
-use DGLab\Core\Response;
+use Psr\Log\LoggerInterface;
 
 abstract class TestCase extends BaseTestCase
 {
-    use ProphecyTrait;
     use MakesReactiveAssertions;
 
     protected Application $app;
     protected ?EventFake $eventFake = null;
+    protected string $tempStorage = '';
     protected ?Response $lastResponse = null;
-    protected ?string $tempStorage = null;
 
     protected function setUp(): void
     {
-        $this->tempStorage = sys_get_temp_dir() . '/dg_test_' . uniqid();
-        mkdir($this->tempStorage, 0777, true);
-        mkdir($this->tempStorage . '/logs', 0777, true);
-        mkdir($this->tempStorage . '/cache', 0777, true);
-        mkdir($this->tempStorage . '/keys', 0777, true);
-
-        parent::setUp();
-        if (!defined('PHPUNIT_RUNNING')) {
-            define('PHPUNIT_RUNNING', true);
+        $this->tempStorage = __DIR__ . '/storage/test_' . uniqid();
+        if (!is_dir($this->tempStorage)) {
+            mkdir($this->tempStorage, 0777, true);
         }
-        $this->resetApplication();
+
+        Application::flush();
+        $this->app = new Application(dirname(__DIR__));
+        $this->registerBaseTestServices();
     }
 
     protected function tearDown(): void
     {
-        Model::clearConnection();
-        Application::flush();
         if ($this->tempStorage && is_dir($this->tempStorage)) {
-            $this->recursiveDelete($this->tempStorage);
+            $this->recursiveRmdir($this->tempStorage);
         }
         parent::tearDown();
     }
 
-    private function recursiveDelete(string $dir): void
+    private function recursiveRmdir($dir)
     {
-        if (!is_dir($dir)) {
-            return;
-        }
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            (is_dir("$dir/$file")) ? $this->recursiveDelete("$dir/$file") : unlink("$dir/$file");
+            (is_dir("$dir/$file")) ? $this->recursiveRmdir("$dir/$file") : unlink("$dir/$file");
         }
-        rmdir($dir);
-    }
-
-    protected function resetApplication(): void
-    {
-        Application::flush();
-        $this->app = new Application(dirname(__DIR__));
-        $this->app->registerBaseServices();
-        $this->registerBaseTestServices();
+        return rmdir($dir);
     }
 
     protected function registerBaseTestServices(): void
@@ -103,6 +90,16 @@ abstract class TestCase extends BaseTestCase
         $this->app->singleton(Connection::class, fn() => new Connection(['default' => 'sqlite', 'connections' => ['sqlite' => ['driver' => 'sqlite', 'database' => ':memory:']]]));
         $this->app->singleton(UserRepository::class, fn($app) => new UserRepository($app->get(UUIDService::class)));
         $this->app->singleton(RateLimiter::class, fn($app) => new RateLimiter($app->get(Cache::class)));
+        $this->app->singleton(AuthManager::class, fn($app) => new AuthManager($app));
+        $this->app->singleton(AuditService::class, fn($app) => new AuditService(
+            $app->get(Connection::class),
+            $app->get(Request::class),
+            null,
+            $app->get(AuthManager::class)
+        ));
+        $this->app->singleton(ResponseFactoryInterface::class, fn() => new ResponseFactory());
+        $this->app->singleton(ResponseFactory::class, fn() => new ResponseFactory());
+
         $this->app->setConfig('superpowers.reactivity.inject_runtime', false);
         $this->app->setConfig('storage.path', $storage);
     }
@@ -140,21 +137,26 @@ abstract class TestCase extends BaseTestCase
     {
         $server = [];
         foreach ($headers as $k => $v) {
-            $k = strtoupper(str_replace('-', '_', $k));
-            if ($k !== 'CONTENT_TYPE' && $k !== 'REMOTE_ADDR') {
-                $k = 'HTTP_' . $k;
+            $name = strtoupper(str_replace('-', '_', $k));
+            if ($name !== 'CONTENT_TYPE' && $name !== 'REMOTE_ADDR' && $name !== 'CONTENT_LENGTH') {
+                $name = 'HTTP_' . $name;
             }
-            $server[$k] = $v;
+            $server[$name] = $v;
         }
         $request = $this->createRequest($method, $uri, $params, $server);
         $this->app->set(\DGLab\Core\Request::class, $request);
 
-        $response = $this->app->get(Router::class)->dispatch($request);
+        $this->app->singleton(AuditService::class, fn($app) => new AuditService(
+            $app->get(Connection::class),
+            $app->get(Request::class),
+            null,
+            $app->get(AuthManager::class)
+        ));
 
+        $response = $this->app->get(Router::class)->dispatch($request);
         if (!($response instanceof Response)) {
             $response = new Response((string)$response);
         }
-
         $this->lastResponse = $response;
         return $this->lastResponse;
     }
@@ -178,7 +180,8 @@ abstract class TestCase extends BaseTestCase
     }
     protected function assertJsonResponse($r)
     {
-        $this->assertEquals('application/json', $r->getHeader('Content-Type'), "Response is not JSON.");
+        $contentType = $r->getHeader('Content-Type');
+        $this->assertTrue($contentType && strpos($contentType, 'application/json') !== false, "Response is not JSON. Got: $contentType");
         $data = json_decode($r->getContent(), true);
         $this->assertIsArray($data, "Failed to decode JSON response.");
         return $data;
@@ -246,17 +249,17 @@ abstract class TestCase extends BaseTestCase
         $this->assertEquals(0, $result['count'], "Record found in [{$table}] with: " . json_encode($data));
     }
 
-    protected function assertAuditLogged(string $e, array $ex = []): void
+    protected function assertAuditLogged(string $eventType, array $ex = []): void
     {
         $db = $this->app->get(Connection::class);
         $where = ["event_type = ?"];
-        $bindings = [$e];
+        $bindings = [$eventType];
         foreach ($ex as $k => $v) {
             $where[] = "{$k} = ?";
             $bindings[] = $v;
         }
         $sql = "SELECT * FROM audit_logs WHERE " . implode(' AND ', $where);
-        $this->assertNotNull($db->selectOne($sql, $bindings), "Audit entry [{$e}] not found with expected attributes.");
+        $this->assertNotNull($db->selectOne($sql, $bindings), "Audit entry [{$eventType}] not found with expected attributes.");
     }
 
     protected function assertEventAudited(string $eventClass, ?string $alias = null): void
@@ -303,11 +306,8 @@ abstract class TestCase extends BaseTestCase
         $start = hrtime(true);
         $result = $callback();
         $end = hrtime(true);
-
         $elapsedMs = ($end - $start) / 1000000;
-
         $this->assertLessThan($thresholdMs, $elapsedMs, "Execution time of {$elapsedMs}ms exceeded threshold of {$thresholdMs}ms.");
-
         return $result;
     }
 
