@@ -420,54 +420,10 @@ class CohereProvider extends AbstractLLMProvider
         }
     }
 
-    /**
-     * Get provider identifier
-     */
-    public function getId(): string
-    {
-        return 'cohere';
-    }
-
-    /**
-     * Get display name
-     */
-    public function getName(): string
-    {
-        return 'Cohere';
-    }
-
-    /**
-     * Get available models
-     */
-    public function getModels(): array
-    {
-        return ->availableModels;
-    }
-
-    /**
-     * Get default model
-     */
-    protected function getDefaultModel(): string
-    {
-        return 'command-r-plus';
-    }
-
-    /**
-     * Execute a chat completion
-     */
-    public function chat(string $model, array $messages, array $options = []): \DGLab\Services\MangaScript\AI\LLMResponse
-    {
-        return $this->sendWithHistory($messages, null, array_merge($options, ['model' => $model]));
-    }
-
-    /**
-     * Execute streaming chat completion
-     */
-    public function chatStream(string $model, array $messages, array $options = []): \Generator
-    {
-        if (false) {
-            yield '';
-        }
-        throw new \RuntimeException('Streaming not implemented for ' . $this->getName());
-    }
+    public function getId(): string { return "cohere"; }
+    public function getName(): string { return "Cohere"; }
+    public function getModels(): array { return $this->availableModels; }
+    protected function getDefaultModel(): string { return "command-r-plus"; }
+    public function chat(string $model, array $messages, array $options = []): \DGLab\Services\MangaScript\AI\LLMResponse { return $this->sendWithHistory($messages, null, array_merge($options, ["model" => $model])); }
+    public function chatStream(string $model, array $messages, array $options = []): \Generator { if (false) yield ""; throw new \RuntimeException("Not implemented"); }
 }
