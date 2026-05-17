@@ -104,7 +104,7 @@ class XaiProvider extends AbstractLLMProvider
     /**
      * {@inheritdoc}
      */
-    public function send(
+    public function chat(
         string $prompt,
         ?string $systemPrompt = null,
         array $options = []
