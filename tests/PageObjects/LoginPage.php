@@ -3,7 +3,6 @@
 namespace DGLab\Tests\PageObjects;
 
 use Symfony\Component\Panther\Client;
-use Symfony\Component\DomCrawler\Crawler;
 
 class LoginPage
 {
@@ -14,15 +13,16 @@ class LoginPage
         $this->client = $client;
     }
 
-    public function open(): Crawler
+    public function open(): void
     {
-        return $this->client->request('GET', '/login');
+        $this->client->request('GET', '/auth/login');
     }
 
     public function fillCredentials(string $email, string $password): void
     {
-        $this->client->getCrawler()->filter('input[name="email"]')->sendKeys($email);
-        $this->client->getCrawler()->filter('input[name="password"]')->sendKeys($password);
+        $crawler = $this->client->waitFor('input[name="email"]');
+        $crawler->filter('input[name="email"]')->sendKeys($email);
+        $crawler->filter('input[name="password"]')->sendKeys($password);
     }
 
     public function submit(): void
@@ -35,6 +35,11 @@ class LoginPage
         $this->open();
         $this->fillCredentials($email, $password);
         $this->submit();
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->client->getCrawler()->filter('form')->count() > 0;
     }
 
     public function getErrorMessage(): ?string
