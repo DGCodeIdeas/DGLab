@@ -1,0 +1,2 @@
+[2026-05-17 20:55:30.288087] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--group","core"]}
+[2026-05-17 20:55:30.604599] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
