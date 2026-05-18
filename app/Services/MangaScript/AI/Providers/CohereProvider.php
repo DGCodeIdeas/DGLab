@@ -9,8 +9,15 @@ class CohereProvider extends AbstractLLMProvider implements LLMProviderInterface
 {
     protected string $providerId = 'cohere';
 
-    public function getId(): string { return $this->providerId; }
-    public function getName(): string { return 'Cohere'; }
+    public function getId(): string
+    {
+        return $this->providerId;
+    }
+
+    public function getName(): string
+    {
+        return 'Cohere';
+    }
 
     public function getModels(): array
     {
@@ -20,7 +27,10 @@ class CohereProvider extends AbstractLLMProvider implements LLMProviderInterface
         ];
     }
 
-    protected function getDefaultModel(): string { return 'command-r-plus'; }
+    protected function getDefaultModel(): string
+    {
+        return 'command-r-plus';
+    }
 
     public function chat(string $model, array $messages, array $options = []): LLMResponse
     {
@@ -40,14 +50,12 @@ class CohereProvider extends AbstractLLMProvider implements LLMProviderInterface
 
         return new LLMResponse(
             content: $response['message']['content'][0]['text'] ?? '',
-            provider: $this->providerId,
-            model: $model,
+            finishReason: $response['finish_reason'] ?? 'stop',
             inputTokens: $response['usage']['tokens']['input_tokens'] ?? 0,
             outputTokens: $response['usage']['tokens']['output_tokens'] ?? 0,
-            totalTokens: ($response['usage']['tokens']['input_tokens'] ?? 0) + ($response['usage']['tokens']['output_tokens'] ?? 0),
-            cost: 0,
-            latencyMs: $latency,
-            finishReason: $response['finish_reason'] ?? 'stop'
+            modelUsed: $model,
+            providerUsed: $this->providerId,
+            latencyMs: $latency
         );
     }
 
@@ -57,6 +65,13 @@ class CohereProvider extends AbstractLLMProvider implements LLMProviderInterface
         yield $response->content;
     }
 
-    public function supportsStreaming(): bool { return true; }
-    public function supportsJsonMode(): bool { return true; }
+    public function supportsStreaming(): bool
+    {
+        return true;
+    }
+
+    public function supportsJsonMode(): bool
+    {
+        return true;
+    }
 }

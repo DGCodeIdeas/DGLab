@@ -9,8 +9,15 @@ class GroqProvider extends AbstractLLMProvider implements LLMProviderInterface
 {
     protected string $providerId = 'groq';
 
-    public function getId(): string { return $this->providerId; }
-    public function getName(): string { return 'Groq'; }
+    public function getId(): string
+    {
+        return $this->providerId;
+    }
+
+    public function getName(): string
+    {
+        return 'Groq';
+    }
 
     public function getModels(): array
     {
@@ -20,7 +27,10 @@ class GroqProvider extends AbstractLLMProvider implements LLMProviderInterface
         ];
     }
 
-    protected function getDefaultModel(): string { return 'llama3-70b-8192'; }
+    protected function getDefaultModel(): string
+    {
+        return 'llama3-70b-8192';
+    }
 
     public function chat(string $model, array $messages, array $options = []): LLMResponse
     {
@@ -39,14 +49,12 @@ class GroqProvider extends AbstractLLMProvider implements LLMProviderInterface
 
         return new LLMResponse(
             content: $response['choices'][0]['message']['content'] ?? '',
-            provider: $this->providerId,
-            model: $model,
+            finishReason: $response['choices'][0]['finish_reason'] ?? 'stop',
             inputTokens: $response['usage']['prompt_tokens'] ?? 0,
             outputTokens: $response['usage']['completion_tokens'] ?? 0,
-            totalTokens: $response['usage']['total_tokens'] ?? 0,
-            cost: 0,
-            latencyMs: $latency,
-            finishReason: $response['choices'][0]['finish_reason'] ?? 'stop'
+            modelUsed: $model,
+            providerUsed: $this->providerId,
+            latencyMs: $latency
         );
     }
 
@@ -56,6 +64,13 @@ class GroqProvider extends AbstractLLMProvider implements LLMProviderInterface
         yield $response->content;
     }
 
-    public function supportsStreaming(): bool { return true; }
-    public function supportsJsonMode(): bool { return true; }
+    public function supportsStreaming(): bool
+    {
+        return true;
+    }
+
+    public function supportsJsonMode(): bool
+    {
+        return true;
+    }
 }

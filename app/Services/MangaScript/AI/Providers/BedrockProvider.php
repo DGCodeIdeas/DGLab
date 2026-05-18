@@ -45,12 +45,25 @@ class BedrockProvider extends AbstractLLMProvider implements LLMProviderInterfac
         $this->defaultModel = $config['default_model'] ?? 'anthropic.claude-3-haiku-20240307-v1:0';
     }
 
-    public function getId(): string { return $this->providerId; }
-    public function getName(): string { return 'AWS Bedrock'; }
+    public function getId(): string
+    {
+        return $this->providerId;
+    }
 
-    public function getModels(): array { return $this->availableModels; }
+    public function getName(): string
+    {
+        return 'AWS Bedrock';
+    }
 
-    protected function getDefaultModel(): string { return $this->defaultModel; }
+    public function getModels(): array
+    {
+        return $this->availableModels;
+    }
+
+    protected function getDefaultModel(): string
+    {
+        return $this->defaultModel;
+    }
 
     public function chat(string $model, array $messages, array $options = []): LLMResponse
     {
@@ -128,6 +141,7 @@ class BedrockProvider extends AbstractLLMProvider implements LLMProviderInterfac
 
     protected function makeRequest(string $model, array $payload): array
     {
+        // Mocked request for CI stability
         return [
             'content' => [['text' => 'Mocked Bedrock response']],
             'results' => [['outputText' => 'Mocked Bedrock response']]
@@ -145,19 +159,24 @@ class BedrockProvider extends AbstractLLMProvider implements LLMProviderInterfac
 
         return new LLMResponse(
             content: $content,
-            provider: $this->providerId,
-            model: $model,
+            finishReason: 'stop',
             inputTokens: 0,
             outputTokens: 0,
-            totalTokens: 0,
-            cost: 0,
-            latencyMs: $latency,
-            finishReason: 'stop'
+            modelUsed: $model,
+            providerUsed: $this->providerId,
+            latencyMs: $latency
         );
     }
 
-    public function supportsStreaming(): bool { return true; }
-    public function supportsJsonMode(): bool { return true; }
+    public function supportsStreaming(): bool
+    {
+        return true;
+    }
+
+    public function supportsJsonMode(): bool
+    {
+        return true;
+    }
 
     protected function validateModel(string $model): void
     {
