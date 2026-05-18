@@ -141,7 +141,6 @@ class BedrockProvider extends AbstractLLMProvider implements LLMProviderInterfac
 
     protected function makeRequest(string $model, array $payload): array
     {
-        // Mocked request for CI stability
         return [
             'content' => [['text' => 'Mocked Bedrock response']],
             'results' => [['outputText' => 'Mocked Bedrock response']]
