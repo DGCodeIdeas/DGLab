@@ -1,4 +1,4 @@
-# VOLUME VI: THE TECHNICAL LEXICON & STRATEGIC ANNEX
+# THE TECHNICAL LEXICON & STRATEGIC ANNEX (General Volume: Technical Lexicon & Glossary)
 ## Definitions, FAQ, & The Sovereign Mandate
 
 ### 1. THE SOVEREIGN GLOSSARY (100+ TERMS)
@@ -95,13 +95,13 @@ To ensure absolute clarity across the enterprise, this section defines the core 
 
 ---
 
-### 2. STRATEGIC INVESTOR FAQ
+### 2. STRATEGIC STRATEGIC FAQ
 
 **Q: Why build everything in-house? Why not use React or Laravel?**
 A: Because generic tools introduce generic problems. React brings the "Dependency Tax" and "Hydration Lag." Laravel, while excellent, still relies on a fragmented frontend ecosystem. By building the Sovereign Stack, we have eliminated the technical bottlenecks and security risks that plague the modern industry. We own the stack; we own the destiny of our business.
 
 **Q: Is "Zero-Node" really a competitive advantage?**
-A: Absolute. For the CTO, it means a 90% reduction in supply-chain security risks. For the CFO, it means significantly lower infrastructure costs and higher developer productivity. For the investor, it means a business that is not a hostage to the whims of the JavaScript community.
+A: Absolute. For the CTO, it means a 90% reduction in supply-chain security risks. For the CFO, it means significantly lower infrastructure costs and higher developer productivity. For the Strategic Stakeholder, it means a business that is not a hostage to the whims of the JavaScript community.
 
 **Q: How does this handle scaling to millions of users?**
 A: Through the **Nexus Grid** and **Hub-and-Spoke Isolation.** Our architecture is designed for O(1) complexity. Because our boot time is < 5ms and our concurrency engine (Swoole) can handle 100k+ connections per server, we scale vertically and horizontally with a memory footprint that is an order of magnitude smaller than our competitors.
@@ -158,11 +158,11 @@ In this era, the businesses that win will be those that own their execution path
 | **Performance** | 50ms - 200ms Boot | **< 5ms Boot** |
 | **Scaling** | Microservice Fragmentation | **Hub-and-Spoke Isolation** |
 | **Auditability** | Opaque Logs | **Immutable Hash-Chain** |
-| **Investment Risk** | High (Dependency Fatigue) | **Low (Sovereign Control)** |
+| **Strategic Deployment Risk** | High (Dependency Fatigue) | **Low (Sovereign Control)** |
 
 ### 6. FINAL WORD: THE SOVEREIGN ERA
 
-The documentation provided across these six volumes is not just a description of a tool. It is a description of a **New Paradigm.** We have built a system that respects the intelligence of the engineer, the capital of the investor, and the time of the user.
+The documentation provided across these six volumes is not just a description of a tool. It is a description of a **New Paradigm.** We have built a system that respects the intelligence of the engineer, the capital of the Strategic Stakeholder, and the time of the user.
 
 By reclaiming the stack, we have reclaimed our sovereignty. Welcome to the future of digital engineering.
 
@@ -189,7 +189,7 @@ By reclaiming the stack, we have reclaimed our sovereignty. Welcome to the futur
 - **Nexus Worker Process:** A C-level process managed by Swoole that handles a subset of the active connections.
 - **Nexus Task Worker:** A specialized process for handling long-running, asynchronous tasks (like AI synthesis) without blocking the main event loop.
 
-### 9. THE INVESTOR'S GLOSSARY: FINANCIAL & STRATEGIC TERMS
+### 9. STRATEGIC & FINANCIAL LEXICON: FINANCIAL & STRATEGIC TERMS
 - **TCO (Total Cost of Ownership):** The cumulative cost of building, maintaining, and operating a software system over its lifecycle.
 - **OPEX (Operating Expenses):** The ongoing costs of running a business, including server bills and developer salaries.
 - **Feature Velocity:** The speed at which an engineering team can move a new feature from conception to production.

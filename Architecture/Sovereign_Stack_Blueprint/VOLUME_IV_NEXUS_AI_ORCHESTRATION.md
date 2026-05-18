@@ -107,7 +107,7 @@ Integrating AI into a web application often leads to a "Janky" experience where 
 
 ### 8. STRATEGIC ANNEX: THE ECONOMICS OF THE GRID
 
-For the investor, the "Intelligent Grid" isn't just about speed; it's about **Efficiency and Scalability.**
+For the Strategic Stakeholder, the "Intelligent Grid" isn't just about speed; it's about **Efficiency and Scalability.**
 
 #### 8.1 Zero-Waste Computing
 In a traditional stack, you pay for "Idle Time." Your servers are waiting for APIs to respond, consuming electricity and capital while doing nothing. In the DGLab Grid, every CPU cycle is utilized. Because the server is never "Waiting," you can handle the same traffic with 1/10th of the hardware.
@@ -168,7 +168,7 @@ Volume IV has shown that the Sovereign Stack is the perfect engine for the AI re
 
 ### 12. THE AI "TOKEN ECONOMY": STRATEGIC GOVERNANCE
 
-For the investor, the "AI Revolution" brings a major risk: **Runaway Operational Costs.** The Sovereign Stack treats "Tokens" as a **Finite Resource.**
+For the Strategic Stakeholder, the "AI Revolution" brings a major risk: **Runaway Operational Costs.** The Sovereign Stack treats "Tokens" as a **Finite Resource.**
 
 #### 12.1 The Semantic Cache Ledger
 Every AI query is hashed and stored in a "Semantic Cache."

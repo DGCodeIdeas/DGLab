@@ -72,18 +72,18 @@ The following six volumes provide a comprehensive deconstruction of the DGLab ec
     - Performance Telemetry & Health Dashboards
     - CI/CD Automation & Automated Verifications
 
-#### [VOLUME VI: THE TECHNICAL LEXICON & GLOSSARY](VOLUME_VI_GLOSSARY_LEXICON.md)
+#### [THE TECHNICAL LEXICON & GLOSSARY (General Volume: Technical Lexicon & Glossary)](GENERAL_VOLUME_LEXICON.md)
 16. **Detailed Technical Glossary (100+ Terms)**
-17. **Strategic Investor FAQ**
+17. **Strategic FAQ**
 18. **The Sovereign Mandate: Closing Statement**
 
 ---
 
 ### HOW TO USE THIS DOCUMENTATION
 
-- **For Strategic Investors:** Focus on Volume I, Volume VI (FAQ), and the Executive Summaries of each volume.
+- **For Strategic Stakeholders:** Focus on Volume I, General Volume: Technical Lexicon & Glossary (FAQ), and the Executive Summaries of each volume.
 - **For Technical Architects:** Dive into Volumes II, III, and IV for implementation details, code-path analysis, and cryptographic proofs.
-- **For Operational Leads:** Focus on Volume V and the Glossary in Volume VI to understand the day-to-day lifecycle and management of the Sovereign Stack.
+- **For Operational Leads:** Focus on Volume V and the Glossary in General Volume: Technical Lexicon & Glossary to understand the day-to-day lifecycle and management of the Sovereign Stack.
 
 ---
 *© 2024 DGLab. All Rights Reserved. Sovereign Stack is a registered trademark of DGLab.*

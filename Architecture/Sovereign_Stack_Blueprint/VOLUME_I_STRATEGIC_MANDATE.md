@@ -14,7 +14,7 @@ The **Dependency Tax** is the cumulative cost of this fragility:
 - **Cognitive Load:** Developers are forced to become experts in the "glue" between frameworks rather than the business logic itself.
 
 #### 1.2 The Node.js Security Trap
-The Node.js ecosystem, while revolutionary for its time, was built on a foundation of "speed-to-market" rather than "sovereignty-of-code." The result is a runtime that is inherently permissive and a package manager (NPM) that is fundamentally insecure. For an investor, this represents a "Hidden Liability" that can trigger catastrophic failure without warning.
+The Node.js ecosystem, while revolutionary for its time, was built on a foundation of "speed-to-market" rather than "sovereignty-of-code." The result is a runtime that is inherently permissive and a package manager (NPM) that is fundamentally insecure. For an Strategic Stakeholder, this represents a "Hidden Liability" that can trigger catastrophic failure without warning.
 
 ---
 
@@ -38,9 +38,9 @@ By consolidating the entire stack into a single runtime (PHP 8.2+ with Swoole/Ne
 
 ---
 
-### 3. CAPITAL PRESERVATION: A TCO ANALYSIS
+### 3. ECONOMIC EFFICIENCY & TCO ANALYSIS
 
-For an investor, the primary question is: **What is the Return on Investment (ROI) of this architecture?**
+For an Strategic Stakeholder, the primary question is: **What is the Return on Effort (Strategic Value) of this architecture?**
 
 #### 3.1 DGLab vs. The Fragmented Legacy
 | Metric | Fragmented Legacy (React/Node/Laravel) | DGLab Sovereign Stack |
@@ -101,7 +101,7 @@ Most applications treat security as a "Layer" added on top of the business logic
 
 Every action, every database query, and every event dispatch in the Sovereign Stack is automatically passed through the **Security Audit Middleware.** This creates a cryptographically signed "Chain of Custody" for every byte of data that moves through the system. If a tenant tries to access data outside their scope, or if an administrator makes an unauthorized change, the system doesn't just block the action—it generates a forensic alert that is immutable and irrefutable.
 
-### 7. CONCLUSION: THE INVESTOR'S MANDATE
+### 7. CONCLUSION: THE SOVEREIGN MANDATE
 
 When you invest in a company powered by DGLab, you are not just investing in a set of features. You are investing in:
 - **Protected Capital:** Reduced dependency on high-cost, specialized developers.
@@ -157,7 +157,7 @@ To further illustrate the strategic advantage, we must contrast the Sovereign St
 
 ### 11. THE "SOVEREIGN ENGINEER" PRODUCTIVITY RATIO
 
-A key metric for investors is the **Productivity Ratio**—the amount of business value delivered per unit of engineering cost.
+A key metric for Strategic Stakeholders is the **Productivity Ratio**—the amount of business value delivered per unit of engineering cost.
 
 | Metric | Conventional Engineering | Sovereign Engineering |
 | :--- | :--- | :--- |
@@ -230,7 +230,7 @@ The board must view the Sovereign Stack not as a "Technical Choice," but as a **
 
 ### 17. THE "SOVEREIGN STACK" INVESTMENT THESIS: A DEEP-TIER RECAP
 
-To ensure that every stakeholder understands the magnitude of this shift, we conclude Volume I with the core Investment Thesis.
+To ensure that every stakeholder understands the magnitude of this shift, we conclude Volume I with the core Strategic Deployment Thesis.
 
 #### 17.1 The Problem: The "Dependency Singularity"
 The industry is reaching a point where the complexity of maintaining modern software exceeds the value the software provides. This is the **Dependency Singularity.** Businesses are spending millions to keep lights on in a room filled with thousands of silent, un-audited partners.
@@ -249,7 +249,7 @@ The Sovereign Stack doesn't just work better; it **costs less to operate.**
 - **Near-zero supply-chain risk.**
 - **Total technical sovereignty.**
 
-This is the most compelling technical investment case in the modern digital economy. It is the end of the "Fragmented Legacy" and the beginning of the **Sovereign Era.**
+This is the most compelling technical Strategic Deployment case in the modern digital economy. It is the end of the "Fragmented Legacy" and the beginning of the **Sovereign Era.**
 
 ---
 
@@ -318,7 +318,7 @@ This is the spirit of DGLab. This is the spirit of the Sovereign Future.
 
 ### 22. FINAL EXECUTIVE SUMMARY: THE SOVEREIGN STACK
 
-For the investor who has reached the end of this volume, the message is clear: The Sovereign Stack is the only technical architecture designed for the high-performance, high-security, and high-intelligence demands of the next decade.
+For the Strategic Stakeholder who has reached the end of this volume, the message is clear: The Sovereign Stack is the only technical architecture designed for the high-performance, high-security, and high-intelligence demands of the next decade.
 
 - **We have eliminated the "Dependency Tax."**
 - **We have achieved a sub-5ms "Boot Time."**

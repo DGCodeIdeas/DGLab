@@ -154,7 +154,7 @@ During the parsing of a SuperPHP component, the compiler identifies large blocks
 #### 11.2 Conditional Path Branching
 Traditional template engines often evaluate every branch of an `@if` statement even if they don't render it. SuperPHP’s compiler generates **Optimized Branching Logic** directly in the byte-code.
 - If a condition is false, the engine doesn't even "Touch" the logic inside that block.
-- For the investor, this means your servers are doing **less work** to deliver the same UI, leading to higher scalability and lower cloud costs.
+- For the Strategic Stakeholder, this means your servers are doing **less work** to deliver the same UI, leading to higher scalability and lower cloud costs.
 
 #### 11.3 State-Aware Morphing
 The `superpowers.nav.js` bridge doesn't just "Update the DOM"; it is **State-Aware.**

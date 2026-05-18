@@ -123,9 +123,9 @@ Before a deployment is promoted to production, it must pass a "Full Stack Audit"
 - **Performance Benchmarks:** Verifying that the boot time remains < 5ms and that AI token usage is within the predicted range.
 - **Visual Regression:** Automated pixel-by-pixel comparisons of the UI (Volume II) to ensure no layout regressions were introduced.
 
-### 9. OPERATIONAL GOVERNANCE: THE STRATEGIC ROI
+### 9. OPERATIONAL GOVERNANCE: THE STRATEGIC Strategic Value
 
-For the investor, the Studio Ecosystem provides a "Governance Moat":
+For the Strategic Stakeholder, the Studio Ecosystem provides a "Governance Moat":
 - **Total Visibility:** You know exactly who is doing what, how much it costs, and how well the system is performing across every Spoke and every tenant.
 - **Rapid Spoke Development:** Because the Hub handles all the "Hard Problems" (Identity, Security, Navigation), your team can build a new Spoke in 25% of the time it would take to build a standalone application.
 - **Zero Platform Fragmentation:** No matter how large the ecosystem grows, it remains a single, coherent architecture governed by the Sovereign Stack principles.
@@ -155,7 +155,7 @@ Each Spoke in the ecosystem utilizes a "Global Shell" provided by the Hub. This 
 
 ### 12. THE REVENUE MOAT: MULTI-TENANT PROFITABILITY
 
-For an investor, the most important part of the Hub-and-Spoke model is the **Profit Margin.**
+For an Strategic Stakeholder, the most important part of the Hub-and-Spoke model is the **Profit Margin.**
 
 #### 12.1 The "Marginal Cost of a Tenant"
 In a traditional SaaS architecture, adding a new tenant involves significant "Provisioning Overhead."
