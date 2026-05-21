@@ -20,7 +20,7 @@ class Application
 
     public function __construct(string $basePath)
     {
-        $this->basePath = $basePath;
+        $this->basePath = realpath($basePath) ?: $basePath;
         static::$instance = $this;
         $this->loadConfig();
         $this->registerBaseServices();
