@@ -15,7 +15,9 @@ if (getenv('APP_DEBUG') === 'true') {
 }
 
 // Start session
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Load autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -30,8 +32,11 @@ if (file_exists($envFile)) {
         }
         if (strpos($line, '=') !== false) {
             list($key, $value) = explode('=', $line, 2);
-            $_ENV[trim($key)] = trim($value);
-            $_SERVER[trim($key)] = trim($value);
+            $key = trim($key);
+            $value = trim($value);
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+            putenv("$key=$value");
         }
     }
 }
@@ -42,123 +47,57 @@ use DGLab\Core\Response;
 use DGLab\Core\Router;
 use DGLab\Database\Connection;
 use DGLab\Services\ServiceRegistry;
+use DGLab\Services\Auth\UUIDService;
+use DGLab\Services\Auth\Repositories\UserRepository;
+use DGLab\Services\Auth\AuthManager;
+use DGLab\Controllers\AuthController;
 
 // Initialize application
 $app = new Application(realpath(__DIR__ . '/..'));
 
-// Register core services
-$app->singleton(\DGLab\Core\Logger::class, function () { return new \DGLab\Core\Logger(); });
-$app->singleton(\Psr\Log\LoggerInterface::class, function ($app) { return $app->get(\DGLab\Core\Logger::class); });
-$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface::class, function ($app) { return $app->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class); });
-
-$app->singleton(\DGLab\Controllers\HomeController::class, function () { return new \DGLab\Controllers\HomeController(); });
-$app->singleton(\DGLab\Controllers\ServicesController::class, function () { return new \DGLab\Controllers\ServicesController(); });
+// Register additional services not in registerBaseServices
 $app->singleton(\DGLab\Services\Encryption\EncryptionService::class, function ($app) {
     return new \DGLab\Services\Encryption\EncryptionService($app->config('app.security.encryption_key') ?: '12345678901234567890123456789012');
 });
-$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class, function () { return new \DGLab\Services\Superpowers\Runtime\GlobalStateStore(); });
-$app->singleton(Connection::class, function () {
-    return new Connection(require __DIR__ . '/../config/database.php');
+$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface::class, function ($app) {
+    return $app->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class);
 });
-
-$app->singleton(Router::class, function () {
-    return new Router();
+$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class, function () {
+    return new \DGLab\Services\Superpowers\Runtime\GlobalStateStore();
 });
-
 $app->singleton(ServiceRegistry::class, function () {
     return new ServiceRegistry();
 });
-
 $app->singleton(\DGLab\Services\AssetService::class, function () {
     return new \DGLab\Services\AssetService();
 });
 
-$app->singleton(\DGLab\Core\View::class, function () {
-    return new \DGLab\Core\View();
-});
-
-// Get router
-$router = $app->get(Router::class);
+// Register Auth Services
+$app->singleton(UUIDService::class, function () { return new UUIDService(); });
+$app->singleton(UserRepository::class, function ($app) { return new UserRepository($app->get(UUIDService::class)); });
+$app->singleton(AuthManager::class, function ($app) { return new AuthManager($app); });
+$app->singleton(AuthController::class, function ($app) { return new AuthController($app->get(UserRepository::class)); });
 
 // Register routes
 require_once __DIR__ . '/../routes/web.php';
 
-// Handle request
+// Handle request via Application for proper container setup
 try {
     $request = Request::createFromGlobals();
-    $response = $router->dispatch($request);
+    $response = $app->handle($request);
     
     if ($response instanceof Response) {
         $response->send();
     } else {
-        echo $response;
+        echo (string)$response;
     }
-} catch (\DGLab\Core\Exceptions\RouteNotFoundException $e) {
-    // Fallback: Check if it's a physical file in the public directory
-    $path = $request->getPath();
-    $publicPath = realpath(__DIR__);
-    $filePath = realpath($publicPath . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR));
-
-    if ($filePath && strpos($filePath, $publicPath . DIRECTORY_SEPARATOR) === 0 && is_file($filePath)) {
-        // Security: Do not serve .php files
-        if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
-            throw $e;
-        }
-
-        // Improved MIME type detection
-        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-        $mimeTypes = [
-            'css'  => 'text/css',
-            'js'   => 'application/javascript',
-            'json' => 'application/json',
-            'png'  => 'image/png',
-            'jpg'  => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'gif'  => 'image/gif',
-            'svg'  => 'image/svg+xml',
-            'ico'  => 'image/x-icon',
-            'woff' => 'font/woff',
-            'woff2'=> 'font/woff2',
-            'ttf'  => 'font/ttf',
-            'otf'  => 'font/otf',
-        ];
-
-        $mimeType = $mimeTypes[$extension] ?? (mime_content_type($filePath) ?: 'application/octet-stream');
-
-        // Caching headers
-        $lastModified = filemtime($filePath);
-        $etag = md5_file($filePath);
-
-        header("Content-Type: {$mimeType}");
-        header("Content-Length: " . filesize($filePath));
-        header("Last-Modified: " . gmdate("D, d M Y H:i:s", $lastModified) . " GMT");
-        header("ETag: \"{$etag}\"");
-        header("Cache-Control: public, max-age=31536000");
-
-        // Check If-None-Match or If-Modified-Since
-        if ((isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH'], '"') === $etag) ||
-            (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $lastModified)) {
-            http_response_code(304);
-            exit;
-        }
-
-        readfile($filePath);
-        exit;
-    }
-
-    http_response_code(404);
-    if ($request->expectsJson()) {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Not Found', 'message' => $e->getMessage()]);
+} catch (\Throwable $e) {
+    if (getenv('APP_DEBUG') === 'true') {
+        echo "<h1>Fatal Error</h1>";
+        echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+        echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
     } else {
-        echo '<h1>404 Not Found</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
-    }
-} catch (\Exception $e) {
-    http_response_code(500);
-    if ($request->expectsJson()) {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
-    } else {
-        echo '<h1>500 Internal Server Error</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
+        http_response_code(500);
+        echo "<h1>500 Internal Server Error</h1>";
     }
 }
