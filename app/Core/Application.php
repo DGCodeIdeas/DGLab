@@ -186,7 +186,7 @@ class Application
     {
         static::$instance = null;
 
-        $cleanup = function(string $class, string $property) {
+        $cleanup = function (string $class, string $property) {
             if (class_exists($class)) {
                 try {
                     $refl = new \ReflectionClass($class);
@@ -207,17 +207,20 @@ class Application
         if (class_exists(\DGLab\Database\Connection::class)) {
             try {
                 \DGLab\Database\Connection::clearInstance();
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
         if (class_exists(\DGLab\Database\Model::class)) {
             try {
                 \DGLab\Database\Model::clearConnection();
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
         if (class_exists(\DGLab\Services\Download\DownloadManager::class)) {
             try {
                 \DGLab\Services\Download\DownloadManager::reset();
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
         $cleanup(\DGLab\Services\Superpowers\Runtime\CleanupManager::class, 'instance');
@@ -226,7 +229,8 @@ class Application
         if (class_exists(\DGLab\Services\MangaScript\AI\ProviderFactory::class)) {
             try {
                 \DGLab\Services\MangaScript\AI\ProviderFactory::reset();
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
     }
 }
