@@ -123,7 +123,12 @@ class CoverageTest extends TestCase
         // extractViewName
         $m = $refl->getMethod('extractViewName');
         $m->setAccessible(true);
-        $this->assertEquals('test', $m->invoke($this->engine, '/app/resources/views/test.super.php'));
+        $testPath = Application::getInstance()->getBasePath() . '/resources/views/test.super.php';
+        $this->assertEquals('test', $m->invoke($this->engine, $testPath));
+
+        // Subdirectory test
+        $subPath = Application::getInstance()->getBasePath() . '/resources/views/auth/login.super.php';
+        $this->assertEquals('auth.login', $m->invoke($this->engine, $subPath));
 
         // processReactivity branches
         $m = $refl->getMethod('processReactivity');

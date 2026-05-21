@@ -39,7 +39,7 @@ class AuthFlowIntegrationTest extends IntegrationTestCase
         $response = $this->post('/login', [
             'email' => 'integration@test.com',
             'password' => 'password123'
-        ]);
+        ], ['Accept' => 'application/json']);
         $this->assertStatus($response, 200);
         $data = $this->assertJsonResponse($response);
         $token = $data['token'];
