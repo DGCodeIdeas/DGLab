@@ -175,7 +175,7 @@ class SuperpowersEngine implements ViewEngineInterface
             file_put_contents($depsFile, json_encode($this->compiler->getDependencies()));
         }
 
-        if (config('app.debug')) {
+        if (config('app.debug') && !defined('PHPUNIT_RUNNING')) {
              $viewName = $this->extractViewName($path);
              $this->debugCollector->recordView($viewName, $path, $data, $compiledFile);
             if (config('superpowers.linter.on_render', true)) {
