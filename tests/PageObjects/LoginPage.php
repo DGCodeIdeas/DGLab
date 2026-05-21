@@ -15,12 +15,12 @@ class LoginPage
 
     public function open(): void
     {
-        $this->client->request('GET', '/auth/login');
+        $this->client->request('GET', '/login');
     }
 
     public function fillCredentials(string $email, string $password): void
     {
-        $crawler = $this->client->waitFor('input[name="email"]');
+        $crawler = $this->client->waitFor('input[name="email"]', 40);
         $crawler->filter('input[name="email"]')->sendKeys($email);
         $crawler->filter('input[name="password"]')->sendKeys($password);
     }

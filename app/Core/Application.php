@@ -86,6 +86,11 @@ class Application
         return $this->services[$id];
     }
 
+    public function make(string $id): mixed
+    {
+        return $this->get($id);
+    }
+
     public function set(string $id, mixed $service): void
     {
         $this->services[$id] = $service;
@@ -180,49 +185,52 @@ class Application
     public static function flush(): void
     {
         static::$instance = null;
-        if (class_exists(\DGLab\Facades\Auth::class)) {
-            $refl = new \ReflectionClass(\DGLab\Facades\Auth::class);
-            if ($refl->hasProperty('manager')) {
-                $p = $refl->getProperty('manager');
-                $p->setAccessible(true);
-                $p->setValue(null, null);
+
+        $cleanup = function (string $class, string $property) {
+            if (class_exists($class)) {
+                try {
+                    $refl = new \ReflectionClass($class);
+                    if ($refl->hasProperty($property)) {
+                        $p = $refl->getProperty($property);
+                        $p->setAccessible(true);
+                        $p->setValue(null, null);
+                    }
+                } catch (\Throwable $e) {
+                    // Swallow teardown errors
+                }
             }
-        }
-        if (class_exists(\DGLab\Facades\Event::class)) {
-            $refl = new \ReflectionClass(\DGLab\Facades\Event::class);
-            if ($refl->hasProperty('dispatcher')) {
-                $p = $refl->getProperty('dispatcher');
-                $p->setAccessible(true);
-                $p->setValue(null, null);
-            }
-        }
+        };
+
+        $cleanup(\DGLab\Facades\Auth::class, 'manager');
+        $cleanup(\DGLab\Facades\Event::class, 'dispatcher');
+
         if (class_exists(\DGLab\Database\Connection::class)) {
-            \DGLab\Database\Connection::clearInstance();
+            try {
+                \DGLab\Database\Connection::clearInstance();
+            } catch (\Throwable $e) {
+            }
         }
         if (class_exists(\DGLab\Database\Model::class)) {
-            \DGLab\Database\Model::clearConnection();
+            try {
+                \DGLab\Database\Model::clearConnection();
+            } catch (\Throwable $e) {
+            }
         }
         if (class_exists(\DGLab\Services\Download\DownloadManager::class)) {
-            \DGLab\Services\Download\DownloadManager::reset();
-        }
-        if (class_exists(\DGLab\Services\Superpowers\Runtime\CleanupManager::class)) {
-            $refl = new \ReflectionClass(\DGLab\Services\Superpowers\Runtime\CleanupManager::class);
-            if ($refl->hasProperty('instance')) {
-                $p = $refl->getProperty('instance');
-                $p->setAccessible(true);
-                $p->setValue(null, null);
+            try {
+                \DGLab\Services\Download\DownloadManager::reset();
+            } catch (\Throwable $e) {
             }
         }
-        if (class_exists(\DGLab\Services\Superpowers\Runtime\DebugCollector::class)) {
-            $refl = new \ReflectionClass(\DGLab\Services\Superpowers\Runtime\DebugCollector::class);
-            if ($refl->hasProperty('instance')) {
-                $p = $refl->getProperty('instance');
-                $p->setAccessible(true);
-                $p->setValue(null, null);
-            }
-        }
+
+        $cleanup(\DGLab\Services\Superpowers\Runtime\CleanupManager::class, 'instance');
+        $cleanup(\DGLab\Services\Superpowers\Runtime\DebugCollector::class, 'instance');
+
         if (class_exists(\DGLab\Services\MangaScript\AI\ProviderFactory::class)) {
-            \DGLab\Services\MangaScript\AI\ProviderFactory::reset();
+            try {
+                \DGLab\Services\MangaScript\AI\ProviderFactory::reset();
+            } catch (\Throwable $e) {
+            }
         }
     }
 }

@@ -13,14 +13,16 @@ $router->post('/_superpowers/action', [ActionController::class, 'handle'], 'supe
 
 // Existing routes...
 $router->get('/', [HomeController::class, 'index'], 'home');
+$router->get('/dashboard', [HomeController::class, 'index'], 'dashboard');
 $router->get('/login', [AuthController::class, 'showLogin'], 'login');
-$router->get('/test/morph', [DGLabControllersTestController::class, 'morph']);
+$router->post('/login', [AuthController::class, 'login']);
+$router->get('/test/morph', [\DGLab\Controllers\TestController::class, 'morph']);
 
 $router->get('/services', [ServicesController::class, 'index'], 'services.index');
 $router->get('/services/{id}', [ServicesController::class, 'show'], 'services.show');
 
 // Health check endpoint for CI/CD
-$router->get('/health', function() {
+$router->get('/health', function () {
     $reportFile = dirname(__DIR__) . '/storage/reports/health.json';
     $factory = \DGLab\Core\Application::getInstance()->get(\DGLab\Core\ResponseFactory::class);
 
