@@ -1,0 +1,5 @@
+[2026-05-21 08:24:32.654509] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--group","unit,integration"]}
+[2026-05-21 08:24:32.789027] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-21 08:34:10.303304] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--testdox"]}
+[2026-05-21 08:34:20.482411] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-21 08:34:20.482558] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}

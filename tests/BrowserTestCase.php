@@ -24,6 +24,14 @@ abstract class BrowserTestCase extends PantherTestCase
 
     public static function setUpBeforeClass(): void
     {
+        // Support environment-variable overrides for binaries
+        if ($chromeBin = getenv('PANTHER_CHROME_BINARY')) {
+            $_SERVER['PANTHER_CHROME_BINARY'] = $chromeBin;
+        }
+        if ($driverBin = getenv('PANTHER_CHROME_DRIVER_BINARY')) {
+            $_SERVER['PANTHER_CHROME_DRIVER_BINARY'] = $driverBin;
+        }
+
         // Set environment for Panther's external server process
         $_SERVER['PANTHER_WEB_SERVER_DIR'] = realpath(__DIR__ . '/../public');
         $_SERVER['PANTHER_WEB_SERVER_PORT'] = '9080';
@@ -31,6 +39,9 @@ abstract class BrowserTestCase extends PantherTestCase
         // Ensure database is migrated for the external process
         // Panther runs in a separate process, so we use a persistent SQLite file
         $dbPath = __DIR__ . '/storage/test_browser.sqlite';
+        if (!is_dir(dirname($dbPath))) {
+            mkdir(dirname($dbPath), 0777, true);
+        }
         if (file_exists($dbPath)) {
             @unlink($dbPath);
         }
@@ -57,7 +68,9 @@ abstract class BrowserTestCase extends PantherTestCase
     {
         parent::setUp();
         // Force headless mode for environment compatibility
-        $_SERVER['PANTHER_CHROME_ARGUMENTS'] = '--headless --no-sandbox --disable-dev-shm-usage';
+        if (!isset($_SERVER['PANTHER_CHROME_ARGUMENTS'])) {
+            $_SERVER['PANTHER_CHROME_ARGUMENTS'] = '--headless --no-sandbox --disable-dev-shm-usage';
+        }
     }
 
     /**

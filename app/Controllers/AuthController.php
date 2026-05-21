@@ -17,6 +17,11 @@ class AuthController extends BaseController
         $this->users = $users;
     }
 
+    public function showLogin(): Response
+    {
+        return view('auth.login');
+    }
+
     public function register(Request $request): Response
     {
         $data = $request->only(['email', 'username', 'password']);
