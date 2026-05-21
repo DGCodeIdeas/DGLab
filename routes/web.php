@@ -13,6 +13,7 @@ $router->post('/_superpowers/action', [ActionController::class, 'handle'], 'supe
 
 // Existing routes...
 $router->get('/', [HomeController::class, 'index'], 'home');
+$router->get('/dashboard', [HomeController::class, 'index'], 'dashboard');
 $router->get('/login', [AuthController::class, 'showLogin'], 'login');
 $router->post('/login', [AuthController::class, 'login']);
 $router->get('/test/morph', [\DGLab\Controllers\TestController::class, 'morph']);

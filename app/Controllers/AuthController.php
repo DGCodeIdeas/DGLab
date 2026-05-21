@@ -45,11 +45,20 @@ class AuthController extends BaseController
 
         if ($auth->attempt($credentials)) {
             $user = $auth->user();
-            $token = $auth->guard()->login($user);
-            return json(['token' => $token]);
+            $result = $auth->guard()->login($user);
+
+            if ($request->expectsJson()) {
+                return json(['token' => $result]);
+            }
+
+            return redirect('/dashboard');
         }
 
-        return json(['error' => 'Invalid credentials'], 401);
+        if ($request->expectsJson()) {
+            return json(['error' => 'Invalid credentials'], 401);
+        }
+
+        return view('auth.login', ['error' => 'Invalid credentials']);
     }
 
     public function me(Request $request): Response

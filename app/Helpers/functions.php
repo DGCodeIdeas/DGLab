@@ -28,7 +28,7 @@ function config(string|array $key, mixed $default = null): mixed
     return Application::getInstance()->config($key, $default);
 }
 
-function view(string $template, array $data = [], ?string $layout = 'shell'): Response
+function view(string $template, array $data = [], ?string $layout = 'master'): Response
 {
     $view = app()->get(View::class);
     $content = $view->render($template, $data, $layout);

@@ -38,13 +38,13 @@ class Application
     {
         $this->set(Application::class, $this);
         $this->set(Request::class, fn() => new Request());
-        $this->set(Router::class, fn($app) => $app->make(Router::class));
-        $this->set(View::class, fn($app) => $app->make(View::class));
+        $this->set(Router::class, fn($app) => new Router($app));
+        $this->set(View::class, fn($app) => new View($app));
         $this->set(Connection::class, fn($app) => new Connection($app->config('database') ?? []));
-        $this->set(LoggerInterface::class, fn($app) => $app->make(Logger::class));
-        $this->set(DispatcherInterface::class, fn($app) => $app->make(EventDispatcher::class));
-        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, fn($app) => $app->make(\DGLab\Core\EventDrivers\SyncDriver::class));
-        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, fn($app) => $app->make(\DGLab\Core\EventDrivers\QueueDriver::class));
+        $this->set(LoggerInterface::class, fn() => new Logger());
+        $this->set(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
+        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, fn($app) => new \DGLab\Core\EventDrivers\SyncDriver($app));
+        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, fn($app) => new \DGLab\Core\EventDrivers\QueueDriver($app));
         $this->set(AuditService::class, fn($app) => new AuditService(
             $app->get(Connection::class),
             $app->get(Request::class),
@@ -69,24 +69,16 @@ class Application
         try {
             return $this->get(Router::class)->dispatch($request);
         } catch (RouteNotFoundException $e) {
-            return $this->get(ResponseFactoryInterface::class)->create("404 Not Found: " . $e->getMessage(), 404);
-        } catch (\Throwable $e) {
-            if ($this->config('app.debug')) {
-                $msg = "500 Internal Error: " . $e->getMessage() . "\n" . $e->getTraceAsString();
-                return $this->get(ResponseFactoryInterface::class)->create($msg, 500);
-            }
-            return $this->get(ResponseFactoryInterface::class)->create("500 Internal Server Error", 500);
+            return $this->get(ResponseFactoryInterface::class)->create("404 Not Found", 404);
+        } catch (\Exception $e) {
+            return $this->get(ResponseFactoryInterface::class)->create("500 Error: " . $e->getMessage(), 500);
         }
     }
 
     public function get(string $id): mixed
     {
         if (!isset($this->services[$id])) {
-            if (class_exists($id)) {
-                $this->singleton($id, fn($app) => $app->make($id));
-            } else {
-                throw new InvalidArgumentException("Service not found: {$id}");
-            }
+            throw new InvalidArgumentException("Service not found: {$id}");
         }
         if ($this->services[$id] instanceof \Closure) {
             $this->services[$id] = ($this->services[$id])($this);
@@ -94,41 +86,9 @@ class Application
         return $this->services[$id];
     }
 
-    public function make(string $class): mixed
+    public function make(string $id): mixed
     {
-        if (isset($this->services[$class]) && !($this->services[$class] instanceof \Closure)) {
-            return $this->services[$class];
-        }
-
-        $reflection = new \ReflectionClass($class);
-        if (!$reflection->isInstantiable()) {
-            throw new \RuntimeException("Class {$class} is not instantiable");
-        }
-
-        $constructor = $reflection->getConstructor();
-        if (!$constructor) {
-            return new $class();
-        }
-
-        $params = $constructor->getParameters();
-        $args = [];
-        foreach ($params as $param) {
-            $type = $param->getType();
-            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
-                $typeName = $type->getName();
-                if ($typeName === self::class || $typeName === Application::class) {
-                    $args[] = $this;
-                } else {
-                    $args[] = $this->get($typeName);
-                }
-            } elseif ($param->isDefaultValueAvailable()) {
-                $args[] = $param->getDefaultValue();
-            } else {
-                throw new \RuntimeException("Cannot resolve constructor parameter '{$param->getName()}' for {$class}");
-            }
-        }
-
-        return $reflection->newInstanceArgs($args);
+        return $this->get($id);
     }
 
     public function set(string $id, mixed $service): void
@@ -139,7 +99,7 @@ class Application
     public function singleton(string $id, mixed $service = null): void
     {
         if ($service === null) {
-            $this->set($id, fn($app) => $app->make($id));
+            $this->set($id, fn($app) => new $id($app));
         } else {
             $this->set($id, $service);
         }

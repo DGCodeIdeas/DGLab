@@ -38,7 +38,7 @@ abstract class BrowserTestCase extends PantherTestCase
 
         // Ensure database is migrated for the external process
         // Panther runs in a separate process, so we use a persistent SQLite file
-        $dbPath = realpath(__DIR__ . '/..') . '/storage/test_browser.sqlite';
+        $dbPath = __DIR__ . '/storage/test_browser.sqlite';
         if (!is_dir(dirname($dbPath))) {
             mkdir(dirname($dbPath), 0777, true);
         }
@@ -46,16 +46,6 @@ abstract class BrowserTestCase extends PantherTestCase
             @unlink($dbPath);
         }
         touch($dbPath);
-
-        // Inject database environment for the external server process
-        $_SERVER['DB_CONNECTION'] = 'sqlite';
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        $_ENV['DB_CONNECTION'] = 'sqlite';
-        $_ENV['DB_DATABASE'] = $dbPath;
-
-        // Pass essential environment variables to the web server process
-        putenv("DB_CONNECTION=sqlite");
-        putenv("DB_DATABASE=" . $dbPath);
 
         // Configure app to use this file
         Application::flush();

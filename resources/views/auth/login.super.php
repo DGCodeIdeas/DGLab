@@ -8,6 +8,10 @@
                 <div class="card-body p-4">
                     <h2 class="text-center mb-4">Login</h2>
 
+                    @if(isset($error))
+                        <div class="alert alert-danger">{{ $error }}</div>
+                    @endif
+
                     <form action="/login" method="POST" super:form>
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
