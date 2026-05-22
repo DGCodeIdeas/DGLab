@@ -41,7 +41,7 @@
             </div>
 
             <!-- Footer -->
-            <div @if(isset($footer)) class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t">
+            <div @if($footer) class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t">
                 {{ $footer }}
             </div>
         </div>

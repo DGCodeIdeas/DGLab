@@ -59,9 +59,11 @@ class ExpressionTranspiler
             return $result;
         }, $expression);
 
-        // 3. Simple variable access: $user -> $__ctx['user']
-        $expression = preg_replace_callback('/(?<![a-zA-Z0-9_\\\\\$\\\'])(\$)([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/', function ($matches) use ($contextVar) {
-            $varName = $matches[2];
+        // 3. Simple variable access: $user -> ($__ctx['user'] ?? null)
+        // Must avoid matching variables that were already part of a dot notation replacement
+        // This is handled by executing dot notation replacements first.
+        $expression = preg_replace_callback('/(?<![a-zA-Z0-9_\\\\\$\\\'])\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/', function ($matches) use ($contextVar) {
+            $varName = $matches[1];
             if ($varName === '__ctx' || $varName === '__persisted' || $varName === '__g') {
                 return '$' . $varName;
             }

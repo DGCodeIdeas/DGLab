@@ -1,7 +1,7 @@
 ~setup {
     @global('system.toast', 'toast_data')
 
-    $this->show = isset($toast_data) && !empty($toast_data);
+    $this->show = (!empty($toast_data)) && !empty($toast_data);
     $this->message = $toast_data['message'] ?? "";
     $this->type = $toast_data['type'] ?? "info"; // info, success, warning, error
 

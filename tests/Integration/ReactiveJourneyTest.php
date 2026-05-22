@@ -14,7 +14,7 @@ class ReactiveJourneyTest extends TestCase
         // Setup routes and views
         $this->addTestRoute('POST', '/journey/step1', function () {
             $view = new View();
-            file_put_contents('resources/views/step1.super.php', '~setup { $counter = 1; @persist($counter); } ~ <div>Step 1</div>');
+            file_put_contents('resources/views/step1.super.php', '~setup { $counter = 1; @persist($counter); } ~ <div @click="1">Step 1</div>');
             $output = $view->render('step1', [], null);
             @unlink('resources/views/step1.super.php');
             return $output;
@@ -22,7 +22,7 @@ class ReactiveJourneyTest extends TestCase
 
         $this->addTestRoute('POST', '/journey/step2', function () {
             $view = new View();
-            file_put_contents('resources/views/step2.super.php', '~setup { @persist($counter); $counter++; } ~ <div>Step 2: {{ $counter }}</div>');
+            file_put_contents('resources/views/step2.super.php', '~setup { @persist($counter); $counter++; } ~ <div @click="1">Step 2: {{ $counter }}</div>');
             $output = $view->render('step2', [], null);
             @unlink('resources/views/step2.super.php');
             return $output;
@@ -30,7 +30,7 @@ class ReactiveJourneyTest extends TestCase
 
         $this->addTestRoute('GET', '/journey/final', function () {
             $view = new View();
-            file_put_contents('resources/views/final.super.php', '~setup { @persist($counter); } ~ <div>Final: {{ $counter }}</div>');
+            file_put_contents('resources/views/final.super.php', '~setup { @persist($counter); } ~ <div @click="1">Final: {{ $counter }}</div>');
             $output = $view->render('final', [], null);
             @unlink('resources/views/final.super.php');
             return $output;
@@ -60,38 +60,22 @@ class ReactiveJourneyTest extends TestCase
 
         $this->addTestRoute('GET', '/global/check', function () {
             $view = new View();
-            file_put_contents('resources/views/check_global.super.php', '~setup { @global("theme"); } ~ <div @click="alert(1)">Theme is {{ $theme }}</div>');
+            file_put_contents('resources/views/check_global.super.php', '~setup { @global("theme"); } ~ <div @click="1">Theme is {{ $theme }}</div>');
             $output = $view->render('check_global', [], null);
             @unlink('resources/views/check_global.super.php');
             return $output;
         });
 
         $this->get('/global/set');
-        $response = $this->get('/global/check');
+        $this->get('/global/check');
 
         $this->assertSee('Theme is dark');
-
-        $content = $response->getContent();
-        $dom = new \DOMDocument();
-        @$dom->loadHTML('<?xml encoding="UTF-8">' . $content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-        $xpath = new \DOMXPath($dom);
-        $nodes = $xpath->query("//*[@s-data]");
-
-        // Debug s-data content
-        if ($nodes->length > 0) {
-            $sData = $nodes->item(0)->getAttribute('s-data');
-            $state = json_decode(base64_decode($sData), true);
-            // var_dump($state);
-        }
-
         $this->assertGlobalStateInjected('theme', 'dark');
     }
 
     public function test_component_rendering_assertions()
     {
         $this->addTestRoute('GET', '/test/component-assertion', function () {
-            $view = new View();
-            // Just echo it directly as if it was rendered
             return '<div s-component="test_comp" s-props="eyJpZCI6MTIzfQ==">Component Content</div>';
         });
 

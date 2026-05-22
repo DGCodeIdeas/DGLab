@@ -116,6 +116,7 @@ class Interpreter
             $k = $m[1];
             $v = $m[2] ?? $k;
             $scope[$v] = $__g->get($k);
+            $this->state->markModified();
             return "";
         }, $code);
         $code = preg_replace_callback('/@persist\s*\(\s*\$(.*?)\s*\)/', function ($m) use ($__g, &$scope, &$__persisted) {
@@ -125,6 +126,7 @@ class Interpreter
             if ($stored !== '__ABSENT__') {
                 $scope[$v] = $stored;
             }
+            $this->state->markModified();
             return "";
         }, $code);
         extract($scope);
@@ -214,6 +216,11 @@ class Interpreter
                 $k = trim($p[0], "'\" ");
                 $v = isset($p[1]) ? trim($p[1], "'\"$ ") : $k;
                 $this->state->set($v, Application::getInstance()->get(GlobalStateStoreInterface::class)->get($k));
+                $this->state->markModified();
+                return "";
+            case 'persist':
+                $v = trim($n->expression, '$ ');
+                $this->state->markModified();
                 return "";
             default:
                 return "";

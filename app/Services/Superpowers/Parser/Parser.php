@@ -3,21 +3,21 @@
 namespace DGLab\Services\Superpowers\Parser;
 
 use DGLab\Services\Superpowers\Lexer\Token;
-use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
-use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\Node;
 use DGLab\Services\Superpowers\Parser\Nodes\TextNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExpressionNode;
+use DGLab\Services\Superpowers\Parser\Nodes\DirectiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ComponentNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SlotNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SectionNode;
 use DGLab\Services\Superpowers\Parser\Nodes\YieldNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
 use DGLab\Services\Superpowers\Parser\Nodes\FragmentNode;
-use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ExtendsNode;
 use DGLab\Services\Superpowers\Parser\Nodes\SetupNode;
 use DGLab\Services\Superpowers\Parser\Nodes\MountNode;
 use DGLab\Services\Superpowers\Parser\Nodes\RenderedNode;
 use DGLab\Services\Superpowers\Parser\Nodes\CleanupNode;
+use DGLab\Services\Superpowers\Parser\Nodes\ReactiveNode;
 use DGLab\Services\Superpowers\Exceptions\SyntaxException;
 
 class Parser
@@ -25,22 +25,29 @@ class Parser
     private array $tokens;
     private int $pos = 0;
 
+    private const VOID_ELEMENTS = [
+        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+        'link', 'meta', 'param', 'source', 'track', 'wbr'
+    ];
+
     public function parse(array $tokens): array
     {
         $this->tokens = $tokens;
         $this->pos = 0;
-        $ast = [];
+        $nodes = [];
+
         while ($this->pos < count($this->tokens)) {
-            $ast[] = $this->parseNode();
+            $nodes[] = $this->parseNode();
         }
-        return $ast;
+
+        return $nodes;
     }
 
     private function parseNode(): Node
     {
         $token = $this->tokens[$this->pos];
+
         switch ($token->type) {
-            case Token::T_TAG_CLOSE:
             case Token::T_TEXT:
                 $this->pos++;
                 return new TextNode($token->value, $token->line);
@@ -69,6 +76,10 @@ class Parser
                 return $this->parseComponent();
             case Token::T_REACTIVE_TAG:
                 return $this->parseReactiveTag();
+            case Token::T_TAG_CLOSE:
+                // Handle generic HTML close tags that are not consumed by parseUntilTagClose
+                $this->pos++;
+                return new TextNode($token->value, $token->line);
             case Token::T_COMPONENT_CLOSE:
                 throw new SyntaxException("Unexpected closing tag: {$token->value}", null, $token->line);
             default:
@@ -106,7 +117,7 @@ class Parser
         }
 
         $node = new DirectiveNode($name, $expression, $token->line);
-        if (in_array($name, ['if', 'foreach', 'auth', 'guest', 'error', 'switch'])) {
+        if (in_array($name, ['if', 'foreach', 'while', 'auth', 'guest'])) {
             $node->children = $this->parseUntil('@end' . $name);
         }
         return $node;
@@ -116,12 +127,13 @@ class Parser
     {
         $token = $this->tokens[$this->pos++];
         $isSelfClosing = ($token->type === Token::T_COMPONENT_SELF_CLOSING);
-        preg_match('/^<s:([a-zA-Z0-9\-\.\:_]+)(.*?)(\/?)>/s', $token->value, $matches);
+
+        preg_match('/^<s:([a-zA-Z0-9\-\.\:_]+)\s*(.*?)(\/?)>/s', $token->value, $matches);
         $fullTagName = $matches[1];
         $props = $this->parseProps($matches[2]);
 
         if ($fullTagName === 'slot' || str_starts_with($fullTagName, 'slot:')) {
-            $slotName = ($fullTagName === 'slot') ? ($props['name']['value'] ?? 'default') : substr($fullTagName, 5);
+            $slotName = str_starts_with($fullTagName, 'slot:') ? substr($fullTagName, 5) : ($props['name']['value'] ?? 'default');
             $node = new SlotNode($slotName, $token->line);
             if (!$isSelfClosing) {
                 $node->children = $this->parseUntilComponentClose($fullTagName);
@@ -140,7 +152,7 @@ class Parser
         $token = $this->tokens[$this->pos++];
         preg_match('/^<([a-zA-Z0-9]+)\s+(.*?)(\/?)>/s', $token->value, $matches);
         $tagName = $matches[1];
-        $isSelfClosing = (isset($matches[3]) && $matches[3] === '/');
+        $isSelfClosing = (isset($matches[3]) && $matches[3] === '/') || in_array(strtolower($tagName), self::VOID_ELEMENTS);
         $attributes = [];
         $reactiveAttributes = [];
         preg_match_all('/(?:(?P<prefix>@|s-)?(?P<name>[a-zA-Z0-9\-\._:]+))(?:\s*=\s*(?:"(?P<v1>[^"]*)"|\'(?P<v2>[^\']*)\'|(?P<v3>[^\s>]+)))?/i', $matches[2], $attrMatches, PREG_SET_ORDER);
@@ -208,29 +220,29 @@ class Parser
 
     private function parseUntil(string $terminator): array
     {
-        $children = [];
+        $nodes = [];
         while ($this->pos < count($this->tokens)) {
             $token = $this->tokens[$this->pos];
             if ($token->type === Token::T_DIRECTIVE && str_starts_with($token->value, $terminator)) {
                 $this->pos++;
-                return $children;
+                return $nodes;
             }
-            $children[] = $this->parseNode();
+            $nodes[] = $this->parseNode();
         }
-        throw new SyntaxException("Missing expected terminator: {$terminator}", null, 0);
+        throw new SyntaxException("Missing {$terminator}", null, 0);
     }
 
     private function parseUntilComponentClose(string $tagName): array
     {
-        $children = [];
+        $nodes = [];
         while ($this->pos < count($this->tokens)) {
             $token = $this->tokens[$this->pos];
-            if ($token->type === Token::T_COMPONENT_CLOSE && preg_match('/^<\/s:([a-zA-Z0-9\-\.\:_]+)\s*>/s', $token->value, $m) && $m[1] === $tagName) {
+            if ($token->type === Token::T_COMPONENT_CLOSE && $token->value === "</s:{$tagName}>") {
                 $this->pos++;
-                return $children;
+                return $nodes;
             }
-            $children[] = $this->parseNode();
+            $nodes[] = $this->parseNode();
         }
-        throw new SyntaxException("Missing expected closing tag for component: <s:{$tagName}>", null, 0);
+        throw new SyntaxException("Missing </s:{$tagName}>", null, 0);
     }
 }
