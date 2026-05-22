@@ -100,18 +100,17 @@ class SuperpowersEngine implements ViewEngineInterface
 
     private function extractViewName(string $path): string
     {
-        $path = str_replace('\\', '/', realpath($path) ?: $path);
-        $basePath = str_replace('\\', '/', Application::getInstance()->getBasePath());
-        $viewPath = rtrim($basePath, '/') . '/resources/views/';
+        $path = str_replace('\\', '/', $path);
 
-        if (strpos($path, $viewPath) !== 0) {
-            // Fallback for cases where realpath might fail or have different prefix
-            $relative = str_replace([$viewPath, str_replace('\\', '/', $viewPath)], '', $path);
-            if ($relative === $path) {
-                throw new \DGLab\Services\Superpowers\Exceptions\SuperpowersException("View path is outside of resources/views: {$path} (Expected prefix: {$viewPath})");
-            }
+        // Use a more robust way to find the relative path within resources/views
+        $marker = '/resources/views/';
+        $pos = strpos($path, $marker);
+
+        if ($pos !== false) {
+            $relative = substr($path, $pos + strlen($marker));
         } else {
-            $relative = substr($path, strlen($viewPath));
+            // Fallback: just use the filename if we can't find the marker
+            $relative = basename($path);
         }
 
         $name = str_replace('.super.php', '', $relative);
