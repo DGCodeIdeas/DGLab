@@ -19,7 +19,7 @@ class ActionController extends Controller
         $view = new View();
         $g = Application::getInstance()->get(GlobalStateStoreInterface::class);
         $before = $g->all();
-        $content = $view->render($viewName, ['__action' => $action, '__state' => $stateEncrypted], null);
+        $content = $view->render($viewName, ['__action' => $action, '__state' => $stateEncrypted], 'layouts.shell');
         $after = $g->all();
         $changed = [];
         foreach ($after as $k => $v) {
