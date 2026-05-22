@@ -59,6 +59,12 @@ class Application
         $this->set(\DGLab\Core\ResponseFactoryInterface::class, fn($app) => $app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class));
         $this->set(ResponseFactory::class, fn() => new ResponseFactory());
 
+        // Register application controllers
+        $this->singleton(\DGLab\Controllers\HomeController::class, fn() => new \DGLab\Controllers\HomeController());
+        $this->singleton(\DGLab\Controllers\ServicesController::class, fn() => new \DGLab\Controllers\ServicesController());
+        $this->singleton(\DGLab\Controllers\AuthController::class, fn($app) => new \DGLab\Controllers\AuthController($app->get(\DGLab\Services\Auth\Repositories\UserRepository::class)));
+        $this->singleton(\DGLab\Controllers\Superpowers\ActionController::class, fn() => new \DGLab\Controllers\Superpowers\ActionController());
+
         \DGLab\Services\ServiceRegistry::register($this);
 
         $this->set(AuditService::class, fn($app) => new AuditService(

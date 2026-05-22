@@ -316,6 +316,10 @@ class Router
         // Find matching route
         $route = $this->matchRoute($method, $path);
 
+        if ($route === null && $method === 'HEAD') {
+            $route = $this->matchRoute('GET', $path);
+        }
+
         if ($route === null) {
             throw new RouteNotFoundException("No route found for {$method} {$path}");
         }
@@ -351,7 +355,12 @@ class Router
 
         // Check method exists
         if (!isset($this->routes[$method])) {
-            return null;
+            // Fallback for HEAD requests: try GET
+            if ($method === 'HEAD' && isset($this->routes['GET'])) {
+                $method = 'GET';
+            } else {
+                return null;
+            }
         }
 
         // Try each route
