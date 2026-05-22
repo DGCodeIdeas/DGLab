@@ -44,11 +44,16 @@ class Compiler
         $extends = null;
         $filteredAst = [];
         foreach ($ast as $n) {
-            if ($n instanceof ExtendsNode) $extends = $n->layout;
-            else $filteredAst[] = $n;
+            if ($n instanceof ExtendsNode) {
+                $extends = $n->layout;
+            } else {
+                $filteredAst[] = $n;
+            }
         }
 
-        if ($extends) $c .= "/* line:1 */ \$__extendedLayout = " . var_export($extends, true) . ";\n";
+        if ($extends) {
+            $c .= "/* line:1 */ \$__extendedLayout = " . var_export($extends, true) . ";\n";
+        }
 
         foreach ($filteredAst as $n) {
             if ($n instanceof SetupNode) {
@@ -98,7 +103,10 @@ class Compiler
         return $c;
     }
 
-    public function getDependencies(): array { return $this->deps; }
+    public function getDependencies(): array
+    {
+        return $this->deps;
+    }
 
     private function cLife(array $nodes, array $types): string
     {
@@ -141,7 +149,9 @@ class Compiler
 
     private function cOne(Node $n): string
     {
-        if ($n instanceof SetupNode || $n instanceof MountNode || $n instanceof RenderedNode || $n instanceof CleanupNode) return "";
+        if ($n instanceof SetupNode || $n instanceof MountNode || $n instanceof RenderedNode || $n instanceof CleanupNode) {
+            return "";
+        }
 
         if ($n instanceof FragmentNode) {
             return "/* line:$n->line */ echo '<div data-fragment=\"' . \\DGLab\\Core\\View::e(" . var_export($n->id, true) . ") . '\">'; " . $this->cN($n->children) . " echo '</div>';\n";
@@ -200,7 +210,9 @@ class Compiler
                 $keyName = count($asParts) > 1 ? trim($asParts[0], '$ ') : null;
 
                 $loop = "/* line:$n->line */ if (is_iterable($items)) foreach ($items as $as): \n";
-                if ($keyName) $loop .= " \$__ctx['$keyName'] = " . trim($asParts[0]) . ";\n";
+                if ($keyName) {
+                    $loop .= " \$__ctx['$keyName'] = " . trim($asParts[0]) . ";\n";
+                }
                 $loop .= " \$__ctx['$asName'] = " . trim(end($asParts)) . ";\n";
                 $loop .= $this->cN($n->children) . " endforeach;\n";
                 return $loop;

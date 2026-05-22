@@ -104,8 +104,8 @@ class Parser
             return $node;
         }
         if ($name === 'yield') {
-             $parts = array_map('trim', explode(',', $expression));
-             return new YieldNode(trim($parts[0], "'\""), isset($parts[1]) ? trim($parts[1], "'\"") : null, $token->line);
+            $parts = array_map('trim', explode(',', $expression));
+            return new YieldNode(trim($parts[0], "'\""), isset($parts[1]) ? trim($parts[1], "'\"") : null, $token->line);
         }
         if ($name === 'fragment') {
             $node = new FragmentNode(trim($expression, "'\""), $token->line);
@@ -201,7 +201,7 @@ class Parser
             }
             $children[] = $this->parseNode();
         }
-        throw new SyntaxException("Missing </{$tagName}>", null, 0);
+        throw new SyntaxException("Missing expected terminator: </{$tagName}>", null, 0);
     }
 
     private function parseProps(string $propsString): array
@@ -229,7 +229,7 @@ class Parser
             }
             $nodes[] = $this->parseNode();
         }
-        throw new SyntaxException("Missing {$terminator}", null, 0);
+        throw new SyntaxException("Missing expected terminator: {$terminator}", null, 0);
     }
 
     private function parseUntilComponentClose(string $tagName): array
@@ -243,6 +243,6 @@ class Parser
             }
             $nodes[] = $this->parseNode();
         }
-        throw new SyntaxException("Missing </s:{$tagName}>", null, 0);
+        throw new SyntaxException("Missing expected terminator: </s:{$tagName}>", null, 0);
     }
 }
