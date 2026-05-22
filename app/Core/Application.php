@@ -7,6 +7,7 @@ use RuntimeException;
 use Psr\Log\LoggerInterface;
 use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Database\Connection;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 
 class Application
@@ -56,7 +57,6 @@ class Application
         ));
 
         $this->set(\DGLab\Core\Contracts\ResponseFactoryInterface::class, fn() => new ResponseFactory());
-        $this->set(\DGLab\Core\ResponseFactoryInterface::class, fn($app) => $app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class));
         $this->set(ResponseFactory::class, fn() => new ResponseFactory());
 
         // Register application controllers

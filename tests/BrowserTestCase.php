@@ -24,10 +24,21 @@ abstract class BrowserTestCase extends PantherTestCase
 
     public static function setUpBeforeClass(): void
     {
-        // Support environment-variable overrides for binaries
-        if ($chromeBin = getenv('PANTHER_CHROME_BINARY')) {
-            $_SERVER['PANTHER_CHROME_BINARY'] = $chromeBin;
+        // Support environment-variable overrides for binaries (common for GitHub Actions)
+        $chromeBins = [
+            getenv('PANTHER_CHROME_BINARY'),
+            getenv('CHROME_BIN'),
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium-browser'
+        ];
+
+        foreach ($chromeBins as $bin) {
+            if ($bin && file_exists($bin)) {
+                $_SERVER['PANTHER_CHROME_BINARY'] = $bin;
+                break;
+            }
         }
+
         if ($driverBin = getenv('PANTHER_CHROME_DRIVER_BINARY')) {
             $_SERVER['PANTHER_CHROME_DRIVER_BINARY'] = $driverBin;
         }

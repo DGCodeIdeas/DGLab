@@ -35,9 +35,9 @@ abstract class Controller
         return $this->response;
     }
 
-    protected function getResponseFactory(): ResponseFactoryInterface
+    protected function getResponseFactory(): \DGLab\Core\Contracts\ResponseFactoryInterface
     {
-        return $this->app->get(ResponseFactoryInterface::class);
+        return $this->app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class);
     }
 
     protected function json(array $data, int $status = 200, array $headers = []): Response

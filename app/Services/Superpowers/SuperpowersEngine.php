@@ -102,8 +102,8 @@ class SuperpowersEngine implements ViewEngineInterface
     {
         $path = str_replace('\\', '/', $path);
 
-        // Use a more robust way to find the relative path within resources/views
-        $marker = '/resources/views/';
+        // Normalize search for resources/views
+        $marker = 'resources/views/';
         $pos = strpos($path, $marker);
 
         if ($pos !== false) {
@@ -113,8 +113,11 @@ class SuperpowersEngine implements ViewEngineInterface
             $relative = basename($path);
         }
 
+        // Remove extensions
         $name = str_replace('.super.php', '', $relative);
-        return str_replace('/', '.', $name);
+        $name = str_replace('.php', '', $name);
+
+        return str_replace('/', '.', trim($name, '/'));
     }
 
     private function processReactivity(string $output): string

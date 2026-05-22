@@ -8,7 +8,7 @@ use DGLab\Core\Response;
 use DGLab\Services\Auth\AuthManager;
 use DGLab\Tests\TestCase;
 use Prophecy\Argument;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 
 class AuthMiddlewareTest extends TestCase
 {

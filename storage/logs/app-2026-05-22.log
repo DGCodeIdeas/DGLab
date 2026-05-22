@@ -1,0 +1,10 @@
+[2026-05-22 09:04:38.968077] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--group","unit"]}
+[2026-05-22 09:04:39.228188] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":255}
+[2026-05-22 09:04:39.228324] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 255","context":[]}
+[2026-05-22 09:05:22.121568] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--group","unit"]}
+[2026-05-22 09:05:25.033834] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-22 09:05:25.034039] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-22 09:06:06.233667] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--group","unit"]}
+[2026-05-22 09:06:08.427627] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-22 09:08:24.562488] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--group","unit"]}
+[2026-05-22 09:08:27.511599] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
