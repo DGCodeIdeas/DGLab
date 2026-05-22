@@ -21,7 +21,7 @@ class View
     {
         $basePath = Application::getInstance()->getBasePath();
         $this->viewPath = $basePath . '/resources/views';
-        $this->layoutPath = $basePath . '/resources/views/layouts';
+        $this->layoutPath = $basePath . '/resources/views';
         $this->registerEngine('super.php', new SuperpowersEngine($this));
     }
 
@@ -45,7 +45,7 @@ class View
         $this->fragmentMode = $sectionName;
     }
 
-    public function render(string $template, array $data = [], ?string $layout = 'shell'): string
+    public function render(string $template, array $data = [], ?string $layout = 'layouts.shell'): string
     {
         $data = array_merge($this->shared, $data);
         [$viewFile, $engine] = $this->resolveView($template);

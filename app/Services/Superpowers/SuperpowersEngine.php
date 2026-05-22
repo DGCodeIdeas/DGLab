@@ -100,9 +100,21 @@ class SuperpowersEngine implements ViewEngineInterface
 
     private function extractViewName(string $path): string
     {
-         $viewPath = rtrim(Application::getInstance()->getBasePath(), '/') . '/resources/views/';
-         $name = str_replace($viewPath, '', $path);
-         return str_replace('.super.php', '', $name);
+        $path = str_replace('\\', '/', $path);
+
+        // Use a more robust way to find the relative path within resources/views
+        $marker = '/resources/views/';
+        $pos = strpos($path, $marker);
+
+        if ($pos !== false) {
+            $relative = substr($path, $pos + strlen($marker));
+        } else {
+            // Fallback: just use the filename if we can't find the marker
+            $relative = basename($path);
+        }
+
+        $name = str_replace('.super.php', '', $relative);
+        return str_replace('/', '.', $name);
     }
 
     private function processReactivity(string $output): string

@@ -20,7 +20,7 @@ class Application
 
     public function __construct(string $basePath)
     {
-        $this->basePath = $basePath;
+        $this->basePath = realpath($basePath) ?: $basePath;
         static::$instance = $this;
         $this->loadConfig();
         $this->registerBaseServices();
@@ -36,24 +36,45 @@ class Application
 
     public function registerBaseServices(): void
     {
-        $this->set(Application::class, $this);
+        $this->set(self::class, $this);
         $this->set(Request::class, fn() => new Request());
         $this->set(Router::class, fn($app) => new Router($app));
         $this->set(View::class, fn($app) => new View($app));
         $this->set(Connection::class, fn($app) => new Connection($app->config('database') ?? []));
-        $this->set(LoggerInterface::class, fn() => new Logger());
-        $this->set(DispatcherInterface::class, fn($app) => new EventDispatcher($app));
+        $this->set(\Psr\Log\LoggerInterface::class, fn() => new Logger());
+        $this->set(\DGLab\Core\Contracts\DispatcherInterface::class, fn($app) => new EventDispatcher($app));
         $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, fn($app) => new \DGLab\Core\EventDrivers\SyncDriver($app));
         $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, fn($app) => new \DGLab\Core\EventDrivers\QueueDriver($app));
+
+        $this->set(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class, fn() => new \DGLab\Services\Superpowers\Runtime\GlobalStateStore());
+        $this->set(\DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface::class, fn($app) => $app->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class));
+
+        $this->set(\DGLab\Services\AssetService::class, fn() => new \DGLab\Services\AssetService());
+
+        $this->set(\DGLab\Services\Encryption\EncryptionService::class, fn($app) => new \DGLab\Services\Encryption\EncryptionService(
+            $app->config('app.security.encryption_key') ?: '12345678901234567890123456789012'
+        ));
+
+        $this->set(\DGLab\Core\Contracts\ResponseFactoryInterface::class, fn() => new ResponseFactory());
+        $this->set(\DGLab\Core\ResponseFactoryInterface::class, fn($app) => $app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class));
+        $this->set(ResponseFactory::class, fn() => new ResponseFactory());
+
+        // Register application controllers
+        $this->singleton(\DGLab\Controllers\HomeController::class, fn() => new \DGLab\Controllers\HomeController());
+        $this->singleton(\DGLab\Controllers\ServicesController::class, fn() => new \DGLab\Controllers\ServicesController());
+        $this->singleton(\DGLab\Controllers\AuthController::class, fn($app) => new \DGLab\Controllers\AuthController($app->get(\DGLab\Services\Auth\Repositories\UserRepository::class)));
+        $this->singleton(\DGLab\Controllers\Superpowers\ActionController::class, fn() => new \DGLab\Controllers\Superpowers\ActionController());
+
+        \DGLab\Services\ServiceRegistry::register($this);
+
         $this->set(AuditService::class, fn($app) => new AuditService(
             $app->get(Connection::class),
             $app->get(Request::class),
             $app->has(\DGLab\Services\Tenancy\TenancyService::class) ? $app->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
             $app->has(\DGLab\Services\Auth\AuthManager::class) ? $app->get(\DGLab\Services\Auth\AuthManager::class) : null
         ));
+
         $this->set(\DGLab\Services\Download\AuditService::class, fn($app) => new \DGLab\Services\Download\AuditService($app->get(AuditService::class)));
-        $this->set(ResponseFactoryInterface::class, fn() => new ResponseFactory());
-        $this->set(ResponseFactory::class, fn() => new ResponseFactory());
     }
 
     public function boot(): void

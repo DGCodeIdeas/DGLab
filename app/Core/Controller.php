@@ -44,7 +44,7 @@ abstract class Controller
     {
         return $this->getResponseFactory()->json($data, $status, $headers);
     }
-    protected function view(string $template, array $data = [], int $status = 200): Response
+    protected function view(string $template, array $data = [], int $status = 200, ?string $layout = 'layouts.shell'): Response
     {
         $view = $this->app->get(View::class);
 
@@ -53,7 +53,7 @@ abstract class Controller
             $view->setFragmentMode($fragment === 'true' ? 'content' : $fragment);
         }
 
-        return $this->getResponseFactory()->create($view->render($template, $data), $status);
+        return $this->getResponseFactory()->create($view->render($template, $data, $layout), $status);
     }
 
     protected function redirect(string $url, int $status = 302): Response

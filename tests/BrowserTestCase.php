@@ -47,7 +47,14 @@ abstract class BrowserTestCase extends PantherTestCase
         }
         touch($dbPath);
 
-        // Configure app to use this file
+        // Configure app and external process to use this file
+        putenv("DB_CONNECTION=sqlite");
+        putenv("DB_DATABASE=$dbPath");
+        $_SERVER['DB_CONNECTION'] = 'sqlite';
+        $_ENV['DB_CONNECTION'] = 'sqlite';
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        $_ENV['DB_DATABASE'] = $dbPath;
+
         Application::flush();
         $app = new Application(dirname(__DIR__));
         $app->setConfig('database.default', 'sqlite');

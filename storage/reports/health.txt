@@ -1,14 +1,14 @@
 DGLab TestSuite Health Report
 ============================
-Timestamp: 2026-05-01 22:48:30
+Timestamp: 2026-05-21 23:29:23
 Status: UNHEALTHY
 Coverage: Unknown (Xdebug missing)
 
 [Unit] Status: PASS
-Summary: Tests: 151, Assertions: 318, Skipped: 2.
+Summary: Tests: 156, Assertions: 352, Skipped: 2.
 
-[Integration] Status: PASS
-Summary: Tests: 75, Assertions: 339, Skipped: 2.
+[Integration] Status: FAIL
+Summary: Tests: 75, Assertions: 332, Failures: 1, Skipped: 2.
 
 [Browser] Status: FAIL
 Summary: Tests: 10, Assertions: 0, Errors: 10.

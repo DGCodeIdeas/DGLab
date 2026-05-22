@@ -3,3 +3,4 @@
 [2026-05-21 08:34:10.303304] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--testdox"]}
 [2026-05-21 08:34:20.482411] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
 [2026-05-21 08:34:20.482558] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-21 23:29:23.763569] app.ERROR: TestSuite critical failure: HealthCheck {"reason":"One or more suites failed in health report","context":[]}

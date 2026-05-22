@@ -46,36 +46,10 @@ use DGLab\Services\ServiceRegistry;
 // Initialize application
 $app = new Application(realpath(__DIR__ . '/..'));
 
-// Register core services
-$app->singleton(\DGLab\Core\Logger::class, function () { return new \DGLab\Core\Logger(); });
-$app->singleton(\Psr\Log\LoggerInterface::class, function ($app) { return $app->get(\DGLab\Core\Logger::class); });
-$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface::class, function ($app) { return $app->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class); });
-
-$app->singleton(\DGLab\Controllers\HomeController::class, function () { return new \DGLab\Controllers\HomeController(); });
-$app->singleton(\DGLab\Controllers\ServicesController::class, function () { return new \DGLab\Controllers\ServicesController(); });
-$app->singleton(\DGLab\Services\Encryption\EncryptionService::class, function ($app) {
-    return new \DGLab\Services\Encryption\EncryptionService($app->config('app.security.encryption_key') ?: '12345678901234567890123456789012');
-});
-$app->singleton(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class, function () { return new \DGLab\Services\Superpowers\Runtime\GlobalStateStore(); });
-$app->singleton(Connection::class, function () {
-    return new Connection(require __DIR__ . '/../config/database.php');
-});
-
-$app->singleton(Router::class, function () {
-    return new Router();
-});
-
-$app->singleton(ServiceRegistry::class, function () {
-    return new ServiceRegistry();
-});
-
-$app->singleton(\DGLab\Services\AssetService::class, function () {
-    return new \DGLab\Services\AssetService();
-});
-
-$app->singleton(\DGLab\Core\View::class, function () {
-    return new \DGLab\Core\View();
-});
+// Register application controllers
+$app->singleton(\DGLab\Controllers\HomeController::class, fn() => new \DGLab\Controllers\HomeController());
+$app->singleton(\DGLab\Controllers\ServicesController::class, fn() => new \DGLab\Controllers\ServicesController());
+$app->singleton(\DGLab\Controllers\AuthController::class, fn($app) => new \DGLab\Controllers\AuthController($app->get(\DGLab\Services\Auth\Repositories\UserRepository::class)));
 
 // Get router
 $router = $app->get(Router::class);
