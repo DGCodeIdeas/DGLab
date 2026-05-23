@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <hr class="my-4 border-secondary">
+        <hr class="my-4 border-secondary" />
         <div class="row align-items-center">
             <div class="col-md-6 text-center text-md-start">
                 <p class="mb-0 text-muted">

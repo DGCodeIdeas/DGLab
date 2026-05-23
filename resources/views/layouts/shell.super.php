@@ -9,22 +9,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
     <title>{{ $title }}</title>
-    <meta name="description" content="DGLab - A collection of web-based utilities for file processing and digital content manipulation.">
+    <meta name="description" content="DGLab - A collection of web-based utilities for file processing and digital content manipulation." />
 
-    <meta name="theme-color" content="#0d6efd">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0d6efd" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/icon-32x32.png">
-    <link rel="manifest" href="/manifest.json">
-    <link href="{{ asset("css/app.css") }}" rel="stylesheet">
-    <link href="{{ asset("css/vendor.css") }}" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/icon-32x32.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link href="{{ asset("css/app.css") }}" rel="stylesheet" />
+    <link href="{{ asset("css/vendor.css") }}" rel="stylesheet" />
 
-    <link href="/assets/css/superpowers.nav.css" rel="stylesheet">
+    <link href="/assets/css/superpowers.nav.css" rel="stylesheet" />
 
 
     <style>

@@ -1,0 +1,196 @@
+[2026-05-23 04:19:41.832561] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox"]}
+[2026-05-23 04:20:02.504421] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:20:02.504605] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:20:27.944742] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","JourneyTest"]}
+[2026-05-23 04:20:28.876513] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:20:28.876624] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:25:32.213763] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox"]}
+[2026-05-23 04:25:36.939407] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:25:36.939574] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:29:35.526270] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox"]}
+[2026-05-23 04:29:39.831696] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:29:39.831833] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:31:50.176503] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 04:31:50.328368] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:31:50.328483] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:36:06.543695] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 04:36:06.715305] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:36:06.715561] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:39:21.313608] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 04:39:21.470202] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:39:21.470386] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 04:41:36.977360] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 04:41:37.172470] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 04:41:37.172580] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:22:17.903817] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:22:18.319281] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:22:18.320047] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:24:52.471209] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:24:52.641173] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:24:52.641289] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:27:05.010712] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:27:05.225156] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:27:05.225301] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:30:54.409802] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:30:54.584595] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:30:54.584737] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:34:26.951866] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:34:27.145597] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:34:27.145722] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:39:45.826343] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:39:46.027772] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:39:46.027912] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:42:24.012923] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:42:24.177041] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:42:24.177163] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:46:00.351567] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:46:00.539392] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:46:00.539512] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:50:39.465287] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:50:39.656698] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:50:39.656888] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 10:53:07.637043] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 10:53:07.829918] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 10:53:07.830043] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:01:16.973718] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:01:17.123950] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:01:17.124062] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:03:09.600828] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:03:09.790233] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:03:09.790362] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:05:34.128267] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:05:34.581375] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:05:34.581720] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:07:46.886641] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:07:46.982985] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":255}
+[2026-05-23 11:07:46.983133] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 255","context":[]}
+[2026-05-23 11:08:45.583216] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:08:45.792020] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:08:45.792179] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:10:36.865023] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:10:37.065043] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:10:37.065188] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:15:55.125005] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:15:55.311086] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:15:55.311213] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:23:22.043204] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:23:22.186681] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:23:22.186808] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:24:32.419784] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:24:32.590543] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:24:32.590756] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:26:33.977491] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:26:34.146462] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:26:34.146616] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:28:40.462471] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:28:40.647255] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:28:40.647376] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:31:03.299220] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:31:03.484869] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:31:03.485004] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:33:24.489128] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:33:24.641168] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:33:24.641338] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:34:27.268106] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:34:27.445028] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:34:27.445161] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:37:42.077413] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:37:42.253172] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:37:42.253306] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:45:27.422692] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:45:27.565012] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:45:27.565140] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:48:24.150706] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:48:24.309443] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":1}
+[2026-05-23 11:48:24.309604] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 1","context":[]}
+[2026-05-23 11:49:28.192136] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:49:28.368126] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:49:28.368359] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:52:11.577560] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:52:11.751575] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:52:11.751718] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:53:59.922883] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:54:00.099087] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:54:00.099195] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:55:02.980108] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:55:03.149606] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:55:03.149773] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:56:53.488052] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:56:53.838188] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:56:53.838505] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:58:12.051432] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:58:12.230006] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:58:12.230131] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 11:59:25.109300] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 11:59:25.284264] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 11:59:25.284366] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:01:34.208667] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:01:34.375836] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:01:34.375950] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:03:37.144057] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:03:37.333948] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:03:37.334092] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:08:47.612982] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:08:47.803904] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:08:47.804034] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:13:01.449911] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:13:01.645575] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:13:01.645714] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:16:20.653103] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:16:20.842165] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:16:20.842299] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:18:21.394232] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:18:21.553178] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:18:21.553309] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:19:45.786153] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:19:45.981936] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:19:45.982079] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:20:43.121150] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:20:43.307587] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:20:43.307734] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:22:04.191650] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:22:04.383133] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:22:04.383298] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 12:24:35.554013] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 12:24:35.709380] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 12:24:35.709520] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:44:37.237849] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:44:37.585477] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:44:37.585665] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:48:58.109846] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","Integration"]}
+[2026-05-23 21:49:00.004925] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 21:49:54.442764] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","Browser"]}
+[2026-05-23 21:49:56.463712] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:49:56.463839] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:55:04.626273] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:55:04.795090] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 21:55:51.853359] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:55:52.029293] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:55:52.029567] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:56:33.091138] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:56:33.267707] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:56:33.267950] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:57:22.453219] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:57:22.626457] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:57:22.626565] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:58:05.984029] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:58:06.175753] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:58:06.175883] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:58:47.746871] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:58:47.928076] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 21:58:47.928179] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 21:59:32.442081] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 21:59:32.607898] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 22:00:27.420639] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox"]}
+[2026-05-23 22:00:29.908397] app.INFO: TestSuite finished: Full Suite - [FAILED] {"exit_code":2}
+[2026-05-23 22:00:29.908528] app.ERROR: TestSuite critical failure: Full Suite {"reason":"PHPUnit exited with code 2","context":[]}
+[2026-05-23 22:02:48.246519] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox"]}
+[2026-05-23 22:02:57.519805] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 22:06:45.411078] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","JourneyTest"]}
+[2026-05-23 22:06:46.539017] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 22:11:07.858639] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","RoutingTest"]}
+[2026-05-23 22:11:08.051278] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 22:11:54.520016] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--stop-on-failure","--testdox","--filter","Integration"]}
+[2026-05-23 22:11:55.974444] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}
+[2026-05-23 22:15:56.249373] app.INFO: TestSuite started: Full Suite {"argv":["cli\/test.php","run","--filter","Browser"]}
+[2026-05-23 22:16:01.006399] app.INFO: TestSuite finished: Full Suite - [PASSED] {"exit_code":0}

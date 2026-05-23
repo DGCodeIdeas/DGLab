@@ -165,7 +165,8 @@ class Compiler
             }
         }
         if ($n instanceof ComponentNode) {
-            $vn = str_starts_with($n->tagName, 'layout:') ? 'layouts/' . substr($n->tagName, 7) : (str_contains($n->tagName, '.') ? $n->tagName : 'components/' . $n->tagName);
+            $tagName = str_replace(':', '.', $n->tagName);
+            $vn = str_starts_with($tagName, 'layout:') ? 'layouts/' . substr($tagName, 7) : (str_contains($tagName, '.') ? $tagName : 'components/' . $n->tagName);
             $this->deps[] = $vn;
             $c = "/* line:$n->line */ \$__p = [];\n";
             foreach ($n->props as $name => $p) {

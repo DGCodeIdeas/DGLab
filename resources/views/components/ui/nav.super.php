@@ -41,7 +41,7 @@
                                 <i class="bi bi-code-slash me-2"></i> API
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li><hr class="dropdown-divider" /></li>
                         <li>
                             <a class="dropdown-item" href="https://github.com/dglab/pwa" target="_blank" rel="noopener">
                                 <i class="bi bi-github me-2"></i> GitHub

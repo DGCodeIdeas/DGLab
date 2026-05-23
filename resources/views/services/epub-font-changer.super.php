@@ -84,7 +84,7 @@
     };
 } ~
 
-<section class="py-12 bg-gray-50">
+<section class="service-detail py-12 bg-gray-50">
     <div class="container mx-auto px-4">
         <div class="flex flex-wrap -mx-4">
             <!-- Main Content -->
@@ -113,7 +113,7 @@
                                     <i class="bi bi-cloud-arrow-up text-4xl text-gray-400 mb-4"></i>
                                     <p class="text-gray-600">Click to upload or drag and drop</p>
                                     <p class="text-xs text-gray-400 mt-2">Maximum file size: 100MB (EPUB only)</p>
-                                    <input type="file" id="file-input" class="hidden" accept=".epub" @change="onFileChange">
+                                    <input type="file" id="file-input" class="hidden" accept=".epub" @change="onFileChange" />
                                 </div>
 
                                 <div @if($selectedFile) class="bg-blue-50 border border-blue-100 rounded-xl p-6 flex items-center justify-between">
@@ -140,7 +140,7 @@
                                         <input type="text"
                                                class="w-full pl-8 pr-3 py-1 text-xs border border-gray-200 rounded-full focus:outline-none focus:border-blue-400"
                                                placeholder="Search fonts..."
-                                               @input="$fontSearch = $event.target.value">
+                                               @input="$fontSearch = $event.target.value" />
                                         <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]"></i>
                                     </div>
                                 </div>

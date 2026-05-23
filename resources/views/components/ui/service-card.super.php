@@ -41,7 +41,7 @@
             <div class="collapse mt-3" id="info-{{ $id }}">
                 <div class="bg-light rounded-3 p-3">
                     <small class="text-muted">
-                        <strong>ID:</strong> {{ $id }}<br>
+                        <strong>ID:</strong> {{ $id }}<br />
                         <strong>Chunked Upload:</strong> {{ $supports_chunking ? 'Yes' : 'No' }}
                     </small>
                 </div>

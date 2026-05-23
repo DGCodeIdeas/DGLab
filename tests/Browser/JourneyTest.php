@@ -38,12 +38,12 @@ class JourneyTest extends BrowserTestCase
 
         // 3. Navigate to Services
         $nav->clickLink('Services');
-        $client->waitFor('.hero-section', 40); // Services page also has hero or similar
+        $client->waitFor('.hero-section', 40);
         $this->assertStringContainsString('/services', $client->getCurrentURL());
 
         // 4. Perform Action - Click into a Service
         $nav->clickLink('EPUB Font Changer');
-        $client->waitFor('.service-detail', 40); // Assuming service detail has this class
+        $client->waitFor('.service-detail', 40);
         $this->assertStringContainsString('/services/epub-font-changer', $client->getCurrentURL());
 
         // 5. Logout

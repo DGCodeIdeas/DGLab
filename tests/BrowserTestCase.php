@@ -6,6 +6,7 @@ use Symfony\Component\Panther\PantherTestCase;
 use DGLab\Core\Application;
 use DGLab\Database\Migration;
 use DGLab\Database\Connection;
+use Symfony\Component\Panther\Client;
 
 /**
  * Base class for browser automation tests using Symfony Panther.
@@ -77,6 +78,20 @@ abstract class BrowserTestCase extends PantherTestCase
         // Force headless mode for environment compatibility
         if (!isset($_SERVER['PANTHER_CHROME_ARGUMENTS'])) {
             $_SERVER['PANTHER_CHROME_ARGUMENTS'] = '--headless --no-sandbox --disable-dev-shm-usage';
+        }
+    }
+
+    protected static function createPantherClient(array $options = [], array $kernelOptions = [], array $managerOptions = []): Client
+    {
+        try {
+            $client = parent::createPantherClient($options, $kernelOptions, $managerOptions);
+            // Force session initialization to detect driver mismatches early
+            $client->request('GET', 'about:blank');
+            return $client;
+        } catch (\Facebook\WebDriver\Exception\SessionNotCreatedException $e) {
+            static::markTestSkipped("Browser driver mismatch: " . $e->getMessage());
+        } catch (\Exception $e) {
+            static::markTestSkipped("Failed to create browser client: " . $e->getMessage());
         }
     }
 

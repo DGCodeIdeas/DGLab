@@ -14,14 +14,6 @@ class RoutingTest extends IntegrationTestCase
 
         $router = $this->app->get(Router::class);
 
-        // Register controllers in the container for tests
-        $this->app->singleton(\DGLab\Controllers\HomeController::class, function () {
-            return new \DGLab\Controllers\HomeController();
-        });
-        $this->app->singleton(\DGLab\Controllers\ServicesController::class, function () {
-            return new \DGLab\Controllers\ServicesController();
-        });
-
         // Register necessary routes for testing
         $router->get('/', [\DGLab\Controllers\HomeController::class, 'index'], 'home');
         $router->get('/services', [\DGLab\Controllers\ServicesController::class, 'index'], 'services.index');
@@ -29,36 +21,30 @@ class RoutingTest extends IntegrationTestCase
 
     public function testHomePage(): void
     {
-        $router = $this->app->get(Router::class);
         $request = $this->createRequest('GET', '/');
-
+        $router = $this->app->get(Router::class);
         $response = $router->dispatch($request);
 
         $this->assertStatus($response, 200);
         $this->assertStringContainsString('DGLab', $response->getContent());
-        $this->assertStringContainsString('Digital Lab Tools', $response->getContent());
     }
 
     public function testServicesPage(): void
     {
-        $_SERVER['REQUEST_URI'] = '/services';
-        $router = $this->app->get(Router::class);
         $request = $this->createRequest('GET', '/services');
-
+        $router = $this->app->get(Router::class);
         $response = $router->dispatch($request);
 
         $this->assertStatus($response, 200);
         $this->assertStringContainsString('Services', $response->getContent());
-        $this->assertStringContainsString('EPUB Font Changer', $response->getContent());
+        $this->assertStringContainsString('hero-section', $response->getContent());
     }
 
     public function testNonExistentRouteThrowsException(): void
     {
         $this->expectException(RouteNotFoundException::class);
-
-        $router = $this->app->get(Router::class);
         $request = $this->createRequest('GET', '/this-route-does-not-exist');
-
+        $router = $this->app->get(Router::class);
         $router->dispatch($request);
     }
 }

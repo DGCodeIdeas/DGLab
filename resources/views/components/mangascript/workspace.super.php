@@ -50,7 +50,7 @@
         <section class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-400 mb-1">Project Title</label>
-                <input type="text" @bind="$title" class="w-full bg-gray-800 border border-gray-700 rounded p-2 focus:border-blue-500 transition-colors" placeholder="Enter title...">
+                <input type="text" @bind="$title" class="w-full bg-gray-800 border border-gray-700 rounded p-2 focus:border-blue-500 transition-colors" placeholder="Enter title..." />
             </div>
 
             <div>
