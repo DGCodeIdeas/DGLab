@@ -8,8 +8,10 @@ use Psr\Log\LoggerInterface;
 use DGLab\Core\Contracts\DispatcherInterface;
 use DGLab\Database\Connection;
 use DGLab\Core\Exceptions\RouteNotFoundException;
+use DGLab\Core\Exceptions\EntryNotFoundException;
+use DGLab\Core\Exceptions\ContainerException;
 
-class Application
+class Application implements \Psr\Container\ContainerInterface
 {
     public const VERSION = '1.0.0-Superpowers';
     protected static ?Application $instance = null;
@@ -98,13 +100,65 @@ class Application
 
     public function get(string $id): mixed
     {
-        if (!isset($this->services[$id])) {
-            throw new InvalidArgumentException("Service not found: {$id}");
+        if (!$this->has($id)) {
+            if (class_exists($id)) {
+                return $this->resolve($id);
+            }
+            throw new EntryNotFoundException("Service not found: {$id}");
         }
-        if ($this->services[$id] instanceof \Closure) {
-            $this->services[$id] = ($this->services[$id])($this);
+        try {
+            if ($this->services[$id] instanceof \Closure) {
+                $this->services[$id] = ($this->services[$id])($this);
+            }
+            return $this->services[$id];
+        } catch (\Throwable $e) {
+            if ($e instanceof EntryNotFoundException) {
+                throw $e;
+            }
+            throw new ContainerException("Error resolving service: {$id}", 0, $e);
         }
-        return $this->services[$id];
+    }
+
+    public function resolve(string $class): object
+    {
+        $reflectionClass = new \ReflectionClass($class);
+        if (!$reflectionClass->isInstantiable()) {
+            throw new ContainerException("Class {$class} is not instantiable");
+        }
+
+        $constructor = $reflectionClass->getConstructor();
+        if (!$constructor) {
+            return new $class();
+        }
+
+        $parameters = $constructor->getParameters();
+        if (empty($parameters)) {
+            return new $class();
+        }
+
+        $dependencies = [];
+        foreach ($parameters as $parameter) {
+            $type = $parameter->getType();
+            if (!$type) {
+                if ($parameter->isDefaultValueAvailable()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                    continue;
+                }
+                throw new ContainerException("Cannot resolve parameter {$parameter->getName()} in {$class}");
+            }
+
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $dependencies[] = $this->get($type->getName());
+            } else {
+                 if ($parameter->isDefaultValueAvailable()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                } else {
+                    throw new ContainerException("Cannot resolve built-in parameter {$parameter->getName()} in {$class}");
+                }
+            }
+        }
+
+        return $reflectionClass->newInstanceArgs($dependencies);
     }
 
     public function make(string $id): mixed

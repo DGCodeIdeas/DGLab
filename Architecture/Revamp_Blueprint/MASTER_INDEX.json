@@ -1,0 +1,1136 @@
+[
+  {
+    "phase": "1",
+    "title": "PSR-11 Container Interface & Implementation",
+    "block": "1",
+    "category": "Core",
+    "description": "Implementing PSR-11 compliant Container.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "2",
+    "title": "Recursive Dependency Resolution (Auto-wiring)",
+    "block": "1",
+    "category": "Core",
+    "description": "Adding auto-wiring capabilities to the DI container.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "3",
+    "title": "Service Provider Refactoring (PSR-compliant)",
+    "block": "1",
+    "category": "Core",
+    "description": "Standardizing service registration via providers.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "IN_PROGRESS"
+  },
+  {
+    "phase": "4",
+    "title": "Singleton & Prototype Scope Management",
+    "block": "1",
+    "category": "Core",
+    "description": "Managing object lifecycles within the container.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "5",
+    "title": "Container Tagging & Conditional Registration",
+    "block": "1",
+    "category": "Core",
+    "description": "Allowing service grouping and environment-based loading.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "6",
+    "title": "Reflection-based Method Injection",
+    "block": "1",
+    "category": "Core",
+    "description": "Supporting injection into methods and setters.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "7",
+    "title": "Deferred (Lazy) Service Loading",
+    "block": "1",
+    "category": "Core",
+    "description": "Leveraging PHP 8.4 lazy objects for performance.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "8",
+    "title": "Configuration as a Service (Immutable Config)",
+    "block": "1",
+    "category": "Core",
+    "description": "Injectable, type-safe configuration.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "9",
+    "title": "Core Container Hardening & Benchmarking",
+    "block": "1",
+    "category": "Core",
+    "description": "Optimization and validation of the DI layer.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "10",
+    "title": "PSR-7 Request/Response Implementation",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Migrating to PSR-7 HTTP messages.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "11",
+    "title": "PSR-17 HTTP Factory Implementation",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Standard factories for creating HTTP objects.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "12",
+    "title": "PSR-15 Middleware Interface & Pipeline",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Implementing the middleware onion pattern.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "13",
+    "title": "Immutable Request/Response handling",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Ensuring immutability throughout the HTTP flow.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "14",
+    "title": "Stream-based Body Management",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Efficient handling of large payloads.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "15",
+    "title": "Advanced URI & UploadedFile handling",
+    "block": "2",
+    "category": "HTTP",
+    "description": "PSR-compliant URI and file management.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "16",
+    "title": "ServerRequest Creator (from Globals)",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Factory to populate PSR-7 from PHP globals.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "17",
+    "title": "Cookie & Session PSR integration",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Standardizing state management.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "18",
+    "title": "HTTP Layer Stress Testing",
+    "block": "2",
+    "category": "HTTP",
+    "description": "Verifying the robustness of the new HTTP stack.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "19",
+    "title": "PSR-14 Event Dispatcher Implementation",
+    "block": "3",
+    "category": "Event",
+    "description": "Standardizing event handling.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "20",
+    "title": "Listener Provider & Discovery",
+    "block": "3",
+    "category": "Event",
+    "description": "Dynamic discovery of event listeners.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "21",
+    "title": "Stoppable Events & Priority Management",
+    "block": "3",
+    "category": "Event",
+    "description": "Fine-grained control over event propagation.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "22",
+    "title": "Async Event Drivers (Nexus Integration)",
+    "block": "3",
+    "category": "Event",
+    "description": "Offloading events to async workers.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "23",
+    "title": "Domain Event Patterns",
+    "block": "3",
+    "category": "Event",
+    "description": "Implementing DDD-style events.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "24",
+    "title": "Event-based Audit Logging",
+    "block": "3",
+    "category": "Event",
+    "description": "Unified security and operational auditing.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "25",
+    "title": "Reactive Event Bridge (SPA Sync)",
+    "block": "3",
+    "category": "Event",
+    "description": "Broadcasting events to the frontend via Nexus.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "26",
+    "title": "Dead Letter Queues for Failed Events",
+    "block": "3",
+    "category": "Event",
+    "description": "Error handling for async event processing.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "27",
+    "title": "Event Payload Serialization (PQC-ready)",
+    "block": "3",
+    "category": "Event",
+    "description": "Secure and efficient event data handling.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "28",
+    "title": "Repository Pattern Refactoring",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Decoupling data access from business logic.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "29",
+    "title": "Data Mapper vs Active Record Hybrid",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Modernizing the ORM approach.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "30",
+    "title": "PSR-16 Simple Cache Integration",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Standardized caching layer.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "31",
+    "title": "Distributed Locking (Redis/Key-Value)",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Managing concurrency in distributed environments.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "32",
+    "title": "Database Migrations (Schema Blueprints)",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Type-safe schema management.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "33",
+    "title": "Multi-Tenant Schema Isolation",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Ensuring strict data separation.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "34",
+    "title": "Soft Deletes & Temporal Tables",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Implementing data history and recovery.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "35",
+    "title": "Advanced Query Builder with Attributes",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Using PHP 8 attributes for query mapping.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "36",
+    "title": "Persistence Layer Performance Tuning",
+    "block": "4",
+    "category": "Persistence",
+    "description": "Optimizing data access patterns.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "37",
+    "title": "Advanced JWT with Rotation",
+    "block": "5",
+    "category": "Security",
+    "description": "Hardening authentication tokens.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "38",
+    "title": "Multi-Factor Authentication (MFA) Core",
+    "block": "5",
+    "category": "Security",
+    "description": "Implementing second-factor support.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "39",
+    "title": "RBAC & Attribute-Based Access Control",
+    "block": "5",
+    "category": "Security",
+    "description": "Granular permission management.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "40",
+    "title": "Post-Quantum Encryption Integration",
+    "block": "5",
+    "category": "Security",
+    "description": "Implementing future-proof cryptography.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "41",
+    "title": "Security Audit Forensics",
+    "block": "5",
+    "category": "Security",
+    "description": "Advanced logging for security events.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "42",
+    "title": "Rate Limiting & Brute Force Protection",
+    "block": "5",
+    "category": "Security",
+    "description": "Protecting against automated attacks.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "43",
+    "title": "Content Security Policy (CSP) Generator",
+    "block": "5",
+    "category": "Security",
+    "description": "Automated header management for browser security.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "44",
+    "title": "Secure Session Lifecycle Management",
+    "block": "5",
+    "category": "Security",
+    "description": "Standardizing session handling.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "45",
+    "title": "Penetration Testing Infrastructure",
+    "block": "5",
+    "category": "Security",
+    "description": "Automated security scanning tools.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "46",
+    "title": "AST-based Compiler Refactor",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Modernizing the template parsing engine.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "47",
+    "title": "Component Lifecycle Hooks",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Adding @mounted and @unmounted support.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "48",
+    "title": "Reactive State Management (Signals)",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Implementing a modern reactive primitive.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "49",
+    "title": "Server-Side Rendering (SSR) Optimization",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Improving initial page load speed.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "50",
+    "title": "Fragment Caching & Edge Injection",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Partial caching strategies.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "51",
+    "title": "Debug Toolbar & Profiler",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Developer tools for template debugging.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "52",
+    "title": "Custom Directives API",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Extending the compiler with user-defined logic.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "53",
+    "title": "Template Sandboxing for Multi-Tenancy",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Isolating tenant-specific UI logic.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "54",
+    "title": "SuperPHP Benchmarking Suite",
+    "block": "6",
+    "category": "SuperPHP",
+    "description": "Validating performance improvements.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "55",
+    "title": "Shadow DOM Morphing Engine",
+    "block": "7",
+    "category": "SPA",
+    "description": "Advanced UI updates without full re-renders.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "56",
+    "title": "Unified Navigation & History API",
+    "block": "7",
+    "category": "SPA",
+    "description": "Managing browser history in a reactive way.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "57",
+    "title": "PWA Sync & Background Tasks",
+    "block": "7",
+    "category": "SPA",
+    "description": "Offline-first capabilities.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "58",
+    "title": "Asset Versioning & Cache Busting",
+    "block": "7",
+    "category": "SPA",
+    "description": "Automated asset management.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "59",
+    "title": "Client-side state persistence",
+    "block": "7",
+    "category": "SPA",
+    "description": "Managing local storage and indexedDB.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "60",
+    "title": "Lazy Loading Components",
+    "block": "7",
+    "category": "SPA",
+    "description": "Dynamic component loading for large apps.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "61",
+    "title": "Visual Regression Testing",
+    "block": "7",
+    "category": "SPA",
+    "description": "Automated UI stability checks.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "62",
+    "title": "Accessibility (A11y) Automated Audits",
+    "block": "7",
+    "category": "SPA",
+    "description": "Ensuring inclusivity.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "63",
+    "title": "SPA Production Optimization",
+    "block": "7",
+    "category": "SPA",
+    "description": "Minification and tree-shaking for JS-lite assets.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "64",
+    "title": "Nexus Swoole Server Hardening",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Production-grade WebSocket server.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "65",
+    "title": "WebSocket Auth & Room Management",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Scalable real-time communication.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "66",
+    "title": "LLM Provider Unified Interface",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Standardizing AI model access.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "67",
+    "title": "AI Orchestration Service",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Managing complex AI workflows.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "68",
+    "title": "Media Library Service (Cloud-ready)",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Distributed asset management.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "69",
+    "title": "Search Service (Searchable Attributes)",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Full-text search integration.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "70",
+    "title": "Localization Service (i18n PSR)",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Globalizing the application.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "71",
+    "title": "Cross-Spoke Communication Protocol",
+    "block": "8",
+    "category": "Distributed",
+    "description": "RPC-style service interaction.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "72",
+    "title": "High Availability (HA) Nexus Clustering",
+    "block": "8",
+    "category": "Distributed",
+    "description": "Scaling the WebSocket layer.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "73",
+    "title": "End-to-End (E2E) Journey Tests",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Verifying critical user flows.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "74",
+    "title": "Security Stress & Chaos Engineering",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Testing system resilience.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "75",
+    "title": "CI/CD Pipeline Automation",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Streamlining the release process.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "76",
+    "title": "Deployment Blue-Green/Canary Strategy",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Safe production rollouts.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "77",
+    "title": "Real-time Monitoring & Alerting",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Operational visibility.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "78",
+    "title": "Disaster Recovery (DR) Drills",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Validating backup and restore.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "79",
+    "title": "Documentation (DocStudio) Export",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Finalizing technical documentation.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "80",
+    "title": "Final Code Audit & Cleanup",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Ensuring v1.0.0-beta quality.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  },
+  {
+    "phase": "81",
+    "title": "Launch Readiness (v1.0.0 Stable)",
+    "block": "9",
+    "category": "Hardening",
+    "description": "Final production checklist.",
+    "tasks": [
+      "Implementation",
+      "Unit Tests",
+      "Integration Tests",
+      "Documentation"
+    ],
+    "status": "PLANNED"
+  }
+]
