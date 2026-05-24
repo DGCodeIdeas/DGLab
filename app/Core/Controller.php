@@ -3,6 +3,8 @@
 namespace DGLab\Core;
 
 use DGLab\Services\Auth\AuthManager;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Message\ResponseInterface as Response;
 
 abstract class Controller
 {
@@ -48,7 +50,7 @@ abstract class Controller
     {
         $view = $this->app->get(View::class);
 
-        $fragment = $this->request->getHeader('X-Superpowers-Fragment');
+        $fragment = $this->request->getHeaderLine('X-Superpowers-Fragment');
         if ($fragment) {
             $view->setFragmentMode($fragment === 'true' ? 'content' : $fragment);
         }

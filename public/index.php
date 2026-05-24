@@ -1,18 +1,10 @@
 <?php
 /**
- * DGLab PWA - Front Controller
- * 
- * Entry point for all HTTP requests.
+ * DGLab PWA - Front Controller (Sovereign Edition)
  */
 
-// Report all errors in development
-if (getenv('APP_DEBUG') === 'true') {
-    error_reporting(E_ALL);
-    ini_set('display_errors', '1');
-} else {
-    error_reporting(0);
-    ini_set('display_errors', '0');
-}
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // Start session
 session_start();
@@ -20,119 +12,27 @@ session_start();
 // Load autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Load environment variables
-$envFile = __DIR__ . '/../.env';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos($line, '#') === 0) {
-            continue;
-        }
-        if (strpos($line, '=') !== false) {
-            list($key, $value) = explode('=', $line, 2);
-            $_ENV[trim($key)] = trim($value);
-            $_SERVER[trim($key)] = trim($value);
-        }
-    }
-}
-
 use DGLab\Core\Application;
-use DGLab\Core\Request;
-use DGLab\Core\Response;
-use DGLab\Core\Router;
-use DGLab\Database\Connection;
-use DGLab\Services\ServiceRegistry;
+use DGLab\Core\Http\Request;
 
-// Initialize application
-$app = new Application(realpath(__DIR__ . '/..'));
-
-// Register application controllers
-$app->singleton(\DGLab\Controllers\HomeController::class, fn() => new \DGLab\Controllers\HomeController());
-$app->singleton(\DGLab\Controllers\ServicesController::class, fn() => new \DGLab\Controllers\ServicesController());
-$app->singleton(\DGLab\Controllers\AuthController::class, fn($app) => new \DGLab\Controllers\AuthController($app->get(\DGLab\Services\Auth\Repositories\UserRepository::class)));
-
-// Get router
-$router = $app->get(Router::class);
-
-// Register routes
-require_once __DIR__ . '/../routes/web.php';
-
-// Handle request
 try {
-    $request = Request::createFromGlobals();
-    $response = $router->dispatch($request);
-    
-    if ($response instanceof Response) {
-        $response->send();
-    } else {
-        echo $response;
-    }
-} catch (\DGLab\Core\Exceptions\RouteNotFoundException $e) {
-    // Fallback: Check if it's a physical file in the public directory
-    $path = $request->getPath();
-    $publicPath = realpath(__DIR__);
-    $filePath = realpath($publicPath . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR));
+    // Initialize application
+    $app = new Application(realpath(__DIR__ . '/..'));
+$app->addMiddleware(\DGLab\Middleware\TestMiddleware::class);
 
-    if ($filePath && strpos($filePath, $publicPath . DIRECTORY_SEPARATOR) === 0 && is_file($filePath)) {
-        // Security: Do not serve .php files
-        if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
-            throw $e;
-        }
+    // Register routes
+    require_once __DIR__ . '/../routes/web.php';
 
-        // Improved MIME type detection
-        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-        $mimeTypes = [
-            'css'  => 'text/css',
-            'js'   => 'application/javascript',
-            'json' => 'application/json',
-            'png'  => 'image/png',
-            'jpg'  => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'gif'  => 'image/gif',
-            'svg'  => 'image/svg+xml',
-            'ico'  => 'image/x-icon',
-            'woff' => 'font/woff',
-            'woff2'=> 'font/woff2',
-            'ttf'  => 'font/ttf',
-            'otf'  => 'font/otf',
-        ];
+    // Create Sovereign Request
+    $request = Request::fromGlobals();
 
-        $mimeType = $mimeTypes[$extension] ?? (mime_content_type($filePath) ?: 'application/octet-stream');
+    // Handle request
+    $response = $app->handle($request);
 
-        // Caching headers
-        $lastModified = filemtime($filePath);
-        $etag = md5_file($filePath);
-
-        header("Content-Type: {$mimeType}");
-        header("Content-Length: " . filesize($filePath));
-        header("Last-Modified: " . gmdate("D, d M Y H:i:s", $lastModified) . " GMT");
-        header("ETag: \"{$etag}\"");
-        header("Cache-Control: public, max-age=31536000");
-
-        // Check If-None-Match or If-Modified-Since
-        if ((isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH'], '"') === $etag) ||
-            (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $lastModified)) {
-            http_response_code(304);
-            exit;
-        }
-
-        readfile($filePath);
-        exit;
-    }
-
-    http_response_code(404);
-    if ($request->expectsJson()) {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Not Found', 'message' => $e->getMessage()]);
-    } else {
-        echo '<h1>404 Not Found</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
-    }
-} catch (\Exception $e) {
+    // Send response
+    $response->send();
+} catch (\Throwable $e) {
     http_response_code(500);
-    if ($request->expectsJson()) {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
-    } else {
-        echo '<h1>500 Internal Server Error</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
-    }
+    echo "<h1>Sovereign Core Error</h1>";
+    echo "<pre>" . $e->getMessage() . "\n" . $e->getTraceAsString() . "</pre>";
 }

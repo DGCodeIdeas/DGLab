@@ -5,3 +5,7 @@
 php_server.log
 php_test.log
 CI.log
+server.log
+output.html
+storage/database.sqlite
+database/database.sqlite

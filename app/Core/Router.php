@@ -300,10 +300,10 @@ class Router
      * @return mixed The handler response
      * @throws RouteNotFoundException If no matching route
      */
-    public function dispatch(Request $request): mixed
+    public function dispatch($request): mixed
     {
         $method = $request->getMethod();
-        $path = $request->getPath();
+        $path = $request->getUri()->getPath();
         if (str_starts_with($path, "/assets/")) {
             $parts = explode("/", trim($path, "/"));
             if (count($parts) >= 3) {
@@ -330,7 +330,7 @@ class Router
         $params = $this->extractParameters($route, $path);
 
         // Merge with request parameters
-        $request = $request->withRouteParams($params);
+        $request = $request->withAttribute("route_params", $params);
 
         // Emit RouteMatched event
         event(new \DGLab\Events\Routing\RouteMatched($route, $request));
@@ -467,7 +467,7 @@ class Router
     /**
      * Run middleware pipeline
      */
-    private function runMiddleware(Route $route, Request $request): mixed
+    private function runMiddleware($route, $request): mixed
     {
         $middleware = array_merge(
             $this->globalMiddleware,
@@ -492,7 +492,7 @@ class Router
     /**
      * Execute a single middleware
      */
-    private function executeMiddleware(string $middleware, Request $request, callable $next): mixed
+    private function executeMiddleware($middleware, $request, $next): mixed
     {
         $instance = Application::getInstance()->get($middleware);
 
@@ -502,7 +502,7 @@ class Router
     /**
      * Execute the route handler
      */
-    private function executeHandler(callable|array|string $handler, Request $request): mixed
+    private function executeHandler($handler, $request): mixed
     {
         // Controller action
         if (is_array($handler)) {

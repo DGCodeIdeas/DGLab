@@ -1,0 +1,1154 @@
+[
+  {
+    "phase": "1",
+    "category": "Foundation",
+    "title": "PSR-11 Container Implementation",
+    "objectives": [
+      "Implement a custom, zero-dependency PSR-11 compliant Dependency Injection Container.",
+      "Support autowiring using PHP Reflection API.",
+      "Implement manual binding for interfaces to concrete implementations.",
+      "Provide singleton management for shared service instances."
+    ],
+    "technical_details": [
+      "The container must be the heart of the application, managing all service lifecycles.",
+      "Implement 'make()' as an alias for 'get()' to support common patterns.",
+      "Must handle circular dependency detection to prevent stack overflows."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "2",
+    "category": "Foundation",
+    "title": "PSR-3 Logging Standard",
+    "objectives": [
+      "Integrate Monolog as the primary logging engine.",
+      "Configure standard handlers: StreamHandler (files) and ErrorLogHandler (system logs).",
+      "Implement a Logger proxy to allow swapping engines if necessary."
+    ],
+    "technical_details": [
+      "Log levels must strictly follow RFC 5424 (Emergency, Alert, Critical, Error, Warning, Notice, Info, Debug).",
+      "Use context arrays for all logging calls to maintain clean messages."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "3",
+    "category": "Foundation",
+    "title": "PSR-14 Event Dispatching",
+    "objectives": [
+      "Implement a PSR-14 compliant Event Dispatcher.",
+      "Support multiple listener drivers (Sync, Queue, Async).",
+      "Define standard 'Event' and 'Listener' interfaces for the ecosystem."
+    ],
+    "technical_details": [
+      "Events should be plain objects or extend a BaseEvent class.",
+      "Listeners must be callable or classes implementing a standard interface.",
+      "Implement listener prioritization and propagation stoppage."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "4",
+    "category": "Foundation",
+    "title": "PSR-7 HTTP Messages",
+    "objectives": [
+      "Implement custom, immutable Request and Response objects.",
+      "Ensure strict compliance with PSR-7 (ServerRequestInterface, ResponseInterface).",
+      "Implement 'Stream' class for handling request/response bodies efficiently."
+    ],
+    "technical_details": [
+      "Use PHP superglobals (\\$_SERVER, \\$_GET, \\$_POST, etc.) to seed the initial ServerRequest.",
+      "Ensure all 'with*' methods return a new instance to maintain immutability."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "5",
+    "category": "Foundation",
+    "title": "PSR-17 HTTP Factories",
+    "objectives": [
+      "Implement PSR-17 compliant factories for all HTTP message types.",
+      "Decouple the creation of Request/Response objects from their implementation."
+    ],
+    "technical_details": [
+      "Factories should be used by the Router and Controllers to create responses.",
+      "Ensures the system can easily swap implementation if standard libraries are ever allowed."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "6",
+    "category": "Foundation",
+    "title": "PSR-18 HTTP Client",
+    "objectives": [
+      "Implement a PSR-18 compliant HTTP Client for outgoing requests.",
+      "Support cURL and Stream-context based drivers.",
+      "Provide a clean interface for external API interactions."
+    ],
+    "technical_details": [
+      "Must handle HTTP exceptions according to PSR-18 specifications.",
+      "Implement request/response logging for debugging outgoing traffic."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "7",
+    "category": "Foundation",
+    "title": "PSR-6 & PSR-16 Caching",
+    "objectives": [
+      "Implement PSR-6 (Pool) and PSR-16 (Simple Cache) interfaces.",
+      "Support multiple drivers: Filesystem (default), Redis, and Null (for testing).",
+      "Ensure consistent TTL (Time-to-Live) behavior across drivers."
+    ],
+    "technical_details": [
+      "Default storage should be in 'storage/cache'.",
+      "Keys must be sanitized to prevent filesystem collisions."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "8",
+    "category": "Foundation",
+    "title": "PSR-15 Middleware System",
+    "objectives": [
+      "Implement PSR-15 MiddlewareInterface and RequestHandlerInterface.",
+      "Design a 'Pipeline' class to process requests through a stack of middleware.",
+      "Migrate core logic (Auth, CSRF, Session) to middleware components."
+    ],
+    "technical_details": [
+      "Middleware must be able to return a response directly or delegate to the 'next' handler.",
+      "The Pipeline should be reusable for different entry points (Web vs API)."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "9",
+    "category": "Foundation",
+    "title": "PSR-12 Coding Standards",
+    "objectives": [
+      "Adopt PSR-12 as the official coding style for the revamp.",
+      "Configure PHPCS rules to enforce standards strictly.",
+      "Implement a git-pre-commit hook for local linting."
+    ],
+    "technical_details": [
+      "Opening braces for classes and methods must be on a new line.",
+      "Strict typing (declare(strict_types=1)) should be encouraged for new files."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "10",
+    "category": "Foundation",
+    "title": "Core Contracts Definition",
+    "objectives": [
+      "Define the foundational interfaces for the entire Sovereign Stack.",
+      "Ensure all major services (Auth, View, Router) depend on interfaces, not concretes."
+    ],
+    "technical_details": [
+      "Interfaces should reside in 'app/Core/Contracts/'.",
+      "Follow the 'Interface Segregation Principle' to keep contracts lean."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "11",
+    "category": "Core",
+    "title": "Application Kernel Revamp",
+    "objectives": [
+      "Redesign the Application class as a lightweight kernel.",
+      "Implement life-cycle methods: bootstrap(), handle(), and terminate().",
+      "Ensure the kernel is the single entry point for all execution paths (Web, CLI, Worker)."
+    ],
+    "technical_details": [
+      "Bootstrapping should be fast (sub-5ms target).",
+      "The handle() method must accept a PSR-7 ServerRequest and return a PSR-7 Response."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "12",
+    "category": "Core",
+    "title": "Service Provider System",
+    "objectives": [
+      "Implement a robust Service Provider system for modular registration.",
+      "Support 'register()' for bindings and 'boot()' for runtime initialization.",
+      "Implement deferred loading for providers that are not needed on every request."
+    ],
+    "technical_details": [
+      "Core services (Database, Events) should have their own providers.",
+      "Allow third-party 'plugins' to hook into the system via providers."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "13",
+    "category": "Core",
+    "title": "Unified Configuration Management",
+    "objectives": [
+      "Implement a central Config class with dot-notation support (e.g., config('app.name')).",
+      "Support environment variable overrides using a custom .env parser.",
+      "Implement configuration caching for production environments."
+    ],
+    "technical_details": [
+      "Config files should be simple PHP arrays in the 'config/' directory.",
+      "Avoid using 'getenv()' directly in code; always go through the Config service."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "14",
+    "category": "Core",
+    "title": "Advanced Exception Handling",
+    "objectives": [
+      "Implement a global Exception Handler to catch all unhandled throwables.",
+      "Support environment-aware rendering (rich stack traces for dev, clean pages for prod).",
+      "Provide JSON-formatted error responses for API requests."
+    ],
+    "technical_details": [
+      "Register using 'set_exception_handler()' and 'set_error_handler()'.",
+      "Integrate with the PSR-3 Logger to record all critical failures."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "15",
+    "category": "Core",
+    "title": "Pipeline Pattern Implementation",
+    "objectives": [
+      "Implement a generic Pipeline pattern for sequential data processing.",
+      "Utilize the Pipeline for PSR-15 middleware execution.",
+      "Allow developers to use pipelines for custom business logic (e.g., order processing)."
+    ],
+    "technical_details": [
+      "The pipeline should support 'through()', 'send()', and 'then()' methods.",
+      "Must be capable of handling closures or class-based stages."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "16",
+    "category": "Core",
+    "title": "Advanced Dependency Injection",
+    "objectives": [
+      "Enhance the Container to support factory-based resolution.",
+      "Implement parameter-name-based resolution for scalar values.",
+      "Add circular dependency detection with descriptive error messages."
+    ],
+    "technical_details": [
+      "Use ReflectionParameter to determine constructor dependencies.",
+      "Cache the results of reflection lookups to maintain performance."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "17",
+    "category": "Core",
+    "title": "Environment Management",
+    "objectives": [
+      "Implement strict environment detection (local, testing, staging, production).",
+      "Provide helper methods like isLocal(), isProduction() on the Application class.",
+      "Enforce environment-specific security policies (e.g., disabling debug tools in prod)."
+    ],
+    "technical_details": [
+      "Primary detection should be based on the 'APP_ENV' variable in .env.",
+      "Fallback to 'production' if no environment is specified."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "18",
+    "category": "Core",
+    "title": "Core Service Registry",
+    "objectives": [
+      "Establish a registry for critical framework services for high-speed discovery.",
+      "Ensure that frequently accessed services (Router, Auth, View) are easily reachable."
+    ],
+    "technical_details": [
+      "The registry can be part of the Container or a dedicated static-access facade.",
+      "Avoid service-locator anti-patterns by prioritizing constructor injection."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "19",
+    "category": "Core",
+    "title": "Inter-Service Communication Hooks",
+    "objectives": [
+      "Implement a lightweight 'hook' system for services to extend each other.",
+      "Allow services to register interest in specific actions without full event dispatching overhead."
+    ],
+    "technical_details": [
+      "Hooks should be used for internal framework extension (e.g., adding custom validation rules).",
+      "Differentiate from the Event Dispatcher which is intended for business domain events."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "20",
+    "category": "Core",
+    "title": "Architectural Integrity Enforcement",
+    "objectives": [
+      "Introduce tools to enforce architectural boundaries (e.g., PHPStan with architecture rules).",
+      "Prevent layering violations like direct DB access from the View layer.",
+      "Automate the verification of these rules in the CI pipeline."
+    ],
+    "technical_details": [
+      "Use 'phpstan-deprecation-rules' and custom 'ForbiddenNamespace' rules.",
+      "Define a 'hexagonal' directory structure and enforce its rules."
+    ],
+    "status": "COMPLETED"
+  },
+  {
+    "phase": "21",
+    "category": "Database",
+    "title": "DBAL Alignment & PDO Refactor",
+    "objectives": [
+      "Refactor the Connection class to align with modern DBAL patterns.",
+      "Ensure all interactions use PDO and prepared statements.",
+      "Implement a connection pool simulation for better performance in persistent environments."
+    ],
+    "technical_details": [
+      "Support dynamic DSN generation for MySQL, PostgreSQL, and SQLite.",
+      "Implement automatic reconnection on lost database connections ('gone away')."
+    ]
+  },
+  {
+    "phase": "22",
+    "category": "Database",
+    "title": "Advanced Query Builder",
+    "objectives": [
+      "Implement a fluent Query Builder with support for complex WHERE clauses.",
+      "Add support for JOINs (Inner, Left, Right) and aggregate functions.",
+      "Implement pagination logic directly into the builder."
+    ],
+    "technical_details": [
+      "The builder must produce valid SQL and handle binding values safely.",
+      "Support 'where(function($query) { ... })' for nested logic."
+    ]
+  },
+  {
+    "phase": "23",
+    "category": "Database",
+    "title": "Repository Pattern Standardization",
+    "objectives": [
+      "Enforce the Repository pattern for all data access in the application.",
+      "Separate persistence logic from domain models.",
+      "Implement base repository classes for common CRUD operations."
+    ],
+    "technical_details": [
+      "Repositories should return Models or DTOs, never raw PDO arrays.",
+      "Ensure repositories can be easily mocked for unit testing."
+    ]
+  },
+  {
+    "phase": "24",
+    "category": "Database",
+    "title": "Model Evolution & Attribute Mapping",
+    "objectives": [
+      "Enhance the Model class to support automatic attribute mapping.",
+      "Implement castable attributes (e.g., 'json', 'boolean', 'datetime').",
+      "Establish a clear distinction between the Model (State) and Repository (Persistence)."
+    ],
+    "technical_details": [
+      "Use PHP 8.x attributes for metadata mapping if possible.",
+      "Implement dirty checking to only update modified columns."
+    ]
+  },
+  {
+    "phase": "25",
+    "category": "Database",
+    "title": "Migration Engine v2",
+    "objectives": [
+      "Implement a robust migration system with version tracking in a 'migrations' table.",
+      "Support 'up' and 'down' methods for every schema change.",
+      "Add a 'status' command to see pending and applied migrations."
+    ],
+    "technical_details": [
+      "Migrations should be executed inside transactions where supported.",
+      "Allow migrations to be scoped to specific tenants in multi-tenant mode."
+    ]
+  },
+  {
+    "phase": "26",
+    "category": "Database",
+    "title": "Seeder & Factory System",
+    "objectives": [
+      "Implement data seeders for populating initial or test data.",
+      "Implement Model Factories for creating test instances with random data.",
+      "Integrate with a faker-style library (implemented natively or via minimal dependency)."
+    ],
+    "technical_details": [
+      "Factories should support state transformations (e.g., 'admin()', 'suspended()').",
+      "Seeders must be idempotent to allow multiple runs safely."
+    ]
+  },
+  {
+    "phase": "27",
+    "category": "Database",
+    "title": "Transaction Management",
+    "objectives": [
+      "Implement a central TransactionManager to handle database transactions.",
+      "Support nested transactions using SAVEPOINTs where supported.",
+      "Provide a 'transaction(callable)' helper for automatic commit/rollback."
+    ],
+    "technical_details": [
+      "Ensure rollbacks correctly bubble exceptions to the caller.",
+      "Handle connection-specific transaction state accurately."
+    ]
+  },
+  {
+    "phase": "28",
+    "category": "Database",
+    "title": "Hybrid EAV Schema Core",
+    "objectives": [
+      "Implement the core logic for the Entity-Attribute-Value (EAV) schema.",
+      "Allow entities to have dynamic, tenant-specific attributes without schema changes.",
+      "Optimize EAV lookups using specialized JOIN logic or JSON indexing."
+    ],
+    "technical_details": [
+      "Primary EAV tables should be 'attributes' and 'attribute_values'.",
+      "Implement a 'metadata' layer on top of standard Models to interact with EAV data."
+    ]
+  },
+  {
+    "phase": "29",
+    "category": "Database",
+    "title": "Persistence Auditing (Soft Deletes)",
+    "objectives": [
+      "Implement standardized soft-deletion logic for models.",
+      "Add automated record-level auditing (created_at, updated_at, created_by, updated_by).",
+      "Ensure the Query Builder automatically excludes soft-deleted records unless requested."
+    ],
+    "technical_details": [
+      "Use a trait-based approach for SoftDeletes and Auditable behaviors.",
+      "Integrate 'created_by' with the current Auth user automatically."
+    ]
+  },
+  {
+    "phase": "30",
+    "category": "Database",
+    "title": "SQL Injection Hardening",
+    "objectives": [
+      "Perform a security audit of the entire persistence layer.",
+      "Harden parameter binding and schema escaping across all drivers.",
+      "Implement a 'Strict Query' mode for development to detect unparameterized inputs."
+    ],
+    "technical_details": [
+      "Enforce PDO::ATTR_EMULATE_PREPARES => false to ensure real server-side preparation.",
+      "Use whitelist-based escaping for dynamic table and column names."
+    ]
+  },
+  {
+    "phase": "31",
+    "category": "Routing",
+    "title": "FastRoute Core Integration",
+    "objectives": [
+      "Integrate Nikic/FastRoute (or a compatible Sovereign implementation) for high-speed routing.",
+      "Support advanced segment matching with regex constraints.",
+      "Implement route compilation for sub-1ms matching in production."
+    ],
+    "technical_details": [
+      "Route definitions should remain in 'routes/web.php'.",
+      "Support optional parameters (e.g., /user/{id?})."
+    ]
+  },
+  {
+    "phase": "32",
+    "category": "Routing",
+    "title": "Named Routes & URL Generation",
+    "objectives": [
+      "Implement a reverse-routing system to generate URLs from named routes.",
+      "Support parameter injection and query string building.",
+      "Ensure the URL generator is available in both Controllers and Views."
+    ],
+    "technical_details": [
+      "Method signature: route('route.name', ['param' => 'value']).",
+      "Generate absolute URLs based on the current request context."
+    ]
+  },
+  {
+    "phase": "33",
+    "category": "Routing",
+    "title": "Route Grouping & Prefixing",
+    "objectives": [
+      "Implement route groups for shared attributes (prefixes, middleware, namespaces).",
+      "Support nested groups for complex application structures.",
+      "Enable domain-based routing for multi-tenant setups."
+    ],
+    "technical_details": [
+      "Group attributes must merge recursively.",
+      "Middleware defined in groups should be prepended to individual route middleware."
+    ]
+  },
+  {
+    "phase": "34",
+    "category": "Routing",
+    "title": "Request Validation Layer",
+    "objectives": [
+      "Implement a formal Request Validation system with reusable rules (required, email, etc.).",
+      "Support automatic redirection with error messages on validation failure.",
+      "Allow custom validation rules via closures or dedicated classes."
+    ],
+    "technical_details": [
+      "Implement a 'Validator' service registered in the Container.",
+      "Validation errors must be stored in the session flash and restored on the next request."
+    ]
+  },
+  {
+    "phase": "35",
+    "category": "Routing",
+    "title": "Response Factory Enhancement",
+    "objectives": [
+      "Implement specialized response methods in the ResponseFactory.",
+      "Add 'json()', 'file()', 'stream()', 'redirecteded()', and 'download()' helpers.",
+      "Ensure consistent header management across all response types."
+    ],
+    "technical_details": [
+      "JSON responses should automatically set 'Content-Type: application/json'.",
+      "File responses must handle Range requests for media streaming."
+    ]
+  },
+  {
+    "phase": "36",
+    "category": "View",
+    "title": "SuperPHP Engine Refactoring",
+    "objectives": [
+      "Refactor the SuperPHP parser for better performance and extensibility.",
+      "Improve the compilation cache logic to prevent unnecessary disk I/O.",
+      "Add support for custom PHP 8.x attributes in view components."
+    ],
+    "technical_details": [
+      "Use token_get_all() or a fast regex parser for template transpilation.",
+      "Ensure the engine remains 'Pure PHP' with zero external dependencies."
+    ]
+  },
+  {
+    "phase": "37",
+    "category": "View",
+    "title": "Component-Based Architecture",
+    "objectives": [
+      "Standardize SuperPHP components with isolated state and lifecycle hooks.",
+      "Implement 'props' validation and default values for components.",
+      "Ensure components can be nested and carry their own assets."
+    ],
+    "technical_details": [
+      "Components should be rendered as isolated PHP classes or fragments.",
+      "Implement a 'ComponentRegistry' for automated discovery."
+    ]
+  },
+  {
+    "phase": "38",
+    "category": "View",
+    "title": "Template Inheritance System",
+    "objectives": [
+      "Implement layout-based template inheritance using 'blocks' and 'slots'.",
+      "Support parent-child layout relationships with '@extends' and '@section'.",
+      "Implement 'stacks' for pushing scripts and styles from components to layouts."
+    ],
+    "technical_details": [
+      "Layout resolution must be fast and support fallback defaults.",
+      "Stacks must maintain order and prevent duplicate script inclusion."
+    ]
+  },
+  {
+    "phase": "39",
+    "category": "View",
+    "title": "View Composers",
+    "objectives": [
+      "Implement View Composers to inject data into specific views or components automatically.",
+      "Decouple global data preparation (e.g., nav menus, user profile) from controllers."
+    ],
+    "technical_details": [
+      "Register composers using 'View::composer('view.name', callback)'.",
+      "Support wildcard patterns (e.g., 'layouts.*') for broad data injection."
+    ]
+  },
+  {
+    "phase": "40",
+    "category": "View",
+    "title": "View Security (XSS Protection)",
+    "objectives": [
+      "Enforce automatic HTML escaping for all data output in SuperPHP templates.",
+      "Provide a 'raw' or 'unescaped' tag for trusted HTML content.",
+      "Implement context-aware escaping for data injected into <script> or <style> tags."
+    ],
+    "technical_details": [
+      "Default behavior: {{ $var }} -> htmlspecialchars($var).",
+      "Unescaped: {!! $var !!} -> $var."
+    ]
+  },
+  {
+    "phase": "41",
+    "category": "Reactive",
+    "title": "SPA Navigation Engine v2",
+    "objectives": [
+      "Complete rewrite of the client-side navigation logic for smoother transitions.",
+      "Implement atomic state management to prevent partial page brokenness.",
+      "Optimize the Fetch-based loading system for sub-5ms perceived latency."
+    ],
+    "technical_details": [
+      "Intercept all internal link clicks and form submissions.",
+      "Use the History API to manage browser state and URL updates."
+    ]
+  },
+  {
+    "phase": "42",
+    "category": "Reactive",
+    "title": "DOM Morphing Implementation",
+    "objectives": [
+      "Implement a high-performance DOM morphing algorithm (like morphdom but native to Superpowers).",
+      "Ensure that input focus and scroll positions are preserved during updates.",
+      "Optimize for 'Pure PHP' fragment responses."
+    ],
+    "technical_details": [
+      "The algorithm should diff elements by attributes and children.",
+      "Prioritize performance over 100% diffing accuracy in non-critical areas."
+    ]
+  },
+  {
+    "phase": "43",
+    "category": "Reactive",
+    "title": "Reactive State Persistence",
+    "objectives": [
+      "Enhance '@persist' and '@global' directives for reliable cross-request state.",
+      "Implement client-side storage (localStorage/sessionStorage) syncing for persisted data.",
+      "Ensure that server-side changes to persisted state are correctly hydrated on the client."
+    ],
+    "technical_details": [
+      "Persisted state should be keyed by component/route name.",
+      "Implement conflict resolution for concurrent state updates."
+    ]
+  },
+  {
+    "phase": "44",
+    "category": "Reactive",
+    "title": "Client-Side Lifecycle Hooks",
+    "objectives": [
+      "Expose standardized 'init', 'mount', and 'update' hooks for reactive components.",
+      "Allow developers to run custom JavaScript when specific DOM fragments are rendered.",
+      "Ensure hooks are called correctly after DOM morphing."
+    ],
+    "technical_details": [
+      "Use custom DOM events or a dedicated 'Superpowers.hook()' registry.",
+      "Hooks must be idempotent to handle re-renders."
+    ]
+  },
+  {
+    "phase": "45",
+    "category": "Reactive",
+    "title": "Intelligent Prefetching",
+    "objectives": [
+      "Implement '@prefetch' logic based on viewport visibility or hover intent.",
+      "Add a 'Link: prefetch' header generator for critical next-page assets.",
+      "Implement a caching layer for prefetched HTML fragments."
+    ],
+    "technical_details": [
+      "Use IntersectionObserver for viewport-based prefetching.",
+      "Implement a 200ms delay for hover-based prefetching to avoid noise."
+    ]
+  },
+  {
+    "phase": "46",
+    "category": "Reactive",
+    "title": "Progressive Enhancement Strategy",
+    "objectives": [
+      "Ensure the entire application remains functional without JavaScript (SSR fallback).",
+      "Verify that all forms and links work using standard browser behavior.",
+      "Implement 'Hydration' for components that need JS enhancement."
+    ],
+    "technical_details": [
+      "The first request must always be fully server-rendered.",
+      "Check 'X-Superpowers-Fragment' header to differentiate SPA requests from standard ones."
+    ]
+  },
+  {
+    "phase": "47",
+    "category": "Reactive",
+    "title": "Offline Sync & Service Worker",
+    "objectives": [
+      "Implement a robust Service Worker for offline availability.",
+      "Add background sync for forms submitted while offline.",
+      "Implement an 'Offline-First' caching strategy for critical UI assets."
+    ],
+    "technical_details": [
+      "Use CacheStorage for HTML/JS/CSS; IndexedDB for application data.",
+      "Provide a 'ConnectivityMonitor' service for UI feedback."
+    ]
+  },
+  {
+    "phase": "48",
+    "category": "Reactive",
+    "title": "Web Workers Bridge",
+    "objectives": [
+      "Implement a bridge to offload heavy logic (e.g., encryption, large data processing) to Web Workers.",
+      "Provide a simple API for 'RPC-style' communication between main thread and worker.",
+      "Integrate the worker lifecycle with the SPA engine."
+    ],
+    "technical_details": [
+      "Use MessageChannel for low-latency communication.",
+      "Implement fallback logic for browsers without Web Worker support."
+    ]
+  },
+  {
+    "phase": "49",
+    "category": "Reactive",
+    "title": "Real-time Events (Nexus Integration)",
+    "objectives": [
+      "Integrate the Nexus WebSocket server into the Superpowers SPA engine.",
+      "Allow reactive state to be updated in real-time from the server.",
+      "Implement 'Channel' based event subscriptions (e.g., 'user.123', 'system.alerts')."
+    ],
+    "technical_details": [
+      "Use JSON-RPC or a custom lightweight protocol over WebSockets.",
+      "Automatically reconnect and re-subscribe on connection loss."
+    ]
+  },
+  {
+    "phase": "50",
+    "category": "Reactive",
+    "title": "State Hydration Logic",
+    "objectives": [
+      "Optimize the hydration of server-sent state into the client-side store.",
+      "Implement atomic state merges to prevent UI flickering.",
+      "Add validation for server-sent state to prevent injection attacks."
+    ],
+    "technical_details": [
+      "Server state should be sent in an 's-data' attribute or a global JSON object.",
+      "Implement a 'DeepMerge' algorithm for reactive state objects."
+    ]
+  },
+  {
+    "phase": "51",
+    "category": "Reactive",
+    "title": "Fragment Rendering",
+    "objectives": [
+      "Support rendering and updating only specific UI fragments (e.g., a modal, a table).",
+      "Implement '@fragment' directive in SuperPHP for targeting.",
+      "Optimize server-side execution to only process the requested fragment."
+    ],
+    "technical_details": [
+      "Use the 'X-Superpowers-Fragment' header to signal fragment requests.",
+      "The View engine should skip non-fragment template parts for performance."
+    ]
+  },
+  {
+    "phase": "52",
+    "category": "Reactive",
+    "title": "History & Scroll Management",
+    "objectives": [
+      "Implement advanced history API handling with custom state objects.",
+      "Add reliable scroll position restoration when navigating back/forward.",
+      "Support 'scroll-to-top' vs 'maintain-scroll' on navigation."
+    ],
+    "technical_details": [
+      "Store scroll coordinates in the history.state object.",
+      "Add '@scroll-lock' and '@scroll-top' directives for components."
+    ]
+  },
+  {
+    "phase": "53",
+    "category": "Reactive",
+    "title": "Error Boundaries",
+    "objectives": [
+      "Implement client-side error boundaries to prevent a single component failure from crashing the app.",
+      "Show fallback UI for failed components while maintaining the rest of the page.",
+      "Report component-level errors to the server-side audit log."
+    ],
+    "technical_details": [
+      "Wrap reactive components in try/catch blocks during initialization/updates.",
+      "Integrate with the global Exception Handler bridge."
+    ]
+  },
+  {
+    "phase": "54",
+    "category": "Reactive",
+    "title": "Lazy Loading UI Components",
+    "objectives": [
+      "Implement on-demand loading of reactive components (JS/CSS).",
+      "Optimize the first-load payload by deferring non-critical components.",
+      "Add loading indicators for deferred components."
+    ],
+    "technical_details": [
+      "Use dynamic 'import()' or a custom script loader.",
+      "AssetBundler must support generating small, decoupled component chunks."
+    ]
+  },
+  {
+    "phase": "55",
+    "category": "Reactive",
+    "title": "Unified Event Bus",
+    "objectives": [
+      "Implement a global client-side event bus for inter-component communication.",
+      "Allow components to publish/subscribe to application-level events (e.g., 'cart.added').",
+      "Ensure events can trigger server-side actions seamlessly."
+    ],
+    "technical_details": [
+      "Interface: Superpowers.emit('event', data) and Superpowers.on('event', callback).",
+      "Support wildcard event listeners for debugging."
+    ]
+  },
+  {
+    "phase": "56",
+    "category": "Assets",
+    "title": "AssetBundler Core Refactor",
+    "objectives": [
+      "Optimize the internal AssetBundler for significantly faster compilation.",
+      "Implement advanced caching logic to prevent redundant bundling.",
+      "Refactor the bundler as a standalone, PSR-11 compatible service."
+    ],
+    "technical_details": [
+      "Default storage: 'public/assets/build'.",
+      "Implement file-mtime-based change detection for speed."
+    ]
+  },
+  {
+    "phase": "57",
+    "category": "Assets",
+    "title": "SCSS Compilation Logic",
+    "objectives": [
+      "Improve the internal SCSS compiler with better error reporting and source maps.",
+      "Add support for dynamic variable injection from PHP (e.g., brand colors from config).",
+      "Optimize include-path resolution for vendor SCSS files."
+    ],
+    "technical_details": [
+      "Use scssphp/scssphp but wrap it in a custom Sovereign service.",
+      "Support '@import' from both 'resources/scss' and 'vendor/'."
+    ]
+  },
+  {
+    "phase": "58",
+    "category": "Assets",
+    "title": "JS Bundling & Minification",
+    "objectives": [
+      "Implement safe, regex-based JS bundling without external tools.",
+      "Ensure that minification doesn't break reactive directives (@persist, etc.).",
+      "Add support for ES6+ features and module aggregation."
+    ],
+    "technical_details": [
+      "Aggregation should preserve script order defined in the manifest.",
+      "Minification should target size reduction without heavy AST parsing overhead."
+    ]
+  },
+  {
+    "phase": "59",
+    "category": "Assets",
+    "title": "Asset Versioning (Cache Busting)",
+    "objectives": [
+      "Implement content-based hashing for all public assets (e.g., app.v8f2a1.css).",
+      "Automate the updating of the asset manifest on every build.",
+      "Provide an 'asset()' helper that resolves hashed filenames automatically."
+    ],
+    "technical_details": [
+      "Use MD5 or SHA-1 of file content for hashes.",
+      "Clean up old build artifacts to prevent 'storage/build' bloat."
+    ]
+  },
+  {
+    "phase": "60",
+    "category": "Assets",
+    "title": "Dependency Resolution (Node-Free)",
+    "objectives": [
+      "Implement a mechanism to resolve JS/CSS dependencies directly from 'vendor/' folders.",
+      "Support automated copying of vendor assets to the public build directory.",
+      "Eliminate the need for 'npm install' or 'package.json'."
+    ],
+    "technical_details": [
+      "Scan composer.json for packages containing 'dist' or 'assets' folders.",
+      "Provide a 'mapping' configuration for common libraries (e.g., FontAwesome, Chart.js)."
+    ]
+  },
+  {
+    "phase": "61",
+    "category": "Assets",
+    "title": "Image Optimization Service",
+    "objectives": [
+      "Implement a service for on-the-fly image resizing and optimization.",
+      "Support automatic conversion to modern formats like WebP and AVIF.",
+      "Integrate an asset cache for generated images."
+    ],
+    "technical_details": [
+      "Use Intervention Image (v3) for underlying processing.",
+      "Interface: <img src=\"{{ img('profile.jpg', width=300) }}\" />."
+    ]
+  },
+  {
+    "phase": "62",
+    "category": "Assets",
+    "title": "Font Handling & WebP Support",
+    "objectives": [
+      "Standardize font loading to prevent layout shifts (CLS).",
+      "Implement automated font preloading for critical routes.",
+      "Ensure full support for modern image and font formats across all browsers."
+    ],
+    "technical_details": [
+      "Automatically generate '@font-face' CSS with 'font-display: swap'.",
+      "Identify and preload top 3 used fonts in the Shell layout."
+    ]
+  },
+  {
+    "phase": "63",
+    "category": "Assets",
+    "title": "Asset Preloading Headers",
+    "objectives": [
+      "Automatically generate 'Link: <asset>; rel=preload' headers for critical resources.",
+      "Coordinate with the Router to identify route-specific preloads.",
+      "Improve Largest Contentful Paint (LCP) scores."
+    ],
+    "technical_details": [
+      "Add a 'PreloadMiddleware' to the Web stack.",
+      "Dynamically build the Link header based on the manifest and current route."
+    ]
+  },
+  {
+    "phase": "64",
+    "category": "Assets",
+    "title": "Internal CDN Logic",
+    "objectives": [
+      "Implement support for serving assets from multiple domains or CDNs.",
+      "Add configuration for asset URL prefixing (e.g., cdn.dglab.dev).",
+      "Handle CORS headers automatically for cross-domain asset requests."
+    ],
+    "technical_details": [
+      "The 'asset()' helper must respect the CDN configuration.",
+      "Ensure that local dev environments still serve from 'localhost' by default."
+    ]
+  },
+  {
+    "phase": "65",
+    "category": "Assets",
+    "title": "Developer Tooling (Asset Watcher)",
+    "objectives": [
+      "Enhance the internal asset watcher for near-instant updates during development.",
+      "Implement WebSocket notifications to the SPA engine for hot-reloading (HMR-style).",
+      "Optimize for low CPU usage while watching large file trees."
+    ],
+    "technical_details": [
+      "Use PHP's inotify extension where available, or fast polling as fallback.",
+      "Integrate with Nexus to push 'reload' signals to the client."
+    ]
+  },
+  {
+    "phase": "66",
+    "category": "Security",
+    "title": "AuthManager Guard System",
+    "objectives": [
+      "Implement a flexible guard system supporting Session, Token, and JWT authentication.",
+      "Enable multiple guard usage per request (e.g., Web + API authentication).",
+      "Standardize the 'User' object and its retrieval logic."
+    ],
+    "technical_details": [
+      "Guard method: Auth::guard('api')->check().",
+      "Implement a 'GuardInterface' for easy extension."
+    ]
+  },
+  {
+    "phase": "67",
+    "category": "Security",
+    "title": "JWT Service Standard (Post-Quantum Ready)",
+    "objectives": [
+      "Standardize JWT issuance and verification with asymmetric keys (RSA-4096 / EdDSA).",
+      "Implement JTI (JWT ID) tracking for token revocation support.",
+      "Support multiple signing algorithms based on security level requirements."
+    ],
+    "technical_details": [
+      "Use safe cryptographic libraries (natively implemented where possible).",
+      "Tokens should include 'exp', 'iat', 'nbf', and 'sub' claims by default."
+    ]
+  },
+  {
+    "phase": "68",
+    "category": "Security",
+    "title": "RBAC & Permission System",
+    "objectives": [
+      "Implement a hierarchical Role-Based Access Control system.",
+      "Add support for fine-grained permissions attached to roles or individual users.",
+      "Implement 'Gate' logic for declarative permission checks in Controllers and Views."
+    ],
+    "technical_details": [
+      "Interface: Auth::can('edit-post', $post) or @can('admin') ... @endcan.",
+      "Cache permission lookups to minimize database overhead."
+    ]
+  },
+  {
+    "phase": "69",
+    "category": "Security",
+    "title": "Multi-Tenant Isolation",
+    "objectives": [
+      "Harden tenant isolation at the data and session levels.",
+      "Implement strict row-level security logic in the Query Builder.",
+      "Ensure filesystem paths for tenants are strictly isolated and verified."
+    ],
+    "technical_details": [
+      "All tenant-related queries must automatically append 'WHERE tenant_id = ?'.",
+      "Implement 'TenantContext' to maintain current tenant state globally."
+    ]
+  },
+  {
+    "phase": "70",
+    "category": "Security",
+    "title": "CSRF & Security Headers",
+    "objectives": [
+      "Implement automated CSRF protection for all POST/PUT/DELETE requests.",
+      "Automate the injection of security headers (CSP, HSTS, X-Frame-Options).",
+      "Coordinate CSRF validation with the Superpowers SPA fetch logic."
+    ],
+    "technical_details": [
+      "Use an 'X-CSRF-TOKEN' header for AJAX/Fetch requests.",
+      "Implement token rotation on sensitive actions (e.g., login, password change)."
+    ]
+  },
+  {
+    "phase": "71",
+    "category": "Security",
+    "title": "Rate Limiting Service",
+    "objectives": [
+      "Implement a framework-wide rate limiter using the Leaky Bucket algorithm.",
+      "Support rate limiting by IP address, User ID, or API key.",
+      "Integrate rate limiting middleware for both API and Web routes."
+    ],
+    "technical_details": [
+      "Storage: Redis (recommended) or Filesystem.",
+      "Include 'X-RateLimit-*' headers in responses."
+    ]
+  },
+  {
+    "phase": "72",
+    "category": "Security",
+    "title": "Encryption & Hashing Service",
+    "objectives": [
+      "Standardize all application encryption on AES-256-GCM.",
+      "Ensure password hashing uses Argon2id with high memory/time costs.",
+      "Implement an 'EncryptionService' that handles key rotation and versioning."
+    ],
+    "technical_details": [
+      "Encrypted payloads must include an HMAC for integrity verification.",
+      "Use the 'openssl' extension for underlying crypto operations."
+    ]
+  },
+  {
+    "phase": "73",
+    "category": "Security",
+    "title": "Social Auth (OAuth2) Core",
+    "objectives": [
+      "Implement core logic for integrating external OAuth2 providers (Google, GitHub, Apple).",
+      "Create a standardized callback handler that maps social profiles to local users.",
+      "Implement state verification for OAuth2 security."
+    ],
+    "technical_details": [
+      "Interface: SocialAuth::driver('google')->redirect().",
+      "Store social IDs in a 'social_accounts' table linked to 'users'."
+    ]
+  },
+  {
+    "phase": "74",
+    "category": "Security",
+    "title": "Audit Logging Standard",
+    "objectives": [
+      "Implement a system-wide audit logging standard for all security-relevant events.",
+      "Log all login attempts, permission changes, and high-value data modifications.",
+      "Ensure audit logs are immutable and tamper-evident."
+    ],
+    "technical_details": [
+      "Category: 'security', 'data', 'system'.",
+      "Fields: event_type, user_id, ip_address, user_agent, metadata (JSON)."
+    ]
+  },
+  {
+    "phase": "75",
+    "category": "Security",
+    "title": "Privacy & GDPR Tools",
+    "objectives": [
+      "Implement tools for data anonymization and user data export.",
+      "Add automated 'Right to be Forgotten' flows that handle soft vs hard deletion correctly.",
+      "Support cookie consent management integrated with the SPA engine."
+    ],
+    "technical_details": [
+      "Implement a 'PrivacyManager' that coordinates data cleanup across services.",
+      "Generate machine-readable JSON exports for user data requests."
+    ]
+  },
+  {
+    "phase": "76",
+    "category": "Testing",
+    "title": "Parallel Test Runner Enhancement",
+    "objectives": [
+      "Refine 'cli/test.php' for optimized parallel execution.",
+      "Implement process isolation and database state management for parallel runs.",
+      "Add rich progress reporting and failure summaries."
+    ],
+    "technical_details": [
+      "Use pcntl_fork() or multiple PHP processes.",
+      "Dynamically create temporary databases for each test process."
+    ]
+  },
+  {
+    "phase": "77",
+    "category": "Testing",
+    "title": "Unit & Integration Standard",
+    "objectives": [
+      "Establish a 100% coverage target for all new core components.",
+      "Implement integration tests that verify service interaction in a real application context.",
+      "Ensure 80% coverage for the initial 'Base Site' features (Auth, Home)."
+    ],
+    "technical_details": [
+      "Use PHPUnit 10+ for the test suite.",
+      "Implement a custom test harness for SuperPHP components."
+    ]
+  },
+  {
+    "phase": "78",
+    "category": "Testing",
+    "title": "Browser & Visual Regression",
+    "objectives": [
+      "Implement automated visual regression tests using pixel-diffing (Intervention based).",
+      "Verify UI stability across MOBILE and DESKTOP viewports.",
+      "Integrate browser-based journey tests for critical paths (Login, Profile)."
+    ],
+    "technical_details": [
+      "Use Panther for browser automation.",
+      "Snapshot storage: 'tests/snapshots'."
+    ]
+  },
+  {
+    "phase": "79",
+    "category": "Testing",
+    "title": "Performance Benchmarking",
+    "objectives": [
+      "Implement automated benchmarks for routing, view rendering, and asset bundling.",
+      "Track request latency and memory usage trends over time.",
+      "Ensure no PR is merged that significantly regresses performance."
+    ],
+    "technical_details": [
+      "Use phpbench for micro-benchmarks.",
+      "Report performance metrics in the CI pipeline output."
+    ]
+  },
+  {
+    "phase": "80",
+    "category": "Testing",
+    "title": "Accessibility (A11y) Audits",
+    "objectives": [
+      "Integrate automated accessibility checks (axe-core) into the CI pipeline.",
+      "Ensure the 'Base Site' complies with WCAG 2.1 AA standards.",
+      "Automate the reporting of A11y violations to developers."
+    ],
+    "technical_details": [
+      "Execute axe-core JS via Panther during browser tests.",
+      "Maintain a list of allowed A11y exceptions where necessary."
+    ]
+  },
+  {
+    "phase": "81",
+    "category": "Launch",
+    "title": "v1.0.0-beta Release",
+    "objectives": [
+      "Final stabilization and bug-fixing phase.",
+      "Finalize technical documentation and 'getting started' guides.",
+      "Public beta launch and monitoring period."
+    ],
+    "technical_details": [
+      "Version tag: v1.0.0-beta.",
+      "Release focus: Stability, Performance, and PSR Compliance certification."
+    ]
+  }
+]

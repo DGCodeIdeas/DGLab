@@ -3,7 +3,7 @@
 namespace DGLab\Events\Routing;
 
 use DGLab\Core\BaseEvent;
-use DGLab\Core\Request;
+use Psr\Http\Message\ServerRequestInterface as Request;
 use DGLab\Core\Route;
 
 class RouteMatched extends BaseEvent
