@@ -2,23 +2,25 @@
 
 namespace DGLab\Core;
 
+use DGLab\Core\Contracts\ResponseFactoryInterface;
+
 /**
  * Class ResponseFactory
  */
 class ResponseFactory implements ResponseFactoryInterface
 {
-    public function create(string $content = '', int $status = 200, array $headers = []): Response
+    public function create(string  = '', int  = 200, array  = []): Response
     {
-        return new Response($content, $status, $headers);
+        return new Response(, , );
     }
 
-    public function json(array $data, int $status = 200, array $headers = []): Response
+    public function json(array , int  = 200, array  = []): Response
     {
-        return Response::json($data, $status, $headers);
+        return Response::json(, , );
     }
 
-    public function redirect(string $url, int $status = 302, array $headers = []): Response
+    public function redirect(string , int  = 302, array  = []): Response
     {
-        return Response::redirect($url, $status, $headers);
+        return Response::redirect(, , );
     }
 }

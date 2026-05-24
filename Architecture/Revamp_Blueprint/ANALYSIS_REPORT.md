@@ -17,7 +17,7 @@ The DGLab codebase currently utilizes a custom, high-performance "Pure Superpowe
 | **PSR-11 (Container)** | ❌ Missing | `Application` is a locator, not a compliant container. |
 | **PSR-14 (Event Dispatching)** | ❌ Missing | Custom dispatcher used. |
 | **PSR-15 (Middleware)** | ❌ Missing | Incompatible with standard middleware stacks. |
-| **SOLID Principles** | ⚠️ Partial | High coupling in some core services (e.g., `AuditService` depends on multiple concrete classes). |
+| **SOLID Principles** | ⚠️ Partial | High coupling in some core services. |
 
 ## 3. Revamp Strategy: The 81-Phase Roadmap
 To reach "Industry Standard" and launch by month-end, we will execute a non-breaking, phased refactor.

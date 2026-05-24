@@ -10,8 +10,9 @@ use DGLab\Database\Connection;
 use DGLab\Core\Exceptions\RouteNotFoundException;
 use DGLab\Core\Exceptions\EntryNotFoundException;
 use DGLab\Core\Exceptions\ContainerException;
+use Psr\Container\ContainerInterface;
 
-class Application implements \Psr\Container\ContainerInterface
+class Application implements ContainerInterface
 {
     public const VERSION = '1.0.0-Superpowers';
     protected static ?Application $instance = null;
@@ -58,7 +59,7 @@ class Application implements \Psr\Container\ContainerInterface
         ));
 
         $this->set(\DGLab\Core\Contracts\ResponseFactoryInterface::class, fn() => new ResponseFactory());
-        $this->set(\DGLab\Core\ResponseFactoryInterface::class, fn($app) => $app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class));
+        $this->set(\DGLab\Core\Contracts\ResponseFactoryInterface::class, fn($app) => $app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class));
         $this->set(ResponseFactory::class, fn() => new ResponseFactory());
 
         // Register application controllers
@@ -107,7 +108,7 @@ class Application implements \Psr\Container\ContainerInterface
             throw new EntryNotFoundException("Service not found: {$id}");
         }
         try {
-            if ($this->services[$id] instanceof \Closure) {
+            if (isset($this->services[$id]) && $this->services[$id] instanceof \Closure) {
                 $this->services[$id] = ($this->services[$id])($this);
             }
             return $this->services[$id];
