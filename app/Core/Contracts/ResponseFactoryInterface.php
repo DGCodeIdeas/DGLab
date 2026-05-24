@@ -14,15 +14,15 @@ interface ResponseFactoryInterface
     /**
      * Create a standard HTML/text response
      */
-    public function create(string  = "", int  = 200, array  = []): Response;
+    public function create(string $content = "", int $status = 200, array $headers = []): Response;
 
     /**
      * Create a JSON response
      */
-    public function json(array , int  = 200, array  = []): Response;
+    public function json(array $data, int $status = 200, array $headers = []): Response;
 
     /**
      * Create a redirect response
      */
-    public function redirect(string , int  = 302, array  = []): Response;
+    public function redirect(string $url, int $status = 302, array $headers = []): Response;
 }

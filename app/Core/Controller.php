@@ -3,6 +3,7 @@
 namespace DGLab\Core;
 
 use DGLab\Services\Auth\AuthManager;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 
 abstract class Controller
 {
@@ -37,7 +38,7 @@ abstract class Controller
 
     protected function getResponseFactory(): ResponseFactoryInterface
     {
-        return $this->app->get(ResponseFactoryInterface::class);
+        return $this->app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class);
     }
 
     protected function json(array $data, int $status = 200, array $headers = []): Response

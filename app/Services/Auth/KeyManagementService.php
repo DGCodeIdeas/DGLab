@@ -6,7 +6,7 @@ use RuntimeException;
 
 class KeyManagementService
 {
-    protected string ;
+    protected string $storagePath;
     public function __construct(?string $storagePath = null)
     {
         if ($storagePath) {
@@ -25,13 +25,13 @@ class KeyManagementService
             if ($type === 'private') {
                 return $this->generateKeyPair($name)['private'];
             }
-            throw new RuntimeException(\"Key file not found: $path\");
+            throw new RuntimeException("Key file not found: $path");
         }
         return file_get_contents($path);
     }
     public function generateKeyPair(string $name): array
     {
-        $res = openssl_pkey_new([\"private_key_bits\" => 2048, \"private_key_type\" => OPENSSL_KEYTYPE_RSA]);
+        $res = openssl_pkey_new(["private_key_bits" => 2048, "private_key_type" => OPENSSL_KEYTYPE_RSA]);
         openssl_pkey_export($res, $privKey);
         $pubKey = openssl_pkey_get_details($res)['key'];
         file_put_contents($this->storagePath . '/' . $name . '.private', $privKey);

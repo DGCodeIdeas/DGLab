@@ -93,9 +93,9 @@ class Application implements ContainerInterface
         try {
             return $this->get(Router::class)->dispatch($request);
         } catch (RouteNotFoundException $e) {
-            return $this->get(ResponseFactoryInterface::class)->create("404 Not Found", 404);
+            return $this->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class)->create("404 Not Found", 404);
         } catch (\Exception $e) {
-            return $this->get(ResponseFactoryInterface::class)->create("500 Error: " . $e->getMessage(), 500);
+            return $this->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class)->create("500 Error: " . $e->getMessage(), 500);
         }
     }
 

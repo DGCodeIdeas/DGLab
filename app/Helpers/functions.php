@@ -6,7 +6,7 @@
 
 use DGLab\Core\Application;
 use DGLab\Core\Response;
-use DGLab\Core\ResponseFactoryInterface;
+use DGLab\Core\Contracts\ResponseFactoryInterface;
 use DGLab\Core\View;
 use DGLab\Services\Download\Download;
 use DGLab\Services\Superpowers\Runtime\GlobalStateStore;
@@ -32,7 +32,7 @@ function view(string $template, array $data = [], ?string $layout = 'layouts.she
 {
     $view = app()->get(View::class);
     $content = $view->render($template, $data, $layout);
-    return app()->get(ResponseFactoryInterface::class)->create($content);
+    return app()->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class)->create($content);
 }
 
 function global_state(?string $key = null, mixed $value = null): mixed
@@ -50,11 +50,11 @@ function global_state(?string $key = null, mixed $value = null): mixed
 
 function json(array $data, int $status = 200): Response
 {
-    return app()->get(ResponseFactoryInterface::class)->json($data, $status);
+    return app()->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class)->json($data, $status);
 }
 function redirect(string $url, int $status = 302): Response
 {
-    return app()->get(ResponseFactoryInterface::class)->redirect($url, $status);
+    return app()->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class)->redirect($url, $status);
 }
 function route(string $name, array $parameters = []): string
 {
