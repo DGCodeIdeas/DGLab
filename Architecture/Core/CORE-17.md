@@ -23,7 +23,7 @@ The "wiring" mechanism for the application. Service Providers allow components t
 4. Call `boot()` on all Providers (interaction with other services)
 
 ## Integration Strategy
-The central nervous system of the framework. Every single phase from CORE-01 to SPOKE-31 will include a `ServiceProvider` to integrate into the stack.
+The central nervous system of the framework. Every single phase from CORE-01 to SPOKE-31 will include a `ServiceProvider" to integrate into the stack.
 
 ## CI Verification Criteria
 - **Execution Order**: Must strictly guarantee that `boot()` is only called after all `register()` calls are complete.

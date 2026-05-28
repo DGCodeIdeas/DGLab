@@ -23,7 +23,7 @@ The end-point of the SuperPHP pipeline. The generated code is what is actually e
 
 ## CI Verification Criteria
 - **Execution Speed**: Compiled views must render in < 1ms.
-- **State Integrity**: Data marked with `@persist` must correctly appear in the `s-data` JSON attribute of the resulting HTML.
+- **State Integrity**: Data marked with `@persist` must correctly appear in the `s-data" JSON attribute of the resulting HTML.
 
 ## SemVer Impact
 **Major**. Completes the template engine, which is a core value proposition of the stack.

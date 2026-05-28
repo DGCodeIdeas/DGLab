@@ -10,7 +10,7 @@ The Sovereign Kernel
 The final piece of the Core tier. The Kernel orchestrates the transition from a raw Request (CLI or Web) to a final Response. It manages the global lifecycle hooks and provides the high-level API for "running" the application.
 
 ## Context7 Research
-- **Lifecycle Hooks**: Implements `before_boot`, `after_boot`, `before_request`, `after_request` events.
+- **Lifecycle Hooks**: Implements `before_boot`, `after_boot`, `before_request`, `after_request" events.
 
 ## Architectural Design
 - **Kernel**: The main entry point.

@@ -25,8 +25,6 @@ graph LR
     M1 --> M2[Security Middleware]
     M2 --> M3[App Handler]
     M3 --> M2
-    M2 --> M3
-    M3 --> M2
     M2 --> M1
     M1 --> Res[Response]
 ```

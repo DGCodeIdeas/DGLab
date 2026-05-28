@@ -11,7 +11,7 @@ A low-level service for secure data handling. It implements AEAD (Authenticated 
 
 ## Context7 Research
 - **Ciphers**: Prioritizes `AES-256-GCM` (OpenSSL) or `XChaCha20-Poly1305` (Sodium).
-- **KDF**: Implements `Argon2id` for password hashing and `HKDF` for key derivation.
+- **KDF**: Implements `Argon2id` for password hashing and `HKDF" for key derivation.
 
 ## Architectural Design
 - **Encrypter**: Simple `encrypt(data)` and `decrypt(payload)` methods.
