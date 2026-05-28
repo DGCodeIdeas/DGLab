@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant Browser
+    participant Index as public/index.php
+    participant App as DGLab\Core\Application
+    participant Router as DGLab\Core\Router
+    participant Middle as DGLab\Core\Middleware
+    participant Controller as DGLab\Core\Controller
+    participant View as DGLab\Core\View
+    participant SuperPHP as DGLab\Services\SuperPHP
+
+    Browser->>Index: HTTP Request
+    Index->>App: handle(Request)
+    App->>Router: dispatch(Request)
+    Router->>Router: matchRoute()
+    Router->>App: Emit RouteMatched
+    Router->>Middle: Execute Pipeline
+    Middle->>Controller: executeHandler()
+    Controller->>View: render(template)
+    View->>SuperPHP: compile/interpret
+    SuperPHP-->>View: HTML output
+    View-->>Controller: Content
+    Controller-->>Middle: Response
+    Middle-->>Router: Response
+    Router-->>App: Emit RequestHandled
+    App-->>Index: Response
+    Index-->>Browser: HTTP Response
