@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-12",
+    "tier": "Hub",
+    "component_name": "Nexus AI: Provider Interface",
+    "context7_research": "Standardized LLM API (Anthropic, OpenAI, Groq).",
+    "architectural_design": "LLMProviderInterface. Implementations for major providers.",
+    "integration_strategy": "Abstracts provider-specific quirks from Spokes.",
+    "ci_verification": "Test fallback logic when a provider is down.",
+    "semver_impact": "Minor"
+}

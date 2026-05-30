@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-09",
+    "tier": "Hub",
+    "component_name": "AssetBundler: Bundler",
+    "context7_research": "Node-free JS/CSS minification, Bundling logic.",
+    "architectural_design": "AssetPacker class using PHP to merge and minify assets.",
+    "integration_strategy": "Eliminates need for Webpack/Vite in production.",
+    "ci_verification": "Benchmark bundling time for 100+ files.",
+    "semver_impact": "Major"
+}

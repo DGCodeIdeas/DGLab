@@ -1,0 +1,10 @@
+{
+    "phase_id": "CORE-05",
+    "tier": "Core",
+    "component_name": "Middleware Pipeline",
+    "context7_research": "PSR-15 Middleware standards.",
+    "architectural_design": "Onion-style processing. Layers for Auth, Rate Limiting, and CORS.",
+    "integration_strategy": "Wrapped around Router and Hub handlers.",
+    "ci_verification": "Verify execution order and request mutation safety.",
+    "semver_impact": "Patch"
+}

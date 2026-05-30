@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-16",
+    "tier": "Hub",
+    "component_name": "Studio: Plugin System",
+    "context7_research": "Hooks and Filter pattern, Dynamic service registration.",
+    "architectural_design": "PluginManager loading Spoke-provided extensions into the Hub.",
+    "integration_strategy": "Extends Hub functionality without modifying Core.",
+    "ci_verification": "Verify plugin lifecycle (load/unload) safety.",
+    "semver_impact": "Minor"
+}

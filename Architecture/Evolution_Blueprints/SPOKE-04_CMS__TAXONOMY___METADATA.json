@@ -1,0 +1,10 @@
+{
+    "phase_id": "SPOKE-04",
+    "tier": "Spoke",
+    "component_name": "CMS: Taxonomy & Metadata",
+    "context7_research": "Hierarchical categories, Tags, SEO optimization.",
+    "architectural_design": "TaxonomyService managing content classification.",
+    "integration_strategy": "Essential for CMS search and discovery.",
+    "ci_verification": "Test SEO metadata generation for 1k pages.",
+    "semver_impact": "Minor"
+}

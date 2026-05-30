@@ -1,0 +1,10 @@
+{
+    "phase_id": "SPOKE-25",
+    "tier": "Spoke",
+    "component_name": "Community Spoke: Activity",
+    "context7_research": "Activity streams, Likes, Shares, Mentions.",
+    "architectural_design": "ActivityService capturing Spoke-level events for social feed.",
+    "integration_strategy": "Increases user engagement through social signals.",
+    "ci_verification": "Measure feed generation speed for users with 1k+ friends.",
+    "semver_impact": "Minor"
+}

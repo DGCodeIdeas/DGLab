@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-02",
+    "tier": "Hub",
+    "component_name": "Auth: JWT & Session",
+    "context7_research": "RFC 7519, Secure session management.",
+    "architectural_design": "AuthManager with JwtGuard and SessionGuard. Support for refresh tokens and blacklisting.",
+    "integration_strategy": "Core security layer for all Spokes.",
+    "ci_verification": "Test token rotation and session hijacking prevention.",
+    "semver_impact": "Minor"
+}

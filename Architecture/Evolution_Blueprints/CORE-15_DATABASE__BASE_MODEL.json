@@ -1,0 +1,10 @@
+{
+    "phase_id": "CORE-15",
+    "tier": "Core",
+    "component_name": "Database: Base Model",
+    "context7_research": "Data Mapper vs Active Record hybrid, PSR-compliant PDO wrapper.",
+    "architectural_design": "Model class with attribute casting, hidden fields, and relationship loaders.",
+    "integration_strategy": "Foundational data layer for all tiers.",
+    "ci_verification": "Measure hydration performance for 1000+ records.",
+    "semver_impact": "Major"
+}

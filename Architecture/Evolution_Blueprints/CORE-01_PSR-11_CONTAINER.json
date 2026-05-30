@@ -1,0 +1,10 @@
+{
+    "phase_id": "CORE-01",
+    "tier": "Core",
+    "component_name": "PSR-11 Container",
+    "context7_research": "PSR-11 Compliance, Reflection-based Auto-wiring.",
+    "architectural_design": "Interface: Psr\\Container\\ContainerInterface. Implementation: Core\\Container. Features: Recursive dependency resolution, Singleton management, Alias mapping.",
+    "integration_strategy": "Foundation for all tiers; injected via Application entry point.",
+    "ci_verification": "Unit tests for circular dependency detection; Boot time < 1ms.",
+    "semver_impact": "Major"
+}

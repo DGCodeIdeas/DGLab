@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-17",
+    "tier": "Hub",
+    "component_name": "Studio: Theme Engine",
+    "context7_research": "CSS Variables, Design system tokens.",
+    "architectural_design": "ThemeManager managing global styles and brand overrides.",
+    "integration_strategy": "Consistent look-and-feel across all Spokes.",
+    "ci_verification": "Verify real-time theme switching without reload.",
+    "semver_impact": "Patch"
+}

@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-08",
+    "tier": "Hub",
+    "component_name": "AssetBundler: Resolver",
+    "context7_research": "Dependency graph analysis, PHP-based resolution.",
+    "architectural_design": "DependencyResolver identifying JS/CSS requirements for components.",
+    "integration_strategy": "Used by SuperPHP Engine to inject assets.",
+    "ci_verification": "Verify circular dependency detection in assets.",
+    "semver_impact": "Minor"
+}

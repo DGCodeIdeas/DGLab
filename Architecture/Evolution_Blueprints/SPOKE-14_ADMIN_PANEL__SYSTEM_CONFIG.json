@@ -1,0 +1,10 @@
+{
+    "phase_id": "SPOKE-14",
+    "tier": "Spoke",
+    "component_name": "Admin Panel: System Config",
+    "context7_research": "Dynamic config updates, Maintenance mode toggle.",
+    "architectural_design": "ConfigAdmin allowing Hub-wide setting changes via UI.",
+    "integration_strategy": "Built on Core Config Management.",
+    "ci_verification": "Verify config persistence and cache clearing.",
+    "semver_impact": "Patch"
+}

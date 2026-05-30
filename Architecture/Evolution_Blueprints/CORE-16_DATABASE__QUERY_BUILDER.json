@@ -1,0 +1,10 @@
+{
+    "phase_id": "CORE-16",
+    "tier": "Core",
+    "component_name": "Database: Query Builder",
+    "context7_research": "Fluent API, SQL injection prevention.",
+    "architectural_design": "QueryBuilder class with support for joins, subqueries, and eager loading.",
+    "integration_strategy": "Used by Models and Repositories.",
+    "ci_verification": "Benchmark query generation time; verify parameter binding.",
+    "semver_impact": "Minor"
+}

@@ -1,0 +1,10 @@
+{
+    "phase_id": "SPOKE-08",
+    "tier": "Spoke",
+    "component_name": "MangaScript: Project Management",
+    "context7_research": "Collaborative workflow, Status tracking.",
+    "architectural_design": "MangaProjectManager coordinating OCR, Translation, and QC phases.",
+    "integration_strategy": "Standardized workflow for scanlation teams.",
+    "ci_verification": "Test multi-user concurrency on a single project.",
+    "semver_impact": "Minor"
+}

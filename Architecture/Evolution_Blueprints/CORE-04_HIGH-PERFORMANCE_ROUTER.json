@@ -1,0 +1,10 @@
+{
+    "phase_id": "CORE-04",
+    "tier": "Core",
+    "component_name": "High-Performance Router",
+    "context7_research": "FastRoute pattern, Regex-based matching.",
+    "architectural_design": "O(1) route lookups. Support for attribute-based routing, nested groups, and middleware injection.",
+    "integration_strategy": "Routes requests to Hub or Spoke controllers.",
+    "ci_verification": "Benchmark 10k routes; Match time < 0.5ms.",
+    "semver_impact": "Minor"
+}

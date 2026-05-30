@@ -1,0 +1,10 @@
+{
+    "phase_id": "SPOKE-16",
+    "tier": "Spoke",
+    "component_name": "Document Service: PDF",
+    "context7_research": "Chrome headless / Dompdf integration, PDF generation.",
+    "architectural_design": "PdfService converting SuperPHP views to PDF documents.",
+    "integration_strategy": "Used for invoices, reports, and content export.",
+    "ci_verification": "Measure generation time and file size optimization.",
+    "semver_impact": "Minor"
+}

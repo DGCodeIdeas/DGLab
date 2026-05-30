@@ -1,0 +1,10 @@
+{
+    "phase_id": "SPOKE-01",
+    "tier": "Spoke",
+    "component_name": "CMS: Content Repository",
+    "context7_research": "JSON-based content modeling, EAV pattern.",
+    "architectural_design": "CmsRepo managing content nodes, versions, and relationships.",
+    "integration_strategy": "Built on Hub Media and Core Database.",
+    "ci_verification": "Verify content retrieval speed for nested structures.",
+    "semver_impact": "Major"
+}

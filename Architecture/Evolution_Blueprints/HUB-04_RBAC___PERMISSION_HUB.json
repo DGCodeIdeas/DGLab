@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-04",
+    "tier": "Hub",
+    "component_name": "RBAC & Permission Hub",
+    "context7_research": "NIST RBAC standards, Hierarchical permissions.",
+    "architectural_design": "PermissionService managing roles, abilities, and inheritance.",
+    "integration_strategy": "Centralized authorization for Hub/Spoke actions.",
+    "ci_verification": "Benchmark permission check latency < 1ms.",
+    "semver_impact": "Minor"
+}

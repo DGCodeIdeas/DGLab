@@ -1,0 +1,10 @@
+{
+    "phase_id": "CORE-17",
+    "tier": "Core",
+    "component_name": "Database: Migrations",
+    "context7_research": "Versioned schema management, Blueprint API.",
+    "architectural_design": "Migrator class. Support for up/down operations, schema snapshots, and foreign key management.",
+    "integration_strategy": "Manages database state for Hub/Spoke.",
+    "ci_verification": "Test migration rollback and transactional safety.",
+    "semver_impact": "Minor"
+}

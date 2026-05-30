@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-15",
+    "tier": "Hub",
+    "component_name": "Studio: Workspace Manager",
+    "context7_research": "IDE-like workspace organization, File-system abstraction.",
+    "architectural_design": "WorkspaceService managing project files and metadata.",
+    "integration_strategy": "Base for the CMS and MangaScript Spokes.",
+    "ci_verification": "Test workspace isolation and permissions.",
+    "semver_impact": "Minor"
+}

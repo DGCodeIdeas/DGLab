@@ -1,0 +1,10 @@
+{
+    "phase_id": "HUB-28",
+    "tier": "Hub",
+    "component_name": "Schema Discovery Hub",
+    "context7_research": "Introspection, Data dictionary.",
+    "architectural_design": "SchemaHub class identifying all database tables/models in the ecosystem.",
+    "integration_strategy": "Provides dynamic data access for Hub-level reporting.",
+    "ci_verification": "Verify auto-discovery of new Spoke schemas.",
+    "semver_impact": "Minor"
+}
