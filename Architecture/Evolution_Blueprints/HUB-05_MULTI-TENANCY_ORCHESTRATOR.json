@@ -2,9 +2,9 @@
     "phase_id": "HUB-05",
     "tier": "Hub",
     "component_name": "Multi-Tenancy Orchestrator",
-    "context7_research": "SaaS architecture, Database-per-tenant vs Shared-database.",
-    "architectural_design": "TenancyService managing tenant lifecycle and domain mapping.",
-    "integration_strategy": "Orchestrates isolation between Spokes.",
-    "ci_verification": "Verify tenant resolution from hostname/header.",
+    "context7_research": "SaaS Isolation",
+    "architectural_design": "TenancyService",
+    "integration_strategy": "Spoke management",
+    "ci_verification": "Resolution",
     "semver_impact": "Major"
 }

@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-18",
     "tier": "Spoke",
     "component_name": "Forum Spoke: Discussion",
-    "context7_research": "Threaded comments, Real-time updates.",
-    "architectural_design": "ForumService managing categories, threads, and posts.",
-    "integration_strategy": "Leverages Hub Event Bus for live notifications.",
-    "ci_verification": "Benchmark message delivery in 1k-user threads.",
+    "context7_research": "Threaded posts",
+    "architectural_design": "ForumService",
+    "integration_strategy": "Community",
+    "ci_verification": "Msg Latency",
     "semver_impact": "Minor"
 }

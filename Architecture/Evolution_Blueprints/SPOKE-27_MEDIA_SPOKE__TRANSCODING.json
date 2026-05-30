@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-27",
     "tier": "Spoke",
     "component_name": "Media Spoke: Transcoding",
-    "context7_research": "FFmpeg integration, Multi-resolution encoding.",
-    "architectural_design": "TranscodingService running background jobs via Hub Queue.",
-    "integration_strategy": "Optimizes video delivery for different devices.",
-    "ci_verification": "Measure CPU usage and transcoding throughput.",
+    "context7_research": "FFmpeg",
+    "architectural_design": "TranscodingService",
+    "integration_strategy": "Optimization",
+    "ci_verification": "Throughput",
     "semver_impact": "Minor"
 }

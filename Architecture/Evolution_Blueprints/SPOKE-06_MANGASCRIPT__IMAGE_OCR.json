@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-06",
     "tier": "Spoke",
     "component_name": "MangaScript: Image OCR",
-    "context7_research": "Optical Character Recognition (OCR), Layout analysis.",
-    "architectural_design": "OcrService integrating with AI providers to extract text from images.",
-    "integration_strategy": "Feeds text into the Translation Engine.",
-    "ci_verification": "Test OCR precision on low-resolution scans.",
+    "context7_research": "Layout Analysis",
+    "architectural_design": "OcrService",
+    "integration_strategy": "Text Extraction",
+    "ci_verification": "OCR Precision",
     "semver_impact": "Minor"
 }

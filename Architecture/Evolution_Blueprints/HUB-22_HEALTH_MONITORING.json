@@ -2,9 +2,9 @@
     "phase_id": "HUB-22",
     "tier": "Hub",
     "component_name": "Health Monitoring",
-    "context7_research": "Liveness/Readiness probes, Circuit Breaker pattern.",
-    "architectural_design": "HealthCheckService monitoring database, cache, and external APIs.",
-    "integration_strategy": "Automatic failover and alerting for the Hub.",
-    "ci_verification": "Test circuit breaker trigger under high failure rate.",
+    "context7_research": "Circuit Breakers",
+    "architectural_design": "HealthCheck",
+    "integration_strategy": "Stability",
+    "ci_verification": "Failover",
     "semver_impact": "Patch"
 }

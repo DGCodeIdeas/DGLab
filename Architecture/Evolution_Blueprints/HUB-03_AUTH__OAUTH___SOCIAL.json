@@ -2,9 +2,9 @@
     "phase_id": "HUB-03",
     "tier": "Hub",
     "component_name": "Auth: OAuth & Social",
-    "context7_research": "OAuth 2.0, OpenID Connect.",
-    "architectural_design": "SocialProviderInterface. Implementations for Google, GitHub, etc.",
-    "integration_strategy": "Enables third-party login for all Spokes.",
-    "ci_verification": "Verify callback handling and user provisioning.",
+    "context7_research": "OAuth 2.0",
+    "architectural_design": "Social\\Provider",
+    "integration_strategy": "Login flex",
+    "ci_verification": "Callbacks",
     "semver_impact": "Minor"
 }

@@ -2,9 +2,9 @@
     "phase_id": "HUB-07",
     "tier": "Hub",
     "component_name": "Central Event Bus",
-    "context7_research": "Pub/Sub pattern, Redis-backed event distribution.",
-    "architectural_design": "HubEventBus service for cross-spoke communication.",
-    "integration_strategy": "Allows Spokes to react to Hub-level events (e.g., UserCreated).",
-    "ci_verification": "Measure event delivery reliability and latency.",
+    "context7_research": "Pub/Sub",
+    "architectural_design": "HubEventBus",
+    "integration_strategy": "Inter-spoke",
+    "ci_verification": "Delivery",
     "semver_impact": "Minor"
 }

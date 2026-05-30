@@ -2,9 +2,9 @@
     "phase_id": "HUB-11",
     "tier": "Hub",
     "component_name": "Nexus AI: Orchestrator",
-    "context7_research": "AI Gateway pattern, Model-agnostic orchestration.",
-    "architectural_design": "NexusService managing LLM requests, history, and system prompts.",
-    "integration_strategy": "Central intelligence hub for all Spokes.",
-    "ci_verification": "Measure request throughput and error handling.",
+    "context7_research": "AI Gateway",
+    "architectural_design": "NexusService",
+    "integration_strategy": "Intelligence",
+    "ci_verification": "Throughput",
     "semver_impact": "Major"
 }

@@ -2,9 +2,9 @@
     "phase_id": "CORE-12",
     "tier": "Core",
     "component_name": "SuperPHP Compiler Foundation",
-    "context7_research": "Recursive descent parsing, Abstract Syntax Tree (AST).",
-    "architectural_design": "Compiler class translating .super.php to optimized PHP. Support for component isolation.",
-    "integration_strategy": "Primary view engine for Hub/Spoke.",
-    "ci_verification": "Benchmark compilation vs raw PHP rendering.",
+    "context7_research": "AST Parsing",
+    "architectural_design": "SuperPHP\\Compiler",
+    "integration_strategy": "UI Engine",
+    "ci_verification": "Transpilation",
     "semver_impact": "Major"
 }

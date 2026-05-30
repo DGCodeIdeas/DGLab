@@ -2,9 +2,9 @@
     "phase_id": "HUB-29",
     "tier": "Hub",
     "component_name": "Versioned Service Registry",
-    "context7_research": "Service discovery, SemVer enforcement.",
-    "architectural_design": "RegistryService tracking versions of all Spokes and Hub components.",
-    "integration_strategy": "Ensures compatibility during polyrepo merging.",
-    "ci_verification": "Test registry update on CI success.",
+    "context7_research": "Service discovery",
+    "architectural_design": "RegistryService",
+    "integration_strategy": "SemVer enforcement",
+    "ci_verification": "CI Sync",
     "semver_impact": "Minor"
 }

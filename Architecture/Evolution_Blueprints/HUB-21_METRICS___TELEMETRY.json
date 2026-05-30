@@ -2,9 +2,9 @@
     "phase_id": "HUB-21",
     "tier": "Hub",
     "component_name": "Metrics & Telemetry",
-    "context7_research": "OpenTelemetry standards, Time-series data.",
-    "architectural_design": "TelemetryService collecting performance data (CPU, RAM, Boot time).",
-    "integration_strategy": "Monitors health of Hub and all Spokes.",
-    "ci_verification": "Measure overhead of telemetry collection (< 1%).",
+    "context7_research": "OpenTelemetry",
+    "architectural_design": "TelemetryService",
+    "integration_strategy": "Observability",
+    "ci_verification": "Overhead < 1%",
     "semver_impact": "Minor"
 }

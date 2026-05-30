@@ -2,9 +2,9 @@
     "phase_id": "HUB-18",
     "tier": "Hub",
     "component_name": "Shared Media Library",
-    "context7_research": "Digital Asset Management (DAM), Metadata extraction.",
-    "architectural_design": "MediaService providing centralized upload, search, and transformation.",
-    "integration_strategy": "Shared resource for all Hub/Spoke applications.",
-    "ci_verification": "Benchmark image processing speed (Resizing/WebP).",
+    "context7_research": "DAM patterns",
+    "architectural_design": "MediaService",
+    "integration_strategy": "Resource sharing",
+    "ci_verification": "Processing",
     "semver_impact": "Minor"
 }

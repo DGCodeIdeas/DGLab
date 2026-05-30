@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-19",
     "tier": "Spoke",
     "component_name": "Forum Spoke: Moderation",
-    "context7_research": "Spam detection, User reporting, Shadowbanning.",
-    "architectural_design": "ModerationService using Nexus AI for automated content filtering.",
-    "integration_strategy": "Ensures community health in the Forum Spoke.",
-    "ci_verification": "Test AI moderation accuracy and speed.",
+    "context7_research": "AI Filtering",
+    "architectural_design": "ModerationService",
+    "integration_strategy": "Safety",
+    "ci_verification": "Mod Accuracy",
     "semver_impact": "Minor"
 }

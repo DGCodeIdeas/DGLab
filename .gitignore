@@ -1,0 +1,6 @@
+Legacy/node_modules/
+Legacy/vendor/
+storage/logs/*.log
+storage/cache/assets/*
+vendor/
+.env

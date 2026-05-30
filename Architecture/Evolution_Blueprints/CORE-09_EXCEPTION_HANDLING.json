@@ -2,9 +2,9 @@
     "phase_id": "CORE-09",
     "tier": "Core",
     "component_name": "Exception Handling",
-    "context7_research": "PSR-compliant error reporting, Custom exception hierarchy.",
-    "architectural_design": "Global exception handler. JSON/HTML output based on Accept header. Integration with Sentry/Loggers.",
-    "integration_strategy": "Catches errors across all tiers.",
-    "ci_verification": "Test error masking in production vs development.",
+    "context7_research": "Custom hierarchy",
+    "architectural_design": "Error\\Handler",
+    "integration_strategy": "Global safety",
+    "ci_verification": "Error masking",
     "semver_impact": "Patch"
 }

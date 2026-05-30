@@ -2,9 +2,9 @@
     "phase_id": "HUB-06",
     "tier": "Hub",
     "component_name": "Tenant Data Isolation",
-    "context7_research": "Row-level security, Tenant-aware query filtering.",
-    "architectural_design": "Global scopes in Models to automatically filter data by tenant_id.",
-    "integration_strategy": "Ensures strict data boundaries in Hub-level services.",
-    "ci_verification": "Test data leak scenarios between tenants.",
+    "context7_research": "RLS pattern",
+    "architectural_design": "GlobalScopes",
+    "integration_strategy": "Data safety",
+    "ci_verification": "Leak scenarios",
     "semver_impact": "Major"
 }

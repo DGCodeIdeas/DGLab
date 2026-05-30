@@ -2,9 +2,9 @@
     "phase_id": "HUB-10",
     "tier": "Hub",
     "component_name": "AssetBundler: Source Maps",
-    "context7_research": "Source Map Revision 3 standards.",
-    "architectural_design": "SourceMapGenerator creating debug maps for bundled PHP-processed JS.",
-    "integration_strategy": "Enables debugging of PHP-bundled assets in browser.",
-    "ci_verification": "Verify source map alignment in Chrome DevTools.",
+    "context7_research": "Revision 3",
+    "architectural_design": "Asset\\SourceMap",
+    "integration_strategy": "Debugging",
+    "ci_verification": "Map alignment",
     "semver_impact": "Minor"
 }

@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-29",
     "tier": "Spoke",
     "component_name": "Integration: Webhook Hub",
-    "context7_research": "Outgoing webhooks, External API synchronization.",
-    "architectural_design": "WebhookService sending events to third-party apps (Slack, Zapier).",
-    "integration_strategy": "Connects the ecosystem to external tools.",
-    "ci_verification": "Test retry logic and delivery logging.",
+    "context7_research": "Outgoing webhooks",
+    "architectural_design": "WebhookService",
+    "integration_strategy": "Ext. Sync",
+    "ci_verification": "Retry logic",
     "semver_impact": "Minor"
 }

@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-12",
     "tier": "Spoke",
     "component_name": "Admin Panel: Dashboard",
-    "context7_research": "Real-time analytics, System status widgets.",
-    "architectural_design": "AdminDashboard rendering Hub-level metrics using SuperPHP.",
-    "integration_strategy": "Central management UI for the entire ecosystem.",
-    "ci_verification": "Verify widget loading speed and state updates.",
+    "context7_research": "Analytics UI",
+    "architectural_design": "AdminDashboard",
+    "integration_strategy": "Management",
+    "ci_verification": "Widget Speed",
     "semver_impact": "Minor"
 }

@@ -2,9 +2,9 @@
     "phase_id": "HUB-20",
     "tier": "Hub",
     "component_name": "Global Audit Logging",
-    "context7_research": "Compliance standards (SOC2/GDPR), Immutable logs.",
-    "architectural_design": "AuditService capturing every state-changing action with user/tenant context.",
-    "integration_strategy": "Centralized security trail for the entire ecosystem.",
-    "ci_verification": "Verify log integrity and search performance.",
+    "context7_research": "SOC2/GDPR",
+    "architectural_design": "AuditService",
+    "integration_strategy": "Compliance",
+    "ci_verification": "Integrity",
     "semver_impact": "Minor"
 }

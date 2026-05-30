@@ -2,9 +2,9 @@
     "phase_id": "HUB-27",
     "tier": "Hub",
     "component_name": "Search Index Orchestrator",
-    "context7_research": "Full-text search, ElasticSearch/Meilisearch bridge.",
-    "architectural_design": "SearchService managing global indexing and multi-spoke queries.",
-    "integration_strategy": "Unified search across all tenant content.",
-    "ci_verification": "Benchmark index update latency.",
+    "context7_research": "Full-text indexing",
+    "architectural_design": "SearchService",
+    "integration_strategy": "Content discovery",
+    "ci_verification": "Index speed",
     "semver_impact": "Minor"
 }

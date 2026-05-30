@@ -2,9 +2,9 @@
     "phase_id": "CORE-19",
     "tier": "Core",
     "component_name": "Validation Engine",
-    "context7_research": "Rule-based validation, Custom error messages.",
-    "architectural_design": "Validator class. Support for arrays, nested data, and database existence checks.",
-    "integration_strategy": "Used in Hub Controllers and Spoke API endpoints.",
-    "ci_verification": "Test 50+ concurrent validation rules.",
+    "context7_research": "Rule-based",
+    "architectural_design": "Validation\\Validator",
+    "integration_strategy": "Data integrity",
+    "ci_verification": "Rule coverage",
     "semver_impact": "Patch"
 }

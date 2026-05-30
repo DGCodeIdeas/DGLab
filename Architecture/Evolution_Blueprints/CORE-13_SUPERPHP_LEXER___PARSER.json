@@ -2,9 +2,9 @@
     "phase_id": "CORE-13",
     "tier": "Core",
     "component_name": "SuperPHP Lexer & Parser",
-    "context7_research": "Tokenization, Grammar definition.",
-    "architectural_design": "Lexer class generating token stream. Parser building AST from tokens. Support for directives (@global, @persist).",
-    "integration_strategy": "Feeds into the Compiler.",
-    "ci_verification": "Syntax error reporting accuracy and performance.",
+    "context7_research": "Grammar",
+    "architectural_design": "SuperPHP\\Parser",
+    "integration_strategy": "Code analysis",
+    "ci_verification": "Syntax error",
     "semver_impact": "Minor"
 }

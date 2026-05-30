@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-20",
     "tier": "Spoke",
     "component_name": "Shop Spoke: Catalog",
-    "context7_research": "Product management, Variants, Inventory.",
-    "architectural_design": "CatalogService with Hub-level search integration.",
-    "integration_strategy": "Base for e-commerce functionality.",
-    "ci_verification": "Benchmark product list rendering for 10k items.",
+    "context7_research": "Variants/Inv",
+    "architectural_design": "CatalogService",
+    "integration_strategy": "E-commerce",
+    "ci_verification": "Render Speed",
     "semver_impact": "Minor"
 }

@@ -2,9 +2,9 @@
     "phase_id": "CORE-10",
     "tier": "Core",
     "component_name": "Filesystem Abstraction",
-    "context7_research": "Flysystem-inspired adapter pattern.",
-    "architectural_design": "Drivers: Local, S3, FTP. Unified API for file operations.",
-    "integration_strategy": "Base for Hub Media Library and Spoke CMS.",
-    "ci_verification": "Benchmark IO latency across different drivers.",
+    "context7_research": "Adapter pattern",
+    "architectural_design": "Filesystem\\Manager",
+    "integration_strategy": "IO Bridge",
+    "ci_verification": "IO Latency",
     "semver_impact": "Minor"
 }

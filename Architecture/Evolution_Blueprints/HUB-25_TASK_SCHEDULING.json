@@ -2,9 +2,9 @@
     "phase_id": "HUB-25",
     "tier": "Hub",
     "component_name": "Task Scheduling",
-    "context7_research": "Distributed Cron, Overlapping task prevention.",
-    "architectural_design": "SchedulerService managing recurring background jobs.",
-    "integration_strategy": "Automates maintenance tasks for Hub and Spokes.",
-    "ci_verification": "Test task precision and lock management.",
+    "context7_research": "Distributed Cron",
+    "architectural_design": "SchedulerService",
+    "integration_strategy": "Automation",
+    "ci_verification": "Lock precision",
     "semver_impact": "Patch"
 }

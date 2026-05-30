@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-03",
     "tier": "Spoke",
     "component_name": "CMS: SuperPHP Editor",
-    "context7_research": "What-You-See-Is-What-You-Get (WYSIWYG), Component-based editing.",
-    "architectural_design": "LiveEditor allowing drag-and-drop of SuperPHP components.",
-    "integration_strategy": "Leverages SuperPHP Reactive Engine for live previews.",
-    "ci_verification": "Verify real-time preview sync latency.",
+    "context7_research": "WYSIWYG",
+    "architectural_design": "LiveEditor",
+    "integration_strategy": "UI Builder",
+    "ci_verification": "Preview sync",
     "semver_impact": "Major"
 }

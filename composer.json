@@ -1,0 +1,4 @@
+{
+    "name": "dglab/sovereign-stack-v2",
+    "require": { "php": "^8.3" }
+}

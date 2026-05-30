@@ -2,9 +2,9 @@
     "phase_id": "CORE-08",
     "tier": "Core",
     "component_name": "PSR-3 Logging System",
-    "context7_research": "PSR-3 LoggerInterface, Structured logging.",
-    "architectural_design": "Drivers: File, Syslog, Redis. Support for context-aware logging and log rotation.",
-    "integration_strategy": "Injected via Container; used for audit trails in Hub.",
-    "ci_verification": "Verify log levels and context serialization.",
+    "context7_research": "PSR-3 Interface",
+    "architectural_design": "Logger\\Manager",
+    "integration_strategy": "Audit/Debug",
+    "ci_verification": "Log levels",
     "semver_impact": "Patch"
 }

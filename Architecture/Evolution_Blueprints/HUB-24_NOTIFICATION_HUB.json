@@ -2,9 +2,9 @@
     "phase_id": "HUB-24",
     "tier": "Hub",
     "component_name": "Notification Hub",
-    "context7_research": "Multi-channel delivery (Mail, SMS, Push).",
-    "architectural_design": "NotificationService with queue-based asynchronous delivery.",
-    "integration_strategy": "Unified communication layer for all tiered apps.",
-    "ci_verification": "Verify delivery retry logic and template rendering.",
+    "context7_research": "Multi-channel",
+    "architectural_design": "NotificationService",
+    "integration_strategy": "Communication",
+    "ci_verification": "Retry logic",
     "semver_impact": "Minor"
 }

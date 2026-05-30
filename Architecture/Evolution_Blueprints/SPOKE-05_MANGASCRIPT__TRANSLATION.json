@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-05",
     "tier": "Spoke",
     "component_name": "MangaScript: Translation",
-    "context7_research": "AI-assisted translation, Token-based text processing.",
-    "architectural_design": "TranslationService using Hub Nexus AI for multi-language support.",
-    "integration_strategy": "Primary feature of MangaScript Spoke.",
-    "ci_verification": "Measure translation accuracy vs manual benchmarks.",
+    "context7_research": "AI Translation",
+    "architectural_design": "TranslationService",
+    "integration_strategy": "Core Feature",
+    "ci_verification": "Accuracy",
     "semver_impact": "Major"
 }

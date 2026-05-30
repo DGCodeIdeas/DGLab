@@ -2,9 +2,9 @@
     "phase_id": "HUB-13",
     "tier": "Hub",
     "component_name": "Nexus AI: Routing Engine",
-    "context7_research": "Intent classification, Semantic routing.",
-    "architectural_design": "AIPriorityRouter directing requests to models based on cost/speed/capability.",
-    "integration_strategy": "Optimizes AI cost and performance for Hub/Spoke.",
-    "ci_verification": "Benchmark routing accuracy for varied prompts.",
+    "context7_research": "Semantic Routing",
+    "architectural_design": "AI\\Router",
+    "integration_strategy": "Cost optimization",
+    "ci_verification": "Accuracy",
     "semver_impact": "Minor"
 }

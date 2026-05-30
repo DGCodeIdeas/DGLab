@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-15",
     "tier": "Spoke",
     "component_name": "Analytics Dashboard",
-    "context7_research": "Data visualization, Trend analysis.",
-    "architectural_design": "AnalyticsService aggregating Hub Metrics and Spoke-specific data.",
-    "integration_strategy": "Provides Strategic Value/Return on Effort insights.",
-    "ci_verification": "Benchmark report generation time for large datasets.",
+    "context7_research": "Visualizations",
+    "architectural_design": "AnalyticsService",
+    "integration_strategy": "ROE Insights",
+    "ci_verification": "Report Speed",
     "semver_impact": "Minor"
 }

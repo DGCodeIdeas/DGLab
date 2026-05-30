@@ -1,7 +1,7 @@
 <?php
 /**
  * DGLab PWA - Front Controller
- * 
+ *
  * Entry point for all HTTP requests.
  */
 
@@ -61,7 +61,7 @@ require_once __DIR__ . '/../routes/web.php';
 try {
     $request = Request::createFromGlobals();
     $response = $router->dispatch($request);
-    
+
     if ($response instanceof Response) {
         $response->send();
     } else {

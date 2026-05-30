@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-07",
     "tier": "Spoke",
     "component_name": "MangaScript: Text Injection",
-    "context7_research": "Canvas-based typesetting, Font management.",
-    "architectural_design": "InjectionService placing translated text back onto images.",
-    "integration_strategy": "Uses Hub Media for image manipulation.",
-    "ci_verification": "Verify font rendering and text wrap accuracy.",
+    "context7_research": "Typesetting",
+    "architectural_design": "InjectionService",
+    "integration_strategy": "Visual output",
+    "ci_verification": "Text Wrap",
     "semver_impact": "Minor"
 }

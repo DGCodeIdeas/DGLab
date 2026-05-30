@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-24",
     "tier": "Spoke",
     "component_name": "Community Spoke: Profiles",
-    "context7_research": "User bios, Avatars, Social links, Privacy settings.",
-    "architectural_design": "ProfileService extending Hub Identity with social data.",
-    "integration_strategy": "Social foundation for the ecosystem.",
-    "ci_verification": "Verify privacy controls and data isolation.",
+    "context7_research": "Social profiles",
+    "architectural_design": "ProfileService",
+    "integration_strategy": "Engagement",
+    "ci_verification": "Privacy",
     "semver_impact": "Minor"
 }

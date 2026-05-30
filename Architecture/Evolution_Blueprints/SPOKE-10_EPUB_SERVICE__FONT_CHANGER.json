@@ -2,9 +2,9 @@
     "phase_id": "SPOKE-10",
     "tier": "Spoke",
     "component_name": "Epub Service: Font Changer",
-    "context7_research": "CSS @font-face injection, Content modification.",
-    "architectural_design": "FontChanger service swapping fonts within the EPUB XHTML structure.",
-    "integration_strategy": "Core utility for reading customization.",
-    "ci_verification": "Verify font embedding and CSS path correction.",
+    "context7_research": "CSS Injection",
+    "architectural_design": "FontChanger",
+    "integration_strategy": "Customization",
+    "ci_verification": "CSS Paths",
     "semver_impact": "Minor"
 }

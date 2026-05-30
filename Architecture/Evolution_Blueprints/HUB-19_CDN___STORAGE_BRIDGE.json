@@ -2,9 +2,9 @@
     "phase_id": "HUB-19",
     "tier": "Hub",
     "component_name": "CDN & Storage Bridge",
-    "context7_research": "Cloud storage integration (S3, GCS, Cloudflare R2).",
-    "architectural_design": "StorageBridge class managing remote file lifecycles.",
-    "integration_strategy": "Handles high-traffic asset delivery for Hub/Spoke.",
-    "ci_verification": "Test multi-region storage replication.",
+    "context7_research": "Cloud adapters",
+    "architectural_design": "StorageBridge",
+    "integration_strategy": "Asset delivery",
+    "ci_verification": "Replication",
     "semver_impact": "Minor"
 }

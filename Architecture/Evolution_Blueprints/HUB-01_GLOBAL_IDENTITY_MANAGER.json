@@ -2,9 +2,9 @@
     "phase_id": "HUB-01",
     "tier": "Hub",
     "component_name": "Global Identity Manager",
-    "context7_research": "Sovereign identity, Cross-tenant user mapping.",
-    "architectural_design": "IdentityService managing global user profiles and unique identifiers.",
-    "integration_strategy": "Connects to Spoke-level user databases via Hub-and-Spoke model.",
-    "ci_verification": "Verify identity uniqueness across 1M records.",
+    "context7_research": "Identity standards",
+    "architectural_design": "IdentityService",
+    "integration_strategy": "Auth bridge",
+    "ci_verification": "Uniqueness",
     "semver_impact": "Major"
 }

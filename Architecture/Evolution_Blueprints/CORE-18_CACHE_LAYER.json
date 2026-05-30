@@ -2,9 +2,9 @@
     "phase_id": "CORE-18",
     "tier": "Core",
     "component_name": "Cache Layer",
-    "context7_research": "PSR-16 Simple Cache, Multi-driver support.",
-    "architectural_design": "Drivers: Redis, Memcached, APCu, File. Support for tags and TTL.",
-    "integration_strategy": "Accelerates Hub-level service discovery.",
-    "ci_verification": "Benchmark hit/miss latency on Redis.",
+    "context7_research": "PSR-16 Cache",
+    "architectural_design": "Cache\\Manager",
+    "integration_strategy": "Performance",
+    "ci_verification": "Hit/Miss rate",
     "semver_impact": "Minor"
 }
