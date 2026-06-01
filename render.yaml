@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: sovereign-stack-blueprints
+    runtime: docker
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 80
