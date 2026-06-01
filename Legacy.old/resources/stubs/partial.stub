@@ -1,0 +1,5 @@
+<!-- Partial: {{ name }} -->
+<div class="partial-{{ name }} p-4 border-b border-gray-100">
+    <h3 class="font-semibold text-lg">{{ name }}</h3>
+    <p class="text-sm text-gray-500">This is a reusable partial view.</p>
+</div>

@@ -1,0 +1,49 @@
+name: Test Suite CI
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite, zip, gd
+        coverage: xdebug
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Run Static Analysis
+      run: composer run analyse
+
+    - name: Run Coding Standards
+      run: composer run cs
+
+    - name: Run Test Suite (Unified CLI)
+      run: php cli/test.php run --stop-on-failure --testdox
+
+    - name: Generate Health Report
+      run: php cli/test.php health
+
+    - name: Upload Test Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports-${{ matrix.php-version }}
+        path: storage/reports/

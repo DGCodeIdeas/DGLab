@@ -1,0 +1,16 @@
+<?php
+
+namespace {{ namespace }};
+
+use DGLab\Tests\BrowserTestCase;
+
+class {{ class }} extends BrowserTestCase
+{
+    public function test_example()
+    {
+        $this->browse(function ($browser) {
+            $browser->visit('/')
+                    ->assertSee('Superpowers');
+        });
+    }
+}

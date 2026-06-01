@@ -1,0 +1,257 @@
+<?php
+
+namespace DGLab\Core;
+
+use InvalidArgumentException;
+use RuntimeException;
+use Psr\Log\LoggerInterface;
+use DGLab\Core\Contracts\DispatcherInterface;
+use DGLab\Database\Connection;
+use DGLab\Core\Exceptions\RouteNotFoundException;
+
+class Application
+{
+    public const VERSION = '1.0.0-Superpowers';
+    protected static ?Application $instance = null;
+    protected string $basePath;
+    protected array $services = [];
+    protected array $providers = [];
+    protected array $config = [];
+
+    public function __construct(string $basePath)
+    {
+        $this->basePath = realpath($basePath) ?: $basePath;
+        static::$instance = $this;
+        $this->loadConfig();
+        $this->registerBaseServices();
+    }
+
+    public static function getInstance(): Application
+    {
+        if (static::$instance === null) {
+            throw new RuntimeException("Application instance not initialized.");
+        }
+        return static::$instance;
+    }
+
+    public function registerBaseServices(): void
+    {
+        $this->set(self::class, $this);
+        $this->set(Request::class, fn() => new Request());
+        $this->set(Router::class, fn($app) => new Router($app));
+        $this->set(View::class, fn($app) => new View($app));
+        $this->set(Connection::class, fn($app) => new Connection($app->config('database') ?? []));
+        $this->set(\Psr\Log\LoggerInterface::class, fn() => new Logger());
+        $this->set(\DGLab\Core\Contracts\DispatcherInterface::class, fn($app) => new EventDispatcher($app));
+        $this->set(\DGLab\Core\EventDrivers\SyncDriver::class, fn($app) => new \DGLab\Core\EventDrivers\SyncDriver($app));
+        $this->set(\DGLab\Core\EventDrivers\QueueDriver::class, fn($app) => new \DGLab\Core\EventDrivers\QueueDriver($app));
+
+        $this->set(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class, fn() => new \DGLab\Services\Superpowers\Runtime\GlobalStateStore());
+        $this->set(\DGLab\Services\Superpowers\Runtime\GlobalStateStoreInterface::class, fn($app) => $app->get(\DGLab\Services\Superpowers\Runtime\GlobalStateStore::class));
+
+        $this->set(\DGLab\Services\AssetService::class, fn() => new \DGLab\Services\AssetService());
+
+        $this->set(\DGLab\Services\Encryption\EncryptionService::class, fn($app) => new \DGLab\Services\Encryption\EncryptionService(
+            $app->config('app.security.encryption_key') ?: '12345678901234567890123456789012'
+        ));
+
+        $this->set(\DGLab\Core\Contracts\ResponseFactoryInterface::class, fn() => new ResponseFactory());
+        $this->set(\DGLab\Core\ResponseFactoryInterface::class, fn($app) => $app->get(\DGLab\Core\Contracts\ResponseFactoryInterface::class));
+        $this->set(ResponseFactory::class, fn() => new ResponseFactory());
+
+        // Register application controllers
+        $this->singleton(\DGLab\Controllers\HomeController::class, fn() => new \DGLab\Controllers\HomeController());
+        $this->singleton(\DGLab\Controllers\ServicesController::class, fn() => new \DGLab\Controllers\ServicesController());
+        $this->singleton(\DGLab\Controllers\AuthController::class, fn($app) => new \DGLab\Controllers\AuthController($app->get(\DGLab\Services\Auth\Repositories\UserRepository::class)));
+        $this->singleton(\DGLab\Controllers\Superpowers\ActionController::class, fn() => new \DGLab\Controllers\Superpowers\ActionController());
+
+        \DGLab\Services\ServiceRegistry::register($this);
+
+        $this->set(AuditService::class, fn($app) => new AuditService(
+            $app->get(Connection::class),
+            $app->get(Request::class),
+            $app->has(\DGLab\Services\Tenancy\TenancyService::class) ? $app->get(\DGLab\Services\Tenancy\TenancyService::class) : null,
+            $app->has(\DGLab\Services\Auth\AuthManager::class) ? $app->get(\DGLab\Services\Auth\AuthManager::class) : null
+        ));
+
+        $this->set(\DGLab\Services\Download\AuditService::class, fn($app) => new \DGLab\Services\Download\AuditService($app->get(AuditService::class)));
+    }
+
+    public function boot(): void
+    {
+        foreach ($this->providers as $provider) {
+            $provider->boot();
+        }
+    }
+
+    public function handle(Request $request): Response
+    {
+        $this->set(Request::class, $request);
+        try {
+            return $this->get(Router::class)->dispatch($request);
+        } catch (RouteNotFoundException $e) {
+            return $this->get(ResponseFactoryInterface::class)->create("404 Not Found", 404);
+        } catch (\Exception $e) {
+            return $this->get(ResponseFactoryInterface::class)->create("500 Error: " . $e->getMessage(), 500);
+        }
+    }
+
+    public function get(string $id): mixed
+    {
+        if (!isset($this->services[$id])) {
+            throw new InvalidArgumentException("Service not found: {$id}");
+        }
+        if ($this->services[$id] instanceof \Closure) {
+            $this->services[$id] = ($this->services[$id])($this);
+        }
+        return $this->services[$id];
+    }
+
+    public function make(string $id): mixed
+    {
+        return $this->get($id);
+    }
+
+    public function set(string $id, mixed $service): void
+    {
+        $this->services[$id] = $service;
+    }
+
+    public function singleton(string $id, mixed $service = null): void
+    {
+        if ($service === null) {
+            $this->set($id, fn($app) => new $id($app));
+        } else {
+            $this->set($id, $service);
+        }
+    }
+
+    public function has(string $id): bool
+    {
+        return isset($this->services[$id]);
+    }
+
+    public function loadConfig(?string $path = null): void
+    {
+        $configPath = $path ?: $this->basePath . '/config';
+        if (!is_dir($configPath)) {
+            return;
+        }
+        foreach (glob($configPath . '/*.php') as $file) {
+            $key = basename($file, '.php');
+            $this->config[$key] = require $file;
+        }
+    }
+
+    public function config(string $key, mixed $default = null): mixed
+    {
+        $parts = explode('.', $key);
+        $value = $this->config;
+        foreach ($parts as $part) {
+            if (!isset($value[$part]) || !is_array($value)) {
+                return $default;
+            }
+            $value = $value[$part];
+        }
+        return $value;
+    }
+
+    public function setConfig(string $key, mixed $value): void
+    {
+        $parts = explode('.', $key);
+        $target = &$this->config;
+        foreach ($parts as $part) {
+            if (!isset($target[$part]) || !is_array($target[$part])) {
+                $target[$part] = [];
+            }
+            $target = &$target[$part];
+        }
+        $target = $value;
+    }
+
+    public function call(callable $callable, array $args = []): mixed
+    {
+        if (is_array($callable)) {
+            $reflection = new \ReflectionMethod($callable[0], $callable[1]);
+        } else {
+            $reflection = new \ReflectionFunction($callable);
+        }
+        $params = $reflection->getParameters();
+        $finalArgs = [];
+        foreach ($params as $param) {
+            $name = $param->getName();
+            if (isset($args[$name])) {
+                $finalArgs[] = $args[$name];
+                continue;
+            }
+            $type = $param->getType();
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $finalArgs[] = $this->get($type->getName());
+                continue;
+            }
+            if ($param->isDefaultValueAvailable()) {
+                $finalArgs[] = $param->getDefaultValue();
+                continue;
+            }
+            throw new \RuntimeException("Unable to resolve parameter: {$name}");
+        }
+        return call_user_func_array($callable, $finalArgs);
+    }
+
+    public function getBasePath(): string
+    {
+        return $this->basePath;
+    }
+
+    public static function flush(): void
+    {
+        static::$instance = null;
+
+        $cleanup = function (string $class, string $property) {
+            if (class_exists($class)) {
+                try {
+                    $refl = new \ReflectionClass($class);
+                    if ($refl->hasProperty($property)) {
+                        $p = $refl->getProperty($property);
+                        $p->setAccessible(true);
+                        $p->setValue(null, null);
+                    }
+                } catch (\Throwable $e) {
+                    // Swallow teardown errors
+                }
+            }
+        };
+
+        $cleanup(\DGLab\Facades\Auth::class, 'manager');
+        $cleanup(\DGLab\Facades\Event::class, 'dispatcher');
+
+        if (class_exists(\DGLab\Database\Connection::class)) {
+            try {
+                \DGLab\Database\Connection::clearInstance();
+            } catch (\Throwable $e) {
+            }
+        }
+        if (class_exists(\DGLab\Database\Model::class)) {
+            try {
+                \DGLab\Database\Model::clearConnection();
+            } catch (\Throwable $e) {
+            }
+        }
+        if (class_exists(\DGLab\Services\Download\DownloadManager::class)) {
+            try {
+                \DGLab\Services\Download\DownloadManager::reset();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $cleanup(\DGLab\Services\Superpowers\Runtime\CleanupManager::class, 'instance');
+        $cleanup(\DGLab\Services\Superpowers\Runtime\DebugCollector::class, 'instance');
+
+        if (class_exists(\DGLab\Services\MangaScript\AI\ProviderFactory::class)) {
+            try {
+                \DGLab\Services\MangaScript\AI\ProviderFactory::reset();
+            } catch (\Throwable $e) {
+            }
+        }
+    }
+}

@@ -1,0 +1,22 @@
+~setup {
+    /**
+     * View-specific state.
+     */
+    $pageTitle = '{{ name }}';
+}
+
+<s:layout:{{ layout }}>
+    <s:slot name="title">{{ $pageTitle }}</s:slot>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">{{ $pageTitle }}</h1>
+
+        <div class="bg-white shadow rounded-lg p-6">
+            <p class="text-gray-600 mb-4">
+                Welcome to your new SuperPHP view!
+            </p>
+
+            <!-- Start building here -->
+        </div>
+    </div>
+</s:layout:{{ layout }}>

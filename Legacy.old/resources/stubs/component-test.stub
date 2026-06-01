@@ -1,0 +1,21 @@
+<?php
+
+namespace {{ namespace }};
+
+use DGLab\Tests\ComponentTestCase;
+
+class {{ class }} extends ComponentTestCase
+{
+    public function test_it_renders_successfully()
+    {
+        $this->assertComponentRenders('{{ component }}');
+    }
+
+    public function test_it_renders_with_props()
+    {
+        $props = [
+            'label' => 'Click Me',
+        ];
+        $this->assertComponentRenders('{{ component }}', $props, 'Click Me');
+    }
+}

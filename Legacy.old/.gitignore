@@ -1,0 +1,7 @@
+/node_modules
+/vendor
+/storage/cache/*
+.env
+php_server.log
+php_test.log
+CI.log
