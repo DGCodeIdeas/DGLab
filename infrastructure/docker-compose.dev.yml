@@ -1,0 +1,152 @@
+version: "3.9"
+
+# =============================================================================
+# DGLab Local Development Environment
+# =============================================================================
+# Spin up all external service dependencies for local development and testing.
+#
+# Usage:
+#   docker compose -f infrastructure/docker-compose.dev.yml up -d
+#   docker compose -f infrastructure/docker-compose.dev.yml down
+#
+# The PHP container mounts the project root at /app for hot-reload and
+# exposes Xdebug on port 9003.
+# =============================================================================
+
+x-php-env: &php-env
+  # Database
+  DB_CONNECTION: mysql
+  DB_HOST: mariadb
+  DB_PORT: 3306
+  DB_DATABASE: dglab
+  DB_USERNAME: dglab
+  DB_PASSWORD: dglab_dev
+
+  # Cache (Redis)
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ""
+
+  # Search (Elasticsearch)
+  ELASTICSEARCH_HOST: elasticsearch
+  ELASTICSEARCH_PORT: 9200
+  ELASTICSEARCH_SCHEME: http
+  ELASTICSEARCH_USER: elastic
+  ELASTICSEARCH_PASSWORD: dglab_dev
+
+  # Application
+  APP_ENV: local
+  APP_DEBUG: "true"
+  APP_URL: http://localhost:8080
+
+services:
+  # ---------------------------------------------------------------------------
+  # MariaDB — Primary relational database
+  # ---------------------------------------------------------------------------
+  mariadb:
+    image: mariadb:11
+    container_name: dglab-mariadb
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MARIADB_DATABASE: dglab
+      MARIADB_USER: dglab
+      MARIADB_PASSWORD: dglab_dev
+      MARIADB_ROOT_PASSWORD: root_dev
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Redis — Cache, queues, session store
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: dglab-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Elasticsearch — Full-text search and analytics
+  # ---------------------------------------------------------------------------
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: dglab-elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - ingest.geoip.downloader.enabled=false
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # PHP (8.3 CLI) — Application container for running commands / tests
+  # ---------------------------------------------------------------------------
+  php:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: dglab-php
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "8080:80"
+    environment:
+      <<: *php-env
+      # Xdebug
+      XDEBUG_MODE: develop,debug
+      XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003 discover_client_host=true"
+    volumes:
+      - ..:/app:delegated
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    command: >
+      sh -c "
+        if [ -f /app/composer.json ] && [ ! -d /app/vendor ]; then
+          echo 'Running composer install...' && composer install --no-interaction;
+        fi;
+        echo 'PHP container ready. Use docker exec -it dglab-php bash to enter.';
+        tail -f /dev/null
+      "
+
+volumes:
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
