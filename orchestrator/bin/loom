@@ -1,0 +1,303 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * The Loom — CORE-01 Polyrepo Orchestrator CLI
+ *
+ * Central entry point for orchestrating the Sovereign Stack polyrepo lifecycle.
+ */
+
+// Determine autoload path — support both installed and development modes
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../vendor/autoload.php',
+];
+
+$autoloaded = false;
+foreach ($autoloadPaths as $path) {
+    if (\file_exists($path)) {
+        require $path;
+        $autoloaded = true;
+        break;
+    }
+}
+
+if (!$autoloaded) {
+    \fwrite(\STDERR, "ERROR: Cannot find autoload.php. Run 'composer install' first.\n");
+    exit(1);
+}
+
+use SovereignStack\Orchestrator\CIMonitor;
+use SovereignStack\Orchestrator\DependencyGraph;
+use SovereignStack\Orchestrator\RepoManager;
+use SovereignStack\Orchestrator\VersionBumpEngine;
+
+// ─── Argument Parsing ───────────────────────────────────────────────────────
+
+$args = \array_slice($argv, 1);
+
+if ($args === []) {
+    printUsage();
+    exit(0);
+}
+
+$command = $args[0];
+
+// ─── Command Routing ────────────────────────────────────────────────────────
+
+match ($command) {
+    'ci:monitor' => handleCiMonitor(\array_slice($args, 1)),
+    'version:bump' => handleVersionBump(\array_slice($args, 1)),
+    'tag:create' => handleTagCreate(\array_slice($args, 1)),
+    'status' => handleStatus(\array_slice($args, 1)),
+    default => printUsage(),
+};
+
+// ─── Command Handlers ───────────────────────────────────────────────────────
+
+function handleCiMonitor(array $subArgs): void
+{
+    $monitor = new CIMonitor();
+    $config = loadConfig();
+
+    foreach ($config as $repo) {
+        $monitor->registerRepo($repo['name'], $repo['ci_url'], $repo['token'] ?? '');
+    }
+
+    $checkAll = \in_array('--all', $subArgs, true);
+
+    if ($checkAll) {
+        $results = $monitor->checkAll();
+        printResultsTable($results);
+        return;
+    }
+
+    if (isset($subArgs[0])) {
+        $result = $monitor->check($subArgs[0]);
+        printResultsTable([$subArgs[0] => $result]);
+        return;
+    }
+
+    \fwrite(\STDERR, "Usage: loom ci:monitor [--all | <repo-name>]\n");
+    exit(1);
+}
+
+function handleVersionBump(array $subArgs): void
+{
+    if ($subArgs === []) {
+        \fwrite(\STDERR, "Usage: loom version:bump <repo>\n");
+        exit(1);
+    }
+
+    $repoName = $subArgs[0];
+    $repoDir = getRepoDir($repoName);
+    $engine = new VersionBumpEngine();
+
+    try {
+        $manager = new RepoManager();
+        $manager->clone($repoDir, $repoName);
+    } catch (\RuntimeException) {
+        // Repo may already be cloned; use the directory directly
+    }
+
+    $manager = new RepoManager($repoDir);
+
+    try {
+        $currentVersion = $manager->getCurrentVersion();
+        $log = $manager->getLogSince($currentVersion);
+        $analysis = $engine->analyze($log);
+        $newVersion = $engine->calculateNewVersion($currentVersion, $analysis['increment']);
+
+        echo "Repository: {$repoName}\n";
+        echo "Current version: {$currentVersion}\n";
+        echo "New version:     {$newVersion}\n";
+        echo "Increment:       {$analysis['increment']}\n";
+        echo "Reason:          {$analysis['reason']}\n";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+}
+
+function handleTagCreate(array $subArgs): void
+{
+    if (\count($subArgs) < 2) {
+        \fwrite(\STDERR, "Usage: loom tag:create <repo> <version>\n");
+        exit(1);
+    }
+
+    $repoName = $subArgs[0];
+    $version = $subArgs[1];
+    $repoDir = getRepoDir($repoName);
+
+    $manager = new RepoManager($repoDir);
+
+    try {
+        $manager->tag($version, "Release {$version}");
+        echo "Tag '{$version}' created successfully for '{$repoName}'.\n";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+}
+
+function handleStatus(array $subArgs): void
+{
+    $config = loadConfig();
+    $graph = new DependencyGraph();
+
+    $tierMap = [
+        'core' => [],
+        'hub' => [],
+        'spoke' => [],
+    ];
+
+    foreach ($config as $repo) {
+        $graph->addNode($repo['name'], $repo['tier'] ?? 'core');
+    }
+
+    foreach ($config as $repo) {
+        $deps = $repo['depends_on'] ?? [];
+        foreach ($deps as $dep) {
+            try {
+                $graph->addDependency($repo['name'], $dep);
+            } catch (\RuntimeException) {
+                // Skip invalid dependencies
+            }
+        }
+
+        $tier = $repo['tier'] ?? 'core';
+        $tierMap[$tier][] = $repo['name'];
+    }
+
+    $resolutionOrder = [];
+    try {
+        $resolutionOrder = $graph->getResolutionOrder();
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Warning: Could not resolve dependency order: " . $e->getMessage() . "\n");
+    }
+
+    echo "\n=== Polyrepo Status ===\n\n";
+
+    echo "Tier Breakdown:\n";
+    foreach (['core', 'hub', 'spoke'] as $tier) {
+        $names = $tierMap[$tier];
+        echo "  " . \ucfirst($tier) . " (" . \count($names) . "): " . ($names !== [] ? \implode(', ', $names) : '(none)') . "\n";
+    }
+
+    echo "\nResolution Order:\n";
+    if ($resolutionOrder !== []) {
+        foreach ($resolutionOrder as $i => $name) {
+            $tier = $graph->getTier($name);
+            echo "  " . ($i + 1) . ". {$name} [{$tier}]\n";
+        }
+    } else {
+        echo "  (unresolved)\n";
+    }
+
+    echo "\nRegistered Repos:\n";
+    foreach ($config as $repo) {
+        echo "  - {$repo['name']} ({$repo['ci_url']})\n";
+    }
+}
+
+// ─── Helper Functions ───────────────────────────────────────────────────────
+
+function printUsage(): void
+{
+    echo <<<USAGE
+The Loom — CORE-01 Polyrepo Orchestrator
+
+Usage:
+  loom ci:monitor --all          Run CI monitor against all registered repos
+  loom ci:monitor <repo>         Run CI monitor against a specific repo
+  loom version:bump <repo>       Analyze commits and suggest a version bump
+  loom tag:create <repo> <ver>   Create a git tag for the specified version
+  loom status                    Show status of all registered repos
+  loom                           Display this usage information
+
+USAGE;
+}
+
+/**
+ * @return array<int, array{name: string, ci_url: string, token?: string, tier?: string, depends_on?: array<int, string>}>
+ */
+function loadConfig(): array
+{
+    $configPath = __DIR__ . '/../repos.json';
+
+    if (\file_exists($configPath)) {
+        $content = \file_get_contents($configPath);
+        $decoded = \json_decode($content, true);
+
+        if (\is_array($decoded)) {
+            return $decoded;
+        }
+    }
+
+    // Return default repos.json content if the file doesn't exist yet
+    return getDefaultConfig();
+}
+
+/**
+ * @return array<int, array{name: string, ci_url: string, token: string, tier: string, depends_on: array<int, string>}>
+ */
+function getDefaultConfig(): array
+{
+    $baseDir = \dirname(__DIR__);
+
+    return [
+        [
+            'name' => 'orchestrator',
+            'ci_url' => $baseDir,
+            'token' => '',
+            'tier' => 'core',
+            'depends_on' => [],
+        ],
+    ];
+}
+
+function getRepoDir(string $repoName): string
+{
+    $config = loadConfig();
+
+    foreach ($config as $repo) {
+        if ($repo['name'] === $repoName) {
+            return $repo['ci_url'];
+        }
+    }
+
+    return \dirname(__DIR__) . '/repos/' . $repoName;
+}
+
+/**
+ * @param array<string, array{status: string, details: string}> $results
+ */
+function printResultsTable(array $results): void
+{
+    $padName = 28;
+    $padStatus = 7;
+
+    echo "  Repo" . \str_repeat(' ', $padName - 4) . "CI Status  Details\n";
+    echo "  " . \str_repeat('-', $padName + $padStatus + 40) . "\n";
+
+    foreach ($results as $name => $result) {
+        $statusDisplay = \strtoupper($result['status']);
+        $statusColored = $result['status'] === 'pass'
+            ? "\033[32m{$statusDisplay}\033[0m"
+            : "\033[31m{$statusDisplay}\033[0m";
+
+        $details = \mb_strlen($result['details']) > 50
+            ? \mb_substr($result['details'], 0, 47) . '...'
+            : $result['details'];
+
+        \printf(
+            "  %-{$padName}s %-{$padStatus}s %s\n",
+            $name,
+            $statusColored,
+            $details
+        );
+    }
+}
