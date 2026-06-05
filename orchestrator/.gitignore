@@ -1,5 +1,7 @@
 vendor/
 .phpunit.result.cache
+.phpunit.cache/
 ci/cache/
+composer.lock
 *.log
 .env
