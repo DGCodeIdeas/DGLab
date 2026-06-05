@@ -798,11 +798,11 @@ return [
 
 | Blueprint | Role in High Availability |
 |-----------|--------------------------|
-| [BRIDGE-01](../../../ApprovedBlueprints/External/BRIDGE-01.md) | API Gateway — primary subject of this document |
-| [HUB-02](../../../ApprovedBlueprints/Hub/HUB-02.md) | Cache/Redis — state replication backend |
-| [HUB-08](../../../ApprovedBlueprints/Hub/HUB-08.md) | Load Balancer integration |
-| [HUB-15](../../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring and alerting |
-| [CORE-05](../../../ApprovedBlueprints/Core/CORE-05.md) | Configuration management |
+| [BRIDGE-01](../../../blueprints/External/BRIDGE-01.md) | API Gateway — primary subject of this document |
+| [HUB-02](../../../blueprints/Hub/HUB-02.md) | Cache/Redis — state replication backend |
+| [HUB-08](../../../blueprints/Hub/HUB-08.md) | Load Balancer integration |
+| [HUB-15](../../../blueprints/Hub/HUB-15.md) | Health monitoring and alerting |
+| [CORE-05](../../../blueprints/Core/CORE-05.md) | Configuration management |
 
 ---
 

@@ -455,8 +455,8 @@ redis-cli LLEN queue:default.dlq
 
 | Blueprint | Role in Recovery |
 |-----------|-----------------|
-| [HUB-02](../../../ApprovedBlueprints/Hub/HUB-02.md) | Cache implementation, Redlock for lock recovery |
-| [HUB-10](../../../ApprovedBlueprints/Hub/HUB-10.md) | Queue implementation, DLQ for message recovery |
-| [HUB-15](../../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring and alerting |
-| [HUB-06](../../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging for incident tracking |
-| [HUB-30](../../../ApprovedBlueprints/Hub/HUB-30.md) | CLI commands for recovery actions |
+| [HUB-02](../../../blueprints/Hub/HUB-02.md) | Cache implementation, Redlock for lock recovery |
+| [HUB-10](../../../blueprints/Hub/HUB-10.md) | Queue implementation, DLQ for message recovery |
+| [HUB-15](../../../blueprints/Hub/HUB-15.md) | Health monitoring and alerting |
+| [HUB-06](../../../blueprints/Hub/HUB-06.md) | Audit logging for incident tracking |
+| [HUB-30](../../../blueprints/Hub/HUB-30.md) | CLI commands for recovery actions |

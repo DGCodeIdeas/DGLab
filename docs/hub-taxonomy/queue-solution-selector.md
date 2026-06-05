@@ -53,16 +53,16 @@ flowchart TD
 
 | Your Need | Recommended Solution | Primary Blueprint | Why |
 |-----------|---------------------|-------------------|-----|
-| **Domain event broadcast** (e.g., "UserRegistered") | Event Bus (Pub/Sub) | [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | Fan-out to multiple subscribers; loosely coupled |
-| **Real-time live notifications** | Redis Pub/Sub | [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | Sub-millisecond delivery; in-memory |
-| **Durable event store with replay** | Persistent Event Store | [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | Database-backed; audit-compatible; new subscribers can replay |
-| **Email sending (offloaded from request)** | Standard Queue | [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | FIFO processing; competing consumers |
-| **Image processing (long-running)** | Priority Queue | [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | Can prioritize by user tier or urgency |
-| **Delayed job (e.g., reminder email)** | Delayed Jobs | [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | Schedule future execution; retry on failure |
-| **Scheduled backup every 6 hours** | Scheduler | [HUB-25](../ApprovedBlueprints/Hub/HUB-25.md) | PHP-driven cron; overlap protection; execution logs |
-| **Stripe payment webhook** | Webhook Engine | [HUB-17](../ApprovedBlueprints/Hub/HUB-17.md) | Signature verification; idempotent; retry with backoff |
-| **GitHub push webhook → CI trigger** | Webhook Engine | [HUB-17](../ApprovedBlueprints/Hub/HUB-17.md) | Audit trail; dispatching to internal services |
-| **Report generation every Monday** | Scheduler + Queue | [HUB-25](../ApprovedBlueprints/Hub/HUB-25.md) + [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | Chronos triggers; Queue processes |
+| **Domain event broadcast** (e.g., "UserRegistered") | Event Bus (Pub/Sub) | [HUB-09](../blueprints/Hub/HUB-09.md) | Fan-out to multiple subscribers; loosely coupled |
+| **Real-time live notifications** | Redis Pub/Sub | [HUB-09](../blueprints/Hub/HUB-09.md) | Sub-millisecond delivery; in-memory |
+| **Durable event store with replay** | Persistent Event Store | [HUB-09](../blueprints/Hub/HUB-09.md) | Database-backed; audit-compatible; new subscribers can replay |
+| **Email sending (offloaded from request)** | Standard Queue | [HUB-10](../blueprints/Hub/HUB-10.md) | FIFO processing; competing consumers |
+| **Image processing (long-running)** | Priority Queue | [HUB-10](../blueprints/Hub/HUB-10.md) | Can prioritize by user tier or urgency |
+| **Delayed job (e.g., reminder email)** | Delayed Jobs | [HUB-10](../blueprints/Hub/HUB-10.md) | Schedule future execution; retry on failure |
+| **Scheduled backup every 6 hours** | Scheduler | [HUB-25](../blueprints/Hub/HUB-25.md) | PHP-driven cron; overlap protection; execution logs |
+| **Stripe payment webhook** | Webhook Engine | [HUB-17](../blueprints/Hub/HUB-17.md) | Signature verification; idempotent; retry with backoff |
+| **GitHub push webhook → CI trigger** | Webhook Engine | [HUB-17](../blueprints/Hub/HUB-17.md) | Audit trail; dispatching to internal services |
+| **Report generation every Monday** | Scheduler + Queue | [HUB-25](../blueprints/Hub/HUB-25.md) + [HUB-10](../blueprints/Hub/HUB-10.md) | Chronos triggers; Queue processes |
 
 ---
 
@@ -154,13 +154,13 @@ flowchart TD
 
 | Blueprint | Role in Messaging |
 |-----------|------------------|
-| [CORE-03](../ApprovedBlueprints/Core/CORE-03.md) | Foundation: Event Dispatcher (PSR-14) |
-| [HUB-06](../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging for all event and queue activity |
-| [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | Event Bus — distributed pub/sub messaging |
-| [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | Queue — async job processing with retries |
-| [HUB-12](../ApprovedBlueprints/Hub/HUB-12.md) | Notification service consuming events |
-| [HUB-17](../ApprovedBlueprints/Hub/HUB-17.md) | Webhook ingestion and dispatch engine |
-| [HUB-25](../ApprovedBlueprints/Hub/HUB-25.md) | Background scheduler (cron replacement) |
+| [CORE-03](../blueprints/Core/CORE-03.md) | Foundation: Event Dispatcher (PSR-14) |
+| [HUB-06](../blueprints/Hub/HUB-06.md) | Audit logging for all event and queue activity |
+| [HUB-09](../blueprints/Hub/HUB-09.md) | Event Bus — distributed pub/sub messaging |
+| [HUB-10](../blueprints/Hub/HUB-10.md) | Queue — async job processing with retries |
+| [HUB-12](../blueprints/Hub/HUB-12.md) | Notification service consuming events |
+| [HUB-17](../blueprints/Hub/HUB-17.md) | Webhook ingestion and dispatch engine |
+| [HUB-25](../blueprints/Hub/HUB-25.md) | Background scheduler (cron replacement) |
 
 ---
 

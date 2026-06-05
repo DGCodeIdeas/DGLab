@@ -9,7 +9,7 @@ Convert the interface of a class into another interface that clients expect. Ada
 - Isolating external dependencies behind an interface your application controls
 - Testing: adapting a fast in-memory implementation where a slow external service would normally be used
 
-**Used in Core**: [CORE-14 Filesystem Abstraction](/ApprovedBlueprints/Core/CORE-14.md) adapts PHP native filesystem functions into a unified `FilesystemInterface`. [CORE-19 DBAL](/ApprovedBlueprints/Core/CORE-19.md) adapts PDO drivers (SQLite, MySQL, PostgreSQL) behind a `DriverInterface`.
+**Used in Core**: [CORE-14 Filesystem Abstraction](/docs/blueprints/Core/CORE-14.md) adapts PHP native filesystem functions into a unified `FilesystemInterface`. [CORE-19 DBAL](/docs/blueprints/Core/CORE-19.md) adapts PDO drivers (SQLite, MySQL, PostgreSQL) behind a `DriverInterface`.
 
 ## Diagram
 

@@ -1,7 +1,7 @@
 # Implementation Guide: Routing Configuration
 
 ## Overview
-This guide walks through configuring the High-Performance Sovereign Router ([CORE-06](/ApprovedBlueprints/Core/CORE-06.md)). The router uses PHP 8.3 Attributes for declaring routes directly on controller methods, with Trie-based prefix matching for sub-2ms resolution.
+This guide walks through configuring the High-Performance Sovereign Router ([CORE-06](/docs/blueprints/Core/CORE-06.md)). The router uses PHP 8.3 Attributes for declaring routes directly on controller methods, with Trie-based prefix matching for sub-2ms resolution.
 
 **Reference**: [ADR-004 Routing Strategy](/docs/architecture/decisions/ADR-004-routing-strategy.md)
 

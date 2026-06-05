@@ -11,4 +11,4 @@ EXPOSE 80
 
 # Serve the Architecture directory using PHP's built-in web server
 # This keeps the process alive and makes blueprints viewable
-CMD ["php", "-S", "0.0.0.0:80", "-t", "Architecture"]
+CMD ["php", "-S", "0.0.0.0:80", "-t", "docs/architecture/origin"]

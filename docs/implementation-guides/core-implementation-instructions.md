@@ -13,16 +13,16 @@ Do not write a single line of implementation code until you have read **every fi
 
 Read the following files **before taking any action**:
 
-- [`ApprovedBlueprints/Core/CORE-01.md`](ApprovedBlueprints/Core/CORE-01.md)
-- [`ApprovedBlueprints/Core/CORE-02.md`](ApprovedBlueprints/Core/CORE-02.md)
-- [`ApprovedBlueprints/Core/CORE-03.md`](ApprovedBlueprints/Core/CORE-03.md)
-- [`ApprovedBlueprints/Core/CORE-04.md`](ApprovedBlueprints/Core/CORE-04.md)
-- [`ApprovedBlueprints/Core/CORE-05.md`](ApprovedBlueprints/Core/CORE-05.md)
-- [`ApprovedBlueprints/Core/CORE-06.md`](ApprovedBlueprints/Core/CORE-06.md)
-- [`ApprovedBlueprints/Core/CORE-07.md`](ApprovedBlueprints/Core/CORE-07.md)
-- [`ApprovedBlueprints/Core/CORE-08.md`](ApprovedBlueprints/Core/CORE-08.md)
-- [`ApprovedBlueprints/Core/CORE-09.md`](ApprovedBlueprints/Core/CORE-09.md)
-- [`ApprovedBlueprints/Core/CORE-10.md`](ApprovedBlueprints/Core/CORE-10.md)
+- [`../blueprints/Core/CORE-01.md`](../blueprints/Core/CORE-01.md)
+- [`../blueprints/Core/CORE-02.md`](../blueprints/Core/CORE-02.md)
+- [`../blueprints/Core/CORE-03.md`](../blueprints/Core/CORE-03.md)
+- [`../blueprints/Core/CORE-04.md`](../blueprints/Core/CORE-04.md)
+- [`../blueprints/Core/CORE-05.md`](../blueprints/Core/CORE-05.md)
+- [`../blueprints/Core/CORE-06.md`](../blueprints/Core/CORE-06.md)
+- [`../blueprints/Core/CORE-07.md`](../blueprints/Core/CORE-07.md)
+- [`../blueprints/Core/CORE-08.md`](../blueprints/Core/CORE-08.md)
+- [`../blueprints/Core/CORE-09.md`](../blueprints/Core/CORE-09.md)
+- [`../blueprints/Core/CORE-10.md`](../blueprints/Core/CORE-10.md)
 - [`render.yaml`](render.yaml)
 - [`Dockerfile`](Dockerfile)
 - [`docker-compose.yml`](docker-compose.yml)
@@ -55,7 +55,7 @@ Each component directory under `repos/` **must** contain the following files:
 
 - Begin with the component name and Phase ID (e.g., `CORE-01`).
 - Include a one-paragraph description of the component's purpose.
-- Reference the blueprint by Phase ID with a link to `ApprovedBlueprints/Core/CORE-XX.md`.
+- Reference the blueprint by Phase ID with a link to `../blueprints/Core/CORE-XX.md`.
 
 #### `.gitignore`
 

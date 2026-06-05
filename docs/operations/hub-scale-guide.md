@@ -10,7 +10,7 @@
 
 Operating 30+ Hub services simultaneously requires structured operational models, clear monitoring requirements, well-defined alerting patterns, and team capacity planning. This guide provides operational frameworks for three scale tiers.
 
-**Primary Blueprints:** All Hub blueprints ([HUB-01](../../ApprovedBlueprints/Hub/HUB-01.md) through [HUB-30](../../ApprovedBlueprints/Hub/HUB-30.md))
+**Primary Blueprints:** All Hub blueprints ([HUB-01](../../blueprints/Hub/HUB-01.md) through [HUB-30](../../blueprints/Hub/HUB-30.md))
 
 ---
 
@@ -552,8 +552,8 @@ rotation:
 
 | Blueprint | Role in Operations |
 |-----------|-------------------|
-| [HUB-01](../../ApprovedBlueprints/Hub/HUB-01.md) | Centralized configuration for all services |
-| [HUB-15](../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring for all Hub services |
-| [HUB-16](../../ApprovedBlueprints/Hub/HUB-16.md) | Weaver orchestration and dependency validation |
-| [HUB-29](../../ApprovedBlueprints/Hub/HUB-29.md) | Integration/E2E testing for operations validation |
-| [HUB-30](../../ApprovedBlueprints/Hub/HUB-30.md) | CLI toolchain for operational management |
+| [HUB-01](../../blueprints/Hub/HUB-01.md) | Centralized configuration for all services |
+| [HUB-15](../../blueprints/Hub/HUB-15.md) | Health monitoring for all Hub services |
+| [HUB-16](../../blueprints/Hub/HUB-16.md) | Weaver orchestration and dependency validation |
+| [HUB-29](../../blueprints/Hub/HUB-29.md) | Integration/E2E testing for operations validation |
+| [HUB-30](../../blueprints/Hub/HUB-30.md) | CLI toolchain for operational management |

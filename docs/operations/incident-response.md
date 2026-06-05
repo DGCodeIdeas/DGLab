@@ -2,7 +2,7 @@
 
 > **Navigation:** [Operations Home](index.md) | [Observability Framework](observability-framework.md) | [Chaos Engineering](chaos-engineering.md) | [Runbooks](runbooks/index.md)
 >
-> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 2 (Strategic)](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 2 (Strategic)](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 >
 > **Related:** [Hub Scale Guide](hub-scale-guide.md) | [Team Scaling Guide](../team-scaling-guide.md) | [Service Dependency Analyzer](service-dependency-analyzer.md)
 >
@@ -14,7 +14,7 @@
 
 This framework defines the incident response process for all 81+ DGLab services, covering severity classification, response runbook templates, communication templates, and a post-mortem template. It is designed to achieve **MTTR <15 minutes for 90% of incidents** through clear roles, automated escalation, and blameless post-incident reviews.
 
-**Primary Driver:** [Strategic Weakness 2](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+**Primary Driver:** [Strategic Weakness 2](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 
 **Key Success Targets:**
 - MTTR <15 minutes for 90% of incidents
@@ -642,7 +642,7 @@ Full post-mortem: {link to post-mortem document}
 
 ## Related Resources
 
-- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 2](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 2](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 - [Observability Framework](observability-framework.md)
 - [Chaos Engineering](chaos-engineering.md)
 - [Runbooks](runbooks/index.md)

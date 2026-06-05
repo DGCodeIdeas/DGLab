@@ -12,7 +12,7 @@ The Sovereign Stack requires a validation framework to ensure data integrity acr
 - **Error aggregation**: Collect all validation errors before returning, rather than failing on first error
 - **Extensibility**: Downstream blueprint authors must be able to define custom rules without modifying core
 
-While no single core blueprint defines "validation" explicitly, validation is a cross-cutting concern referenced by [CORE-04](/ApprovedBlueprints/Core/CORE-04.md) (HTTP Message, PSR-7), [CORE-05](/ApprovedBlueprints/Core/CORE-05.md) (Middleware), [CORE-19](/ApprovedBlueprints/Core/CORE-19.md) (DBAL), and multiple Hub blueprints.
+While no single core blueprint defines "validation" explicitly, validation is a cross-cutting concern referenced by [CORE-04](/docs/blueprints/Core/CORE-04.md) (HTTP Message, PSR-7), [CORE-05](/docs/blueprints/Core/CORE-05.md) (Middleware), [CORE-19](/docs/blueprints/Core/CORE-19.md) (DBAL), and multiple Hub blueprints.
 
 ## Decision
 Adopt a **three-layer Validation Pipeline** with Attribute-driven rule definitions:
@@ -106,8 +106,8 @@ class ValidationResult {
 3. **Middleware-only Validation** - Validate only at HTTP boundary. Rejected because validation is needed in CLI commands and service-to-service calls, not just HTTP.
 
 ## Compliance Checklist
-- [ ] Validation integrated with [CORE-04](/ApprovedBlueprints/Core/CORE-04.md) (PSR-7 Request) for HTTP input
-- [ ] Validation integrated with [CORE-13](/ApprovedBlueprints/Core/CORE-13.md) (CLI) for command argument validation
+- [ ] Validation integrated with [CORE-04](/docs/blueprints/Core/CORE-04.md) (PSR-7 Request) for HTTP input
+- [ ] Validation integrated with [CORE-13](/docs/blueprints/Core/CORE-13.md) (CLI) for command argument validation
 - [ ] Custom rule extension point documented in extensibility map
 - [ ] Error collection format documented for API consumers
 

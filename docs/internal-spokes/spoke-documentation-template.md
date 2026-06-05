@@ -267,4 +267,4 @@ return [
 
 > **Template Version:** 1.0
 > **Created:** Current Session
-> **Review Cycle:** Quarterly, aligned with EVALUATION_SUMMARY.md updates
+> **Review Cycle:** Quarterly, aligned with evaluation/EVALUATION_SUMMARY.md updates

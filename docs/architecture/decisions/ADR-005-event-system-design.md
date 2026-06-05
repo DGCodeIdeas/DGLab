@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-The Sovereign Stack requires a decoupled event communication system for cross-component interaction. Requirements from [CORE-03](/ApprovedBlueprints/Core/CORE-03.md):
+The Sovereign Stack requires a decoupled event communication system for cross-component interaction. Requirements from [CORE-03](/docs/blueprints/Core/CORE-03.md):
 
 - **PSR-14 compliance** for interoperability with PHP ecosystem event systems
 - **10,000 events/sec throughput** to avoid becoming a bottleneck in request processing
@@ -93,8 +93,8 @@ class AuditServiceProvider extends ServiceProvider {
 - **PSR-14 Compliance**: Ensures the event system can be swapped with any PSR-14 implementation if needed, and that ecosystem tools expecting PSR-14 will integrate seamlessly
 - **Prioritized Pipeline**: Priority integers give fine-grained control over execution order. Built-in categories: CRITICAL (1000-500), NORMAL (499-0), BACKGROUND (-1 to -1000)
 - **Lazy Resolution**: Listeners are strings (class names) resolved via the DI container only when the event fires. This means 50 registered listeners add zero overhead until their event triggers
-- **Error Isolation**: Each listener is wrapped in a try/catch. Failures are logged via [CORE-08](/ApprovedBlueprints/Core/CORE-08.md) (Error Handler) and [CORE-09](/ApprovedBlueprints/Core/CORE-09.md) (Logger) without breaking the pipeline
-- **Emit and Forget**: Events that don't need a result can be dispatched asynchronously (future enhancement) via [CORE-03](/ApprovedBlueprints/Core/CORE-03.md) async infrastructure
+- **Error Isolation**: Each listener is wrapped in a try/catch. Failures are logged via [CORE-08](/docs/blueprints/Core/CORE-08.md) (Error Handler) and [CORE-09](/docs/blueprints/Core/CORE-09.md) (Logger) without breaking the pipeline
+- **Emit and Forget**: Events that don't need a result can be dispatched asynchronously (future enhancement) via [CORE-03](/docs/blueprints/Core/CORE-03.md) async infrastructure
 
 ## Consequences
 ### Positive
@@ -114,7 +114,7 @@ class AuditServiceProvider extends ServiceProvider {
 3. **Hook System** (WordPress-style) - Simple but lacks type safety and PSR compliance. Rejected for maintainability and tooling support.
 
 ## Compliance Checklist
-- [x] Decision documented in [CORE-03](/ApprovedBlueprints/Core/CORE-03.md)
+- [x] Decision documented in [CORE-03](/docs/blueprints/Core/CORE-03.md)
 - [x] Throughput: 10,000 events/sec (benchmarked)
 - [x] Error isolation: failing listeners logged but pipeline continues
 - [x] Stoppable events supported via `StoppableEventInterface`

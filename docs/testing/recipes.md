@@ -2215,4 +2215,4 @@ class SessionLifecycleTest extends IntegrationTestCase
 - [CLI Intermediate Guide](../cli-framework/intermediate-guide.md) — Advanced CLI patterns
 - [Diagnostic Commands](../cli-framework/diagnostic-commands.md) — Troubleshooting
 - [ADR-005 Event System Design](../architecture/decisions/ADR-005-event-system-design.md) — Event architecture
-- [TestSuite Blueprint Overview](../../ArchitectureOrigin/ComponentBlueprints/TestSuite/OVERVIEW.md) — Testing infrastructure design
+- [TestSuite Blueprint Overview](../../architecture/origin/ComponentBlueprints/TestSuite/OVERVIEW.md) — Testing infrastructure design

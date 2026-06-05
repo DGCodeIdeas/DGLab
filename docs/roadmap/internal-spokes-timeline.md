@@ -257,7 +257,7 @@ Buffer allocation: 20% of total timeline, weighted toward later phases where unc
 - **Per-Phase Gate:** Milestone review before advancing to next phase
 - **Weekly during spikes:** Stand-up tracking against estimated completion dates
 
-Alignment with [`EVALUATION_SUMMARY.md`](../../EVALUATION_SUMMARY.md) and [`BLUEPRINT_RANKINGS.md`](../../BLUEPRINT_RANKINGS.md) — quarterly.
+Alignment with [`EVALUATION_SUMMARY.md`](../../evaluation/EVALUATION_SUMMARY.md) and [`BLUEPRINT_RANKINGS.md`](../../evaluation/BLUEPRINT_RANKINGS.md) — quarterly.
 
 ---
 

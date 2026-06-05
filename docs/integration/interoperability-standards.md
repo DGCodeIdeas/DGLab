@@ -26,7 +26,7 @@ This document defines standard interfaces for common integration points across t
 
 ### 1. LoggerAdapterInterface (Observability - Logging)
 
-**Target Blueprint:** [CORE-09](/ApprovedBlueprints/Core/CORE-09.md)
+**Target Blueprint:** [CORE-09](/docs/blueprints/Core/CORE-09.md)
 
 #### Interface Contract
 
@@ -213,7 +213,7 @@ class MonologAdapter extends BaseAdapter implements LoggerAdapterInterface
 
 ### 2. MetricsAdapterInterface (Observability - Monitoring)
 
-**Target Blueprint:** [HUB-05](/ApprovedBlueprints/Hub/HUB-05.md)
+**Target Blueprint:** [HUB-05](/docs/blueprints/Hub/HUB-05.md)
 
 #### Interface Contract
 
@@ -414,7 +414,7 @@ class PrometheusAdapter extends BaseAdapter implements MetricsAdapterInterface
 
 ### 3. TracingAdapterInterface (Observability - Distributed Tracing)
 
-**Target Blueprint:** [HUB-06](/ApprovedBlueprints/Hub/HUB-06.md)
+**Target Blueprint:** [HUB-06](/docs/blueprints/Hub/HUB-06.md)
 
 #### Interface Contract
 
@@ -508,7 +508,7 @@ interface SpanInterface
 
 ### 4. ContainerAdapterInterface (Deployment - Container Orchestration)
 
-**Target Blueprint:** [DEPLOY-01](/ApprovedBlueprints/Deploy/DEPLOY-01.md)
+**Target Blueprint:** [DEPLOY-01](/docs/blueprints/Deploy/DEPLOY-01.md)
 
 #### Interface Contract
 
@@ -596,7 +596,7 @@ class ServiceStatus
 
 ### 5. CacheAdapterInterface (Performance - Caching)
 
-**Target Blueprint:** [HUB-02](/ApprovedBlueprints/Hub/HUB-02.md)
+**Target Blueprint:** [HUB-02](/docs/blueprints/Hub/HUB-02.md)
 
 #### Interface Contract
 
@@ -704,7 +704,7 @@ class CacheStats
 
 ### 6. QueueAdapterInterface (Messaging - Queue Systems)
 
-**Target Blueprint:** [HUB-11](/ApprovedBlueprints/Hub/HUB-11.md)
+**Target Blueprint:** [HUB-11](/docs/blueprints/Hub/HUB-11.md)
 
 #### Interface Contract
 
@@ -787,7 +787,7 @@ class QueuedMessage
 
 ### 7. AuthProviderAdapterInterface (Security - Authentication)
 
-**Target Blueprint:** [CORE-11](/ApprovedBlueprints/Core/CORE-11.md)
+**Target Blueprint:** [CORE-11](/docs/blueprints/Core/CORE-11.md)
 
 #### Interface Contract
 
@@ -880,7 +880,7 @@ class TokenSet
 
 ### 8. StorageAdapterInterface (Storage - File Systems)
 
-**Target Blueprint:** [CORE-14](/ApprovedBlueprints/Core/CORE-14.md)
+**Target Blueprint:** [CORE-14](/docs/blueprints/Core/CORE-14.md)
 
 #### Interface Contract
 
@@ -957,7 +957,7 @@ interface StorageAdapterInterface extends AdapterInterface
 
 ### 9. EncryptionAdapterInterface (Security - Key Management)
 
-**Target Blueprint:** [CORE-16](/ApprovedBlueprints/Core/CORE-16.md)
+**Target Blueprint:** [CORE-16](/docs/blueprints/Core/CORE-16.md)
 
 #### Interface Contract
 
@@ -1043,7 +1043,7 @@ class KeyMetadata
 
 ### 10. SearchAdapterInterface (Search - Full-Text Search)
 
-**Target Blueprint:** [HUB-07](/ApprovedBlueprints/Hub/HUB-07.md)
+**Target Blueprint:** [HUB-07](/docs/blueprints/Hub/HUB-07.md)
 
 #### Interface Contract
 
@@ -1127,7 +1127,7 @@ class SearchResult
 
 ### 11. NotificationAdapterInterface (Communication - Notifications)
 
-**Target Blueprint:** [HUB-08](/ApprovedBlueprints/Hub/HUB-08.md)
+**Target Blueprint:** [HUB-08](/docs/blueprints/Hub/HUB-08.md)
 
 #### Interface Contract
 
@@ -1192,7 +1192,7 @@ class NotificationResult
 
 ### 12. RateLimiterAdapterInterface (Security - Rate Limiting)
 
-**Target Blueprint:** [CORE-12](/ApprovedBlueprints/Core/CORE-12.md)
+**Target Blueprint:** [CORE-12](/docs/blueprints/Core/CORE-12.md)
 
 #### Interface Contract
 
@@ -1257,7 +1257,7 @@ class RateLimitStatus
 
 ### 13. AuditLogAdapterInterface (Compliance - Audit Logging) [Beta]
 
-**Target Blueprint:** [HUB-09](/ApprovedBlueprints/Hub/HUB-09.md)
+**Target Blueprint:** [HUB-09](/docs/blueprints/Hub/HUB-09.md)
 
 #### Interface Contract
 
@@ -1334,7 +1334,7 @@ class IntegrityReport
 
 ### 14. ConfigProviderAdapterInterface (Configuration - External Config) [Beta]
 
-**Target Blueprint:** [CORE-10](/ApprovedBlueprints/Core/CORE-10.md)
+**Target Blueprint:** [CORE-10](/docs/blueprints/Core/CORE-10.md)
 
 #### Interface Contract
 

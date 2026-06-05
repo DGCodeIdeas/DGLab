@@ -9,7 +9,7 @@ Define a one-to-many dependency between objects so that when one object changes 
 - Event-driven architectures, publish-subscribe systems, and callback registration
 - Audit trails, logging, metrics collection triggered by domain events
 
-**Used in Core**: [CORE-03 Event Dispatcher](/ApprovedBlueprints/Core/CORE-03.md) implements the Observer pattern. Events are the "subject" and listeners are the "observers". The PSR-14 `ListenerProvider` decouples event emission from listener execution.
+**Used in Core**: [CORE-03 Event Dispatcher](/docs/blueprints/Core/CORE-03.md) implements the Observer pattern. Events are the "subject" and listeners are the "observers". The PSR-14 `ListenerProvider` decouples event emission from listener execution.
 
 ## Diagram
 
@@ -95,7 +95,7 @@ $provider->addListener(UserLoginEvent::class, AnalyticsListener::class, priority
 1. **Observer Memory Leaks**: Failing to unregister observers when no longer needed. In PHP request lifecycle this is less of an issue, but for long-running processes (CLI workers), ensure observers can be deregistered.
 2. **Observer Does Too Much**: If an observer is doing heavy lifting (DB writes, API calls, file I/O), it should dispatch a separate job/event rather than blocking the pipeline.
 3. **Shared Mutable State**: Observers should not rely on execution order for correctness. If order matters, use explicit priorities but don't depend on implicit ordering.
-4. **Exception Propagation**: A failing observer should not crash other observers. Use error isolation (try/catch per observer) as implemented in [CORE-03](/ApprovedBlueprints/Core/CORE-03.md).
+4. **Exception Propagation**: A failing observer should not crash other observers. Use error isolation (try/catch per observer) as implemented in [CORE-03](/docs/blueprints/Core/CORE-03.md).
 
 ## Verification
 - New observers can be added without modifying the event or existing observers

@@ -10,7 +10,7 @@
 
 Message ordering in distributed queue systems involves trade-offs between strict ordering, throughput, and fault tolerance. This guide covers the ordering guarantees available in the DGLab Hub queue infrastructure and how to select the right model.
 
-**Primary Blueprint:** [HUB-10: Sovereign Queue](../../ApprovedBlueprints/Hub/HUB-10.md)
+**Primary Blueprint:** [HUB-10: Sovereign Queue](../../blueprints/Hub/HUB-10.md)
 
 ---
 
@@ -352,7 +352,7 @@ class OrderingConfig
 
 | Blueprint | Role in Ordering |
 |-----------|-----------------|
-| [HUB-10](../../ApprovedBlueprints/Hub/HUB-10.md) | Queue driver with ordering modes |
-| [HUB-09](../../ApprovedBlueprints/Hub/HUB-09.md) | Event Bus — ordering considerations for pub/sub |
-| [HUB-06](../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging for ordering violations |
-| [CORE-03](../../ApprovedBlueprints/Core/CORE-03.md) | Event dispatcher (PSR-14) foundations |
+| [HUB-10](../../blueprints/Hub/HUB-10.md) | Queue driver with ordering modes |
+| [HUB-09](../../blueprints/Hub/HUB-09.md) | Event Bus — ordering considerations for pub/sub |
+| [HUB-06](../../blueprints/Hub/HUB-06.md) | Audit logging for ordering violations |
+| [CORE-03](../../blueprints/Core/CORE-03.md) | Event dispatcher (PSR-14) foundations |

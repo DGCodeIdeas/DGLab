@@ -10,7 +10,7 @@
 
 A **Dead-Letter Queue (DLQ)** is a secondary queue that captures messages that cannot be processed successfully after exhausting retry attempts. Proper DLQ management prevents message loss, enables forensic analysis, and maintains queue health.
 
-**Primary Blueprint:** [HUB-10: Sovereign Queue](../../ApprovedBlueprints/Hub/HUB-10.md)
+**Primary Blueprint:** [HUB-10: Sovereign Queue](../../blueprints/Hub/HUB-10.md)
 
 ---
 
@@ -473,7 +473,7 @@ class DLQRedriveService
 
 | Blueprint | Role in Dead-Letter Handling |
 |-----------|------------------------------|
-| [HUB-10](../../ApprovedBlueprints/Hub/HUB-10.md) | Queue driver with DLQ support |
-| [HUB-09](../../ApprovedBlueprints/Hub/HUB-09.md) | Event Bus retry patterns |
-| [HUB-06](../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging for DLQ events |
-| [HUB-17](../../ApprovedBlueprints/Hub/HUB-17.md) | Webhook retry and failure handling |
+| [HUB-10](../../blueprints/Hub/HUB-10.md) | Queue driver with DLQ support |
+| [HUB-09](../../blueprints/Hub/HUB-09.md) | Event Bus retry patterns |
+| [HUB-06](../../blueprints/Hub/HUB-06.md) | Audit logging for DLQ events |
+| [HUB-17](../../blueprints/Hub/HUB-17.md) | Webhook retry and failure handling |

@@ -20,26 +20,26 @@ This document maps all extension hooks in the Sovereign Stack Core Framework, sh
 
 | # | Hook Name | Core Blueprint | Type | Integration Point |
 |---|-----------|---------------|------|------------------|
-| 1 | DI Container Bindings | [CORE-02](/ApprovedBlueprints/Core/CORE-02.md) | ServiceProvider / DI Binding | `$container->bind()` in `register()` |
-| 2 | Service Provider Registration | [CORE-17](/ApprovedBlueprints/Core/CORE-17.md) | ServiceProvider | Extend `ServiceProvider`, add to `config/app.php` |
-| 3 | Event Listener Registration | [CORE-03](/ApprovedBlueprints/Core/CORE-03.md) | Event Listener | `$provider->addListener()` in ServiceProvider |
-| 4 | Middleware Registration | [CORE-05](/ApprovedBlueprints/Core/CORE-05.md) | Middleware | `#[Route(middleware: [...])]` or global kernel config |
-| 5 | Route Definition | [CORE-06](/ApprovedBlueprints/Core/CORE-06.md) | Route Attribute | `#[Route(path, method)]` on controller methods |
-| 6 | CLI Command Registration | [CORE-13](/ApprovedBlueprints/Core/CORE-13.md) | ServiceProvider | Extend `Command`, placed in `app/Console/Commands/` |
-| 7 | Validation Custom Rules | [CORE-03](/ApprovedBlueprints/Core/CORE-03.md) | DI Binding | Implement `RuleInterface`, register via `addRule()` |
-| 8 | Cache Driver Implementation | [CORE-15](/ApprovedBlueprints/Core/CORE-15.md) | Interface Implementation | Implement `CacheDriverInterface`, register via `CacheManager` |
-| 9 | Filesystem Driver Implementation | [CORE-14](/ApprovedBlueprints/Core/CORE-14.md) | Interface Implementation | Implement `FilesystemInterface`, bind in container |
-| 10 | Logger Handler | [CORE-09](/ApprovedBlueprints/Core/CORE-09.md) | DI Binding | Implement handler, add to `HandlerStack` |
-| 11 | Error Renderer Strategy | [CORE-08](/ApprovedBlueprints/Core/CORE-08.md) | Interface Implementation | Implement `RendererInterface`, configure in config |
-| 12 | Database Driver | [CORE-19](/ApprovedBlueprints/Core/CORE-19.md) | Interface Implementation | Implement `DriverInterface`, register with `ConnectionManager` |
-| 13 | Migration Definition | [CORE-20](/ApprovedBlueprints/Core/CORE-20.md) | ServiceProvider | Extend `Migration`, placed in `database/migrations/` |
-| 14 | Configuration Override | [CORE-10](/ApprovedBlueprints/Core/CORE-10.md) | Config Key | Set values in `config/*.php` or `.env` |
-| 15 | Kernel Lifecycle Hooks | [CORE-18](/ApprovedBlueprints/Core/CORE-18.md) | Event Listener | Listen to `kernel.before_boot`, `kernel.after_boot`, `kernel.before_request`, `kernel.after_request` |
-| 16 | Encryption Driver | [CORE-16](/ApprovedBlueprints/Core/CORE-16.md) | DI Binding | Implement `EncrypterInterface`, bind in container |
-| 17 | Deferred Service Provider | [CORE-17](/ApprovedBlueprints/Core/CORE-17.md) | ServiceProvider | Set `$deferred = true` + `$provides` array |
-| 18 | CompilerPass Extension | [CORE-02](/ApprovedBlueprints/Core/CORE-02.md) | ServiceProvider | Implement `CompilerPassInterface` for DI container optimization |
-| 19 | Forge Command (Scaffolding) | [CORE-20](/ApprovedBlueprints/Core/CORE-20.md) | ServiceProvider | Extend `ForgeCommand`, auto-discovered by CommandRegistry |
-| 20 | Health Check Provider | [CORE-20](/ApprovedBlueprints/Core/CORE-20.md) | ServiceProvider | Implement `HealthCheckInterface`, registered in `HealthChecker` |
+| 1 | DI Container Bindings | [CORE-02](/docs/blueprints/Core/CORE-02.md) | ServiceProvider / DI Binding | `$container->bind()` in `register()` |
+| 2 | Service Provider Registration | [CORE-17](/docs/blueprints/Core/CORE-17.md) | ServiceProvider | Extend `ServiceProvider`, add to `config/app.php` |
+| 3 | Event Listener Registration | [CORE-03](/docs/blueprints/Core/CORE-03.md) | Event Listener | `$provider->addListener()` in ServiceProvider |
+| 4 | Middleware Registration | [CORE-05](/docs/blueprints/Core/CORE-05.md) | Middleware | `#[Route(middleware: [...])]` or global kernel config |
+| 5 | Route Definition | [CORE-06](/docs/blueprints/Core/CORE-06.md) | Route Attribute | `#[Route(path, method)]` on controller methods |
+| 6 | CLI Command Registration | [CORE-13](/docs/blueprints/Core/CORE-13.md) | ServiceProvider | Extend `Command`, placed in `app/Console/Commands/` |
+| 7 | Validation Custom Rules | [CORE-03](/docs/blueprints/Core/CORE-03.md) | DI Binding | Implement `RuleInterface`, register via `addRule()` |
+| 8 | Cache Driver Implementation | [CORE-15](/docs/blueprints/Core/CORE-15.md) | Interface Implementation | Implement `CacheDriverInterface`, register via `CacheManager` |
+| 9 | Filesystem Driver Implementation | [CORE-14](/docs/blueprints/Core/CORE-14.md) | Interface Implementation | Implement `FilesystemInterface`, bind in container |
+| 10 | Logger Handler | [CORE-09](/docs/blueprints/Core/CORE-09.md) | DI Binding | Implement handler, add to `HandlerStack` |
+| 11 | Error Renderer Strategy | [CORE-08](/docs/blueprints/Core/CORE-08.md) | Interface Implementation | Implement `RendererInterface`, configure in config |
+| 12 | Database Driver | [CORE-19](/docs/blueprints/Core/CORE-19.md) | Interface Implementation | Implement `DriverInterface`, register with `ConnectionManager` |
+| 13 | Migration Definition | [CORE-20](/docs/blueprints/Core/CORE-20.md) | ServiceProvider | Extend `Migration`, placed in `database/migrations/` |
+| 14 | Configuration Override | [CORE-10](/docs/blueprints/Core/CORE-10.md) | Config Key | Set values in `config/*.php` or `.env` |
+| 15 | Kernel Lifecycle Hooks | [CORE-18](/docs/blueprints/Core/CORE-18.md) | Event Listener | Listen to `kernel.before_boot`, `kernel.after_boot`, `kernel.before_request`, `kernel.after_request` |
+| 16 | Encryption Driver | [CORE-16](/docs/blueprints/Core/CORE-16.md) | DI Binding | Implement `EncrypterInterface`, bind in container |
+| 17 | Deferred Service Provider | [CORE-17](/docs/blueprints/Core/CORE-17.md) | ServiceProvider | Set `$deferred = true` + `$provides` array |
+| 18 | CompilerPass Extension | [CORE-02](/docs/blueprints/Core/CORE-02.md) | ServiceProvider | Implement `CompilerPassInterface` for DI container optimization |
+| 19 | Forge Command (Scaffolding) | [CORE-20](/docs/blueprints/Core/CORE-20.md) | ServiceProvider | Extend `ForgeCommand`, auto-discovered by CommandRegistry |
+| 20 | Health Check Provider | [CORE-20](/docs/blueprints/Core/CORE-20.md) | ServiceProvider | Implement `HealthCheckInterface`, registered in `HealthChecker` |
 
 ---
 
@@ -47,7 +47,7 @@ This document maps all extension hooks in the Sovereign Stack Core Framework, sh
 
 ### 1. DI Container Bindings
 
-**Blueprint**: [CORE-02](/ApprovedBlueprints/Core/CORE-02.md)
+**Blueprint**: [CORE-02](/docs/blueprints/Core/CORE-02.md)
 **Type**: ServiceProvider / DI Binding
 **Pattern**: [Factory](/docs/design-patterns/factory-pattern.md), [Adapter](/docs/design-patterns/adapter-pattern.md)
 
@@ -81,7 +81,7 @@ class MyHubServiceProvider extends ServiceProvider
 
 ### 2. Service Provider Registration
 
-**Blueprint**: [CORE-17](/ApprovedBlueprints/Core/CORE-17.md)
+**Blueprint**: [CORE-17](/docs/blueprints/Core/CORE-17.md)
 **Type**: ServiceProvider
 **Pattern**: [Template Method](/docs/design-patterns/template-method.md)
 
@@ -122,7 +122,7 @@ Registration in `config/app.php`:
 
 ### 3. Event Listener Registration
 
-**Blueprint**: [CORE-03](/ApprovedBlueprints/Core/CORE-03.md)
+**Blueprint**: [CORE-03](/docs/blueprints/Core/CORE-03.md)
 **Type**: Event Listener
 **Pattern**: [Observer](/docs/design-patterns/observer-pattern.md)
 
@@ -157,20 +157,20 @@ class NotificationServiceProvider extends ServiceProvider
 
 | Event | Fired By | Payload | Stoppable |
 |-------|----------|---------|-----------|
-| `kernel.before_boot` | [CORE-18](/ApprovedBlueprints/Core/CORE-18.md) | Kernel instance | No |
-| `kernel.after_boot` | [CORE-18](/ApprovedBlueprints/Core/CORE-18.md) | Kernel instance | No |
-| `kernel.before_request` | [CORE-18](/ApprovedBlueprints/Core/CORE-18.md) | Request, Kernel | Yes |
-| `kernel.after_request` | [CORE-18](/ApprovedBlueprints/Core/CORE-18.md) | Request, Response, Kernel | No |
-| `kernel.terminate` | [CORE-18](/ApprovedBlueprints/Core/CORE-18.md) | Kernel instance | No |
-| `security.error` | [CORE-08](/ApprovedBlueprints/Core/CORE-08.md) | Throwable | No |
-| `router.match` | [CORE-06](/ApprovedBlueprints/Core/CORE-06.md) | Route, Request | Yes |
-| `container.resolve` | [CORE-02](/ApprovedBlueprints/Core/CORE-02.md) | Service ID, Instance | No |
+| `kernel.before_boot` | [CORE-18](/docs/blueprints/Core/CORE-18.md) | Kernel instance | No |
+| `kernel.after_boot` | [CORE-18](/docs/blueprints/Core/CORE-18.md) | Kernel instance | No |
+| `kernel.before_request` | [CORE-18](/docs/blueprints/Core/CORE-18.md) | Request, Kernel | Yes |
+| `kernel.after_request` | [CORE-18](/docs/blueprints/Core/CORE-18.md) | Request, Response, Kernel | No |
+| `kernel.terminate` | [CORE-18](/docs/blueprints/Core/CORE-18.md) | Kernel instance | No |
+| `security.error` | [CORE-08](/docs/blueprints/Core/CORE-08.md) | Throwable | No |
+| `router.match` | [CORE-06](/docs/blueprints/Core/CORE-06.md) | Route, Request | Yes |
+| `container.resolve` | [CORE-02](/docs/blueprints/Core/CORE-02.md) | Service ID, Instance | No |
 
 ---
 
 ### 4. Middleware Registration
 
-**Blueprint**: [CORE-05](/ApprovedBlueprints/Core/CORE-05.md)
+**Blueprint**: [CORE-05](/docs/blueprints/Core/CORE-05.md)
 **Type**: Middleware
 **Pattern**: [Chain of Responsibility](/docs/design-patterns/chain-of-responsibility.md)
 
@@ -230,7 +230,7 @@ class CorsMiddleware implements MiddlewareInterface
 
 ### 5. Route Definition
 
-**Blueprint**: [CORE-06](/ApprovedBlueprints/Core/CORE-06.md)
+**Blueprint**: [CORE-06](/docs/blueprints/Core/CORE-06.md)
 **Type**: Route Attribute
 **Pattern**: [Decorator](/docs/design-patterns/decorator-pattern.md)
 
@@ -268,7 +268,7 @@ class HubUserController
 
 ### 6. CLI Command Registration
 
-**Blueprint**: [CORE-13](/ApprovedBlueprints/Core/CORE-13.md)
+**Blueprint**: [CORE-13](/docs/blueprints/Core/CORE-13.md)
 **Type**: ServiceProvider
 **Pattern**: [Template Method](/docs/design-patterns/template-method.md)
 
@@ -310,7 +310,7 @@ class SyncExternalUsersCommand extends Command
 
 ### 7. Validation Custom Rules
 
-**Blueprint**: [CORE-03](/ApprovedBlueprints/Core/CORE-03.md)
+**Blueprint**: [CORE-03](/docs/blueprints/Core/CORE-03.md)
 **Type**: DI Binding
 **Pattern**: [Strategy](/docs/design-patterns/strategy-pattern.md)
 
@@ -347,7 +347,7 @@ public string $phone;
 
 ### 8. Cache Driver Implementation
 
-**Blueprint**: [CORE-15](/ApprovedBlueprints/Core/CORE-15.md)
+**Blueprint**: [CORE-15](/docs/blueprints/Core/CORE-15.md)
 **Type**: Interface Implementation
 **Pattern**: [Factory](/docs/design-patterns/factory-pattern.md), [Adapter](/docs/design-patterns/adapter-pattern.md)
 

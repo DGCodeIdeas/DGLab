@@ -40,36 +40,36 @@ Every Hub blueprint is classified along three dimensions to aid in navigation, p
 
 | ID | Name | Category | Criticality | Maturity | Scale | Key Dependencies |
 |----|------|----------|-------------|---------|-------|------------------|
-| [HUB-01](../ApprovedBlueprints/Hub/HUB-01.md) | Sovereign Hub Config & Flags | Infrastructure | **Critical** | Stable | Medium | CORE-10 (Config), CORE-02 (DI Container) |
-| [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | Sovereign Hub Cache | Integration | **Critical** | Stable | Medium | CORE-15 (Cache), CORE-02 (DI Container) |
-| [HUB-03](../ApprovedBlueprints/Hub/HUB-03.md) | Sovereign Asset Engine | Infrastructure | High | Beta | Medium | CORE-14 (Filesystem), CORE-10 (Config) |
-| [HUB-04](../ApprovedBlueprints/Hub/HUB-04.md) | Sovereign Identity | Security | **Critical** | Stable | Large | CORE-19 (DBAL), CORE-16 (Encryption), HUB-02 (Cache) |
-| [HUB-05](../ApprovedBlueprints/Hub/HUB-05.md) | Sovereign Guardian | Security | **Critical** | Stable | Medium | HUB-04 (Identity), CORE-19 (DBAL), HUB-02 (Cache) |
-| [HUB-06](../ApprovedBlueprints/Hub/HUB-06.md) | Sovereign Auditor | Observability | High | Stable | Medium | CORE-19 (DBAL), HUB-04 (Identity), CORE-03 (Event Dispatcher) |
-| [HUB-07](../ApprovedBlueprints/Hub/HUB-07.md) | Sovereign Throttle | Integration | High | Stable | Small | HUB-02 (Cache), CORE-04 (HTTP Message) |
-| [HUB-08](../ApprovedBlueprints/Hub/HUB-08.md) | Sovereign Gateway | Integration | **Critical** | Beta | Large | CORE-06 (Router), HUB-04 (Identity), HUB-07 (Rate Limiter) |
-| [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | Sovereign Pulse (Event Bus) | Integration | **Critical** | Stable | Large | CORE-03 (Event Dispatcher), HUB-02 (Cache), HUB-10 (Queue) |
-| [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | Sovereign Queue | Integration | **Critical** | Stable | Large | CORE-19 (DBAL), HUB-02 (Cache) |
-| [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) | Sovereign Cloud Storage | Data | High | Stable | Medium | CORE-14 (Filesystem), CORE-10 (Config) |
-| [HUB-12](../ApprovedBlueprints/Hub/HUB-12.md) | Sovereign Notify | Observability | High | Beta | Medium | HUB-04 (Identity), HUB-10 (Queue), CORE-12 (Compiler) |
-| [HUB-13](../ApprovedBlueprints/Hub/HUB-13.md) | Sovereign Translator | Data | Medium | Beta | Small | CORE-10 (Config), HUB-02 (Cache) |
-| [HUB-14](../ApprovedBlueprints/Hub/HUB-14.md) | Sovereign Search | Data | High | Stable | Medium | CORE-19 (DBAL), HUB-10 (Queue) |
-| [HUB-15](../ApprovedBlueprints/Hub/HUB-15.md) | Sovereign Pulse (Health) | Infrastructure | High | Stable | Small | CORE-10 (Config), CORE-14 (Filesystem), HUB-02 (Cache) |
-| [HUB-16](../ApprovedBlueprints/Hub/HUB-16.md) | Sovereign Hub Weaver | Infrastructure | Medium | Beta | Small | CORE-01 (Polyrepo Orchestrator), HUB-15 (Health Check) |
-| [HUB-17](../ApprovedBlueprints/Hub/HUB-17.md) | Sovereign Webhook Nexus | Integration | High | Beta | Medium | HUB-09 (Event Bus), HUB-10 (Queue), HUB-06 (Audit Log) |
-| [HUB-18](../ApprovedBlueprints/Hub/HUB-18.md) | Sovereign Media Forge | Data | Medium | Experimental | Medium | HUB-11 (Cloud Storage), HUB-10 (Queue) |
-| [HUB-19](../ApprovedBlueprints/Hub/HUB-19.md) | Sovereign Guard (Validation) | Data | **Critical** | Stable | Small | CORE-19 (DBAL), CORE-10 (Config) |
-| [HUB-20](../ApprovedBlueprints/Hub/HUB-20.md) | Sovereign Vault | Security | **Critical** | Stable | Medium | CORE-16 (Encryption), CORE-19 (DBAL) |
-| [HUB-21](../ApprovedBlueprints/Hub/HUB-21.md) | Sovereign Nexus (Tenancy) | Data | **Critical** | Stable | Large | HUB-01 (Config), HUB-04 (Identity) |
-| [HUB-22](../ApprovedBlueprints/Hub/HUB-22.md) | Sovereign Ledger (Billing) | Data | High | Beta | Medium | HUB-21 (Tenancy), HUB-20 (Vault) |
-| [HUB-23](../ApprovedBlueprints/Hub/HUB-23.md) | Sovereign Reporter | Data | Medium | Beta | Small | HUB-11 (Cloud Storage), HUB-10 (Queue) |
-| [HUB-24](../ApprovedBlueprints/Hub/HUB-24.md) | Sovereign GraphQL Registry | Integration | High | Experimental | Medium | HUB-08 (Gateway), HUB-04 (Identity) |
-| [HUB-25](../ApprovedBlueprints/Hub/HUB-25.md) | Sovereign Chronos (Scheduler) | Infrastructure | High | Stable | Medium | HUB-10 (Queue), HUB-02 (Cache) |
-| [HUB-26](../ApprovedBlueprints/Hub/HUB-26.md) | Sovereign UI (Elements) | Security | High | Beta | Large | HUB-03 (Asset Pipeline), CORE-11/CORE-12 (SuperPHP) |
-| [HUB-27](../ApprovedBlueprints/Hub/HUB-27.md) | Sovereign Sentinel (Headers) | Security | High | Stable | Small | HUB-08 (Gateway), CORE-04 (HTTP Message) |
-| [HUB-28](../ApprovedBlueprints/Hub/HUB-28.md) | Sovereign Versioner | Infrastructure | Medium | Stable | Small | HUB-08 (Gateway), CORE-06 (Router) |
-| [HUB-29](../ApprovedBlueprints/Hub/HUB-29.md) | Sovereign Hub Spec (Testing) | Infrastructure | High | Stable | Medium | CORE-20 (Forge), HUB-01 through HUB-28 (all Hub phases) |
-| [HUB-30](../ApprovedBlueprints/Hub/HUB-30.md) | Sovereign Hub-CLI | Infrastructure | High | Beta | Medium | CORE-20 (Forge), all 29 Hub phases |
+| [HUB-01](../blueprints/Hub/HUB-01.md) | Sovereign Hub Config & Flags | Infrastructure | **Critical** | Stable | Medium | CORE-10 (Config), CORE-02 (DI Container) |
+| [HUB-02](../blueprints/Hub/HUB-02.md) | Sovereign Hub Cache | Integration | **Critical** | Stable | Medium | CORE-15 (Cache), CORE-02 (DI Container) |
+| [HUB-03](../blueprints/Hub/HUB-03.md) | Sovereign Asset Engine | Infrastructure | High | Beta | Medium | CORE-14 (Filesystem), CORE-10 (Config) |
+| [HUB-04](../blueprints/Hub/HUB-04.md) | Sovereign Identity | Security | **Critical** | Stable | Large | CORE-19 (DBAL), CORE-16 (Encryption), HUB-02 (Cache) |
+| [HUB-05](../blueprints/Hub/HUB-05.md) | Sovereign Guardian | Security | **Critical** | Stable | Medium | HUB-04 (Identity), CORE-19 (DBAL), HUB-02 (Cache) |
+| [HUB-06](../blueprints/Hub/HUB-06.md) | Sovereign Auditor | Observability | High | Stable | Medium | CORE-19 (DBAL), HUB-04 (Identity), CORE-03 (Event Dispatcher) |
+| [HUB-07](../blueprints/Hub/HUB-07.md) | Sovereign Throttle | Integration | High | Stable | Small | HUB-02 (Cache), CORE-04 (HTTP Message) |
+| [HUB-08](../blueprints/Hub/HUB-08.md) | Sovereign Gateway | Integration | **Critical** | Beta | Large | CORE-06 (Router), HUB-04 (Identity), HUB-07 (Rate Limiter) |
+| [HUB-09](../blueprints/Hub/HUB-09.md) | Sovereign Pulse (Event Bus) | Integration | **Critical** | Stable | Large | CORE-03 (Event Dispatcher), HUB-02 (Cache), HUB-10 (Queue) |
+| [HUB-10](../blueprints/Hub/HUB-10.md) | Sovereign Queue | Integration | **Critical** | Stable | Large | CORE-19 (DBAL), HUB-02 (Cache) |
+| [HUB-11](../blueprints/Hub/HUB-11.md) | Sovereign Cloud Storage | Data | High | Stable | Medium | CORE-14 (Filesystem), CORE-10 (Config) |
+| [HUB-12](../blueprints/Hub/HUB-12.md) | Sovereign Notify | Observability | High | Beta | Medium | HUB-04 (Identity), HUB-10 (Queue), CORE-12 (Compiler) |
+| [HUB-13](../blueprints/Hub/HUB-13.md) | Sovereign Translator | Data | Medium | Beta | Small | CORE-10 (Config), HUB-02 (Cache) |
+| [HUB-14](../blueprints/Hub/HUB-14.md) | Sovereign Search | Data | High | Stable | Medium | CORE-19 (DBAL), HUB-10 (Queue) |
+| [HUB-15](../blueprints/Hub/HUB-15.md) | Sovereign Pulse (Health) | Infrastructure | High | Stable | Small | CORE-10 (Config), CORE-14 (Filesystem), HUB-02 (Cache) |
+| [HUB-16](../blueprints/Hub/HUB-16.md) | Sovereign Hub Weaver | Infrastructure | Medium | Beta | Small | CORE-01 (Polyrepo Orchestrator), HUB-15 (Health Check) |
+| [HUB-17](../blueprints/Hub/HUB-17.md) | Sovereign Webhook Nexus | Integration | High | Beta | Medium | HUB-09 (Event Bus), HUB-10 (Queue), HUB-06 (Audit Log) |
+| [HUB-18](../blueprints/Hub/HUB-18.md) | Sovereign Media Forge | Data | Medium | Experimental | Medium | HUB-11 (Cloud Storage), HUB-10 (Queue) |
+| [HUB-19](../blueprints/Hub/HUB-19.md) | Sovereign Guard (Validation) | Data | **Critical** | Stable | Small | CORE-19 (DBAL), CORE-10 (Config) |
+| [HUB-20](../blueprints/Hub/HUB-20.md) | Sovereign Vault | Security | **Critical** | Stable | Medium | CORE-16 (Encryption), CORE-19 (DBAL) |
+| [HUB-21](../blueprints/Hub/HUB-21.md) | Sovereign Nexus (Tenancy) | Data | **Critical** | Stable | Large | HUB-01 (Config), HUB-04 (Identity) |
+| [HUB-22](../blueprints/Hub/HUB-22.md) | Sovereign Ledger (Billing) | Data | High | Beta | Medium | HUB-21 (Tenancy), HUB-20 (Vault) |
+| [HUB-23](../blueprints/Hub/HUB-23.md) | Sovereign Reporter | Data | Medium | Beta | Small | HUB-11 (Cloud Storage), HUB-10 (Queue) |
+| [HUB-24](../blueprints/Hub/HUB-24.md) | Sovereign GraphQL Registry | Integration | High | Experimental | Medium | HUB-08 (Gateway), HUB-04 (Identity) |
+| [HUB-25](../blueprints/Hub/HUB-25.md) | Sovereign Chronos (Scheduler) | Infrastructure | High | Stable | Medium | HUB-10 (Queue), HUB-02 (Cache) |
+| [HUB-26](../blueprints/Hub/HUB-26.md) | Sovereign UI (Elements) | Security | High | Beta | Large | HUB-03 (Asset Pipeline), CORE-11/CORE-12 (SuperPHP) |
+| [HUB-27](../blueprints/Hub/HUB-27.md) | Sovereign Sentinel (Headers) | Security | High | Stable | Small | HUB-08 (Gateway), CORE-04 (HTTP Message) |
+| [HUB-28](../blueprints/Hub/HUB-28.md) | Sovereign Versioner | Infrastructure | Medium | Stable | Small | HUB-08 (Gateway), CORE-06 (Router) |
+| [HUB-29](../blueprints/Hub/HUB-29.md) | Sovereign Hub Spec (Testing) | Infrastructure | High | Stable | Medium | CORE-20 (Forge), HUB-01 through HUB-28 (all Hub phases) |
+| [HUB-30](../blueprints/Hub/HUB-30.md) | Sovereign Hub-CLI | Infrastructure | High | Beta | Medium | CORE-20 (Forge), all 29 Hub phases |
 
 ---
 

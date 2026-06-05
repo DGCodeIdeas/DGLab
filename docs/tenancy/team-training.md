@@ -2,7 +2,7 @@
 
 > **Navigation:** [Tenancy Home](index.md) | [Isolation Layer](isolation-layer.md) | [Audit Logging](tenant-audit-logging.md) | [Isolation Test Suite](isolation-test-suite.md)
 >
-> **Related:** [Tenancy Service Specification](../../ArchitectureOrigin/TENANCY_SERVICE.md) | [`TenancyService`](../../Legacy.old/app/Services/Tenancy/TenancyService.php)
+> **Related:** [Tenancy Service Specification](../../architecture/origin/TENANCY_SERVICE.md) | [`TenancyService`](../../Legacy.old/app/Services/Tenancy/TenancyService.php)
 
 ---
 
@@ -381,5 +381,5 @@ All developers must complete the following before committing tenant-scoped code:
 - [Tenant Auditing System](tenant-audit-logging.md) — Violation tracking
 - [Isolation Test Suite](isolation-test-suite.md) — Verification patterns
 - [`TenancyService`](../../Legacy.old/app/Services/Tenancy/TenancyService.php) — Tenant identification
-- [Tenancy Service Specification](../../ArchitectureOrigin/TENANCY_SERVICE.md) — Original spec
+- [Tenancy Service Specification](../../architecture/origin/TENANCY_SERVICE.md) — Original spec
 - [Testing Recipes](../testing/recipes.md) — General testing patterns

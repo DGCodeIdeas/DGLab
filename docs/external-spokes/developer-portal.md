@@ -865,10 +865,10 @@ return [
 
 | Blueprint | Role in Developer Portal |
 |-----------|--------------------------|
-| [BRIDGE-01](../../../ApprovedBlueprints/External/BRIDGE-01.md) | API Gateway — base for portal backend services |
-| [HUB-06](../../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging — request log storage |
-| [HUB-08](../../../ApprovedBlueprints/Hub/HUB-08.md) | Routing — API key authentication middleware |
-| [HUB-30](../../../ApprovedBlueprints/Hub/HUB-30.md) | CLI — portal management commands |
+| [BRIDGE-01](../../../blueprints/External/BRIDGE-01.md) | API Gateway — base for portal backend services |
+| [HUB-06](../../../blueprints/Hub/HUB-06.md) | Audit logging — request log storage |
+| [HUB-08](../../../blueprints/Hub/HUB-08.md) | Routing — API key authentication middleware |
+| [HUB-30](../../../blueprints/Hub/HUB-30.md) | CLI — portal management commands |
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Navigation:** [Tenancy Home](index.md) | [Audit Logging](tenant-audit-logging.md) | [Isolation Test Suite](isolation-test-suite.md) | [Team Training](team-training.md)
 >
-> **Related:** [Tenancy Service Specification](../../ArchitectureOrigin/TENANCY_SERVICE.md) | [`TenancyService`](../../Legacy.old/app/Services/Tenancy/TenancyService.php) | [Tenant Migrations](../../Legacy.old/database/migrations/2026_03_14_000001_create_tenants_tables.php)
+> **Related:** [Tenancy Service Specification](../../architecture/origin/TENANCY_SERVICE.md) | [`TenancyService`](../../Legacy.old/app/Services/Tenancy/TenancyService.php) | [Tenant Migrations](../../Legacy.old/database/migrations/2026_03_14_000001_create_tenants_tables.php)
 
 ---
 
@@ -724,7 +724,7 @@ trait TenantScopedRelations
 ## References
 
 - [`TenancyService`](../../Legacy.old/app/Services/Tenancy/TenancyService.php) — Existing tenant identification logic
-- [Tenancy Service Specification](../../ArchitectureOrigin/TENANCY_SERVICE.md) — Original spec
+- [Tenancy Service Specification](../../architecture/origin/TENANCY_SERVICE.md) — Original spec
 - [Tenant Migrations](../../Legacy.old/database/migrations/2026_03_14_000001_create_tenants_tables.php)
 - [Tenant Audit Logging](tenant-audit-logging.md) — Violation tracking
 - [Isolation Test Suite](isolation-test-suite.md) — Verification patterns

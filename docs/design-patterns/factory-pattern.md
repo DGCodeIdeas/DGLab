@@ -9,7 +9,7 @@ Encapsulate object creation logic behind a single interface, allowing subclasses
 - Need to centralize object creation to avoid duplication across the codebase
 - Testing requires swapping real implementations with mocks
 
-**Used in Core**: [CORE-15 Cache Abstraction](/ApprovedBlueprints/Core/CORE-15.md) uses a `CacheManager` factory to create different cache driver instances.
+**Used in Core**: [CORE-15 Cache Abstraction](/docs/blueprints/Core/CORE-15.md) uses a `CacheManager` factory to create different cache driver instances.
 
 ## Diagram
 

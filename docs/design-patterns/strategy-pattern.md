@@ -9,7 +9,7 @@ Define a family of interchangeable algorithms, encapsulate each one, and make th
 - Conditional logic (if/else or switch) for selecting behavior grows unwieldy
 - You need to add new behaviors without changing existing, tested code
 
-**Used in Core**: [CORE-08 Error Handler](/ApprovedBlueprints/Core/CORE-08.md) uses a `RendererInterface` strategy pattern to switch between Console, JSON, and SuperPHP error page rendering depending on the context.
+**Used in Core**: [CORE-08 Error Handler](/docs/blueprints/Core/CORE-08.md) uses a `RendererInterface` strategy pattern to switch between Console, JSON, and SuperPHP error page rendering depending on the context.
 
 ## Diagram
 

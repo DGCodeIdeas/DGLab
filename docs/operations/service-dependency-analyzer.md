@@ -10,7 +10,7 @@
 
 The **Service Dependency Analyzer (SDA)** is a tool concept for automatically discovering, analyzing, and visualizing service dependency graphs within the DGLab Hub architecture. Its primary purpose is to help operators identify critical paths, single points of failure, and bottleneck services in deployments with 30+ Hub services.
 
-**Primary Driver:** [Weakness 3: Limited Operational Complexity Guidance](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-3-limited-operational-complexity-guidance-for-30-services)
+**Primary Driver:** [Weakness 3: Limited Operational Complexity Guidance](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-3-limited-operational-complexity-guidance-for-30-services)
 
 ---
 
@@ -512,8 +512,8 @@ The SDA can be embedded in Grafana as a panel plugin, providing:
 
 | Blueprint | Role in Dependency Analysis |
 |-----------|----------------------------|
-| [HUB-15](../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring data source |
-| [HUB-16](../../ApprovedBlueprints/Hub/HUB-16.md) | Weaver orchestration and dependency validation |
-| [HUB-08](../../ApprovedBlueprints/Hub/HUB-08.md) | Gateway — central routing topology |
-| [HUB-01](../../ApprovedBlueprints/Hub/HUB-01.md) | Configuration for dependency metadata |
-| [HUB-30](../../ApprovedBlueprints/Hub/HUB-30.md) | CLI tooling integration point |
+| [HUB-15](../../blueprints/Hub/HUB-15.md) | Health monitoring data source |
+| [HUB-16](../../blueprints/Hub/HUB-16.md) | Weaver orchestration and dependency validation |
+| [HUB-08](../../blueprints/Hub/HUB-08.md) | Gateway — central routing topology |
+| [HUB-01](../../blueprints/Hub/HUB-01.md) | Configuration for dependency metadata |
+| [HUB-30](../../blueprints/Hub/HUB-30.md) | CLI tooling integration point |

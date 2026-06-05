@@ -344,7 +344,7 @@ class WarmingVerification
 
 | Blueprint | Role in Cache Warming |
 |-----------|----------------------|
-| [HUB-02](../../../ApprovedBlueprints/Hub/HUB-02.md) | Cache implementation |
-| [HUB-15](../../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring, warm status endpoint |
-| [CORE-15](../../../ApprovedBlueprints/Core/CORE-15.md) | PSR-16 cache abstraction |
-| [HUB-30](../../../ApprovedBlueprints/Hub/HUB-30.md) | CLI tooling for manual warm commands |
+| [HUB-02](../../../blueprints/Hub/HUB-02.md) | Cache implementation |
+| [HUB-15](../../../blueprints/Hub/HUB-15.md) | Health monitoring, warm status endpoint |
+| [CORE-15](../../../blueprints/Core/CORE-15.md) | PSR-16 cache abstraction |
+| [HUB-30](../../../blueprints/Hub/HUB-30.md) | CLI tooling for manual warm commands |

@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-The Sovereign Stack requires a high-performance routing engine capable of handling complex web applications. Requirements from [CORE-06](/ApprovedBlueprints/Core/CORE-06.md):
+The Sovereign Stack requires a high-performance routing engine capable of handling complex web applications. Requirements from [CORE-06](/docs/blueprints/Core/CORE-06.md):
 
 - **PHP 8.3 Attribute-based route definitions** on class and method level for declarative route registration
 - **Sub-2ms resolution** for 500 registered routes to avoid bottlenecking request throughput
@@ -13,7 +13,7 @@ The Sovereign Stack requires a high-performance routing engine capable of handli
 - **Named parameters** with regex constraints: `/users/{id:\d+}/posts/{slug}`
 - **Nested groups** with shared prefixes and middleware: `/api/v1/users`
 
-The routing engine is the final destination of the [CORE-05](/ApprovedBlueprints/Core/CORE-05.md) middleware chain and directly depends on [CORE-04](/ApprovedBlueprints/Core/CORE-04.md) (PSR-7) for request/response handling.
+The routing engine is the final destination of the [CORE-05](/docs/blueprints/Core/CORE-05.md) middleware chain and directly depends on [CORE-04](/docs/blueprints/Core/CORE-04.md) (PSR-7) for request/response handling.
 
 ## Decision
 Adopt a **Trie-based prefix matching router** with PHP 8.3 Attribute route definitions:
@@ -112,7 +112,7 @@ class UserController {
 3. **Annotation-based (PHPDoc comments)** - Works in older PHP versions but is slower to parse than native Attributes. Rejected because the stack targets PHP 8.3+ exclusively.
 
 ## Compliance Checklist
-- [x] Decision documented in [CORE-06](/ApprovedBlueprints/Core/CORE-06.md)
+- [x] Decision documented in [CORE-06](/docs/blueprints/Core/CORE-06.md)
 - [x] Resolution speed: <2ms for 500 routes
 - [x] Route cache compilation implemented
 - [x] Named parameters with regex constraints supported

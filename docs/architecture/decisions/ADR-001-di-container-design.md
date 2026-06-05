@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-The Sovereign Stack requires a dependency injection (DI) container as the foundational wiring mechanism. Every core component, from the Router to the Event Dispatcher, must be resolved through this container. Key requirements from [CORE-02](/ApprovedBlueprints/Core/CORE-02.md):
+The Sovereign Stack requires a dependency injection (DI) container as the foundational wiring mechanism. Every core component, from the Router to the Event Dispatcher, must be resolved through this container. Key requirements from [CORE-02](/docs/blueprints/Core/CORE-02.md):
 
 - **PSR-11 compliance** for interoperability with ecosystem tools
 - **Sub-1ms resolution time** for pre-compiled service maps to avoid bottlenecking request throughput
@@ -40,7 +40,7 @@ interface ContainerInterface extends \Psr\Container\ContainerInterface {
 
 ## Consequences
 ### Positive
-- All 20 core blueprints can be wired without circular reference issues (the `ServiceProvider` system in [CORE-17](/ApprovedBlueprints/Core/CORE-17.md) enforces `register()` before `boot()` ordering)
+- All 20 core blueprints can be wired without circular reference issues (the `ServiceProvider` system in [CORE-17](/docs/blueprints/Core/CORE-17.md) enforces `register()` before `boot()` ordering)
 - Downstream blueprints (Hub/Spoke) can bind their own services without modifying core code
 - Compiled service maps enable Opcache optimization across requests
 
@@ -55,7 +55,7 @@ interface ContainerInterface extends \Psr\Container\ContainerInterface {
 3. **Ahead-of-Time Code Generation** (no runtime reflection) - Would be fastest but requires a build step; adds complexity to development workflow. Deferred as potential future optimization.
 
 ## Compliance Checklist
-- [x] Decision is documented in [CORE-02](/ApprovedBlueprints/Core/CORE-02.md)
+- [x] Decision is documented in [CORE-02](/docs/blueprints/Core/CORE-02.md)
 - [x] PSR-11 compliance verified via standard test suite
 - [x] Performance benchmark: <0.5ms for 3-level dependency tree
 - [x] Memory footprint: <1MB container overhead

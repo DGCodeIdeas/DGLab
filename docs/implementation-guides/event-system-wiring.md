@@ -1,7 +1,7 @@
 # Implementation Guide: Event System Wiring
 
 ## Overview
-This guide demonstrates wiring the PSR-14 Event Dispatcher ([CORE-03](/ApprovedBlueprints/Core/CORE-03.md)) to enable decoupled communication between components. The dispatcher uses prioritized, haltable pipelines with lazy listener resolution from the DI container.
+This guide demonstrates wiring the PSR-14 Event Dispatcher ([CORE-03](/docs/blueprints/Core/CORE-03.md)) to enable decoupled communication between components. The dispatcher uses prioritized, haltable pipelines with lazy listener resolution from the DI container.
 
 **Reference**: [ADR-005 Event System Design](/docs/architecture/decisions/ADR-005-event-system-design.md)
 

@@ -10,7 +10,7 @@
 
 Cache invalidation is one of the two hard things in computer science. This guide documents six proven invalidation strategies, their trade-offs, and when to apply each within the DGLab Hub architecture.
 
-**Primary Blueprint:** [HUB-02: Sovereign Hub Cache](../../ApprovedBlueprints/Hub/HUB-02.md)
+**Primary Blueprint:** [HUB-02: Sovereign Hub Cache](../../blueprints/Hub/HUB-02.md)
 
 ---
 
@@ -434,7 +434,7 @@ class SqsInvalidationStrategy implements InvalidationStrategyInterface
 
 | Blueprint | Role in Invalidation |
 |-----------|---------------------|
-| [HUB-02](../../ApprovedBlueprints/Hub/HUB-02.md) | Core cache abstraction (Cache Tags, Atomic Locks) |
-| [CORE-15](../../ApprovedBlueprints/Core/CORE-15.md) | PSR-16 Simple Cache interface, APCu driver |
-| [HUB-10](../../ApprovedBlueprints/Hub/HUB-10.md) | Queue for SQS-based invalidation messages |
-| [HUB-09](../../ApprovedBlueprints/Hub/HUB-09.md) | Event Bus for invalidation event fan-out |
+| [HUB-02](../../blueprints/Hub/HUB-02.md) | Core cache abstraction (Cache Tags, Atomic Locks) |
+| [CORE-15](../../blueprints/Core/CORE-15.md) | PSR-16 Simple Cache interface, APCu driver |
+| [HUB-10](../../blueprints/Hub/HUB-10.md) | Queue for SQS-based invalidation messages |
+| [HUB-09](../../blueprints/Hub/HUB-09.md) | Event Bus for invalidation event fan-out |

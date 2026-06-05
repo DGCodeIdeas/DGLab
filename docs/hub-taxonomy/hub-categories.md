@@ -30,13 +30,13 @@ These blueprints form the foundation of the Hub tier. They manage the environmen
 
 | Blueprint | Name | Description |
 |-----------|------|-------------|
-| [HUB-01](../ApprovedBlueprints/Hub/HUB-01.md) | **Sovereign Hub Config & Flags** | Global configuration management with multi-tenant settings, dynamic feature flags, and remote configuration. Extends CORE-10. |
-| [HUB-03](../ApprovedBlueprints/Hub/HUB-03.md) | **Sovereign Asset Engine** | PHP-only asset pipeline for CSS/JS minification, fingerprinting, and versioned manifest generation. Eliminates Node.js dependency. |
-| [HUB-15](../ApprovedBlueprints/Hub/HUB-15.md) | **Sovereign Pulse (Health)** | Centralized health monitoring and service discovery registry. Checks database, disk, API availability, and memory. |
-| [HUB-16](../ApprovedBlueprints/Hub/HUB-16.md) | **Sovereign Hub Weaver** | Orchestration hooks integrating Hub-tier repositories with the CORE-01 Polyrepo Orchestrator. Automates dependency validation. |
-| [HUB-25](../ApprovedBlueprints/Hub/HUB-25.md) | **Sovereign Chronos (Scheduler)** | Centralized scheduler replacing cron with PHP-driven fluent interface. Manages task overlaps, execution logs, and automation. |
-| [HUB-28](../ApprovedBlueprints/Hub/HUB-28.md) | **Sovereign Versioner** | API versioning strategy supporting URL-based, Header-based, and Accept-header versioning schemes. |
-| [HUB-30](../ApprovedBlueprints/Hub/HUB-30.md) | **Sovereign Hub-CLI** | CLI toolchain for Hub admins — tenant management, cache clearing, queue inspection, health monitoring. Extends CORE-20 (Forge). |
+| [HUB-01](../blueprints/Hub/HUB-01.md) | **Sovereign Hub Config & Flags** | Global configuration management with multi-tenant settings, dynamic feature flags, and remote configuration. Extends CORE-10. |
+| [HUB-03](../blueprints/Hub/HUB-03.md) | **Sovereign Asset Engine** | PHP-only asset pipeline for CSS/JS minification, fingerprinting, and versioned manifest generation. Eliminates Node.js dependency. |
+| [HUB-15](../blueprints/Hub/HUB-15.md) | **Sovereign Pulse (Health)** | Centralized health monitoring and service discovery registry. Checks database, disk, API availability, and memory. |
+| [HUB-16](../blueprints/Hub/HUB-16.md) | **Sovereign Hub Weaver** | Orchestration hooks integrating Hub-tier repositories with the CORE-01 Polyrepo Orchestrator. Automates dependency validation. |
+| [HUB-25](../blueprints/Hub/HUB-25.md) | **Sovereign Chronos (Scheduler)** | Centralized scheduler replacing cron with PHP-driven fluent interface. Manages task overlaps, execution logs, and automation. |
+| [HUB-28](../blueprints/Hub/HUB-28.md) | **Sovereign Versioner** | API versioning strategy supporting URL-based, Header-based, and Accept-header versioning schemes. |
+| [HUB-30](../blueprints/Hub/HUB-30.md) | **Sovereign Hub-CLI** | CLI toolchain for Hub admins — tenant management, cache clearing, queue inspection, health monitoring. Extends CORE-20 (Forge). |
 
 **Prerequisites:** CORE-10 (Config), CORE-14 (Filesystem), CORE-19 (DBAL), CORE-01 (Polyrepo Orchestrator), CORE-20 (Forge)
 
@@ -52,13 +52,13 @@ These blueprints enable decoupled communication between Hub services and Spoke a
 
 | Blueprint | Name | Description |
 |-----------|------|-------------|
-| [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | **Sovereign Hub Cache** | Shared cache coordination layer with Cache Tags for bulk invalidation and Atomic Locks for distributed locking. Extends CORE-15. |
-| [HUB-07](../ApprovedBlueprints/Hub/HUB-07.md) | **Sovereign Throttle** | Rate limiting engine implementing Token Bucket, Leaky Bucket, and Fixed Window algorithms. Protects against abuse and API over-consumption. |
-| [HUB-08](../ApprovedBlueprints/Hub/HUB-08.md) | **Sovereign Gateway** | Unified API entry point serving as internal service mesh and public-facing gateway. Handles routing, auth translation, and protocol bridging. |
-| [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | **Sovereign Pulse (Event Bus)** | Global message broker and event bus for distributed pub/sub across repositories. Extends CORE-03 Event Dispatcher. |
-| [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | **Sovereign Queue** | Asynchronous job processing system with multiple drivers, delayed jobs, retries, and priority queuing. |
-| [HUB-17](../ApprovedBlueprints/Hub/HUB-17.md) | **Sovereign Webhook Nexus** | Centralized webhook ingestion engine with signature verification, idempotent processing, retry logic, and audit trails. |
-| [HUB-24](../ApprovedBlueprints/Hub/HUB-24.md) | **Sovereign GraphQL Registry** | Pure PHP GraphQL schema registry allowing services to register schema fragments unified into a single performant API. |
+| [HUB-02](../blueprints/Hub/HUB-02.md) | **Sovereign Hub Cache** | Shared cache coordination layer with Cache Tags for bulk invalidation and Atomic Locks for distributed locking. Extends CORE-15. |
+| [HUB-07](../blueprints/Hub/HUB-07.md) | **Sovereign Throttle** | Rate limiting engine implementing Token Bucket, Leaky Bucket, and Fixed Window algorithms. Protects against abuse and API over-consumption. |
+| [HUB-08](../blueprints/Hub/HUB-08.md) | **Sovereign Gateway** | Unified API entry point serving as internal service mesh and public-facing gateway. Handles routing, auth translation, and protocol bridging. |
+| [HUB-09](../blueprints/Hub/HUB-09.md) | **Sovereign Pulse (Event Bus)** | Global message broker and event bus for distributed pub/sub across repositories. Extends CORE-03 Event Dispatcher. |
+| [HUB-10](../blueprints/Hub/HUB-10.md) | **Sovereign Queue** | Asynchronous job processing system with multiple drivers, delayed jobs, retries, and priority queuing. |
+| [HUB-17](../blueprints/Hub/HUB-17.md) | **Sovereign Webhook Nexus** | Centralized webhook ingestion engine with signature verification, idempotent processing, retry logic, and audit trails. |
+| [HUB-24](../blueprints/Hub/HUB-24.md) | **Sovereign GraphQL Registry** | Pure PHP GraphQL schema registry allowing services to register schema fragments unified into a single performant API. |
 
 **Prerequisites:** CORE-15 (Cache Abstraction), CORE-04 (HTTP Message), CORE-06 (Router), CORE-03 (Event Dispatcher), CORE-19 (DBAL), plus Infrastructure category blueprints.
 
@@ -74,14 +74,14 @@ These blueprints handle the storage, retrieval, processing, and governance of da
 
 | Blueprint | Name | Description |
 |-----------|------|-------------|
-| [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) | **Sovereign Cloud Storage** | Cloud filesystem abstraction for AWS S3, Cloudflare R2, GCS. Multi-disk management with transparent switching between local and cloud. |
-| [HUB-13](../ApprovedBlueprints/Hub/HUB-13.md) | **Sovereign Translator** | Internationalization (i18n) and localization (l10n) service. Translation management, number/date formatting, pluralization. |
-| [HUB-14](../ApprovedBlueprints/Hub/HUB-14.md) | **Sovereign Search** | Unified full-text search abstraction supporting Database, Meilisearch, and Elasticsearch backends. |
-| [HUB-18](../ApprovedBlueprints/Hub/HUB-18.md) | **Sovereign Media Forge** | Media processing coordination — thumbnail generation, image optimization, video transcoding, metadata extraction. Bridges HUB-11 and processing drivers. |
-| [HUB-19](../ApprovedBlueprints/Hub/HUB-19.md) | **Sovereign Guard (Validation)** | Centralized validation and sanitization engine with complex rule-sets, recursive validation, and XSS prevention. |
-| [HUB-21](../ApprovedBlueprints/Hub/HUB-21.md) | **Sovereign Nexus (Tenancy)** | Multi-tenant coordination managing tenant resolution, database connection switching, and scope isolation. |
-| [HUB-22](../ApprovedBlueprints/Hub/HUB-22.md) | **Sovereign Ledger (Billing)** | Provider-agnostic billing and subscription layer abstracting Stripe, Paddle, or custom engines. |
-| [HUB-23](../ApprovedBlueprints/Hub/HUB-23.md) | **Sovereign Reporter** | Data export and reporting service for CSV, Excel, PDF generation with background processing and delivery management. |
+| [HUB-11](../blueprints/Hub/HUB-11.md) | **Sovereign Cloud Storage** | Cloud filesystem abstraction for AWS S3, Cloudflare R2, GCS. Multi-disk management with transparent switching between local and cloud. |
+| [HUB-13](../blueprints/Hub/HUB-13.md) | **Sovereign Translator** | Internationalization (i18n) and localization (l10n) service. Translation management, number/date formatting, pluralization. |
+| [HUB-14](../blueprints/Hub/HUB-14.md) | **Sovereign Search** | Unified full-text search abstraction supporting Database, Meilisearch, and Elasticsearch backends. |
+| [HUB-18](../blueprints/Hub/HUB-18.md) | **Sovereign Media Forge** | Media processing coordination — thumbnail generation, image optimization, video transcoding, metadata extraction. Bridges HUB-11 and processing drivers. |
+| [HUB-19](../blueprints/Hub/HUB-19.md) | **Sovereign Guard (Validation)** | Centralized validation and sanitization engine with complex rule-sets, recursive validation, and XSS prevention. |
+| [HUB-21](../blueprints/Hub/HUB-21.md) | **Sovereign Nexus (Tenancy)** | Multi-tenant coordination managing tenant resolution, database connection switching, and scope isolation. |
+| [HUB-22](../blueprints/Hub/HUB-22.md) | **Sovereign Ledger (Billing)** | Provider-agnostic billing and subscription layer abstracting Stripe, Paddle, or custom engines. |
+| [HUB-23](../blueprints/Hub/HUB-23.md) | **Sovereign Reporter** | Data export and reporting service for CSV, Excel, PDF generation with background processing and delivery management. |
 
 **Prerequisites:** CORE-14 (Filesystem), CORE-10 (Config), CORE-19 (DBAL), plus Infrastructure and Integration category blueprints.
 
@@ -97,8 +97,8 @@ These blueprints ensure that operators and developers can understand what the sy
 
 | Blueprint | Name | Description |
 |-----------|------|-------------|
-| [HUB-06](../ApprovedBlueprints/Hub/HUB-06.md) | **Sovereign Auditor** | Centralized audit logging with tamper-evident records, row-level hashing, and searchable audit trails for compliance and forensics. |
-| [HUB-12](../ApprovedBlueprints/Hub/HUB-12.md) | **Sovereign Notify** | Multi-channel notification engine for Email, In-app, Webhooks, and SMS with template rendering and delivery tracking. |
+| [HUB-06](../blueprints/Hub/HUB-06.md) | **Sovereign Auditor** | Centralized audit logging with tamper-evident records, row-level hashing, and searchable audit trails for compliance and forensics. |
+| [HUB-12](../blueprints/Hub/HUB-12.md) | **Sovereign Notify** | Multi-channel notification engine for Email, In-app, Webhooks, and SMS with template rendering and delivery tracking. |
 
 **Prerequisites:** CORE-19 (DBAL), CORE-03 (Event Dispatcher), CORE-12 (Compiler), HUB-04 (Identity), plus Infrastructure category blueprints.
 
@@ -114,11 +114,11 @@ These blueprints enforce the security posture of the entire platform. They provi
 
 | Blueprint | Name | Description |
 |-----------|------|-------------|
-| [HUB-04](../ApprovedBlueprints/Hub/HUB-04.md) | **Sovereign Identity** | Comprehensive identity management — user lifecycle, sessions, password hashing, OAuth2/OIDC foundation. Centralizes auth for all Spokes. |
-| [HUB-05](../ApprovedBlueprints/Hub/HUB-05.md) | **Sovereign Guardian** | RBAC and permission engine with Roles, Permissions, and dynamic Policies based on resource ownership or attributes. |
-| [HUB-20](../ApprovedBlueprints/Hub/HUB-20.md) | **Sovereign Vault** | Secrets management and cryptographic operations — key rotation, encrypted field storage, secure handshaking. Extends CORE-16. |
-| [HUB-26](../ApprovedBlueprints/Hub/HUB-26.md) | **Sovereign UI (Elements)** | PHP-rendered UI component library ensuring visual and functional consistency across all Internal Spokes. Built with SuperPHP (CORE-11/CORE-12). |
-| [HUB-27](../ApprovedBlueprints/Hub/HUB-27.md) | **Sovereign Sentinel (Headers)** | CORS and HTTP security header management — flexible origin/method/header configuration protecting against common web attacks. |
+| [HUB-04](../blueprints/Hub/HUB-04.md) | **Sovereign Identity** | Comprehensive identity management — user lifecycle, sessions, password hashing, OAuth2/OIDC foundation. Centralizes auth for all Spokes. |
+| [HUB-05](../blueprints/Hub/HUB-05.md) | **Sovereign Guardian** | RBAC and permission engine with Roles, Permissions, and dynamic Policies based on resource ownership or attributes. |
+| [HUB-20](../blueprints/Hub/HUB-20.md) | **Sovereign Vault** | Secrets management and cryptographic operations — key rotation, encrypted field storage, secure handshaking. Extends CORE-16. |
+| [HUB-26](../blueprints/Hub/HUB-26.md) | **Sovereign UI (Elements)** | PHP-rendered UI component library ensuring visual and functional consistency across all Internal Spokes. Built with SuperPHP (CORE-11/CORE-12). |
+| [HUB-27](../blueprints/Hub/HUB-27.md) | **Sovereign Sentinel (Headers)** | CORS and HTTP security header management — flexible origin/method/header configuration protecting against common web attacks. |
 
 **Prerequisites:** CORE-16 (Encryption), CORE-19 (DBAL), CORE-11/CORE-12 (SuperPHP), plus Infrastructure and Integration category blueprints.
 

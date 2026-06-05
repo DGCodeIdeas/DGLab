@@ -2,7 +2,7 @@
 
 > **Navigation:** [Operations Home](operations/index.md) | [Hub Scale Guide](operations/hub-scale-guide.md) | [Observability Framework](operations/observability-framework.md)
 >
-> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 1 (Strategic)](../SOLUTIONS_TO_WEAKNESSES.md#weakness-1-team-scaling-challenges-not-thoroughly-addressed)
+> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 1 (Strategic)](evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-1-team-scaling-challenges-not-thoroughly-addressed)
 >
 > **Related:** [Team Training Module (Tenancy)](tenancy/team-training.md) | [ADR Template](architecture/decisions/ADR-TEMPLATE.md)
 >
@@ -14,7 +14,7 @@
 
 This guide addresses **Strategic Weakness 1: Team Scaling Challenges** — the gap between DGLab's current team structure and the needs of supporting 81+ services across 15+ spokes. It provides team structure models for three growth stages, competency mappings for key roles, a 12-week onboarding curriculum, and knowledge management processes to prevent critical single points of knowledge.
 
-**Primary Driver:** [Strategic Weakness 1](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-1-team-scaling-challenges-not-thoroughly-addressed)
+**Primary Driver:** [Strategic Weakness 1](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-1-team-scaling-challenges-not-thoroughly-addressed)
 
 **Success Target:** New team members independently implementing features within **8 weeks**.
 
@@ -198,7 +198,7 @@ flowchart TB
 
 ### 2.1 Platform Engineer
 
-Platform Engineers own the core framework ([CORE-01–20](../../ApprovedBlueprints/Core/)) and Hub services ([HUB-01–30](../../ApprovedBlueprints/Hub/)). They ensure the platform is stable, performant, and extensible.
+Platform Engineers own the core framework ([CORE-01–20](../../blueprints/Core/)) and Hub services ([HUB-01–30](../../blueprints/Hub/)). They ensure the platform is stable, performant, and extensible.
 
 | Competency | Junior (L3) | Mid (L4) | Senior (L5) | Staff (L6) |
 |-------------|-------------|----------|-------------|-------------|
@@ -216,7 +216,7 @@ Platform Engineers own the core framework ([CORE-01–20](../../ApprovedBlueprin
 
 ### 2.2 Domain Specialist
 
-Domain Specialists own spoke implementations — internal business logic ([ISPOKE-01–15](../../ApprovedBlueprints/Spoke/Internal/)) and external integrations ([ESPOKE-01–15](../../ApprovedBlueprints/Spoke/External/)).
+Domain Specialists own spoke implementations — internal business logic ([ISPOKE-01–15](../../blueprints/Spoke/Internal/)) and external integrations ([ESPOKE-01–15](../../blueprints/Spoke/External/)).
 
 | Competency | Junior (L3) | Mid (L4) | Senior (L5) | Staff (L6) |
 |-------------|-------------|----------|-------------|-------------|
@@ -362,7 +362,7 @@ flowchart LR
 
 | Week | Topics | Activities | Artifacts |
 |------|--------|------------|-----------|
-| **1** | System architecture overview, Hub & Spoke model, blueprint taxonomy, development environment setup | Read [CORE_FRAMEWORK.md](../../ArchitectureOrigin/CORE_FRAMEWORK.md) and [HUB_AND_SPOKE.md](../../ArchitectureOrigin/HUB_AND_SPOKE.md); set up local dev environment | Working dev environment, first commit on a docs fix |
+| **1** | System architecture overview, Hub & Spoke model, blueprint taxonomy, development environment setup | Read [CORE_FRAMEWORK.md](../../architecture/origin/CORE_FRAMEWORK.md) and [HUB_AND_SPOKE.md](../../architecture/origin/HUB_AND_SPOKE.md); set up local dev environment | Working dev environment, first commit on a docs fix |
 | **2** | DI container, plugin system, validation framework, event system | Complete [DI Container Setup](../docs/implementation-guides/di-container-setup.md) and [Plugin Registration](../docs/implementation-guides/plugin-registration.md) walkthroughs | Green test suite, ADR review of a minor decision |
 
 **Checkpoint Gate 1: Development Environment Setup**
@@ -562,7 +562,7 @@ All significant architectural decisions must be documented using the [ADR Templa
 
 ## Related Resources
 
-- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 1](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-1-team-scaling-challenges-not-thoroughly-addressed)
+- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 1](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-1-team-scaling-challenges-not-thoroughly-addressed)
 - [Team Training Module (Tenancy)](tenancy/team-training.md)
 - [Hub Scale Guide](operations/hub-scale-guide.md)
 - [ADR Template](architecture/decisions/ADR-TEMPLATE.md)
@@ -574,4 +574,4 @@ All significant architectural decisions must be documented using the [ADR Templa
 > **Document Version:** 1.0
 > **Last Updated:** Current Session
 > **Status:** ✅ Ready for Implementation
-> **Review Cycle:** Quarterly (aligned with EVALUATION_SUMMARY.md updates)
+> **Review Cycle:** Quarterly (aligned with evaluation/EVALUATION_SUMMARY.md updates)

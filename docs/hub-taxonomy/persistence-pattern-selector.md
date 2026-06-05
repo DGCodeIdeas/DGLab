@@ -58,17 +58,17 @@ flowchart TD
 
 | Your Data Type | Recommended Solution | Primary Blueprint | Key Considerations |
 |---------------|---------------------|-------------------|--------------------|
-| **Relational (CRUD)** | Database Abstraction Layer | [CORE-19](../ApprovedBlueprints/Core/CORE-19.md) | PDO wrapper, migration system, query builder |
-| **Multi-tenant relational** | Scoped Repository + Tenancy | [CORE-19](../ApprovedBlueprints/Core/CORE-19.md) + [HUB-21](../ApprovedBlueprints/Hub/HUB-21.md) | Tenant ID filtering, connection switching, scope isolation |
-| **User-uploaded files** | Cloud Storage | [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) | S3-compatible, multi-disk, transparent local/cloud switching |
-| **Media assets (images/video)** | Cloud Storage + Media Processing | [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) + [HUB-18](../ApprovedBlueprints/Hub/HUB-18.md) | Thumbnail generation, optimization, transcoding |
-| **Full-text search (basic)** | DBAL + FULLTEXT indexes | [CORE-19](../ApprovedBlueprints/Core/CORE-19.md) | No external dependencies, MySQL native |
-| **Full-text search (advanced)** | Search Abstraction | [HUB-14](../ApprovedBlueprints/Hub/HUB-14.md) | Meilisearch/Elasticsearch, faceted search, typo tolerance |
-| **Search with high write volume** | Async Search Indexing | [HUB-14](../ApprovedBlueprints/Hub/HUB-14.md) + [HUB-10](../ApprovedBlueprints/Hub/HUB-10.md) | Queue-based index updates, event-sourced reindexing |
-| **Data validation rules** | Validation Engine | [HUB-19](../ApprovedBlueprints/Hub/HUB-19.md) | Complex rule-sets, recursive validation, XSS prevention |
-| **Large-scale reports** | Reporting Service | [HUB-23](../ApprovedBlueprints/Hub/HUB-23.md) | CSV/Excel/PDF, background generation, scheduled delivery |
-| **Billing/subscription data** | Billing Abstraction | [HUB-22](../ApprovedBlueprints/Hub/HUB-22.md) | Provider-agnostic, Stripe/Paddle/custom, plans/invoices |
-| **I18n translations** | I18n Service | [HUB-13](../ApprovedBlueprints/Hub/HUB-13.md) | BCP 47, CLDR formatting, array-based lookups |
+| **Relational (CRUD)** | Database Abstraction Layer | [CORE-19](../blueprints/Core/CORE-19.md) | PDO wrapper, migration system, query builder |
+| **Multi-tenant relational** | Scoped Repository + Tenancy | [CORE-19](../blueprints/Core/CORE-19.md) + [HUB-21](../blueprints/Hub/HUB-21.md) | Tenant ID filtering, connection switching, scope isolation |
+| **User-uploaded files** | Cloud Storage | [HUB-11](../blueprints/Hub/HUB-11.md) | S3-compatible, multi-disk, transparent local/cloud switching |
+| **Media assets (images/video)** | Cloud Storage + Media Processing | [HUB-11](../blueprints/Hub/HUB-11.md) + [HUB-18](../blueprints/Hub/HUB-18.md) | Thumbnail generation, optimization, transcoding |
+| **Full-text search (basic)** | DBAL + FULLTEXT indexes | [CORE-19](../blueprints/Core/CORE-19.md) | No external dependencies, MySQL native |
+| **Full-text search (advanced)** | Search Abstraction | [HUB-14](../blueprints/Hub/HUB-14.md) | Meilisearch/Elasticsearch, faceted search, typo tolerance |
+| **Search with high write volume** | Async Search Indexing | [HUB-14](../blueprints/Hub/HUB-14.md) + [HUB-10](../blueprints/Hub/HUB-10.md) | Queue-based index updates, event-sourced reindexing |
+| **Data validation rules** | Validation Engine | [HUB-19](../blueprints/Hub/HUB-19.md) | Complex rule-sets, recursive validation, XSS prevention |
+| **Large-scale reports** | Reporting Service | [HUB-23](../blueprints/Hub/HUB-23.md) | CSV/Excel/PDF, background generation, scheduled delivery |
+| **Billing/subscription data** | Billing Abstraction | [HUB-22](../blueprints/Hub/HUB-22.md) | Provider-agnostic, Stripe/Paddle/custom, plans/invoices |
+| **I18n translations** | I18n Service | [HUB-13](../blueprints/Hub/HUB-13.md) | BCP 47, CLDR formatting, array-based lookups |
 
 ---
 
@@ -134,15 +134,15 @@ flowchart TD
 
 | Blueprint | Role in Persistence |
 |-----------|-------------------|
-| [CORE-19](../ApprovedBlueprints/Core/CORE-19.md) | Foundation: DBAL, migrations, connection management, query builder |
-| [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) | Cloud file storage abstraction (S3/R2/GCS) |
-| [HUB-13](../ApprovedBlueprints/Hub/HUB-13.md) | Internationalization and localization service |
-| [HUB-14](../ApprovedBlueprints/Hub/HUB-14.md) | Full-text search abstraction (Meilisearch/Elasticsearch) |
-| [HUB-18](../ApprovedBlueprints/Hub/HUB-18.md) | Media processing coordination (thumbnails, transcoding) |
-| [HUB-19](../ApprovedBlueprints/Hub/HUB-19.md) | Centralized validation and sanitization engine |
-| [HUB-21](../ApprovedBlueprints/Hub/HUB-21.md) | Multi-tenant coordination layer |
-| [HUB-22](../ApprovedBlueprints/Hub/HUB-22.md) | Billing and subscription abstraction |
-| [HUB-23](../ApprovedBlueprints/Hub/HUB-23.md) | Data export and reporting service |
+| [CORE-19](../blueprints/Core/CORE-19.md) | Foundation: DBAL, migrations, connection management, query builder |
+| [HUB-11](../blueprints/Hub/HUB-11.md) | Cloud file storage abstraction (S3/R2/GCS) |
+| [HUB-13](../blueprints/Hub/HUB-13.md) | Internationalization and localization service |
+| [HUB-14](../blueprints/Hub/HUB-14.md) | Full-text search abstraction (Meilisearch/Elasticsearch) |
+| [HUB-18](../blueprints/Hub/HUB-18.md) | Media processing coordination (thumbnails, transcoding) |
+| [HUB-19](../blueprints/Hub/HUB-19.md) | Centralized validation and sanitization engine |
+| [HUB-21](../blueprints/Hub/HUB-21.md) | Multi-tenant coordination layer |
+| [HUB-22](../blueprints/Hub/HUB-22.md) | Billing and subscription abstraction |
+| [HUB-23](../blueprints/Hub/HUB-23.md) | Data export and reporting service |
 
 ---
 

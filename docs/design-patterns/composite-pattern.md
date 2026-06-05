@@ -9,7 +9,7 @@ Compose objects into tree structures to represent part-whole hierarchies. Compos
 - Operations need to be applied recursively across a tree structure
 - The structure is dynamic and can have arbitrary depth
 
-**Used in Core**: [CORE-11 SuperPHP Parser](/ApprovedBlueprints/Core/CORE-11.md) builds an AST (Abstract Syntax Tree) where nodes like `ComponentNode`, `SetupNode`, and `DirectiveNode` form a composite tree. The [CORE-12 Compiler](/ApprovedBlueprints/Core/CORE-12.md) traverses this composite structure to generate PHP code.
+**Used in Core**: [CORE-11 SuperPHP Parser](/docs/blueprints/Core/CORE-11.md) builds an AST (Abstract Syntax Tree) where nodes like `ComponentNode`, `SetupNode`, and `DirectiveNode` form a composite tree. The [CORE-12 Compiler](/docs/blueprints/Core/CORE-12.md) traverses this composite structure to generate PHP code.
 
 ## Diagram
 

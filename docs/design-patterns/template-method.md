@@ -9,7 +9,7 @@ Define the skeleton of an algorithm in a base class, letting subclasses override
 - The algorithm has invariant parts (always the same) and variant parts (customizable)
 - Code reuse: avoid duplicating the common parts of an algorithm
 
-**Used in Core**: [CORE-17 ServiceProvider](/ApprovedBlueprints/Core/CORE-17.md) uses Template Method. The `register()` and `boot()` methods are steps in the provider lifecycle. The `ProviderRepository` orchestrates the sequence, ensuring all `register()` calls complete before any `boot()` calls begin. [CORE-13 CLI Command](/ApprovedBlueprints/Core/CORE-13.md) also uses this pattern: `execute()` is the template method, while argument parsing and output formatting are fixed steps.
+**Used in Core**: [CORE-17 ServiceProvider](/docs/blueprints/Core/CORE-17.md) uses Template Method. The `register()` and `boot()` methods are steps in the provider lifecycle. The `ProviderRepository` orchestrates the sequence, ensuring all `register()` calls complete before any `boot()` calls begin. [CORE-13 CLI Command](/docs/blueprints/Core/CORE-13.md) also uses this pattern: `execute()` is the template method, while argument parsing and output formatting are fixed steps.
 
 ## Diagram
 

@@ -265,7 +265,7 @@ Disapprovals represent **valuable learning opportunities**; they document reject
 
 ### Strategic Documentation - Score: 94/100
 
-The `ArchitectureOrigin/` directory contains exceptional strategic documentation establishing the philosophical foundation for the entire platform.
+The `architecture/origin/` directory contains exceptional strategic documentation establishing the philosophical foundation for the entire platform.
 
 #### Key Strategic Documents
 
@@ -406,15 +406,15 @@ The blueprint system should be treated as a **core asset**: a living document of
 
 ```
 DGLab/
-├── ApprovedBlueprints/        (81 blueprints)
+├── blueprints/        (81 blueprints)
 │   ├── Core/                  (20 blueprints: CORE-01 to CORE-20)
 │   ├── Hub/                   (30 blueprints: HUB-01 to HUB-30)
 │   └── Spoke/
 │       ├── Internal/          (15 blueprints: ISPOKE-01 to ISPOKE-15)
 │       ├── External/          (15 blueprints: ESPOKE-01 to ESPOKE-15)
 │       └── Bridge/            (1 blueprint: BRIDGE-01)
-├── blueprints.disapproved/    (72 rejected blueprints)
-├── ArchitectureOrigin/        (Strategic documentation)
+├── ../blueprints/disapproved/    (72 rejected blueprints)
+├── architecture/origin/        (Strategic documentation)
 │   ├── HUB_AND_SPOKE.md
 │   ├── STRATEGIC_OVERVIEW.md
 │   ├── CORE_FRAMEWORK.md

@@ -2,7 +2,7 @@
 
 > **Navigation:** [Operations Home](index.md) | [Hub Scale Guide](hub-scale-guide.md) | [Service Dependency Analyzer](service-dependency-analyzer.md) | [Incident Response](incident-response.md)
 >
-> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 2 (Strategic)](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 2 (Strategic)](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 >
 > **Related:** [Runbooks](runbooks/index.md) | [Chaos Engineering](chaos-engineering.md) | [Hub Scale Guide](hub-scale-guide.md)
 >
@@ -14,7 +14,7 @@
 
 This framework addresses **Strategic Weakness 2: Operational Complexity (81+ Services)** by providing a comprehensive observability stack — metrics, logs, and distributed traces — across all DGLab services. It defines service orchestration for unified lifecycle management, a runbook automation framework targeting 80% incident coverage, and alerting patterns with escalation policies.
 
-**Primary Driver:** [Strategic Weakness 2](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+**Primary Driver:** [Strategic Weakness 2](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 
 **Key Success Targets:**
 - MTTR <15 minutes for 90% of incidents (automated remediation)
@@ -794,7 +794,7 @@ route:
 
 ## Related Resources
 
-- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 2](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 2](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 - [Hub Scale Guide](hub-scale-guide.md)
 - [Runbooks](runbooks/index.md)
 - [Incident Response](incident-response.md)

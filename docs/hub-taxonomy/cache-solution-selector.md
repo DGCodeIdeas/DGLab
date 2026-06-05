@@ -53,14 +53,14 @@ flowchart TD
 
 | Your Need | Recommended Solution | Blueprint | Why |
 |-----------|---------------------|-----------|-----|
-| **Single-server session storage** | APCu driver (PSR-16) | [CORE-15](../ApprovedBlueprints/Core/CORE-15.md) | Sub-100μs reads, shared memory, no network overhead |
-| **Multi-server session sharing** | Redis-backed cache (PSR-16) | [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | All servers share the same Redis instance |
-| **Cache a user's permission set** | Cache Tags | [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | Tag permissions by role; invalidate all users when role changes |
-| **Prevent duplicate job processing** | Atomic Lock (Redlock) | [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | Ensures only one worker processes a job |
-| **Transparent DB query caching** | Read-Through Cache | [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | Automatically populates cache on miss; writes update cache |
-| **Rate limiting counters** | Cache Tags with Atomic Locks | [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) + [HUB-07](../ApprovedBlueprints/Hub/HUB-07.md) | Atomic increment + tag-based reset; sub-millisecond |
-| **Serve optimized images** | CDN + Cloud Storage | [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) | File-level caching at edge; no application cache needed |
-| **HTML fragment caching** | Write-Through Cache | [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) + [HUB-03](../ApprovedBlueprints/Hub/HUB-03.md) | Cache rendered fragments; invalidate on asset change |
+| **Single-server session storage** | APCu driver (PSR-16) | [CORE-15](../blueprints/Core/CORE-15.md) | Sub-100μs reads, shared memory, no network overhead |
+| **Multi-server session sharing** | Redis-backed cache (PSR-16) | [HUB-02](../blueprints/Hub/HUB-02.md) | All servers share the same Redis instance |
+| **Cache a user's permission set** | Cache Tags | [HUB-02](../blueprints/Hub/HUB-02.md) | Tag permissions by role; invalidate all users when role changes |
+| **Prevent duplicate job processing** | Atomic Lock (Redlock) | [HUB-02](../blueprints/Hub/HUB-02.md) | Ensures only one worker processes a job |
+| **Transparent DB query caching** | Read-Through Cache | [HUB-02](../blueprints/Hub/HUB-02.md) | Automatically populates cache on miss; writes update cache |
+| **Rate limiting counters** | Cache Tags with Atomic Locks | [HUB-02](../blueprints/Hub/HUB-02.md) + [HUB-07](../blueprints/Hub/HUB-07.md) | Atomic increment + tag-based reset; sub-millisecond |
+| **Serve optimized images** | CDN + Cloud Storage | [HUB-11](../blueprints/Hub/HUB-11.md) | File-level caching at edge; no application cache needed |
+| **HTML fragment caching** | Write-Through Cache | [HUB-02](../blueprints/Hub/HUB-02.md) + [HUB-03](../blueprints/Hub/HUB-03.md) | Cache rendered fragments; invalidate on asset change |
 
 ---
 
@@ -112,11 +112,11 @@ flowchart TD
 
 | Blueprint | Role in Caching |
 |-----------|----------------|
-| [CORE-15](../ApprovedBlueprints/Core/CORE-15.md) | Foundation: PSR-16 Simple Cache abstraction, APCu driver |
-| [HUB-02](../ApprovedBlueprints/Hub/HUB-02.md) | Shared cache coordination, Cache Tags, Atomic Locks |
-| [HUB-07](../ApprovedBlueprints/Hub/HUB-07.md) | Rate limiting using cache counters |
-| [HUB-09](../ApprovedBlueprints/Hub/HUB-09.md) | Event Bus — triggers cache invalidation on data changes |
-| [HUB-11](../ApprovedBlueprints/Hub/HUB-11.md) | File/cloud storage for large assets |
+| [CORE-15](../blueprints/Core/CORE-15.md) | Foundation: PSR-16 Simple Cache abstraction, APCu driver |
+| [HUB-02](../blueprints/Hub/HUB-02.md) | Shared cache coordination, Cache Tags, Atomic Locks |
+| [HUB-07](../blueprints/Hub/HUB-07.md) | Rate limiting using cache counters |
+| [HUB-09](../blueprints/Hub/HUB-09.md) | Event Bus — triggers cache invalidation on data changes |
+| [HUB-11](../blueprints/Hub/HUB-11.md) | File/cloud storage for large assets |
 
 ---
 

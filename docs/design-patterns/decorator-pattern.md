@@ -9,7 +9,7 @@ Attach additional responsibilities to an object dynamically. Decorators provide 
 - Subclassing would lead to an explosion of classes (e.g., `LoggedAuthService`, `CachedAuthService`, `LoggedCachedAuthService`)
 - The Open/Closed Principle: classes should be open for extension but closed for modification
 
-**Used in Core**: [CORE-05 Middleware Engine](/ApprovedBlueprints/Core/CORE-05.md) is a variation of the Decorator pattern (specifically Chain of Responsibility) where each middleware layer "decorates" the request/response processing.
+**Used in Core**: [CORE-05 Middleware Engine](/docs/blueprints/Core/CORE-05.md) is a variation of the Decorator pattern (specifically Chain of Responsibility) where each middleware layer "decorates" the request/response processing.
 
 ## Diagram
 

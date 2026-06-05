@@ -2,7 +2,7 @@
 
 > **Navigation:** [Operations Home](index.md) | [Observability Framework](observability-framework.md) | [Incident Response](incident-response.md) | [Runbooks](runbooks/index.md)
 >
-> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 2 (Strategic)](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+> **Cross-Reference:** [SOLUTIONS_TO_WEAKNESSES.md — Weakness 2 (Strategic)](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 >
 > **Related:** [Hub Scale Guide](hub-scale-guide.md) | [Service Dependency Analyzer](service-dependency-analyzer.md) | [Team Scaling Guide](../team-scaling-guide.md)
 >
@@ -14,7 +14,7 @@
 
 The Chaos Engineering Program builds team confidence in handling failure scenarios across all 81+ DGLab services through planned, controlled exercises. This program addresses **Strategic Weakness 2: Operational Complexity** by systematically exposing teams to failure modes, validating observability coverage, and verifying runbook effectiveness — all within a blameless culture.
 
-**Primary Driver:** [Strategic Weakness 2](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+**Primary Driver:** [Strategic Weakness 2](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 
 **Key Success Targets:**
 - Team confidence >90% in failure scenarios (measured quarterly)
@@ -508,7 +508,7 @@ All metrics, logs, and traces emitted during an exercise are tagged with:
 
 ## Related Resources
 
-- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 2](../../SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
+- [SOLUTIONS_TO_WEAKNESSES.md — Strategic Weakness 2](../../evaluation/SOLUTIONS_TO_WEAKNESSES.md#weakness-2-operational-complexity-81-services-and-team-learning-curve-identified-as-primary-risks)
 - [Observability Framework](observability-framework.md)
 - [Incident Response](incident-response.md)
 - [Runbooks](runbooks/index.md)

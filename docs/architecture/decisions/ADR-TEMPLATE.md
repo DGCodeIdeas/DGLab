@@ -7,13 +7,13 @@
 Describe the architectural problem, design challenge, or requirement that prompted this decision. Include:
 - The forces at play (technical, business, organizational)
 - Any constraints or assumptions
-- Relevant background from [approved blueprints](/ApprovedBlueprints/Core/) or [architecture origins](/ArchitectureOrigin/)
+- Relevant background from [approved blueprints](/docs/blueprints/Core/) or [architecture origins](/docs/architecture/origin/)
 
 ## Decision
 State the architecture decision clearly and concisely. Include:
 - What was chosen
 - Key implementation details
-- References to relevant blueprint phases (e.g., [CORE-02](/ApprovedBlueprints/Core/CORE-02.md))
+- References to relevant blueprint phases (e.g., [CORE-02](/docs/blueprints/Core/CORE-02.md))
 
 ## Rationale
 Explain why this decision was made. Cover:

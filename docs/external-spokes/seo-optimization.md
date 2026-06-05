@@ -1150,11 +1150,11 @@ class CrUXClient
 
 | Blueprint | Role in SEO |
 |-----------|-------------|
-| [BRIDGE-01](../../../ApprovedBlueprints/External/BRIDGE-01.md) | API Gateway — serves SSR content to crawlers |
-| [HUB-02](../../../ApprovedBlueprints/Hub/HUB-02.md) | Cache — CDN edge cache configuration |
-| [HUB-06](../../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging — content change tracking for sitemap generation |
-| [HUB-08](../../../ApprovedBlueprints/Hub/HUB-08.md) | Routing — SSR path routing and middleware |
-| [HUB-15](../../../ApprovedBlueprints/Hub/HUB-15.md) | Monitoring — Web Vitals dashboard and alerting |
+| [BRIDGE-01](../../../blueprints/External/BRIDGE-01.md) | API Gateway — serves SSR content to crawlers |
+| [HUB-02](../../../blueprints/Hub/HUB-02.md) | Cache — CDN edge cache configuration |
+| [HUB-06](../../../blueprints/Hub/HUB-06.md) | Audit logging — content change tracking for sitemap generation |
+| [HUB-08](../../../blueprints/Hub/HUB-08.md) | Routing — SSR path routing and middleware |
+| [HUB-15](../../../blueprints/Hub/HUB-15.md) | Monitoring — Web Vitals dashboard and alerting |
 
 ---
 

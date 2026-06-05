@@ -11,7 +11,7 @@ The Sovereign Stack must support extensibility across all tiers (Core, Hub, Spok
 - **Self-contained**: Each blueprint should declare its own dependencies and integrations
 - **Discoverable**: Plugins should be autodiscovered without manual registration in a central config
 
-The [CORE-17](/ApprovedBlueprints/Core/CORE-17.md) blueprint defines the Service Provider as the wiring mechanism, but the architectural pattern needs documentation to guide downstream authors.
+The [CORE-17](/docs/blueprints/Core/CORE-17.md) blueprint defines the Service Provider as the wiring mechanism, but the architectural pattern needs documentation to guide downstream authors.
 
 ## Decision
 Adopt a **two-phase Service Provider lifecycle** with deferred loading support:
@@ -80,7 +80,7 @@ abstract class ServiceProvider {
 4. **Attribute-based Registration** - Using PHP 8.3 Attributes on provider classes would be elegant but requires attribute scanning infrastructure that doesn't exist yet. Deferred to Phase 2.
 
 ## Compliance Checklist
-- [x] Decision documented in [CORE-17](/ApprovedBlueprints/Core/CORE-17.md)
+- [x] Decision documented in [CORE-17](/docs/blueprints/Core/CORE-17.md)
 - [ ] Each Hub/Spoke blueprint includes a ServiceProvider
 - [x] Execution order verified: all `register()` before any `boot()`
 - [x] Performance benchmark: 50 providers in <5ms

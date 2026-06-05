@@ -2,7 +2,7 @@
 
 ## Context
 
-Based on analysis of **SOLUTIONS_TO_WEAKNESSES.md**, the project has **15 approved Internal Spoke blueprints** (`ISPOKE-01` through `ISPOKE-15`) out of ~25 planned. The architecture uses a hub-and-spoke pattern with PHP backend, SuperPHP templating, and Hub-based dependencies (HUB-01 through HUB-30).
+Based on analysis of **evaluation/SOLUTIONS_TO_WEAKNESSES.md**, the project has **15 approved Internal Spoke blueprints** (`ISPOKE-01` through `ISPOKE-15`) out of ~25 planned. The architecture uses a hub-and-spoke pattern with PHP backend, SuperPHP templating, and Hub-based dependencies (HUB-01 through HUB-30).
 
 **Existing docs structure to mirror:**
 - `docs/hub-taxonomy/` - Hub categorization documentation

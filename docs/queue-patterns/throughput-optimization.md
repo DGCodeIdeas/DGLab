@@ -10,7 +10,7 @@
 
 Queue throughput optimization balances message production rate, consumer processing capacity, and system resource utilization. This guide covers strategies for maximizing throughput within the DGLab Hub queue infrastructure.
 
-**Primary Blueprint:** [HUB-10: Sovereign Queue](../../ApprovedBlueprints/Hub/HUB-10.md)
+**Primary Blueprint:** [HUB-10: Sovereign Queue](../../blueprints/Hub/HUB-10.md)
 
 ---
 
@@ -439,7 +439,7 @@ class MultiDriverQueue
 
 | Blueprint | Role in Throughput |
 |-----------|-------------------|
-| [HUB-10](../../ApprovedBlueprints/Hub/HUB-10.md) | Queue driver with batching and prefetch config |
-| [HUB-09](../../ApprovedBlueprints/Hub/HUB-09.md) | Event Bus — throughput considerations for pub/sub |
-| [HUB-07](../../ApprovedBlueprints/Hub/HUB-07.md) | Rate limiting to prevent consumer overload |
-| [CORE-03](../../ApprovedBlueprints/Core/CORE-03.md) | Event dispatcher foundations |
+| [HUB-10](../../blueprints/Hub/HUB-10.md) | Queue driver with batching and prefetch config |
+| [HUB-09](../../blueprints/Hub/HUB-09.md) | Event Bus — throughput considerations for pub/sub |
+| [HUB-07](../../blueprints/Hub/HUB-07.md) | Rate limiting to prevent consumer overload |
+| [CORE-03](../../blueprints/Core/CORE-03.md) | Event dispatcher foundations |

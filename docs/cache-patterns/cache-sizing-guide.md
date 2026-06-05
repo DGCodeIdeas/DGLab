@@ -10,7 +10,7 @@
 
 Proper cache sizing prevents two common failure modes: **out-of-memory crashes** (undersized) and **wasted resources** (oversized). This guide provides formulas, heuristics, and configuration guidance for sizing caches in the DGLab Hub architecture.
 
-**Primary Blueprint:** [HUB-02: Sovereign Hub Cache](../../ApprovedBlueprints/Hub/HUB-02.md)
+**Primary Blueprint:** [HUB-02: Sovereign Hub Cache](../../blueprints/Hub/HUB-02.md)
 
 ---
 
@@ -359,7 +359,7 @@ service:
 
 | Blueprint | Role in Sizing |
 |-----------|----------------|
-| [HUB-02](../../ApprovedBlueprints/Hub/HUB-02.md) | Core cache implementation (Redis Cluster) |
-| [HUB-15](../../ApprovedBlueprints/Hub/HUB-15.md) | Cache health monitoring and alerting |
-| [HUB-04](../../ApprovedBlueprints/Hub/HUB-04.md) | Session data sizing inputs |
-| [CORE-15](../../ApprovedBlueprints/Core/CORE-15.md) | PSR-16 cache abstraction |
+| [HUB-02](../../blueprints/Hub/HUB-02.md) | Core cache implementation (Redis Cluster) |
+| [HUB-15](../../blueprints/Hub/HUB-15.md) | Cache health monitoring and alerting |
+| [HUB-04](../../blueprints/Hub/HUB-04.md) | Session data sizing inputs |
+| [CORE-15](../../blueprints/Core/CORE-15.md) | PSR-16 cache abstraction |

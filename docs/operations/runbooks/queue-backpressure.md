@@ -276,7 +276,7 @@ php artisan queue:resume --queues=reports,analytics,email
 
 | Blueprint | Role in Backpressure |
 |-----------|---------------------|
-| [HUB-10](../../../ApprovedBlueprints/Hub/HUB-10.md) | Queue implementation (depth, delays, DLQ) |
-| [HUB-07](../../../ApprovedBlueprints/Hub/HUB-07.md) | Rate limiting for producer throttling |
-| [HUB-15](../../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring and alerting |
-| [HUB-30](../../../ApprovedBlueprints/Hub/HUB-30.md) | CLI commands for queue management |
+| [HUB-10](../../../blueprints/Hub/HUB-10.md) | Queue implementation (depth, delays, DLQ) |
+| [HUB-07](../../../blueprints/Hub/HUB-07.md) | Rate limiting for producer throttling |
+| [HUB-15](../../../blueprints/Hub/HUB-15.md) | Health monitoring and alerting |
+| [HUB-30](../../../blueprints/Hub/HUB-30.md) | CLI commands for queue management |

@@ -9,7 +9,7 @@ Avoid coupling the sender of a request to its receiver by giving more than one o
 - The set of handlers should be dynamically configurable
 - Cross-cutting concerns (logging, auth, caching) applied in a pipeline before the core handler
 
-**Used in Core**: [CORE-05 Middleware Engine](/ApprovedBlueprints/Core/CORE-05.md) is a Chain of Responsibility implementation. Each middleware either handles the request (returns a Response early) or passes it to the next middleware in the chain. The Router is the final handler in the chain.
+**Used in Core**: [CORE-05 Middleware Engine](/docs/blueprints/Core/CORE-05.md) is a Chain of Responsibility implementation. Each middleware either handles the request (returns a Response early) or passes it to the next middleware in the chain. The Router is the final handler in the chain.
 
 ## Diagram
 

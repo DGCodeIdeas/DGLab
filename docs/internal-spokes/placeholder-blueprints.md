@@ -176,12 +176,12 @@ Each stub follows **Level 1 (Concept)** of the [Spoke Documentation Template](sp
 
 ### Maturity Progression
 
-When each placeholder reaches the next maturity level, the corresponding documentation file should be created in `ApprovedBlueprints/Spoke/Internal/`:
+When each placeholder reaches the next maturity level, the corresponding documentation file should be created in `blueprints/Spoke/Internal/`:
 
 | Event | Action |
 |-------|--------|
 | Level 1 (Concept) | Update this document with detailed description |
-| Level 2 (Design) | Create `ISPOKE-NN.md` in `ApprovedBlueprints/Spoke/Internal/` |
+| Level 2 (Design) | Create `ISPOKE-NN.md` in `blueprints/Spoke/Internal/` |
 | Level 3 (Implementation) | Add CI criteria, integration strategy |
 | Level 4 (Operations) | Add runbook, monitoring, scaling guidance |
 
@@ -190,4 +190,4 @@ When each placeholder reaches the next maturity level, the corresponding documen
 > **Document Version:** 1.0
 > **Last Updated:** Current Session
 > **Status:** 🟡 Placeholder
-> **Review Cycle:** Quarterly, aligned with EVALUATION_SUMMARY.md updates
+> **Review Cycle:** Quarterly, aligned with evaluation/EVALUATION_SUMMARY.md updates

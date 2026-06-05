@@ -2,7 +2,7 @@
 
 **Objective:** Address CI Resilience (W4) and Tenancy Isolation (W5) for DGLab Hub Tier.
 
-**Reference:** [`SOLUTIONS_TO_WEAKNESSES.md`](../SOLUTIONS_TO_WEAKNESSES.md) (lines 191-243)
+**Reference:** [`SOLUTIONS_TO_WEAKNESSES.md`](../evaluation/SOLUTIONS_TO_WEAKNESSES.md) (lines 191-243)
 
 ---
 

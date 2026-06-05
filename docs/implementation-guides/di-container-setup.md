@@ -1,7 +1,7 @@
 # Implementation Guide: DI Container Setup
 
 ## Overview
-This guide walks through setting up the Dependency Injection Container for the Sovereign Stack. The DI Container ([CORE-02](/ApprovedBlueprints/Core/CORE-02.md)) is the first object instantiated in the Kernel and serves as the wiring hub for all subsequent components.
+This guide walks through setting up the Dependency Injection Container for the Sovereign Stack. The DI Container ([CORE-02](/docs/blueprints/Core/CORE-02.md)) is the first object instantiated in the Kernel and serves as the wiring hub for all subsequent components.
 
 **Reference**: [ADR-001 DI Container Design](/docs/architecture/decisions/ADR-001-di-container-design.md)
 

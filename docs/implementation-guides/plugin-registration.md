@@ -1,7 +1,7 @@
 # Implementation Guide: Plugin Registration (Service Providers)
 
 ## Overview
-This guide walks through creating and registering Service Providers for the Sovereign Stack. Service Providers ([CORE-17](/ApprovedBlueprints/Core/CORE-17.md)) are the wiring mechanism that allows components to register services and perform boot logic without creating circular dependencies.
+This guide walks through creating and registering Service Providers for the Sovereign Stack. Service Providers ([CORE-17](/docs/blueprints/Core/CORE-17.md)) are the wiring mechanism that allows components to register services and perform boot logic without creating circular dependencies.
 
 **Reference**: [ADR-002 Plugin System Architecture](/docs/architecture/decisions/ADR-002-plugin-system-architecture.md)
 

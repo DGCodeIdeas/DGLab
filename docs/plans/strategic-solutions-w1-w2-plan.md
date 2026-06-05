@@ -1,7 +1,7 @@
 # Strategic Solutions W1-W2 Implementation Plan
 
 ## Context
-Addressing **Strategic Weakness 1: Team Scaling Challenges** and **Strategic Weakness 2: Operational Complexity (81+ Services)** from `SOLUTIONS_TO_WEAKNESSES.md`.
+Addressing **Strategic Weakness 1: Team Scaling Challenges** and **Strategic Weakness 2: Operational Complexity (81+ Services)** from `evaluation/SOLUTIONS_TO_WEAKNESSES.md`.
 
 ## File Inventory
 
@@ -237,6 +237,6 @@ Addressing **Strategic Weakness 1: Team Scaling Challenges** and **Strategic Wea
 
 ## Cross-References to Include
 - Reference `SOLUTIONS_TO_WEAKNESSES.md` weakness sections
-- Reference `ApprovedBlueprints/Core/` and `ApprovedBlueprints/Hub/` as relevant
+- Reference `blueprints/Core/` and `blueprints/Hub/` as relevant
 - Reference existing `docs/operations/hub-scale-guide.md` and `docs/operations/runbooks/` patterns
 - Link to ADR pattern from `docs/architecture/decisions/ADR-TEMPLATE.md`

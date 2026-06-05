@@ -10,7 +10,7 @@
 
 Distributed cache consistency is the discipline of ensuring all nodes in a distributed caching system see the same data at the same time. This guide covers consistency models, conflict resolution strategies, and split-brain scenarios within the DGLab Hub architecture.
 
-**Primary Blueprint:** [HUB-02: Sovereign Hub Cache](../../ApprovedBlueprints/Hub/HUB-02.md)
+**Primary Blueprint:** [HUB-02: Sovereign Hub Cache](../../blueprints/Hub/HUB-02.md)
 
 ---
 
@@ -104,7 +104,7 @@ sequenceDiagram
 
 ### 2. Quorum-Based Consistency (Redlock)
 
-Require a majority of nodes (N/2 + 1) to acknowledge writes. Used for distributed locks in [HUB-02](../../ApprovedBlueprints/Hub/HUB-02.md).
+Require a majority of nodes (N/2 + 1) to acknowledge writes. Used for distributed locks in [HUB-02](../../blueprints/Hub/HUB-02.md).
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -338,7 +338,7 @@ cluster-migration-barrier 1
 
 | Blueprint | Role in Consistency |
 |-----------|--------------------|
-| [HUB-02](../../ApprovedBlueprints/Hub/HUB-02.md) | Cache Tags, Atomic Locks (Redlock), consistency drivers |
-| [HUB-15](../../ApprovedBlueprints/Hub/HUB-15.md) | Health monitoring for cache nodes |
-| [HUB-06](../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging for consistency violations |
-| [CORE-15](../../ApprovedBlueprints/Core/CORE-15.md) | PSR-16 Simple Cache, driver abstraction |
+| [HUB-02](../../blueprints/Hub/HUB-02.md) | Cache Tags, Atomic Locks (Redlock), consistency drivers |
+| [HUB-15](../../blueprints/Hub/HUB-15.md) | Health monitoring for cache nodes |
+| [HUB-06](../../blueprints/Hub/HUB-06.md) | Audit logging for consistency violations |
+| [CORE-15](../../blueprints/Core/CORE-15.md) | PSR-16 Simple Cache, driver abstraction |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Addressing **Hub Tier Weakness 2 (Sparse Cache/Queue Details)** and **Weakness 3 (Limited Operational Complexity Guidance)** from `SOLUTIONS_TO_WEAKNESSES.md`. This plan produces 12 new documentation files organized into three groups: Cache Patterns, Queue Patterns, and Operational Runbooks/Guides.
+Addressing **Hub Tier Weakness 2 (Sparse Cache/Queue Details)** and **Weakness 3 (Limited Operational Complexity Guidance)** from `evaluation/SOLUTIONS_TO_WEAKNESSES.md`. This plan produces 12 new documentation files organized into three groups: Cache Patterns, Queue Patterns, and Operational Runbooks/Guides.
 
 ---
 

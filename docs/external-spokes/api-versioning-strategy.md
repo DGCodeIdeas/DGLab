@@ -597,9 +597,9 @@ rate(api_request_total{status="410"}[5m])
 
 | Blueprint | Role in Versioning |
 |-----------|-------------------|
-| [BRIDGE-01](../../../ApprovedBlueprints/External/BRIDGE-01.md) | API Gateway — request routing and version dispatch |
-| [HUB-06](../../../ApprovedBlueprints/Hub/HUB-06.md) | Audit logging — tracking version usage |
-| [HUB-08](../../../ApprovedBlueprints/Hub/HUB-08.md) | Routing — version-based route configuration |
+| [BRIDGE-01](../../../blueprints/External/BRIDGE-01.md) | API Gateway — request routing and version dispatch |
+| [HUB-06](../../../blueprints/Hub/HUB-06.md) | Audit logging — tracking version usage |
+| [HUB-08](../../../blueprints/Hub/HUB-08.md) | Routing — version-based route configuration |
 
 ---
 
