@@ -4,4 +4,4 @@ We apologize for any inconvenience caused!
 
 ---
 
-Find solution to this problem.
+Find solutions to this problem.
