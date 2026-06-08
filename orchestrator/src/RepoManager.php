@@ -113,6 +113,7 @@ class RepoManager
         $repo = $this->getRepository();
 
         try {
+            /** @var array<int, string> $output */
             $output = $repo->execute('log', "{$tag}..HEAD", '--format=%s');
         } catch (GitException $e) {
             throw new \RuntimeException('Failed to get log: ' . $e->getMessage(), 0, $e);
