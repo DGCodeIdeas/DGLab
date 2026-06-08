@@ -112,9 +112,9 @@ final class DependencyGraphTest extends TestCase
         $order = $graph->getResolutionOrder();
 
         // All core repos must come before any hub repos
-        $corePositions = \array_filter($order, fn(string $name): bool => $graph->getTier($name) === 'core');
-        $hubPositions = \array_filter($order, fn(string $name): bool => $graph->getTier($name) === 'hub');
-        $spokePositions = \array_filter($order, fn(string $name): bool => $graph->getTier($name) === 'spoke');
+        $corePositions = \array_filter($order, fn (string $name): bool => $graph->getTier($name) === 'core');
+        $hubPositions = \array_filter($order, fn (string $name): bool => $graph->getTier($name) === 'hub');
+        $spokePositions = \array_filter($order, fn (string $name): bool => $graph->getTier($name) === 'spoke');
 
         $maxCore = \max(\array_keys($corePositions));
         $minHub = \min(\array_keys($hubPositions));
