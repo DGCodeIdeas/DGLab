@@ -23,10 +23,10 @@ Read the following files **before taking any action**:
 - [`../blueprints/Core/CORE-08.md`](../blueprints/Core/CORE-08.md)
 - [`../blueprints/Core/CORE-09.md`](../blueprints/Core/CORE-09.md)
 - [`../blueprints/Core/CORE-10.md`](../blueprints/Core/CORE-10.md)
-- [`render.yaml`](render.yaml)
-- [`Dockerfile`](Dockerfile)
-- [`docker-compose.yml`](docker-compose.yml)
-- [`.env.example`](.env.example)
+- [`render.yaml`](/render.yaml)
+- [`Dockerfile`](/Dockerfile)
+- [`docker-compose.yml`](/docker-compose.yml)
+- [`.env.example`](/.env.example)
 
 Only after reading all of the above may you proceed to implementation.
 
