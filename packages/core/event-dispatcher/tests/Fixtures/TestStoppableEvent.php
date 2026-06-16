@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events\Tests\Fixtures;
+namespace SovereignStack\Core\EventDispatcher\Tests\Fixtures;
 
-use SovereignStack\Events\Event;
+use SovereignStack\Core\EventDispatcher\Event;
 
 final class TestStoppableEvent extends Event
 {

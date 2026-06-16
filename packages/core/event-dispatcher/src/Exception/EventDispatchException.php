@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events\Exception;
+namespace SovereignStack\Core\EventDispatcher\Exception;
 
 use RuntimeException;
 

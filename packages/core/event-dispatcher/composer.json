@@ -1,6 +1,6 @@
 {
-    "name": "sovereignstack/event-dispatcher",
-    "description": "Production-ready PSR-14 Event Dispatcher with prioritized, haltable listener pipeline and lazy resolution",
+    "name": "sovereign-stack/core-event-dispatcher",
+    "description": "CORE-05: Production-ready PSR-14 Event Dispatcher with prioritized, haltable listener pipeline and lazy resolution",
     "type": "library",
     "license": "MIT",
     "require": {
@@ -18,12 +18,12 @@
     },
     "autoload": {
         "psr-4": {
-            "SovereignStack\\Events\\": "src/"
+            "SovereignStack\\Core\\EventDispatcher\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "SovereignStack\\Events\\Tests\\": "tests/"
+            "SovereignStack\\Core\\EventDispatcher\\Tests\\": "tests/"
         }
     },
     "minimum-stability": "stable",

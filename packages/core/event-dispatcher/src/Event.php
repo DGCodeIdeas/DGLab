@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events;
+namespace SovereignStack\Core\EventDispatcher;
 
 use Psr\EventDispatcher\StoppableEventInterface;
 

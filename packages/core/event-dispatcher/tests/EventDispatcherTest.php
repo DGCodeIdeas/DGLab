@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events\Tests;
+namespace SovereignStack\Core\EventDispatcher\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
-use SovereignStack\Events\EventDispatcher;
-use SovereignStack\Events\ListenerProvider;
-use SovereignStack\Events\Tests\Fixtures\FailingListener;
-use SovereignStack\Events\Tests\Fixtures\SampleListener;
-use SovereignStack\Events\Tests\Fixtures\TestEvent;
-use SovereignStack\Events\Tests\Fixtures\TestStoppableEvent;
+use SovereignStack\Core\EventDispatcher\EventDispatcher;
+use SovereignStack\Core\EventDispatcher\ListenerProvider;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\FailingListener;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\SampleListener;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\TestEvent;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\TestStoppableEvent;
 
 final class EventDispatcherTest extends TestCase
 {

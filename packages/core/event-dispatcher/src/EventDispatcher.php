@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events;
+namespace SovereignStack\Core\EventDispatcher;
 
 use Psr\Log\LoggerInterface;
 use Psr\EventDispatcher\StoppableEventInterface;
-use SovereignStack\Events\Exception\EventDispatchException;
+use SovereignStack\Core\EventDispatcher\Exception\EventDispatchException;
 
 final class EventDispatcher implements EventDispatcherInterface
 {

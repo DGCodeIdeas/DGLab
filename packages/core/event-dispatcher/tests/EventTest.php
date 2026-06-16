@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events\Tests;
+namespace SovereignStack\Core\EventDispatcher\Tests;
 
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Events\Tests\Fixtures\TestEvent;
-use SovereignStack\Events\Tests\Fixtures\TestStoppableEvent;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\TestEvent;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\TestStoppableEvent;
 
 final class EventTest extends TestCase
 {

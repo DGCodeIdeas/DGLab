@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events\Tests\Fixtures;
+namespace SovereignStack\Core\EventDispatcher\Tests\Fixtures;
 
 final class SampleListener
 {

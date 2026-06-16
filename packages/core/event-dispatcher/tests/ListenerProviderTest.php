@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events\Tests;
+namespace SovereignStack\Core\EventDispatcher\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
-use SovereignStack\Events\Exception\ListenerRegistrationException;
-use SovereignStack\Events\ListenerProvider;
-use SovereignStack\Events\Tests\Fixtures\SampleListener;
-use SovereignStack\Events\Tests\Fixtures\TestEvent;
+use SovereignStack\Core\EventDispatcher\Exception\ListenerRegistrationException;
+use SovereignStack\Core\EventDispatcher\ListenerProvider;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\SampleListener;
+use SovereignStack\Core\EventDispatcher\Tests\Fixtures\TestEvent;
 use stdClass;
 
 final class ListenerProviderTest extends TestCase

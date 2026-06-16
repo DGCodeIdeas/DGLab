@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Events;
+namespace SovereignStack\Core\EventDispatcher;
 
 use Psr\Container\ContainerInterface;
-use SovereignStack\Events\Exception\EventDispatchException;
-use SovereignStack\Events\Exception\ListenerRegistrationException;
+use SovereignStack\Core\EventDispatcher\Exception\EventDispatchException;
+use SovereignStack\Core\EventDispatcher\Exception\ListenerRegistrationException;
 
 final class ListenerProvider implements ListenerProviderInterface
 {
