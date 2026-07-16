@@ -41,6 +41,7 @@ Usage:
   anvilctl ssl PROJECT_NAME      Install CA (once) + issue project cert
   anvilctl db create DB_NAME     Create a MySQL database (idempotent)
   anvilctl build-assets          Build frontend assets via dart-sass
+  anvilctl watch [--once]        Auto-sync vhosts on www/ create|delete (loop)
   anvilctl ec2                   Show EC2 provisioning help (Phase 4)
   anvilctl help                  Show this help
 EOF
@@ -90,6 +91,11 @@ case "$cmd" in
     ;;
   build-assets)
     anvil_build_assets
+    ;;
+  watch)
+    # Launch the auto-vhost watcher (loop mode by default; pass --once for a
+    # single sync pass). exec replaces the shell so signals reach the watcher.
+    exec "${ANVIL_ROOT}/scripts/vhost-watcher.sh" "$@"
     ;;
   ec2)
     anvil_ec2_help

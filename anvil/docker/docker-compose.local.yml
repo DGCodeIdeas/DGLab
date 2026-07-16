@@ -1,0 +1,125 @@
+# Anvil — local development stack (Phase 2)
+#
+# Services: nginx (reverse proxy / TLS), php (PHP-FPM 8.3), mysql (8.0),
+# phpmyadmin (bound to 127.0.0.1 only), redis (internal only).
+#
+# All services share a single user-defined bridge network `anvil_net`.
+# nginx/php/mysql/redis use `restart: unless-stopped`.
+#
+# MySQL credentials are read from the environment with safe dev defaults.
+# Override them by exporting the variables before `docker compose up`, e.g.:
+#   MYSQL_DATABASE=app MYSQL_USER=app MYSQL_PASSWORD=secret \
+#   MYSQL_ROOT_PASSWORD=rootpass anvilctl start
+# (anvil/.env is also picked up if you prefer a file — see notes below.)
+#
+# NOTE on SSL cert paths:
+#   lib/vhost.sh renders the nginx vhost with ${SSL_CERT}/${SSL_KEY} set to the
+#   *host* absolute paths under anvil/docker/nginx/certs. To make those exact
+#   paths resolve inside the nginx container we bind-mount the certs directory
+#   at the SAME absolute path on both host and container. This keeps the Phase 1
+#   lib logic untouched while producing a working TLS config.
+
+services:
+  # ---------------------------------------------------------------------------
+  # nginx — TLS termination + PHP-FPM reverse proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: anvil_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Per-project vhost configs (rendered by lib/vhost.sh).
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # SSL certs, mounted at the host path so ${SSL_CERT}/${SSL_KEY} resolve.
+      - /home/dgi/app/DGLab/anvil/docker/nginx/certs:/home/dgi/app/DGLab/anvil/docker/nginx/certs:ro
+      # Vhost templates (read-only reference for the engine).
+      - ./nginx/templates:/etc/nginx/templates:ro
+      # Project web roots (rw so apps can write caches/uploads in dev).
+      - ./www:/var/www:rw
+    depends_on:
+      - php
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # php — PHP 8.3 FPM (custom image, see ./php/Dockerfile)
+  # ---------------------------------------------------------------------------
+  php:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: anvil_php
+    # PHP-FPM listens on 9000 inside the container; nginx reaches it as
+    # `fastcgi_pass php:9000` over the anvil_net network.
+    volumes:
+      - ./www:/var/www
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # mysql — persistent database
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: anvil_mysql
+    environment:
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-anvil}"
+      MYSQL_USER: "${MYSQL_USER:-anvil}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-anvil}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-anvil_root}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-anvil_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # phpmyadmin — DB web UI, bound to localhost only (not internet-facing)
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: anvil_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: "3306"
+      # Optional: PMA_USER/PMA_PASSWORD for quick login.
+      PMA_USER: "${MYSQL_USER:-anvil}"
+      PMA_PASSWORD: "${MYSQL_PASSWORD:-anvil}"
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # redis — cache/queue broker, internal network only
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: anvil_redis
+    # No host port published: only reachable from other containers on anvil_net.
+    # If you need host access for debugging, use: "127.0.0.1:6379:6379"
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  anvil_net:
+    driver: bridge

@@ -60,3 +60,31 @@ anvil_vhost_generate() {
   touch "$marker"
   echo "vhost generated: ${out_file}"
 }
+
+# anvil_vhost_reload
+#   Gracefully reload nginx inside the running container so new/removed vhost
+#   configs take effect without a full restart. No-op (and never fatal) when the
+#   stack or the nginx container is not running yet.
+anvil_vhost_reload() {
+  if docker compose -f "$ANVIL_COMPOSE_FILE" ps -q nginx 2>/dev/null | grep -q .; then
+    docker compose -f "$ANVIL_COMPOSE_FILE" exec -T nginx nginx -s reload 2>/dev/null || true
+  else
+    echo "nginx container not running; skipping reload."
+  fi
+}
+
+# anvil_vhost_remove PROJECT
+#   Removes the generated vhost config + its idempotency marker and deletes the
+#   per-project SSL certificate directory. Idempotent: safe to call when nothing
+#   exists. Does NOT fail if files are already gone.
+anvil_vhost_remove() {
+  local project="${1:?Usage: anvil_vhost_remove PROJECT}"
+
+  local out_file="${NGINX_CONFD_DIR}/${project}.conf"
+  local marker="${out_file}.anvil"
+  local cert_dir="${CERTS_DIR}/${project}"
+
+  rm -f "$out_file" "$marker"
+  rm -rf "$cert_dir"
+  echo "vhost removed for ${project} (config + certs purged)."
+}
