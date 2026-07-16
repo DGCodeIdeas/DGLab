@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+# anvil/bin/anvilctl
+#
+# Anvil control dispatcher. This script is intentionally THIN: it resolves the
+# Anvil root, sources the config and the shared bash library, and delegates
+# every subcommand to a lib function. No business logic lives here — that is
+# the "one shared engine" principle (TUI + Web UI both call the same lib).
+
+set -euo pipefail
+
+# Resolve Anvil root from this script's location: anvil/bin/anvilctl -> anvil/
+ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+export ANVIL_ROOT
+
+# shellcheck source=../config/anvil.conf
+source "${ANVIL_ROOT}/config/anvil.conf"
+# shellcheck source=../lib/docker.sh
+source "${ANVIL_ROOT}/lib/docker.sh"
+# shellcheck source=../lib/vhost.sh
+source "${ANVIL_ROOT}/lib/vhost.sh"
+# shellcheck source=../lib/ssl.sh
+source "${ANVIL_ROOT}/lib/ssl.sh"
+# shellcheck source=../lib/project.sh
+source "${ANVIL_ROOT}/lib/project.sh"
+# shellcheck source=../lib/db.sh
+source "${ANVIL_ROOT}/lib/db.sh"
+# shellcheck source=../lib/ec2.sh
+source "${ANVIL_ROOT}/lib/ec2.sh"
+
+usage() {
+  cat <<'EOF'
+Anvil control — local dev automation & EC2 deployment tool.
+
+Usage:
+  anvilctl start                 Bring the local Docker stack up
+  anvilctl stop                  Tear the local Docker stack down
+  anvilctl status                Show stack + project status
+  anvilctl scan                  Register any unregistered projects in www/
+  anvilctl new PROJECT_NAME      Register a new project (vhost + ssl)
+  anvilctl ssl PROJECT_NAME      Install CA (once) + issue project cert
+  anvilctl db create DB_NAME     Create a MySQL database (idempotent)
+  anvilctl build-assets          Build frontend assets via dart-sass
+  anvilctl ec2                   Show EC2 provisioning help (Phase 4)
+  anvilctl help                  Show this help
+EOF
+}
+
+cmd="${1:-}"
+shift 2>/dev/null || true
+
+case "$cmd" in
+  start)
+    anvil_docker_up
+    ;;
+  stop)
+    anvil_docker_down
+    ;;
+  status)
+    anvil_docker_ps
+    echo "--- Projects ---"
+    anvil_project_list
+    ;;
+  scan)
+    anvil_project_scan
+    ;;
+  new)
+    project="${1:?Usage: anvilctl new PROJECT_NAME}"
+    anvil_project_register "$project"
+    ;;
+  ssl)
+    project="${1:?Usage: anvilctl ssl PROJECT_NAME}"
+    anvil_ssl_install
+    anvil_ssl_project "$project"
+    anvil_vhost_generate "$project"
+    ;;
+  db)
+    sub="${1:?Usage: anvilctl db create DB_NAME}"
+    case "$sub" in
+      create)
+        db_name="${2:?Usage: anvilctl db create DB_NAME}"
+        anvil_db_create "$db_name"
+        ;;
+      *)
+        echo "Unknown db subcommand: $sub" >&2
+        usage
+        exit 1
+        ;;
+    esac
+    ;;
+  build-assets)
+    anvil_build_assets
+    ;;
+  ec2)
+    anvil_ec2_help
+    ;;
+  help|--help|-h)
+    usage
+    ;;
+  "")
+    usage
+    exit 1
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage
+    exit 1
+    ;;
+esac
