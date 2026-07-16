@@ -46,7 +46,11 @@ Usage:
   anvilctl logs                  Tail the Docker stack logs
   anvilctl build-assets          Build frontend assets via dart-sass
   anvilctl watch [--once]        Auto-sync vhosts on www/ create|delete (loop)
-  anvilctl ec2                   Show EC2 provisioning help (Phase 4)
+  anvilctl ec2 provision [opts]  Provision EC2 + RDS (Phase 4)
+  anvilctl ec2 tunnel  [opts]    Open a bastion SSH tunnel to private RDS
+  anvilctl ec2 billing           Show this month's AWS cost (UnblendedCost)
+  anvilctl ec2 help              Show EC2 provisioning help
+  anvilctl billing               Alias for the AWS cost check
   anvilctl help                  Show this help
 EOF
 }
@@ -110,7 +114,21 @@ case "$cmd" in
     exec "${ANVIL_ROOT}/scripts/vhost-watcher.sh" "$@"
     ;;
   ec2)
-    anvil_ec2_help
+    sub="${1:-help}"
+    case "$sub" in
+      provision) shift; anvil_ec2_provision "$@" ;;
+      tunnel)    shift; anvil_ec2_tunnel "$@" ;;
+      billing)   anvil_ec2_billing ;;
+      help|-h|--help) anvil_ec2_help ;;
+      *)
+        echo "Unknown ec2 subcommand: $sub" >&2
+        anvil_ec2_help
+        exit 1
+        ;;
+    esac
+    ;;
+  billing)
+    anvil_ec2_billing
     ;;
   help|--help|-h)
     usage

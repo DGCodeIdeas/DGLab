@@ -1,0 +1,72 @@
+#cloud-config
+#
+# Anvil EC2 user-data (Phase 4).
+#
+# On first boot this:
+#   1. Installs Docker Engine + the Compose plugin, the AWS CLI v2, git,
+#      inotify-tools, and the PHP CLI (for the loopback Web UI).
+#   2. Clones the Anvil repo into /opt/anvil.
+#      >>> REPLACE the ANVIL_REPO_URL below with your real repository <<<
+#      (or bake the repo into a custom AMI and skip the clone).
+#   3. Enables a systemd unit that brings the EC2 stack up on every boot via
+#      `anvilctl start`, with COMPOSE_FILE pointed at docker-compose.ec2.yml.
+#
+# The Web UI is started by `anvilctl start` and binds to 127.0.0.1:9999
+# (WEB_UI_HOST in config) — it is NEVER internet-facing. Reach it only through
+# the SSH tunnel. Only nginx 80/443 are public.
+
+package_update: true
+packages:
+  - git
+  - inotify-tools
+  - ca-certificates
+  - curl
+  - unzip
+  - php
+  - php-cli
+
+write_files:
+  - path: /etc/systemd/system/anvil.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Anvil stack (EC2 production)
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      # Point anvilctl at the EC2 compose file (no local mysql; RDS instead).
+      Environment=COMPOSE_FILE=docker/docker-compose.ec2.yml
+      WorkingDirectory=/opt/anvil
+      ExecStart=/opt/anvil/bin/anvilctl start
+      ExecStop=/opt/anvil/bin/anvilctl stop
+      TimeoutStartSec=600
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # --- Docker Engine + Compose plugin ---
+  - curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+  - sh /tmp/get-docker.sh
+  - yum install -y docker-compose-plugin || dnf install -y docker-compose-plugin || true
+  - usermod -aG docker ec2-user
+  - systemctl enable --now docker
+
+  # --- AWS CLI v2 ---
+  - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  - unzip -o /tmp/awscliv2.zip -d /tmp
+  - /tmp/aws/install
+  - rm -rf /tmp/awscliv2.zip /tmp/aws
+
+  # --- Clone the Anvil repo (set ANVIL_REPO_URL to your real repo) ---
+  - mkdir -p /opt
+  - git clone "https://github.com/example/anvil.git" /opt/anvil
+
+  # --- Enable the Anvil stack to start on boot ---
+  - systemctl daemon-reload
+  - systemctl enable --now anvil.service
+
+final_message: "Anvil EC2 bootstrap complete. Stack managed by systemd (anvil.service)."

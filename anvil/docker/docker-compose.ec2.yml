@@ -1,0 +1,114 @@
+# Anvil — EC2 production stack (Phase 4)
+#
+# Same services as docker-compose.local.yml EXCEPT the local `mysql` service is
+# removed: production uses Amazon RDS MySQL instead. RDS credentials are fetched
+# at container start by the php entrypoint from AWS SSM Parameter Store
+# (SecureString) — see docker/php/entrypoint-ssm.sh.
+#
+# Security posture (hard requirements):
+#   * nginx publishes ONLY 80/443 to the world (0.0.0.0/0 via the EC2 SG).
+#   * phpmyadmin is bound to 127.0.0.1 ONLY (reached via the SSH tunnel).
+#   * redis is internal-only (no published ports).
+#   * The Anvil Web UI is NOT part of this stack; it runs on the host bound to
+#     127.0.0.1:9999 (see config WEB_UI_HOST) and is reached via the tunnel.
+#   * Let's Encrypt live certs are bind-mounted at /etc/letsencrypt so the
+#     vhost rendered by provisioning/certbot-setup.sh can reference them.
+#
+# Bring this stack up with:
+#   COMPOSE_FILE=docker/docker-compose.ec2.yml anvilctl start
+# (anvilctl ec2 provision writes the right env for cloud-init to do this.)
+
+services:
+  # ---------------------------------------------------------------------------
+  # nginx — public TLS termination + PHP-FPM reverse proxy (80/443 only)
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: anvil_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Per-project vhost configs (rendered by lib/vhost.sh / certbot-setup.sh).
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Let's Encrypt live certs (mounted so ${SSL_CERT}/${SSL_KEY} resolve).
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Vhost templates (read-only reference for the engine).
+      - ./nginx/templates:/etc/nginx/templates:ro
+      # Project web roots (rw so apps can write caches/uploads).
+      - ./www:/var/www:rw
+    depends_on:
+      - php
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # php — PHP 8.3 FPM (custom image) with SSM-fetching entrypoint
+  # ---------------------------------------------------------------------------
+  php:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: anvil_php
+    # The SSM entrypoint resolves RDS credentials from Parameter Store and then
+    # execs php-fpm. The local stack keeps the normal php-fpm CMD; only the EC2
+    # image uses this entrypoint (see Dockerfile ENTRYPOINT note).
+    entrypoint: ["/usr/local/bin/entrypoint-ssm.sh"]
+    environment:
+      # SSM parameter paths (the entrypoint reads these).
+      ANVIL_SSM_HOST: "/anvil/rds/host"
+      ANVIL_SSM_USER: "/anvil/rds/user"
+      ANVIL_SSM_PASSWORD: "/anvil/rds/password"
+      ANVIL_SSM_DATABASE: "/anvil/rds/database"
+      # AWS region for the SSM lookup (the container runs with an instance role).
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      # PHP app DB connection settings (consumed by the app via $_ENV/$_SERVER).
+      DB_HOST: "${DB_HOST:-}"
+      DB_USER: "${DB_USER:-}"
+      DB_PASSWORD: "${DB_PASSWORD:-}"
+      DB_NAME: "${DB_NAME:-}"
+    volumes:
+      - ./www:/var/www
+    depends_on:
+      - redis
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # phpmyadmin — DB web UI, bound to localhost ONLY (not internet-facing)
+  # ---------------------------------------------------------------------------
+  # PMA_HOST is the RDS endpoint. On the EC2 host, set RDS_ENDPOINT (e.g. in
+  # anvil/docker/.env) to the private RDS endpoint printed by
+  # `anvilctl ec2 provision`. RDS is private, so this only resolves from inside
+  # the VPC — phpMyAdmin is reached via the SSH tunnel, never the public net.
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: anvil_phpmyadmin
+    environment:
+      PMA_HOST: "${RDS_ENDPOINT:-}"
+      PMA_PORT: "3306"
+    # 127.0.0.1:8080 -> container 80. Reached only through the SSH tunnel.
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - php
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # redis — cache/queue broker, internal network only
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: anvil_redis
+    # No host port published: only reachable from other containers on anvil_net.
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+networks:
+  anvil_net:
+    driver: bridge

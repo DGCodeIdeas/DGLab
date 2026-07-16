@@ -54,6 +54,16 @@ RUN { \
 FROM composer:2 AS composer
 
 # ---------------------------------------------------------------------------
+# Stage 3: AWS CLI v2 (for the EC2 SSM-fetching entrypoint)
+# ---------------------------------------------------------------------------
+FROM amazonlinux:2023 AS awscli
+RUN yum install -y curl unzip >/dev/null 2>&1 \
+    && curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
+    && unzip -q /tmp/awscliv2.zip -d /tmp \
+    && /tmp/aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin \
+    && rm -rf /tmp/awscliv2.zip /tmp/aws
+
+# ---------------------------------------------------------------------------
 # Final image
 # ---------------------------------------------------------------------------
 FROM php_base AS final
@@ -61,9 +71,21 @@ FROM php_base AS final
 # Bring in the Composer executable from the composer stage.
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
+# Bring in the AWS CLI v2 (used by entrypoint-ssm.sh on EC2 to read RDS creds
+# from SSM Parameter Store). Harmless for local dev — only the EC2 compose file
+# overrides the entrypoint to use entrypoint-ssm.sh.
+COPY --from=awscli /usr/local/aws-cli /usr/local/aws-cli
+COPY --from=awscli /usr/local/bin/aws /usr/local/bin/aws
+
+# SSM-fetching entrypoint for the EC2 php container. The local compose file
+# does NOT set an entrypoint, so this script is only invoked on EC2.
+COPY entrypoint-ssm.sh /usr/local/bin/entrypoint-ssm.sh
+RUN chmod +x /usr/local/bin/entrypoint-ssm.sh
+
 # PHP-FPM exposes FastCGI on 9000 by default; expose it for clarity.
 EXPOSE 9000
 
 # Run PHP-FPM in the foreground (the image's default CMD is php-fpm, but we
-# state it explicitly for readability).
+# state it explicitly for readability). On EC2 the compose file overrides the
+# entrypoint (not the CMD) so php-fpm is still the process that runs.
 CMD ["php-fpm"]
