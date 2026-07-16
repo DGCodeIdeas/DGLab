@@ -49,6 +49,7 @@ Usage:
   anvilctl ec2 provision [opts]  Provision EC2 + RDS (Phase 4)
   anvilctl ec2 tunnel  [opts]    Open a bastion SSH tunnel to private RDS
   anvilctl ec2 billing           Show this month's AWS cost (UnblendedCost)
+  anvilctl ec2 billing-alarm     Create a CloudWatch billing alarm (default $5)
   anvilctl ec2 help              Show EC2 provisioning help
   anvilctl billing               Alias for the AWS cost check
   anvilctl help                  Show this help
@@ -119,6 +120,7 @@ case "$cmd" in
       provision) shift; anvil_ec2_provision "$@" ;;
       tunnel)    shift; anvil_ec2_tunnel "$@" ;;
       billing)   anvil_ec2_billing ;;
+      billing-alarm) shift; anvil_ec2_billing_alarm "$@" ;;
       help|-h|--help) anvil_ec2_help ;;
       *)
         echo "Unknown ec2 subcommand: $sub" >&2

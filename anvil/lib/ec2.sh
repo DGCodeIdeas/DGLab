@@ -580,6 +580,40 @@ anvil_ec2_billing() {
 }
 
 # ---------------------------------------------------------------------------
+# anvil_ec2_billing_alarm — CloudWatch billing alarm
+# ---------------------------------------------------------------------------
+
+anvil_ec2_billing_alarm() {
+  if ! command -v aws >/dev/null 2>&1; then
+    echo "ERROR: 'aws' CLI not found on PATH." >&2
+    return 1
+  fi
+
+  # Threshold (USD) is configurable via the first argument or the
+  # ANVIL_BILLING_ALARM_THRESHOLD environment variable; default 5 USD.
+  local threshold="${1:-${ANVIL_BILLING_ALARM_THRESHOLD:-5}}"
+  local alarm_name="${ANVIL_BILLING_ALARM_NAME:-anvil-billing-alarm}"
+  # The AWS/Billing metric namespace is ONLY available in us-east-1, so the
+  # alarm must be created there regardless of the configured AWS_REGION.
+  local alarm_region="us-east-1"
+
+  echo "Creating CloudWatch billing alarm '${alarm_name}' (threshold ${threshold} USD) in ${alarm_region} ..."
+  echo "NOTE: ensure 'Receive Billing Alerts' is enabled in the AWS Billing console."
+  aws cloudwatch put-metric-alarm \
+    --alarm-name "$alarm_name" \
+    --namespace AWS/Billing \
+    --metric-name EstimatedCharges \
+    --dimensions Name=Currency,Value=USD \
+    --statistic Maximum \
+    --period 21600 \
+    --threshold "$threshold" \
+    --comparison-operator GreaterThanThreshold \
+    --evaluation-periods 1 \
+    --region "$alarm_region"
+  echo "Billing alarm created. You will be notified when estimated charges exceed ${threshold} USD."
+}
+
+# ---------------------------------------------------------------------------
 # anvil_ec2_help
 # ---------------------------------------------------------------------------
 
@@ -601,6 +635,9 @@ Commands:
   anvilctl ec2 tunnel  --rds-endpoint E --host H --key K
                                  Open a bastion SSH tunnel to private RDS.
   anvilctl ec2 billing            Show this month's AWS cost (UnblendedCost).
+  anvilctl ec2 billing-alarm [USD]  Create a CloudWatch billing alarm
+                                 (default 5 USD; override via arg or
+                                 ANVIL_BILLING_ALARM_THRESHOLD).
   anvilctl ec2 help               Show this help.
   anvilctl billing                Alias for the billing check.
 
