@@ -86,6 +86,29 @@ anvil_project_list() {
   fi
 }
 
+# anvil_projects_status
+#   Read-only, machine-friendly listing of projects. Emits one TSV line per
+#   project:  name <TAB> url <TAB> ssl(yes|no)
+#   The URL is derived as https://<project>.<DOMAIN_TLD> and SSL status from the
+#   presence of the engine-issued certificate (CERTS_DIR/<project>/<project>.pem).
+#   Reuses engine config vars (DOMAIN_TLD, CERTS_DIR) — no logic duplicated here.
+#   Consumed by the TUI (formatted) and the Web API (parsed to JSON).
+anvil_projects_status() {
+  mkdir -p "$WWW_DIR"
+  shopt -s nullglob
+  for dir in "$WWW_DIR"/*/; do
+    local name
+    name="$(basename "$dir")"
+    local url="https://${name}.${DOMAIN_TLD}"
+    local ssl="no"
+    if [[ -f "${CERTS_DIR}/${name}/${name}.pem" ]]; then
+      ssl="yes"
+    fi
+    printf '%s\t%s\t%s\n' "$name" "$url" "$ssl"
+  done
+  shopt -u nullglob
+}
+
 # anvil_build_assets
 #   Compiles SCSS -> CSS for every project using dart-sass (sass). Idempotent:
 #   only (re)compiles top-level, non-partial .scss files.
@@ -113,5 +136,18 @@ anvil_build_assets() {
     fi
   done
   shopt -u nullglob
+
+  # --- Web UI skin assets ---
+  # Compile the single Web UI stylesheet (web/scss/app.scss) into the public
+  # assets directory. Idempotent: recompiles on every run (safe to re-run).
+  local web_scss="${ANVIL_ROOT}/web/scss/app.scss"
+  local web_css_dir="${ANVIL_ROOT}/web/public/assets"
+  if [[ -f "$web_scss" ]]; then
+    mkdir -p "$web_css_dir"
+    sass "$web_scss" "${web_css_dir}/style.css" --no-source-map
+    built=$((built + 1))
+    echo "Web UI stylesheet compiled: ${web_css_dir}/style.css"
+  fi
+
   echo "Asset build complete: ${built} stylesheet(s) compiled."
 }

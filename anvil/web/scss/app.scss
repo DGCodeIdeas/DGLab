@@ -1,0 +1,171 @@
+// anvil/web/scss/app.scss
+//
+// Anvil Web UI skin — SCSS source. Compiled by `anvilctl build-assets` (dart-sass)
+// into web/public/assets/style.css. No Node.js / build tooling involved.
+
+// ---------------------------------------------------------------------------
+// Variables
+// ---------------------------------------------------------------------------
+$color-bg: #0f1115;
+$color-panel: #1a1d24;
+$color-text: #e6e6e6;
+$color-muted: #9aa0a6;
+$color-accent: #4f8cff;
+$color-accent-hover: #6ba0ff;
+$color-ok: #2ecc71;
+$color-warn: #e67e22;
+
+$radius: 8px;
+$gap: 16px;
+
+// ---------------------------------------------------------------------------
+// Base
+// ---------------------------------------------------------------------------
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: $color-bg;
+  color: $color-text;
+}
+
+// ---------------------------------------------------------------------------
+// Top bar + toggles
+// ---------------------------------------------------------------------------
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: $color-panel;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+
+  .toggles {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toggle {
+    background: $color-accent;
+    color: #fff;
+    border: 0;
+    border-radius: $radius;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+      background: $color-accent-hover;
+    }
+  }
+
+  .state {
+    margin-left: 8px;
+    font-size: 13px;
+    color: $color-muted;
+
+    &.running {
+      color: $color-ok;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $gap;
+  padding: $gap;
+
+  @media (max-width: 800px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.projects h2,
+.logs h2 {
+  font-size: 15px;
+  color: $color-muted;
+}
+
+// ---------------------------------------------------------------------------
+// Project cards
+// ---------------------------------------------------------------------------
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: $color-panel;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: $radius;
+  padding: 12px;
+
+  h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+  }
+
+  a {
+    color: $color-accent;
+    font-size: 13px;
+    word-break: break-all;
+  }
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+
+  &.ssl-on {
+    background: rgba(46, 204, 113, 0.15);
+    color: $color-ok;
+  }
+
+  &.ssl-off {
+    background: rgba(230, 126, 34, 0.15);
+    color: $color-warn;
+  }
+}
+
+.empty {
+  color: $color-muted;
+  font-size: 13px;
+}
+
+// ---------------------------------------------------------------------------
+// Log pane
+// ---------------------------------------------------------------------------
+.log-pane {
+  background: #000;
+  color: #b8f5c2;
+  border-radius: $radius;
+  padding: 12px;
+  height: 360px;
+  overflow: auto;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

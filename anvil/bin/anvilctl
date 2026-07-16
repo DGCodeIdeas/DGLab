@@ -27,19 +27,23 @@ source "${ANVIL_ROOT}/lib/project.sh"
 source "${ANVIL_ROOT}/lib/db.sh"
 # shellcheck source=../lib/ec2.sh
 source "${ANVIL_ROOT}/lib/ec2.sh"
+# shellcheck source=../lib/web.sh
+source "${ANVIL_ROOT}/lib/web.sh"
 
 usage() {
   cat <<'EOF'
 Anvil control — local dev automation & EC2 deployment tool.
 
 Usage:
-  anvilctl start                 Bring the local Docker stack up
-  anvilctl stop                  Tear the local Docker stack down
+  anvilctl start                 Bring the local Docker stack + Web UI up
+  anvilctl stop                  Tear the local Docker stack + Web UI down
   anvilctl status                Show stack + project status
+  anvilctl projects              List projects (name, url, ssl) as TSV
   anvilctl scan                  Register any unregistered projects in www/
   anvilctl new PROJECT_NAME      Register a new project (vhost + ssl)
   anvilctl ssl PROJECT_NAME      Install CA (once) + issue project cert
   anvilctl db create DB_NAME     Create a MySQL database (idempotent)
+  anvilctl logs                  Tail the Docker stack logs
   anvilctl build-assets          Build frontend assets via dart-sass
   anvilctl watch [--once]        Auto-sync vhosts on www/ create|delete (loop)
   anvilctl ec2                   Show EC2 provisioning help (Phase 4)
@@ -53,14 +57,22 @@ shift 2>/dev/null || true
 case "$cmd" in
   start)
     anvil_docker_up
+    anvil_web_up
     ;;
   stop)
+    anvil_web_down
     anvil_docker_down
     ;;
   status)
     anvil_docker_ps
     echo "--- Projects ---"
     anvil_project_list
+    ;;
+  projects)
+    anvil_projects_status
+    ;;
+  logs)
+    anvil_docker_logs --tail=200
     ;;
   scan)
     anvil_project_scan
