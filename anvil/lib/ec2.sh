@@ -41,6 +41,49 @@ fi
 : "${CERTBOT_EMAIL:=}"
 : "${AWS_REGION:=${AWS_DEFAULT_REGION:-us-east-1}}"
 
+# Network CIDR blocks (from anvil.conf)
+: "${ANVIL_VPC_CIDR:=10.0.0.0/16}"
+: "${ANVIL_PRIMARY_SUBNET_CIDR:=10.0.1.0/24}"
+: "${ANVIL_SECONDARY_SUBNET_CIDR:=10.0.2.0/24}"
+
+# RDS configuration (from anvil.conf)
+: "${ANVIL_RDS_ENGINE:=mysql}"
+: "${ANVIL_RDS_ENGINE_VERSION:=8.0}"
+: "${ANVIL_RDS_INSTANCE_CLASS:=db.t3.micro}"
+: "${ANVIL_RDS_ALLOCATED_STORAGE:=20}"
+: "${ANVIL_RDS_BACKUP_RETENTION:=7}"
+: "${ANVIL_RDS_MULTI_AZ:=false}"
+: "${ANVIL_RDS_PUBLICLY_ACCESSIBLE:=false}"
+: "${ANVIL_RDS_STORAGE_ENCRYPTED:=true}"
+
+# IAM configuration (from anvil.conf)
+: "${ANVIL_IAM_ROLE_NAME:=anvil-ec2-role}"
+: "${ANVIL_IAM_PROFILE_NAME:=anvil-ec2-profile}"
+: "${ANVIL_IAM_POLICY_NAME:=anvil-ssm-read}"
+
+# SSM Parameter Store paths (from anvil.conf)
+: "${ANVIL_SSM_RDS_HOST:=/anvil/rds/host}"
+: "${ANVIL_SSM_RDS_USER:=/anvil/rds/user}"
+: "${ANVIL_SSM_RDS_PASSWORD:=/anvil/rds/password}"
+: "${ANVIL_SSM_RDS_DATABASE:=/anvil/rds/database}"
+
+# AMI resolution (from anvil.conf)
+: "${ANVIL_AMI_SSM_PARAM:=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}"
+
+# URL used to detect the caller's public IP for the SSH security-group lock-down.
+: "${ANVIL_IP_DETECTION_URL:=https://checkip.amazonaws.com}"
+
+# EC2 tagging (from anvil.conf)
+: "${ANVIL_EC2_TAG_PROJECT:=anvil}"
+: "${ANVIL_EC2_TAG_NAME_PREFIX:=anvil-}"
+
+# Remote host layout (EC2 instance) — configurable for non-standard images.
+: "${ANVIL_REPO_URL:=https://github.com/example/anvil.git}"
+: "${ANVIL_REMOTE_APP_DIR:=/opt/anvil}"
+
+# SSH user for the EC2 host (ec2-user for Amazon Linux; ubuntu for Ubuntu AMIs).
+: "${ANVIL_EC2_SSH_USER:=ec2-user}"
+
 # ---------------------------------------------------------------------------
 # Pre-flight guards
 # ---------------------------------------------------------------------------
@@ -72,7 +115,7 @@ _anvil_ec2_ensure_vpc() {
     return 0
   fi
   vpc_id="$(aws ec2 create-vpc \
-    --cidr-block 10.0.0.0/16 \
+    --cidr-block "${ANVIL_VPC_CIDR}" \
     --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=${ANVIL_VPC_NAME}}]" \
     --query 'Vpc.VpcId' --output text --region "$AWS_REGION")"
   aws ec2 modify-vpc-attribute --vpc-id "$vpc_id" --enable-dns-support --region "$AWS_REGION" >/dev/null
@@ -98,7 +141,7 @@ _anvil_ec2_ensure_subnets() {
     --query 'Subnets[0].SubnetId' --output text --region "$AWS_REGION" 2>/dev/null || true)"
   if [[ -z "$primary" || "$primary" == "None" ]]; then
     primary="$(aws ec2 create-subnet \
-      --vpc-id "$vpc_id" --cidr-block 10.0.1.0/24 --availability-zone "$az1" \
+      --vpc-id "$vpc_id" --cidr-block "${ANVIL_PRIMARY_SUBNET_CIDR}" --availability-zone "$az1" \
       --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${ANVIL_SUBNET_NAME}}]" \
       --query 'Subnet.SubnetId' --output text --region "$AWS_REGION")"
   fi
@@ -108,7 +151,7 @@ _anvil_ec2_ensure_subnets() {
     --query 'Subnets[0].SubnetId' --output text --region "$AWS_REGION" 2>/dev/null || true)"
   if [[ -z "$other" || "$other" == "None" ]]; then
     other="$(aws ec2 create-subnet \
-      --vpc-id "$vpc_id" --cidr-block 10.0.2.0/24 --availability-zone "$az2" \
+      --vpc-id "$vpc_id" --cidr-block "${ANVIL_SECONDARY_SUBNET_CIDR}" --availability-zone "$az2" \
       --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${ANVIL_SUBNET_NAME}-b}]" \
       --query 'Subnet.SubnetId' --output text --region "$AWS_REGION")"
   fi
@@ -294,7 +337,7 @@ _anvil_ec2_wait_rds_endpoint() {
 # ---------------------------------------------------------------------------
 
 _anvil_ec2_ensure_instance_profile() {
-  local role_name="anvil-ec2-role" profile_name="anvil-ec2-profile" acct
+  local role_name="${ANVIL_IAM_ROLE_NAME}" profile_name="${ANVIL_IAM_PROFILE_NAME}" acct
   # Idempotent: create the role + profile only if missing.
   if ! aws iam get-role --role-name "$role_name" --region "$AWS_REGION" >/dev/null 2>&1; then
     acct="$(aws sts get-caller-identity --query Account --output text --region "$AWS_REGION")"
@@ -302,8 +345,8 @@ _anvil_ec2_ensure_instance_profile() {
       --assume-role-policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}" \
       --region "$AWS_REGION" >/dev/null
     # Minimal inline policy: read only the Anvil RDS SSM parameters.
-    aws iam put-role-policy --role-name "$role_name" --policy-name "anvil-ssm-read" \
-      --policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"ssm:GetParameter\",\"ssm:GetParameters\"],\"Resource\":\"arn:aws:ssm:${AWS_REGION}:${acct}:parameter/anvil/rds/*\"}]}" \
+    aws iam put-role-policy --role-name "$role_name" --policy-name "${ANVIL_IAM_POLICY_NAME}" \
+      --policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"ssm:GetParameter\",\"ssm:GetParameters\"],\"Resource\":\"arn:aws:ssm:${AWS_REGION}:${acct}:parameter${ANVIL_SSM_RDS_HOST%/*}/*\"}]}" \
       --region "$AWS_REGION" >/dev/null
   fi
   if ! aws iam get-instance-profile --instance-profile-name "$profile_name" --region "$AWS_REGION" >/dev/null 2>&1; then
@@ -322,6 +365,7 @@ anvil_ec2_provision() {
   local ssh_cidr="" skip_rds=0 rds_endpoint="" rds_user="" rds_password="" rds_database=""
   local confirm_t3_small=0 ami_id="" key_name="$ANVIL_KEY_NAME" key_file="$SSH_KEY_PATH"
   local caller_ip=""
+  local dry_run=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -337,10 +381,75 @@ anvil_ec2_provision() {
       --key-name)       key_name="${2:?--key-name requires a value}"; shift 2 ;;
       --key-path)       key_file="${2:?--key-path requires a value}"; shift 2 ;;
       --region)         AWS_REGION="${2:?--region requires a value}"; shift 2 ;;
+      --dry-run)        dry_run=1; shift ;;
       -h|--help)        anvil_ec2_help; return 0 ;;
       *) echo "Unknown option: $1" >&2; anvil_ec2_help; return 1 ;;
     esac
   done
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    echo "=== Anvil EC2 Provisioning DRY-RUN ==="
+    echo "This is a dry-run. No AWS resources will be created."
+    echo
+    echo "Configuration that would be used:"
+    echo "  INSTANCE_TYPE: ${INSTANCE_TYPE}"
+    echo "  AWS_REGION:    ${AWS_REGION}"
+    echo "  EC2_SG_NAME:   ${EC2_SG_NAME}"
+    echo "  RDS_SG_NAME:   ${RDS_SG_NAME}"
+    echo "  VPC_NAME:      ${ANVIL_VPC_NAME}"
+    echo "  SUBNET_NAME:   ${ANVIL_SUBNET_NAME}"
+    echo "  IGW_NAME:      ${ANVIL_IGW_NAME}"
+    echo "  DB_SUBNET_GRP: ${ANVIL_DB_SUBNET_GROUP}"
+    echo "  KEY_NAME:      ${ANVIL_KEY_NAME}"
+    echo "  SSH_KEY_PATH:  ${SSH_KEY_PATH}"
+    echo "  CERTBOT_DOMAINS: ${CERTBOT_DOMAINS:-<none>}"
+    echo "  CERTBOT_EMAIL:   ${CERTBOT_EMAIL:-<none>}"
+    echo "  WEB_UI_HOST:     ${WEB_UI_HOST}"
+    echo "  WEB_UI_PORT:     ${WEB_UI_PORT}"
+    echo
+    echo "Security group rules that would be created:"
+    echo "  EC2 SG (${EC2_SG_NAME}):"
+    echo "    - SSH (22) from caller IP only (auto-detected or --ssh-cidr)"
+    echo "    - HTTP (80) from 0.0.0.0/0"
+    echo "    - HTTPS (443) from 0.0.0.0/0"
+    echo "  RDS SG (${RDS_SG_NAME}):"
+    echo "    - MySQL (3306) from EC2 SG only (source-group reference)"
+    echo
+    echo "RDS configuration:"
+    if [[ "$skip_rds" -eq 1 ]]; then
+      echo "  --skip-rds specified; would use existing RDS endpoint: ${rds_endpoint:-<required>}"
+    else
+      local az_label public_label
+      if [[ "$ANVIL_RDS_MULTI_AZ" == "true" ]]; then az_label="multi-AZ"; else az_label="single-AZ"; fi
+      if [[ "$ANVIL_RDS_PUBLICLY_ACCESSIBLE" == "true" ]]; then public_label="YES"; else public_label="NO"; fi
+      echo "  Engine: ${ANVIL_RDS_ENGINE} ${ANVIL_RDS_ENGINE_VERSION}"
+      echo "  Instance class: ${ANVIL_RDS_INSTANCE_CLASS}"
+      echo "  Storage: ${ANVIL_RDS_ALLOCATED_STORAGE} GB encrypted, ${az_label}"
+      echo "  Publicly accessible: ${public_label}"
+      echo "  Backup retention: ${ANVIL_RDS_BACKUP_RETENTION} days"
+      echo "  Credentials stored in SSM Parameter Store as SecureString under ${ANVIL_SSM_RDS_HOST%/*}/*"
+    fi
+    echo
+    echo "EC2 instance:"
+    echo "  AMI: Amazon Linux 2023 (latest via SSM parameter)"
+    echo "  Instance type: ${INSTANCE_TYPE}"
+    echo "  IAM instance profile: ${ANVIL_IAM_PROFILE_NAME} (SSM read access to ${ANVIL_SSM_RDS_HOST%/*}/*)"
+    echo "  User data: ${ANVIL_ROOT}/provisioning/cloud-init.yaml"
+    echo "  Tags: Name=${ANVIL_EC2_TAG_NAME_PREFIX}${env_name}, Project=${ANVIL_EC2_TAG_PROJECT}"
+    echo
+    if [[ "$INSTANCE_TYPE" == "t3.small" && "$confirm_t3_small" -ne 1 ]]; then
+      echo "ERROR (dry-run): INSTANCE_TYPE=t3.small requires --confirm-t3-small"
+      echo "  (t3.small is NOT free-tier eligible on accounts created before 2025-07-15)"
+      echo "  Estimated cost: ~\$0.0208/hr (~\$15/mo)"
+      return 1
+    fi
+    if [[ "$INSTANCE_TYPE" == "t3.small" ]]; then
+      echo "WARNING: t3.small confirmed. Estimated cost: ~\$0.0208/hr (~\$15/mo)."
+    fi
+    echo
+    echo "Dry-run complete. Re-run without --dry-run to execute."
+    return 0
+  fi
 
   _anvil_ec2_check_prereqs || return 1
 
@@ -363,9 +472,9 @@ anvil_ec2_provision() {
       echo "       your public IP. Pass --ssh-cidr CIDR (e.g. 1.2.3.4/32)." >&2
       return 1
     fi
-    caller_ip="$(curl -s https://checkip.amazonaws.com || true)"
+    caller_ip="$(curl -s "${ANVIL_IP_DETECTION_URL}" || true)"
     if [[ -z "$caller_ip" ]]; then
-      echo "ERROR: could not resolve caller IP via checkip.amazonaws.com." >&2
+      echo "ERROR: could not resolve caller IP via ${ANVIL_IP_DETECTION_URL}." >&2
       echo "       Pass --ssh-cidr CIDR explicitly." >&2
       return 1
     fi
@@ -402,9 +511,9 @@ anvil_ec2_provision() {
       return 1
     fi
     db_host="$rds_endpoint"
-    db_user="${rds_user:-anvil}"
+    db_user="${rds_user:-${ANVIL_RDS_MASTER_USERNAME_PREFIX}}"
     db_password="${rds_password:-}"
-    db_name="${rds_database:-anvil}"
+    db_name="${rds_database:-${ANVIL_RDS_DB_NAME}}"
     echo "Skipping RDS creation; using provided endpoint ${db_host}."
     if [[ -z "$db_password" ]]; then
       echo "ERROR: --skip-rds requires --rds-password to write SSM secrets." >&2
@@ -412,26 +521,42 @@ anvil_ec2_provision() {
     fi
   else
     _anvil_ec2_ensure_db_subnet_group "$ANVIL_DB_SUBNET_GROUP" "$primary_subnet" "$other_subnet"
-    db_user="anvil$(date +%s | tail -c 5)"
+    db_user="${ANVIL_RDS_MASTER_USERNAME_PREFIX}$(date +%s | tail -c 5)"
     db_password="$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)"
-    db_name="anvil"
-    local db_id="anvil-rds-${env_name}"
-    echo "Creating RDS instance '${db_id}' (db.t3.micro, encrypted, single-AZ) ..."
+    db_name="${ANVIL_RDS_DB_NAME}"
+    local db_id="${ANVIL_RDS_IDENTIFIER_PREFIX}${env_name}"
+    local multi_az_flag no_public_flag storage_enc_flag
+    if [[ "$ANVIL_RDS_MULTI_AZ" == "true" ]]; then
+      multi_az_flag="--multi-az"
+    else
+      multi_az_flag="--no-multi-az"
+    fi
+    if [[ "$ANVIL_RDS_PUBLICLY_ACCESSIBLE" == "true" ]]; then
+      no_public_flag="--publicly-accessible"
+    else
+      no_public_flag="--no-publicly-accessible"
+    fi
+    if [[ "$ANVIL_RDS_STORAGE_ENCRYPTED" == "true" ]]; then
+      storage_enc_flag="--storage-encrypted"
+    else
+      storage_enc_flag="--no-storage-encrypted"
+    fi
+    echo "Creating RDS instance '${db_id}' (${ANVIL_RDS_INSTANCE_CLASS}, ${storage_enc_flag}, ${multi_az_flag}) ..."
     aws rds create-db-instance \
       --db-instance-identifier "$db_id" \
-      --db-instance-class db.t3.micro \
-      --engine mysql \
-      --engine-version 8.0 \
+      --db-instance-class "${ANVIL_RDS_INSTANCE_CLASS}" \
+      --engine "${ANVIL_RDS_ENGINE}" \
+      --engine-version "${ANVIL_RDS_ENGINE_VERSION}" \
       --master-username "$db_user" \
       --master-user-password "$db_password" \
       --db-name "$db_name" \
-      --allocated-storage 20 \
-      --storage-encrypted \
-      --multi-az false \
-      --no-publicly-accessible \
+      --allocated-storage "${ANVIL_RDS_ALLOCATED_STORAGE}" \
+      "$storage_enc_flag" \
+      "$multi_az_flag" \
+      "$no_public_flag" \
       --db-subnet-group-name "$ANVIL_DB_SUBNET_GROUP" \
       --vpc-security-group-ids "$rds_sg_id" \
-      --backup-retention-period 7 \
+      --backup-retention-period "${ANVIL_RDS_BACKUP_RETENTION}" \
       --region "$AWS_REGION" >/dev/null
     db_host="$(_anvil_ec2_wait_rds_endpoint "$db_id")"
     echo "  RDS endpoint: ${db_host}"
@@ -439,15 +564,15 @@ anvil_ec2_provision() {
 
   # --- store RDS credentials in SSM Parameter Store as SecureString ---
   echo "Writing RDS credentials to SSM Parameter Store (SecureString) ..."
-  _anvil_ec2_put_ssm "/anvil/rds/host" "$db_host"
-  _anvil_ec2_put_ssm "/anvil/rds/user" "$db_user"
-  _anvil_ec2_put_ssm "/anvil/rds/password" "$db_password"
-  _anvil_ec2_put_ssm "/anvil/rds/database" "$db_name"
+  _anvil_ec2_put_ssm "${ANVIL_SSM_RDS_HOST}" "$db_host"
+  _anvil_ec2_put_ssm "${ANVIL_SSM_RDS_USER}" "$db_user"
+  _anvil_ec2_put_ssm "${ANVIL_SSM_RDS_PASSWORD}" "$db_password"
+  _anvil_ec2_put_ssm "${ANVIL_SSM_RDS_DATABASE}" "$db_name"
 
   # --- resolve AMI (Amazon Linux 2023 latest) if not provided ---
   if [[ -z "$ami_id" ]]; then
     ami_id="$(aws ssm get-parameter \
-      --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
+      --name "${ANVIL_AMI_SSM_PARAM}" \
       --query 'Parameter.Value' --output text --region "$AWS_REGION")"
   fi
 
@@ -457,12 +582,19 @@ anvil_ec2_provision() {
 
   # --- launch EC2 instance ---
   echo "Launching EC2 instance (${INSTANCE_TYPE}) ..."
-  local instance_id public_ip user_data_file
+  local instance_id public_ip user_data_file user_data_tmp
   user_data_file="${ANVIL_ROOT}/provisioning/cloud-init.yaml"
   if [[ ! -f "$user_data_file" ]]; then
     echo "ERROR: cloud-init user-data not found at ${user_data_file}." >&2
     return 1
   fi
+  # Substitute configurable values (repo URL, remote app dir) into a temp copy
+  # so the source template is never modified in place.
+  user_data_tmp="$(mktemp)"
+  sed -e "s#https://github.com/example/anvil.git#${ANVIL_REPO_URL}#g" \
+      -e "s#/opt/anvil#${ANVIL_REMOTE_APP_DIR}#g" \
+      "$user_data_file" > "$user_data_tmp"
+  user_data_file="$user_data_tmp"
   instance_id="$(aws ec2 run-instances \
     --image-id "$ami_id" \
     --instance-type "$INSTANCE_TYPE" \
@@ -472,7 +604,7 @@ anvil_ec2_provision() {
     --iam-instance-profile "Name=${instance_profile}" \
     --associate-public-ip-address \
     --user-data "file://${user_data_file}" \
-    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=anvil-${env_name}},{Key=Project,Value=anvil}]" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${ANVIL_EC2_TAG_NAME_PREFIX}${env_name}},{Key=Project,Value=${ANVIL_EC2_TAG_PROJECT}}]" \
     --query 'Instances[0].InstanceId' --output text --region "$AWS_REGION")"
   echo "  instance: ${instance_id}"
   # Wait for public IP.
@@ -487,13 +619,13 @@ anvil_ec2_provision() {
   if [[ -n "$public_ip" && -n "$db_host" ]]; then
     local env_push="RDS_ENDPOINT=${db_host}"
     if ssh -i "$key_file" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
-        "ec2-user@${public_ip}" \
-        "mkdir -p /opt/anvil/docker && printf '%s\n' '${env_push}' > /opt/anvil/docker/.env" \
+        "${ANVIL_EC2_SSH_USER}@${public_ip}" \
+        "mkdir -p ${ANVIL_REMOTE_APP_DIR}/docker && printf '%s\n' '${env_push}' > ${ANVIL_REMOTE_APP_DIR}/docker/.env" \
         >/dev/null 2>&1; then
-      echo "Wrote RDS_ENDPOINT to /opt/anvil/docker/.env on the EC2 host."
+      echo "Wrote RDS_ENDPOINT to ${ANVIL_REMOTE_APP_DIR}/docker/.env on the EC2 host."
     else
       echo "NOTE: could not SSH to push RDS_ENDPOINT automatically."
-      echo "      On the EC2 host, create /opt/anvil/docker/.env with: ${env_push}"
+      echo "      On the EC2 host, create ${ANVIL_REMOTE_APP_DIR}/docker/.env with: ${env_push}"
     fi
   fi
 
@@ -509,7 +641,7 @@ anvil_ec2_provision() {
   echo
   echo "Next steps:"
   echo "  - SSH tunnel for phpMyAdmin/Web UI:"
-  echo "      ssh -N -L 8080:127.0.0.1:8080 -L 9999:127.0.0.1:9999 -i ${key_file} ec2-user@${public_ip}"
+  echo "      ssh -N -L 8080:127.0.0.1:8080 -L 9999:127.0.0.1:9999 -i ${key_file} ${ANVIL_EC2_SSH_USER}@${public_ip}"
   echo "  - Bastion tunnel to private RDS (local 3306):"
   echo "      anvilctl ec2 tunnel --rds-endpoint ${db_host} --host ${public_ip} --key ${key_file}"
   echo "  - Issue Let's Encrypt certs:"
@@ -549,7 +681,7 @@ anvil_ec2_tunnel() {
   fi
 
   echo "Opening SSH tunnel: local :${local_port} -> ${rds_endpoint}:${remote_port}"
-  echo "via bastion ec2-user@${ec2_host} (RDS stays private inside the VPC)."
+  echo "via bastion ${ANVIL_EC2_SSH_USER}@${ec2_host} (RDS stays private inside the VPC)."
   echo "Press Ctrl-C to close. On your Kubuntu, point your DB client at 127.0.0.1:${local_port}."
   # -N: do not execute a remote command; -L: local forward.
   exec ssh -N \

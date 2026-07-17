@@ -28,6 +28,7 @@ A Debian/Ubuntu (Kubuntu) host with:
 
 The fastest way to satisfy these is:
 
+
 ```bash
 sudo ./install.sh      # picks components via a checklist; idempotent
 ```
@@ -37,6 +38,41 @@ Verify the `*.test` wildcard resolves before continuing:
 ```bash
 dig +short demo.test @127.0.0.1     # expect: 127.0.0.1
 ```
+
+---
+
+## Unattended & cost-free validation
+
+Anvil can be validated **without a TTY** and **without any AWS spend**:
+
+### Unattended local install
+
+```bash
+sudo ./install.sh --yes        # non-interactive; installs all missing components
+```
+
+`--yes` / `--noninteractive` skips the dialog checklist and the progress
+gauge, auto-selecting every missing component and printing a plain-text
+summary. This is the path to confirm the "completely automated" claim on a
+fresh Kubuntu host.
+
+### EC2 plan validation (no AWS calls)
+
+```bash
+anvilctl ec2 provision --dry-run --env prod
+```
+
+`--dry-run` prints the exact configuration, security-group rules, RDS settings,
+and EC2 tags that *would* be created, then exits **without making a single AWS
+API call**. It also enforces the `t3.micro` cost guard:
+
+```bash
+INSTANCE_TYPE=t3.small anvilctl ec2 provision --dry-run   # exits 1; demands --confirm-t3-small
+```
+
+Use the dry-run output as the evidence that SSH (22) is locked to the caller
+IP only, 80/443 are public, 3306 is restricted to the EC2 SG, and RDS
+credentials land in SSM Parameter Store as `SecureString`.
 
 ---
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # anvil/install.sh
 #
 # Anvil Phase 1 bootstrap installer.
@@ -16,8 +17,66 @@
 #   * Every step is check-before-act and safe to re-run.
 #   * Binary downloads that fail are REPORTED, never a hard failure.
 #   * Requires root; re-execs via sudo when invoked unprivileged.
+#   * Supports --yes/--noninteractive for unattended installs.
 
 set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Parse command-line arguments for non-interactive mode.
+# ---------------------------------------------------------------------------
+NONINTERACTIVE=0
+for arg in "$@"; do
+  case "$arg" in
+    --yes|--noninteractive)
+      NONINTERACTIVE=1
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Anvil Phase 1 bootstrap installer.
+
+Usage:
+  sudo ./install.sh [--yes|--noninteractive] [--help]
+
+Options:
+  --yes, --noninteractive   Run without interactive prompts; install all
+                            missing components automatically.
+  -h, --help                Show this help and exit.
+
+The installer is idempotent and safe to re-run. It installs:
+  - Docker Engine + Compose plugin (official Docker apt repo)
+  - dnsmasq + inotify-tools (apt)
+  - mkcert binary + local CA
+  - dart-sass (sass) binary
+  - dnsmasq configuration for *.test -> 127.0.0.1
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $arg" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# ---------------------------------------------------------------------------
+# Load configuration (anvil.conf) so installer paths/URLs are configurable.
+# Falls back to built-in defaults if the config is not present.
+# ---------------------------------------------------------------------------
+if [[ -f "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/config/anvil.conf" ]]; then
+  # shellcheck source=config/anvil.conf
+  source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/config/anvil.conf"
+fi
+
+# Installer-specific configurable paths/URLs (overridable via anvil.conf or env).
+: "${ANVIL_SYSTEMD_RESOLV_CONF:=/run/systemd/resolve/resolv.conf}"
+: "${ANVIL_DNSMASQ_CONF:=/etc/dnsmasq.d/anvil.conf}"
+: "${ANVIL_RESOLVED_CONF:=/etc/systemd/resolved.conf.d/anvil.conf}"
+: "${ANVIL_MKCERT_PATH:=/usr/local/bin/mkcert}"
+: "${ANVIL_SASS_PATH:=/usr/local/bin/sass}"
+: "${ANVIL_MKCERT_GITHUB_API:=https://api.github.com/repos/FiloSottile/mkcert/releases/latest}"
+: "${ANVIL_SASS_GITHUB_API:=https://api.github.com/repos/sass/dart-sass/releases/latest}"
+: "${ANVIL_FALLBACK_DNS:=1.1.1.1 8.8.8.8}"
+: "${DOMAIN_TLD:=test}"
 
 # ---------------------------------------------------------------------------
 # Privilege check: re-exec with sudo if not root.
@@ -137,29 +196,34 @@ install_dns() {
   # generated resolv.conf) so dnsmasq can forward non-.test queries without
   # looping back to itself. Fall back to public DNS if none are found.
   local upstreams=""
-  local real_resolv="/run/systemd/resolve/resolv.conf"
+  local real_resolv="${ANVIL_SYSTEMD_RESOLV_CONF}"
   if [[ -f "$real_resolv" ]]; then
     upstreams="$(grep -E '^nameserver' "$real_resolv" 2>/dev/null | awk '{print $2}' | grep -v '^127\.0\.0\.53$' || true)"
   fi
 
-  local dnsmasq_conf="/etc/dnsmasq.d/anvil.conf"
+  local dnsmasq_conf="${ANVIL_DNSMASQ_CONF}"
   {
     echo "# Anvil-managed dnsmasq configuration (Phase 1)"
-    echo "address=/.test/127.0.0.1"
+    echo "address=/.${DOMAIN_TLD}/127.0.0.1"
     if [[ -n "$upstreams" ]]; then
       while IFS= read -r ip; do
         [[ -n "$ip" ]] && echo "server=${ip}"
       done <<< "$upstreams"
     else
-      echo "server=1.1.1.1"
-      echo "server=8.8.8.8"
+      local fs
+      local -a dns_arr
+      read -ra dns_arr <<< "${ANVIL_FALLBACK_DNS}"
+      for fs in "${dns_arr[@]}"; do
+        echo "server=${fs}"
+      done
     fi
   } > "$dnsmasq_conf"
   echo "wrote ${dnsmasq_conf}"
 
   # --- Disable systemd-resolved stub listener (the port-53 conflict) ---
-  local resolved_dir="/etc/systemd/resolved.conf.d"
-  local resolved_conf="${resolved_dir}/anvil.conf"
+  local resolved_dir
+  resolved_dir="$(dirname "${ANVIL_RESOLVED_CONF}")"
+  local resolved_conf="${ANVIL_RESOLVED_CONF}"
   mkdir -p "$resolved_dir"
   {
     echo "[Resolve]"
@@ -187,10 +251,10 @@ install_dns() {
 
   # --- Verify ---
   if command -v dig >/dev/null 2>&1; then
-    if dig +short demo.test @127.0.0.1 2>/dev/null | grep -q "127.0.0.1"; then
-      echo "VERIFY OK: demo.test resolves to 127.0.0.1"
+    if dig +short "demo.${DOMAIN_TLD}" @127.0.0.1 2>/dev/null | grep -q "127.0.0.1"; then
+      echo "VERIFY OK: demo.${DOMAIN_TLD} resolves to 127.0.0.1"
     else
-      warn "dig demo.test did not resolve to 127.0.0.1 (check dnsmasq status)"
+      warn "dig demo.${DOMAIN_TLD} did not resolve to 127.0.0.1 (check dnsmasq status)"
     fi
   else
     warn "dig not installed; skipping *.test verification"
@@ -216,20 +280,20 @@ install_mkcert() {
       *) warn "unsupported architecture '${arch}' for mkcert"; return 1 ;;
     esac
 
-    local api_url="https://api.github.com/repos/filosoft/mkcert/releases/latest"
+    local api_url="${ANVIL_MKCERT_GITHUB_API}"
     url="$(curl -fsSL "$api_url" \
       | grep -oP '"browser_download_url":\s*"\Khttps://[^\"]*mkcert[^\"]*'"$arch"'[^\"]*' \
       | head -1)" || true
 
     if [[ -z "$url" ]]; then
-      warn "could not determine mkcert download URL; install manually from https://github.com/filosoft/mkcert/releases"
+      warn "could not determine mkcert download URL (${ANVIL_MKCERT_GITHUB_API}); install manually"
       return 1
     fi
 
     echo "Downloading mkcert from ${url}"
-    if curl -fsSL "$url" -o /usr/local/bin/mkcert; then
-      chmod +x /usr/local/bin/mkcert
-      echo "mkcert installed to /usr/local/bin/mkcert"
+    if curl -fsSL "$url" -o "${ANVIL_MKCERT_PATH}"; then
+      chmod +x "${ANVIL_MKCERT_PATH}"
+      echo "mkcert installed to ${ANVIL_MKCERT_PATH}"
     else
       warn "failed to download mkcert from ${url}; install manually"
       return 1
@@ -261,7 +325,7 @@ install_sass() {
     *) warn "unsupported architecture '${arch}' for dart-sass"; return 1 ;;
   esac
 
-  local api_url="https://api.github.com/repos/sass/dart-sass/releases/latest"
+  local api_url="${ANVIL_SASS_GITHUB_API}"
   url="$(curl -fsSL "$api_url" \
     | grep -oP '"browser_download_url":\s*"\Khttps://[^\"]*dart-sass-[^\"]*'"$arch"'\.tar\.gz' \
     | head -1)" || true
@@ -276,9 +340,9 @@ install_sass() {
     tar -xzf "${tmp}/sass.tar.gz" -C "$tmp"
     sass_bin="$(find "$tmp" -name sass -type f | head -1)"
     if [[ -n "$sass_bin" ]]; then
-      cp "$sass_bin" /usr/local/bin/sass
-      chmod +x /usr/local/bin/sass
-      echo "sass installed to /usr/local/bin/sass"
+      cp "$sass_bin" "${ANVIL_SASS_PATH}"
+      chmod +x "${ANVIL_SASS_PATH}"
+      echo "sass installed to ${ANVIL_SASS_PATH}"
     else
       warn "sass binary not found in downloaded archive"
       rm -rf "$tmp"
@@ -308,8 +372,9 @@ run_step() {
 # Main flow.
 # ---------------------------------------------------------------------------
 main() {
-  # 1) Welcome
-  ui_msg "Welcome to Anvil" "Anvil is a local-dev automation and EC2 deployment tool.
+  # 1) Welcome (skipped in non-interactive mode)
+  if [[ "$NONINTERACTIVE" -eq 0 ]]; then
+    ui_msg "Welcome to Anvil" "Anvil is a local-dev automation and EC2 deployment tool.
 
 This installer sets up the Phase 1 foundation:
   - Docker Engine + Compose plugin
@@ -321,11 +386,15 @@ This installer sets up the Phase 1 foundation:
 All steps are idempotent and safe to re-run.
 
 Press OK to choose components."
+  else
+    echo "Anvil Phase 1 installer (non-interactive mode)"
+    echo "Installing all missing components..."
+  fi
 
   # 2) Orientation: detect what is already present.
   detect_presence
 
-  # 3) Component checklist (default on for anything not yet satisfied).
+  # 3) Component selection: interactive checklist or auto-select all missing.
   _docker_ok() { command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; }
   _dns_ok()    { command -v dnsmasq >/dev/null 2>&1; }
   _mkcert_ok() { command -v mkcert >/dev/null 2>&1; }
@@ -341,25 +410,40 @@ Press OK to choose components."
     sass   "dart-sass (sass) binary"              "$(_status _sass_ok)"
   )
 
-  local out rc
-  out="$("$UI" --separate-output --checklist \
-    "Select components to install (Space toggles, Enter confirms):" 20 70 10 \
-    "${CHECK_ARGS[@]}" 3>&1 1>&2 2>&3)" || rc=$?
-  rc="${rc:-0}"
-  if [[ "$rc" -ne 0 ]]; then
-    ui_msg "Cancelled" "Installation cancelled. No changes were made."
-    exit 0
-  fi
-
   local -a SELECTED=()
-  if [[ -n "$out" ]]; then
-    # shellcheck disable=SC2206
-    SELECTED=($out)   # split on whitespace (--separate-output => one tag per line)
-  fi
+  if [[ "$NONINTERACTIVE" -eq 0 ]]; then
+    local out rc
+    out="$("$UI" --separate-output --checklist \
+      "Select components to install (Space toggles, Enter confirms):" 20 70 10 \
+      "${CHECK_ARGS[@]}" 3>&1 1>&2 2>&3)" || rc=$?
+    rc="${rc:-0}"
+    if [[ "$rc" -ne 0 ]]; then
+      ui_msg "Cancelled" "Installation cancelled. No changes were made."
+      exit 0
+    fi
 
-  if [[ ${#SELECTED[@]} -eq 0 ]]; then
-    ui_msg "Nothing selected" "No components were selected. Nothing to do."
-    exit 0
+    if [[ -n "$out" ]]; then
+      # shellcheck disable=SC2206
+      SELECTED=($out)   # split on whitespace (--separate-output => one tag per line)
+    fi
+
+    if [[ ${#SELECTED[@]} -eq 0 ]]; then
+      ui_msg "Nothing selected" "No components were selected. Nothing to do."
+      exit 0
+    fi
+  else
+    # Non-interactive: auto-select all components that are not already satisfied.
+    if ! _tools_ok; then SELECTED+=(tools); fi
+    if ! _docker_ok; then SELECTED+=(docker); fi
+    if ! _dns_ok; then SELECTED+=(dns); fi
+    if ! _mkcert_ok; then SELECTED+=(mkcert); fi
+    if ! _sass_ok; then SELECTED+=(sass); fi
+
+    if [[ ${#SELECTED[@]} -eq 0 ]]; then
+      echo "All components already installed. Nothing to do."
+      exit 0
+    fi
+    echo "Auto-selected components: ${SELECTED[*]}"
   fi
 
   # 4) Order the selected steps into a deterministic sequence.
@@ -372,21 +456,29 @@ Press OK to choose components."
     done
   done
 
-  # 5) Progress gauge: run each step, reporting percentage + label.
+  # 5) Progress gauge (interactive) or simple progress (non-interactive).
   local total="${#STEPS[@]}"
   local i=0 step pct
-  exec 3> >("$UI" --gauge "Installing Anvil components..." 12 70 0)
-  for step in "${STEPS[@]}"; do
-    i=$((i + 1))
-    pct=$(( i * 100 / total ))
-    echo "$pct" >&3
-    echo "XXX" >&3
-    echo "Step ${i}/${total}: ${step}" >&3
-    echo "XXX" >&3
-    run_step "$step" || true
-  done
-  echo 100 >&3
-  exec 3>&-
+  if [[ "$NONINTERACTIVE" -eq 0 ]]; then
+    exec 3> >("$UI" --gauge "Installing Anvil components..." 12 70 0)
+    for step in "${STEPS[@]}"; do
+      i=$((i + 1))
+      pct=$(( i * 100 / total ))
+      echo "$pct" >&3
+      echo "XXX" >&3
+      echo "Step ${i}/${total}: ${step}" >&3
+      echo "XXX" >&3
+      run_step "$step" || true
+    done
+    echo 100 >&3
+    exec 3>&-
+  else
+    for step in "${STEPS[@]}"; do
+      i=$((i + 1))
+      echo "[$i/$total] Installing: $step"
+      run_step "$step" || true
+    done
+  fi
 
   # 6) Summary (orientation report + any warnings).
   local summary
@@ -408,7 +500,11 @@ Press OK to choose components."
     summary+=$'\n'"No warnings."
   fi
 
-  ui_msg "Summary" "$summary"
+  if [[ "$NONINTERACTIVE" -eq 0 ]]; then
+    ui_msg "Summary" "$summary"
+  else
+    echo "$summary"
+  fi
 }
 
 main "$@"
