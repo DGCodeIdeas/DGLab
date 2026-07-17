@@ -127,9 +127,11 @@ _anvil_ec2_ensure_vpc() {
 # primary subnet for the EC2 instance. Echoes "PRIMARY_SUBNET OTHER_SUBNET".
 _anvil_ec2_ensure_subnets() {
   local vpc_id="$1"
-  local az_list az1 az2 primary other
+  local az_list az1 az2 primary other az_query
+  # shellcheck disable=SC2016  # JMESPath raw-string backticks are literal, not command substitution
+  az_query='AvailabilityZones[?State==`available`].ZoneName'
   az_list="$(aws ec2 describe-availability-zones \
-    --query 'AvailabilityZones[?State==`available`].ZoneName' \
+    --query "$az_query" \
     --output text --region "$AWS_REGION")"
   az1="${az_list%% *}"
   az2="${az_list#* }"
@@ -186,7 +188,7 @@ _anvil_ec2_ensure_route_table() {
   fi
   # Idempotently ensure the default route to the IGW exists.
   if ! aws ec2 describe-route-tables --route-table-ids "$rt_id" \
-      --query 'RouteTables[0].Routes[?GatewayId==`'${igw_id}'`].GatewayId' \
+      --query 'RouteTables[0].Routes[?GatewayId==`'"${igw_id}"'`].GatewayId' \
       --output text --region "$AWS_REGION" 2>/dev/null | grep -q "$igw_id"; then
     aws ec2 create-route --route-table-id "$rt_id" --destination-cidr-block 0.0.0.0/0 \
       --gateway-id "$igw_id" --region "$AWS_REGION" >/dev/null 2>&1 || true

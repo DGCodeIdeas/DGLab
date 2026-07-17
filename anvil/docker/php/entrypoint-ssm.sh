@@ -14,10 +14,10 @@
 set -euo pipefail
 
 SSM_REGION="${AWS_REGION:-us-east-1}"
-SSM_HOST_PARAM="${ANVIL_SSM_HOST:-/anvil/rds/host}"
-SSM_USER_PARAM="${ANVIL_SSM_USER:-/anvil/rds/user}"
-SSM_PASSWORD_PARAM="${ANVIL_SSM_PASSWORD:-/anvil/rds/password}"
-SSM_DATABASE_PARAM="${ANVIL_SSM_DATABASE:-/anvil/rds/database}"
+SSM_HOST_PARAM="${ANVIL_SSM_RDS_HOST:-/anvil/rds/host}"
+SSM_USER_PARAM="${ANVIL_SSM_RDS_USER:-/anvil/rds/user}"
+SSM_PASSWORD_PARAM="${ANVIL_SSM_RDS_PASSWORD:-/anvil/rds/password}"
+SSM_DATABASE_PARAM="${ANVIL_SSM_RDS_DATABASE:-/anvil/rds/database}"
 
 # --- guard: aws cli present ---
 if ! command -v aws >/dev/null 2>&1; then

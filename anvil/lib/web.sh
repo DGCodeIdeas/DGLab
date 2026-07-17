@@ -79,13 +79,14 @@ anvil_web_up() {
   echo "$pid" > "$ANVIL_WEB_PIDFILE"
 
   # Give the server a moment; verify it actually bound before declaring success.
-  local i
-  for i in 1 2 3 4 5; do
+  local waited=0
+  while (( waited < 5 )); do
     if kill -0 "$pid" 2>/dev/null; then
       echo "Web UI started (pid ${pid}) on http://${WEB_UI_HOST}:${WEB_UI_PORT}"
       return 0
     fi
     sleep 0.2
+    waited=$((waited + 1))
   done
 
   echo "ERROR: Web UI process exited immediately; see ${ANVIL_WEB_LOGFILE}" >&2
@@ -108,10 +109,10 @@ anvil_web_down() {
   if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
     kill "$pid" 2>/dev/null || true
     # Wait briefly for a graceful exit before forcing it.
-    local i
-    for i in 1 2 3 4 5 6 7 8 9 10; do
-      kill -0 "$pid" 2>/dev/null || break
+    local waited=0
+    while kill -0 "$pid" 2>/dev/null && (( waited < 10 )); do
       sleep 0.2
+      waited=$((waited + 1))
     done
     kill -9 "$pid" 2>/dev/null || true
   fi
