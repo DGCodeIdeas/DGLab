@@ -1,0 +1,1108 @@
+# DGLab Blueprint Analysis & Enhancement
+
+**ID:** c0e778be-ddb3-49d3-9579-14b405015496
+**Created:** 2026-08-02T23:59:53.000Z
+**Updated:** 2026-08-03T09:40:22.000Z
+**Type:** default
+
+---
+
+### Assistant (2026-08-03T03:00:57.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+The user wants me to analyze the provided documents (`Analysis-2.md` and `Analysis-3.md`) against the *existing* DGLab blueprints (which are implicitly described in the previous prompt's context: the monolithic Vision A vs polyrepo Vision B, `00_CRITIQUE.md`, `01_MASTER_INDEX.md`, and the previous delivery `2026-08-02-DGLab____-Kimi.md` which included the first set of high-fidelity blueprints). 
+
+I need to provide a critique of these new documents (`Analysis-2.md` and `Analysis-3.md`) just as I did for the original repository in the previous steps. I need to identify specific inaccuracies, omissions, and structural weaknesses in these new documents compared to the established canonical blueprints and the governance rules set forth in `01_MASTER_INDEX.md`.
+
+Let's review the content of `Analysis-2.md` and `Analysis-3.md`:
+
+`Analysis-2.md` contains:
+- `BRIDGE-01.md` (The Handoff Bridge / Vanguard) - re-written with corrected CORE-16 reference, fail-closed contract.
+- `ISPOKE-01.md` (Admin Panel) - CRUD engine over-generalization fix.
+- `ESPOKE-01.md` (Public CMS) - SEO optimization fix, fail-closed Bridge consumption.
+- `DEPLOY-01.md` (Core & Hub Service Deployment) - replaces the docs-only deploy, adds `HealthCheckInterface` with `liveness()`/`readiness()`.
+
+`Analysis-3.md` contains:
+- `HUB-20.md` (Cryptography & Secrets) - Sovereign Vault.
+- `HUB-19.md` (Validation) - Sovereign Guard.
+- `HUB-18.md` (Media Processing) - Sovereign Media Forge.
+- `HUB-17.md` (Webhooks) - Sovereign Webhook Nexus.
+- `HUB-16.md` (Orchestration Hooks) - Sovereign Hub Weaver.
+- `HUB-15.md` (Health Check) - Sovereign Pulse. Reconciles DEPLOY-01's `HealthCheckInterface` with `HealthRegistryInterface`.
+- `HUB-14.md` (Search) - Sovereign Search.
+- `HUB-13.md` (I18n) - Sovereign Translator.
+- `HUB-12.md` (Notification) - Sovereign Notify.
+- `HUB-11.md` (File Storage) - Sovereign Cloud Storage. Disambiguates HUB-11 (Storage) vs HUB-10 (Queue).
+- `HUB-10.md` (Queue) - Sovereign Queue. Merges queue-patterns docs.
+- `HUB-09.md` (Event Bus) - Sovereign Pulse (Event Bus).
+- `HUB-08.md` (API Gateway) - Sovereign Gateway. Circuit breaker contract.
+- `HUB-07.md` (Rate Limiter) - Sovereign Throttle.
+- `HUB-06.md` (Audit Log) - Sovereign Auditor. Availability contract for Bridge.
+- `HUB-05.md` (RBAC) - Sovereign Guardian.
+- `HUB-04.md` (Identity) - Sovereign Identity.
+- `HUB-03.md` (Asset Pipeline) - Sovereign Asset Engine.
+- `HUB-02.md` (Cache) - Sovereign Hub Cache. Merges cache-patterns docs.
+
+Wait, looking closely at the previous context:
+The previous Kimi response (`2026-08-02-DGLab____-Kimi.md`) provided a high-fidelity delivery of:
+- `00_CRITIQUE.md` (13 findings)
+- `01_MASTER_INDEX.md` (governance rules, corrected maps)
+- Exemplars: `CORE-01`, `CORE-02`, `CORE-03`, `HUB-01`, `HUB-02`, `HUB-04`, `BRIDGE-01`, `ISPOKE-01`, `ESPOKE-01`, `DEPLOY-01`
+
+Then, in the subsequent turn, I generated the "Next-Batch High-Fidelity Delivery" (`PART V`), which included:
+- `CORE-08`, `CORE-09`, `CORE-10`, `CORE-04`, `CORE-05`, `CORE-06`, `CORE-16`, `CORE-17`, `CORE-18`, `CORE-19`
+- `HUB-06`, `HUB-11`, `HUB-15`
+- `DEPLOY-02`, `DEPLOY-03`, `DEPLOY-04`
+
+Now the user has provided `Analysis-2.md` and `Analysis-3.md`, which contain re-written versions of `BRIDGE-01`, `ISPOKE-01`, `ESPOKE-01`, `DEPLOY-01`, and `HUB-02` through `HUB-20`. 
+
+Ah, these look like *another* set of AI-generated responses (perhaps from another tool or an earlier iteration) trying to fulfill the same prompt, OR they are the actual documents from the repo's `docs/blueprints/` directory that were *supposed* to be the high-fidelity versions but contain their own issues. Wait, `Analysis-2.md` and `Analysis-3.md` contain the "Resolves" sections and governance rule references that *match* the newly proposed architecture. They seem to be a parallel or subsequent attempt to rewrite the Hub tier and Spoke/Deploy tiers.
+
+Wait, the user's prompt is: "Analyse against existing ones". This means I need to critique `Analysis-2.md` and `Analysis-3.md` just as I analyzed the original repo's files. I need to find the specific inaccuracies, omissions, and structural weaknesses in *these* provided files, comparing them against the established canonical blueprint structure (CORE-01 to CORE-20, HUB-01 to HUB-30, etc., and the governance rules).
+
+Let's carefully read `Analysis-2.md` and `Analysis-3.md` to find contradictions, numbering errors, dependency mismatches, and governance rule violations.
+
+**Check `Analysis-2.md`:**
+- `BRIDGE-01.md`: Mentions `CORE-09` is PSR-3 Logging, correctly changes to `CORE-16`. Good.
+- `ISPOKE-01.md`: Mentions `HUB-21` (Multi-tenancy Coordination Layer), `HUB-26` (Shared UI Component Library). 
+- `ESPOKE-01.md`: Mentions `ISPOKE-09` (Internal Knowledge Base). Wait, in the previous context, `ISPOKE-09` is an Internal Spoke. Is it in the 1-15 documented or 16-25 placeholder? The text says: "ISPOKE-09 (Internal Spoke, not yet documented at all — outside the 15 currently detailed and outside the 10 placeholder stubs... this is itself a gap worth flagging: ISPOKE-09 is referenced as a live dependency by ESPOKE-01 but has no blueprint file and no placeholder entry"). This is a meta-observation, not necessarily a bug in the document itself, but it indicates a taxonomy gap.
+- `DEPLOY-01.md`: "Core & Hub Service Deployment". Defines `HealthCheckInterface` with `liveness()` and `readiness()`. In the previous context, `DEPLOY-01` was written to deploy the actual system. This one also looks good.
+
+**Check `Analysis-3.md` (HUB-02 to HUB-20):**
+Let's check the dependency graphs and component names against the corrected Core map (`01_MASTER_INDEX.md` §2).
+
+- `HUB-02.md`: Cache. Blocked on `CORE-02`, `CORE-15`. Good.
+- `HUB-03.md`: Asset Pipeline. Blocked on `CORE-14`, `CORE-10`. Good.
+- `HUB-04.md`: Identity. Blocked on `CORE-19`, `CORE-16`, `HUB-02`. Good.
+- `HUB-05.md`: RBAC. Blocked on `HUB-04`, `CORE-19`, `HUB-02`. Good.
+- `HUB-06.md`: Audit. Blocked on `CORE-19`, `HUB-04`, `CORE-03`. Good.
+- `HUB-07.md`: Rate Limiter. Blocked on `HUB-02`, `CORE-04`. Good.
+- `HUB-08.md`: API Gateway. Blocked on `CORE-06`, `HUB-04`, `HUB-07`, `CORE-04`. Good.
+- `HUB-09.md`: Event Bus. Blocked on `CORE-03`, `HUB-02`, `HUB-10`. Good.
+- `HUB-10.md`: Queue. Blocked on `CORE-19`, `HUB-02`. Good.
+- `HUB-11.md`: File Storage. Blocked on `CORE-14`, `CORE-10`. Good. (Disambiguates from HUB-10 Queue).
+- `HUB-12.md`: Notification. Blocked on `HUB-04`, `HUB-10`, `CORE-12`. Good.
+- `HUB-13.md`: I18n. Blocked on `CORE-10`, `HUB-02`. Good.
+- `HUB-14.md`: Search. Blocked on `CORE-19`, `HUB-10`. Good.
+- `HUB-15.md`: Health Check. Blocked on `CORE-10`, `CORE-14`, `HUB-02`. Good. Reconciles DEPLOY-01's `HealthCheckInterface`.
+- `HUB-16.md`: Orchestration Hooks. Blocked on `CORE-01`, `HUB-15`. Good.
+- `HUB-17.md`: Webhooks. Blocked on `HUB-09`, `HUB-10`, `HUB-06`, `HUB-08`. Good.
+- `HUB-18.md`: Media Processing. Blocked on `HUB-11`, `HUB-10`, `HUB-02`. Good.
+- `HUB-19.md`: Validation. Blocked on `HUB-13`, `CORE-02`, `CORE-10`. Good.
+- `HUB-20.md`: Cryptography. Blocked on `CORE-16`, `CORE-19`. Good.
+
+Wait, is there any structural weakness or contradiction in `Analysis-3.md`?
+
+Let's look at `HUB-15.md`:
+"Two-Layer Health Model (reconciles DEPLOY-01)"
+- Per-instance layer (`DEPLOY-01`'s `HealthCheckInterface`): every deployed service process implements `liveness()`/`readiness()` directly, at a standard `/healthz/*` path.
+- Registry/aggregation layer (this blueprint's `HealthRegistryInterface`): `HUB-15` polls the per-instance `readiness()` endpoints.
+But wait, `DEPLOY-01.md` in `Analysis-2.md` specifies:
+```php
+namespace SovereignStack\Deploy\Contracts;
+
+interface HealthCheckInterface
+{
+    public function liveness(): bool;
+    public function readiness(): array{ready: bool, checks: array<string,bool>};
+}
+```
+And `HUB-15.md` specifies:
+```php
+namespace SovereignStack\Hub\Contracts;
+
+interface HealthRegistryInterface
+{
+    public function register(string $name, CheckInterface $check): void;
+    public function status(): array;
+    public function heartbeat(string $service, string $status): void;
+}
+```
+And `HUB-15.md` says:
+"Concretely: a service's `readiness(): array{ready: bool, checks: array<string,bool>}` implementation (from `DEPLOY-01`) is typically *built* using this blueprint's `CheckInterface` primitives... `CheckInterface` is the reusable diagnostic building block; `readiness()` is the per-service aggregate..."
+This seems like a reasonable reconciliation. But does it violate any governance rules? It creates a circular dependency or a cross-tier dependency where Hub depends on Deploy contracts or vice-versa?
+In `DEPLOY-01.md` (Analysis-2), it says:
+"**Upward:** `CORE-01`, `CORE-18`, `HUB-15` (Health Check contract), `HUB-01` (Config...)."
+So `DEPLOY-01` depends on `HUB-15`.
+And `HUB-15.md` says: "Downward: `HUB-16` (Weaver — release gating), `HUB-08` (circuit-breaker/service registry), `BRIDGE-01` (endpoint discovery), `DEPLOY-01` (routing-pool eviction)."
+Wait, if `DEPLOY-01` depends on `HUB-15`, and `HUB-15` depends on `DEPLOY-01`, that's a circular dependency!
+
+Let's check the dependencies again.
+`DEPLOY-01.md`:
+- Upward: `CORE-01`, `CORE-18`, `HUB-15`, `HUB-01`
+- Downward: every Hub service; every Internal Spoke.
+
+`HUB-15.md`:
+- Upward: `CORE-10`, `CORE-14`, `HUB-02`.
+- Downward: `HUB-16`, `HUB-08`, `BRIDGE-01`, `DEPLOY-01`.
+
+Yes! Circular dependency between Hub and Deploy tiers. `DEPLOY-01` depends on `HUB-15` (Hub tier) for the health check contract, and `HUB-15` depends on `DEPLOY-01` (Deploy tier) for routing-pool eviction. A Hub service cannot depend on a Deploy blueprint; Deploy is downstream of Hub.
+
+Let's look for more issues.
+In `Analysis-3.md`, `HUB-10.md`:
+"Resolves: `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` Hub Weakness 2 references "Queue (HUB-11)" throughout... That ID is wrong. `HUB-11` is Cloud Storage... the Queue blueprint is `HUB-10`".
+This is a good catch, but wait: in the original repo's `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md`, was Queue HUB-11 or HUB-10?
+Let's recall the original repo context. In Finding 11 of `00_CRITIQUE.md`, it says: `"Sparse Architectural Details for Cache (HUB-02) and Queue (HUB-11)."`
+Wait, `00_CRITIQUE.md` Finding 11 explicitly quotes: `"Sparse Architectural Details for Cache (HUB-02) and Queue (HUB-11)."`!
+But in `Analysis-3.md`, `HUB-10.md` says: "Queue (HUB-11)" is wrong, `HUB-11` is Cloud Storage, the Queue is `HUB-10`.
+So `SOLUTIONS_TO_WEAKNESSES.md` had a typo, and `HUB-10.md` corrects it. That's fine. But wait, does `HUB-11.md` (Cloud Storage) in `Analysis-3.md` correctly identify itself?
+`HUB-11.md`: "Clarifies this component's identity against the `HUB-11`/`HUB-10` mislabel... **this** is Cloud Storage, not Queue". This is consistent.
+
+What about `HUB-12.md` (Notification)?
+"Blocked on `HUB-04` (Identity), `HUB-10` (Queue), `CORE-12` (SuperPHP Compiler)".
+Wait, in the previous context, `CORE-12` is SuperPHP Compiler. That's correct.
+
+What about `HUB-17.md` (Webhook Nexus)?
+"Blocked on `HUB-09` (Event Bus), `HUB-10` (Queue), `HUB-06` (Audit), `HUB-08` (Gateway)".
+Good.
+
+Let's look at `HUB-20.md` (Cryptography & Secrets).
+"Resolves: Adds stated benchmark methodology (Finding 10). Note: this blueprint's `CORE-16` reference was checked against the corrected Core-tier map in `01_MASTER_INDEX.md` §2 and is **correct**".
+Wait, in the previous context (PART V), I generated `CORE-16: Binary Encryption Envelope`. 
+Does `HUB-20` overlap with `CORE-16`?
+`CORE-16` is "Binary Encryption Envelope / Cryptographic Foundation". It handles symmetric encryption, asymmetric signing, key rotation.
+`HUB-20` is "Cryptography & Secrets Management Service". It extends `CORE-16` with "key rotation, encrypted field storage, and secure handshaking."
+But wait! `CORE-16` in my previous delivery *already* specified key rotation: "Key rotation support... `KeyManagerInterface`... `retireKey()`". And key storage backends (Vault, AWS KMS, Env).
+So `HUB-20` is proposing to do *exactly* what `CORE-16` already does, duplicating functionality. `HUB-20` should just consume `CORE-16`, not "extend it with key rotation" because `CORE-16` already has it. This is a significant architectural duplication/omission.
+
+Let's check `ISPOKE-01.md` in `Analysis-2.md`.
+"Dependency Status... Transitive Core Dependencies: `CORE-11`: SuperPHP Parser, `CORE-12`: SuperPHP Compiler, `CORE-18`: Core Kernel & Lifecycle, `CORE-19`: DBAL, `CORE-06`: Router."
+Wait, in `01_MASTER_INDEX.md` §2 (from `Analysis.md`), `CORE-11` is SuperPHP Parser, `CORE-12` is SuperPHP Compiler, `CORE-18` is Core Kernel, `CORE-19` is DBAL. This is correct.
+
+What about `ESPOKE-01.md` in `Analysis-2.md`?
+"Dependency Status... Transitive Core Dependencies: `CORE-11`, `CORE-12`, `CORE-18`, `CORE-06`, `CORE-14`."
+Correct.
+
+Let's look at `BRIDGE-01.md` in `Analysis-2.md`.
+"Dependency Status — corrected... Transitive Core Dependencies: `CORE-01`, `CORE-18`, `CORE-16`, `CORE-06`."
+Wait, in the original `BRIDGE-01.md` (from `Analysis.md`), it listed `CORE-01` as a dependency? No, the original `BRIDGE-01.md` in `Analysis.md` Finding 3 says:
+`BRIDGE-01.md` lists a Core dependency as `CORE-09: Cryptography & Hashing (Payload Verification)`. The actual `CORE-16` is cryptography.
+The corrected `BRIDGE-01.md` in `Analysis-2.md` lists:
+`CORE-01`: Polyrepo Orchestrator (Enforcement Logic — release gating on Bridge test suite)
+`CORE-18`: Core Kernel & Lifecycle
+`CORE-16`: Binary Encryption Envelope (Payload Verification)
+`CORE-06`: Attribute-Based Router (Gateway Routing)
+Is `CORE-01` a runtime dependency of `BRIDGE-01`? No! `CORE-01` is the polyrepo orchestrator (Loom), a build-time/release-time tool, never loaded by a running Hub/Spoke process. This was explicitly stated in my `CORE-01.md` delivery: "Loom is invoked via orchestrator/bin/loom... it is not a service any Hub/Spoke process talks to at runtime." So `BRIDGE-01.md` in `Analysis-2.md` incorrectly lists `CORE-01` as a transitive Core dependency for runtime enforcement logic. Loom does release gating, not runtime request enforcement.
+
+Let's look at `HUB-16.md` (Orchestration Hooks) in `Analysis-3.md`.
+"Build Status: 🟡 Partially unblocked — `CORE-01` (Loom) is the one Core component already implemented... This blueprint's upward integration can begin now".
+"Architectural Design: OrchestrationClient — talks to Loom via webhooks or CLI calls... DependencyVerifier — ensures the current Hub version is compatible with the installed Core version, using DependencyGraph's tier-order enforcement directly... ReleaseManager — tagging and manifest generation for Hub-tier distribution, via RepoManager/VersionBumpEngine."
+Wait, `HUB-16` is described as a *Hub* service ("Hub-level Orchestration Hooks"). But its description says it "talks to Loom via webhooks or CLI calls" and does "tagging and manifest generation for Hub-tier distribution". This is build-time/release-time logic. It does not belong in the Hub tier (shared runtime services). It belongs in the Deploy tier or the Orchestrator itself (`CORE-01`). Placing a release-automation client in the Hub tier violates the separation between application runtime and build-time tooling.
+
+Let's look at `DEPLOY-01.md` in `Analysis-2.md`.
+"Health check contract... `namespace SovereignStack\Deploy\Contracts; interface HealthCheckInterface`"
+And `HUB-15.md` in `Analysis-3.md` uses `namespace SovereignStack\Hub\Contracts; interface HealthRegistryInterface` and `CheckInterface`.
+Wait, if `HealthCheckInterface` is in `Deploy\Contracts`, it means the application services must implement a contract from the `Deploy` namespace. But `Deploy` is a tier that consumes Hub/Core, it shouldn't define interfaces that Hub/Core implement. The interface should be in `Hub\Contracts` (or `Core\Contracts`), and Deploy consumes it. Putting it in `Deploy\Contracts` inverts the dependency direction.
+
+What about `HUB-11.md` (File Storage)?
+"StorageManager — resolves named disks... S3Driver... UrlSigner..."
+Wait, `CORE-14` is Filesystem Abstraction. `HUB-11` extends it with cloud support. That's fine.
+
+Let's check `HUB-19.md` (Validation).
+"Blocked on `HUB-13` (I18n), `CORE-02`, `CORE-10`."
+In my previous delivery (`PART V`), I did not write `HUB-19`, but this is fine.
+
+Let's check `HUB-18.md` (Media Processing).
+"Blocked on `HUB-11` (Storage), `HUB-10` (Queue), `HUB-02` (Cache)."
+
+Let's look for more cross-reference issues.
+`ESPOKE-01.md` in `Analysis-2.md` mentions `ISPOKE-09` (Internal Knowledge Base). It correctly flags that `ISPOKE-09` is undocumented. But it also says `ISPOKE-09` is "outside the 10 placeholder stubs in `docs/internal-spokes/placeholder-blueprints.md`". This means `ISPOKE-09` is completely missing from the inventory. That's a valid observation.
+
+What about `HUB-02.md` in `Analysis-3.md`?
+"Build Status: 🔴 Blocked on `CORE-02` (DI Container) and `CORE-15` (Cache Abstraction)."
+"Resolves: `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` Hub Weakness 2 ("Sparse Architectural Details for Cache")".
+Good.
+
+What about `HUB-06.md` in `Analysis-3.md`?
+"Availability Contract (new — required by BRIDGE-01)... `BRIDGE-01`'s fail-closed policy means a Bridge instance that can't reach this service must reject the request..."
+Wait, in `BRIDGE-01.md` (`Analysis-2.md`), it says: "if a Bridge instance cannot reach `HUB-04` (identity re-validation) or `HUB-06` (audit log) within a defined timeout, it must return `503`".
+But `BRIDGE-01.md`'s sequence diagram shows:
+```
+E->>B: Request for Data/Action
+B->>Id: Re-validate External Auth (fail-closed if unreachable)
+Id-->>B: Validated / Denied
+alt Validated
+    B->>I: Internal Service Call (Secure)
+    I-->>B: Internal Data Payload
+    B->>B: Transform to Public-Safe DTO
+    B->>A: Log Crossing Event (fail-closed if unreachable)
+```
+Wait, the audit log happens *after* the internal call. If `HUB-06` is unreachable, the Bridge returns 503. But the internal call has *already happened*. If the Bridge then fails and returns 503, the internal system has been mutated (if it was a write request), but the external client gets an error. This is a distributed transaction inconsistency. The audit log should be written *before* or *synchronously with* the internal call, or the internal call should be compensating. Actually, writing the audit log *after* the internal call but before returning to the client means if the audit log fails, you've executed the internal action but lost the audit trail, and returning 503 doesn't undo the internal action. This is a severe security/consistency flaw in the proposed `BRIDGE-01` flow.
+
+Let's summarize the findings to present to the user:
+
+1. **Circular Dependency between Hub and Deploy Tiers**
+`DEPLOY-01.md` lists `HUB-15` as an upward dependency (to use its health check contract), while `HUB-15.md` lists `DEPLOY-01` as a downward dependency (for routing-pool eviction). A Hub service cannot depend on a Deploy blueprint, and Deploy cannot define contracts that Hub implements.
+
+2. **Misplaced Namespace / Inverted Dependency Direction**
+`DEPLOY-01.md` defines `HealthCheckInterface` under `SovereignStack\Deploy\Contracts`. Application services (Hub/Core) should not implement interfaces from the `Deploy` namespace. The contract should live in `Hub\Contracts` or `Core\Contracts`, with Deploy consuming it.
+
+3. **Incorrect Runtime Dependency on Build-Time Tool (`CORE-01`)**
+`BRIDGE-01.md` lists `CORE-01` (Polyrepo Orchestrator / Loom) as a "Transitive Core Dependency" for "Enforcement Logic — release gating on Bridge test suite". `CORE-01` is explicitly a build-time/release-time CLI tool that is never loaded at runtime. Citing it as a runtime dependency for the Bridge violates the architectural separation established in `CORE-01.md`.
+
+4. **Functional Duplication between `HUB-20` and `CORE-16`**
+`HUB-20.md` (Cryptography & Secrets) claims to extend `CORE-16` with "key rotation, encrypted field storage, and secure handshaking". However, the `CORE-16.md` blueprint already specifies `KeyManagerInterface` with key generation, retirement, active key selection, and multiple storage backends (Vault, KMS). `HUB-20` is proposing to duplicate responsibilities already owned by `CORE-16`, creating ambiguity over where key management actually lives.
+
+5. **Architectural Misplacement of `HUB-16` (Hub Orchestration Hooks)**
+`HUB-16.md` describes a component that talks to Loom via webhooks, verifies version compatibility, and performs tagging/manifest generation for Hub-tier distribution. These are build-time/release-time concerns, not runtime Hub services. Placing release-automation logic in the Hub tier violates the polyrepo deployment model and should belong to the Deploy tier or `CORE-01` itself.
+
+6. **Distributed Transaction / Audit Gap in `BRIDGE-01` Flow**
+The sequence diagram in `BRIDGE-01.md` shows the internal service call executing *before* the audit log write. If the audit log (`HUB-06`) is unreachable at that point, the Bridge returns 503 (fail-closed), but the internal mutation has already occurred. This results in a lost audit trail for an executed action. The audit log should be written synchronously *before* or *as part of* the internal transaction, not after.
+
+7. **Unresolved Taxonomy Gap for `ISPOKE-09`**
+`ESPOKE-01.md` notes that `ISPOKE-09` (Internal Knowledge Base) is a live dependency but has no blueprint file and is absent from both the 15 documented and 10 placeholder Internal Spokes. While the blueprint correctly flags this as a gap, it leaves a critical downstream dependency (`ESPOKE-01`) blocked by an undefined component, meaning the "External Spokes" phase cannot proceed until the `ISPOKE` inventory is corrected.
+
+These are solid, high-fidelity architectural critiques of the provided `Analysis-2.md` and `Analysis-3.md` documents. They directly mirror the style and depth of the `00_CRITIQUE.md` from the previous context. I will structure the response as a critique document.
+
+</details>
+
+*Tokens: 87251 in, 7605 out (total 94856)*
+
+---
+
+### User (2026-08-02T23:59:56.000Z)
+
+Public Repo: DGCodeIdeas/DGLab
+
+Analyze the above files and existing DGLab blueprints to identify specific inaccuracies, omissions, and structural weaknesses. Based on this critique, generate a comprehensive set of high-fidelity architectural blueprints for the DGLab system that address all previous shortcomings. The new blueprints should feature significantly increased detail, improved structural integrity, optimized component integration, and a much higher level of technical sophistication compared to the original version.
+
+---
+
+### Assistant (2026-08-03T09:40:22.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+1.  **Understand the Goal:** The user wants me to provide fixes for the 6 schema documentation inconsistencies identified in the previous audit of the `Analysis-Corrections-Additions.md` documents.
+2.  **Review the Inconsistencies to Fix:**
+    *   **Fix 1 (HUB-06):** Replace procedural `AuditorInterface` with Event-Driven `AuditLoggerInterface`/`AuditableEventInterface` and update the DB/JSON schema to use `prev_hash`/`entry_hash`.
+    *   **Fix 2 (HUB-25):** Change `public function job(object $job)` to `public function job(JobInterface $job)`.
+    *   **Fix 3 (HUB-29):** Change `User $user` to `Authenticatable $user` (or import `User`).
+    *   **Fix 4 (HUB-21):** Define the `Tenant` class/interface.
+    *   **Fix 5 (HUB-23, HUB-06, ISPOKE-05):** Add `@return` docblocks or DTOs for methods returning `array`.
+    *   **Fix 6 (Hub Tier generally):** Ensure events like `SubscriptionUpdated` or Scheduled Task executions implement `AuditableEventInterface` so `HUB-06` can consume them.
+3.  **Draft the Fixes (PHP/Markdown snippets):**
+
+    *   *Fix 1 (HUB-06 Audit):*
+        Need the `AuditableEventInterface` and `AuditLoggerInterface`.
+        Need the SQL schema with `prev_hash` and `entry_hash`.
+        Need to update the JSON payload example to show the chain hashes instead of a flat signature.
+
+    *   *Fix 2 (HUB-25 Scheduler):*
+        ```php
+        use SovereignStack\Hub\Contracts\JobInterface; // implied
+        interface SchedulerInterface {
+            public function command(string $signature): TaskInterface;
+            public function job(JobInterface $job): TaskInterface;
+        }
+        ```
+
+    *   *Fix 3 (HUB-29 Testing Harness):*
+        ```php
+        namespace SovereignStack\Hub\Contracts;
+        // use SovereignStack\Hub\Contracts\Authenticatable;
+        interface HubTestHarnessInterface {
+            public function mockService(string $service, object $mock): void;
+            public function actingAs(Authenticatable $user, array $scopes = []): self;
+        }
+        ```
+
+    *   *Fix 4 (HUB-21 Tenancy):*
+        Define `Tenant` as a DTO/Entity.
+        ```php
+        namespace SovereignStack\Hub\Contracts;
+        final class Tenant {
+            public function __construct(
+                public readonly string $id, // ULID
+                public readonly string $name,
+                public readonly string $domain,
+                public readonly bool $isActive = true,
+            ) {}
+        }
+        interface TenancyInterface {
+            public function current(): ?Tenant;
+            // ...
+        }
+        ```
+
+    *   *Fix 5 (Array Returns):*
+        - HUB-23: `/** @return array{status: string, url: ?string, created_at: string} */`
+        - HUB-06: `/** @return array<int, array<string, mixed>> */` (or define a DTO)
+        - ISPOKE-05: `/** @return array<int, array<string, mixed>> */`
+
+    *   *Fix 6 (AuditableEventInterface Implementation Examples):*
+        Show how `HUB-22`'s `SubscriptionUpdated` should implement `AuditableEventInterface` so the schema is complete.
+
+4.  **Format the Output:** Present the fixes clearly, numbered 1 to 6, providing the exact PHP code or SQL schema that needs to be injected into the blueprints. Ensure namespaces align with previous conventions (`SovereignStack\Hub\Contracts`, etc.).
+
+</details>
+
+*Tokens: 118612 in, 2624 out (total 121236)*
+
+---
+
+### User (2026-08-03T03:43:57.000Z)
+
+Provide fixes
+
+---
+
+### User (2026-08-03T02:59:11.000Z)
+
+.
+
+---
+
+### User (2026-08-03T03:00:57.000Z)
+
+Analyse against existing ones
+
+---
+
+### Assistant (2026-08-03T03:43:57.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+1.  **Analyze the Request:**
+    The user wants "fixes" for the schema documentation inconsistencies identified in the previous step. The previous step identified 8 major/minor inconsistencies in the interface contracts, schemas, and payload definitions across the provided blueprint documents (`Analysis.md`, `Analysis-2.md`, `Analysis-3.md`).
+
+2.  **Review the Identified Inconsistencies:**
+    *   *Inconsistency 1 (HUB-15 Health Check Trifurcation):* Need to unify the `HealthCheckInterface` into a single contract. Best approach: Put it in `Hub\Contracts`, use the Enum/DTO pattern (Kimi's version was the most robust), and make `DEPLOY-01` consume it.
+    *   *Inconsistency 2 (HUB-06 Audit Log Divergence):* Need to unify the audit interface. Best approach: Adopt the Event-Driven pattern with cryptographic chaining (Kimi's version). Deprecate the procedural `record()` method.
+    *   *Inconsistency 3 (HUB-02 Cache API Mismatch):* Need to unify the cache interface. Best approach: Adopt the PSR-16 extension with fluent tagging (`Analysis-3` version) because it's more ergonomic than the Factory pattern, but incorporate the strict backend definitions from Kimi's version.
+    *   *Inconsistency 4 (HUB-10 Queue Job Mismatch):* Need to fix the `QueueInterface` and `JobInterface`. Best approach: Require strict `JobInterface` typehinting in `push()`/`pop()`, and mandate `ack()` and `fail()` methods for robust DLQ handling.
+    *   *Inconsistency 5 (HUB-20 vs CORE-16 Crypto Return Types):* Need to clarify that `HUB-20` uses `CORE-16`'s binary envelope. Best approach: Update `HUB-20` interface to explicitly document the binary envelope return type, or have it return a `EncryptedPayload` DTO.
+    *   *Inconsistency 6 (HUB-08 Dispatch Overlap / `mixed` return):* Need to fix the `mixed` return type. Best approach: Mandate that internal dispatch returns a `ResponseInterface` or a strictly defined `DispatchResult` DTO.
+    *   *Inconsistency 7 (Missing DTO Schemas):* Need to define `SearchBuilder`, `FieldDefinition`, `ContentMetadata`, and `Notification`. Best approach: Provide the interface/contract stubs for these missing schemas.
+    *   *Inconsistency 8 (Database Type Inconsistencies - ULID vs Int):* Need to standardize on ULID (string) for all IDs. Best approach: Fix the JSON schema in `HUB-06` to use `string` (ULID) instead of `int`.
+
+3.  **Draft the Fixes (Structuring the Output):**
+    I will provide the exact, corrected code blocks (interface contracts, schemas) for each of the 8 inconsistencies. I'll structure it clearly so the user knows exactly what code replaces what in the blueprints.
+
+    *   *Fix 1: HUB-15 Health Check Unification* (Merge into one `Hub\Contracts\HealthCheckInterface` + Enum + DTO).
+    *   *Fix 2: HUB-06 Audit Log Unification* (Merge into `Hub\Contracts\AuditLoggerInterface` + Event interface + SQL Schema with chaining).
+    *   *Fix 3: HUB-02 Cache API Unification* (Merge into `Hub\Contracts\HubCacheInterface` extending PSR-16, with tagging and locks).
+    *   *Fix 4: HUB-10 Queue Interface Unification* (Merge into `Hub\Contracts\QueueInterface` + `JobInterface` with Ack/Fail).
+    *   *Fix 5: HUB-20 Vault Interface Clarification* (Update `VaultInterface` to explicitly use `CORE-16`'s envelope).
+    *   *Fix 6: HUB-08 Gateway Interface Fix* (Fix `mixed` return type, enforce PSR-7 or strict DTO).
+    *   *Fix 7: Missing DTO Schemas Definitions* (Define `SearchBuilder`, `FieldDefinition`, `ContentMetadata`, `Notification`).
+    *   *Fix 8: Database ID Type Standardization* (Fix HUB-06 JSON schema to use ULIDs).
+
+4.  **Refine the Code:**
+    Make sure PHP 8.3 syntax is used (readonly properties, typed returns, enums, etc.). Ensure namespaces align (`SovereignStack\...`).
+
+5.  **Review against Constraints:**
+    The fixes must directly resolve the 8 points raised in the previous prompt. No fluff, just the corrected architectural contracts.
+
+</details>
+
+*Tokens: 90935 in, 3303 out (total 94238)*
+
+---
+
+### Assistant (2026-08-02T23:59:56.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+The user wants me to output a thinking block and reason with maximum effort. They've provided a large context of existing analysis and critique of the DGLab blueprints, and a previous response from "Kimi" that provided a comprehensive set of high-fidelity blueprints.
+
+Looking at the user's final request: "Please help me:" — this is a prompt to continue or improve the work. Given the extensive context, I need to:
+
+1. Understand the existing critique (13 findings) and the previous response that addressed them
+2. Identify what's still missing or could be improved further
+3. Generate additional high-fidelity blueprints or extensions
+
+Looking at what Kimi already produced:
+- 00_CRITIQUE.md (13 findings, comprehensive)
+- 01_MASTER_INDEX.md (governance, corrected maps)
+- Exemplars: CORE-01, CORE-02, CORE-03, HUB-01, HUB-02, HUB-04, BRIDGE-01, ISPOKE-01, ESPOKE-01, DEPLOY-01
+
+What's missing from the exemplar set to make it comprehensive:
+- CORE-04 through CORE-20 (except 01, 02, 03) — 17 blueprints
+- HUB-03, HUB-05 through HUB-30 (except 01, 02, 04) — 27 blueprints
+- ISPOKE-02 through ISPOKE-25 — 24 blueprints
+- ESPOKE-02 through ESPOKE-15 — 14 blueprints
+- DEPLOY-00, DEPLOY-02, DEPLOY-03, DEPLOY-04 — 4 blueprints
+
+The user wants "significantly increased detail, improved structural integrity, optimized component integration, and a much higher level of technical sophistication."
+
+I should produce the next batch of high-fidelity blueprints. The previous response recommended "the full Hub tier" as the next batch. Let me produce a comprehensive next batch.
+
+I should output a thinking block first (as requested), then produce a substantial extension to the blueprint set. Let me focus on producing high-quality, detailed blueprints for the remaining critical components.
+
+Let me think about what would be most valuable to add:
+
+1. **CORE-18: Core Kernel & Lifecycle** — Critical, the actual application bootstrapper
+2. **CORE-10: Configuration & Environment Loader** — Critical, blocks HUB-01
+3. **CORE-16: Binary Encryption Envelope** — Critical security primitive, referenced by BRIDGE-01
+4. **CORE-19: Database Abstraction Layer** — Critical, blocks HUB-04 and many others
+5. **CORE-04/05/06: HTTP stack** — Critical, blocks BRIDGE-01
+6. **CORE-08: Global Error & Exception Handler** — Critical, blocks CORE-18
+7. **CORE-09: PSR-3 Logging Service** — Critical, used everywhere
+8. **CORE-17: Service Provider System** — Critical, defines boot sequence
+
+For Hub tier:
+9. **HUB-06: Audit Log** — Security-critical, referenced by many
+10. **HUB-11: Queue** — Referenced in SOLUTIONS_TO_WEAKNESSES as sparse
+11. **HUB-15: Health** — Referenced by DEPLOY-01
+12. **HUB-26: UI Component Library** — Referenced by ISPOKE-01, ESPOKE-01
+
+For Deploy:
+13. **DEPLOY-02: Datastore Provisioning**
+14. **DEPLOY-03: Bridge & External Spoke Deployment**
+15. **DEPLOY-04: Multi-Environment & Promotion Pipeline**
+
+This is a lot. I should produce a well-organized, high-fidelity batch. Let me focus on producing the most critical missing pieces with the same fidelity bar as the previous exemplars.
+
+I'll produce:
+- CORE-18 (Kernel)
+- CORE-10 (Config)
+- CORE-16 (Encryption)
+- CORE-19 (DBAL)
+- CORE-04/05/06 (HTTP stack - combined into one comprehensive treatment or three separate)
+- CORE-08 (Error Handler)
+- CORE-09 (Logging)
+- CORE-17 (Service Providers)
+- HUB-06 (Audit)
+- HUB-11 (Queue)
+- HUB-15 (Health)
+- DEPLOY-02, DEPLOY-03, DEPLOY-04
+
+Let me be efficient and produce a high-quality, comprehensive extension. I'll need to be thorough but also fit within reasonable output limits.
+
+Given the extensive nature, let me produce a batch of the most critical missing Core blueprints plus the remaining Deploy tier, as these are the next critical-path items. I'll structure it as "PART V: NEXT-BATCH HIGH-FIDELITY BLUEPRINTS" continuing from Kimi's "PART IV".
+
+Let me produce:
+1. CORE-08: Global Error & Exception Handler
+2. CORE-09: PSR-3 Logging Service
+3. CORE-10: Configuration & Environment Loader
+4. CORE-04: PSR-7 HTTP Message & Factory
+5. CORE-05: PSR-15 Middleware & Request Handler
+6. CORE-06: Attribute-Based Router
+7. CORE-16: Binary Encryption Envelope
+8. CORE-17: Service Provider System
+9. CORE-18: Core Kernel & Lifecycle
+10. CORE-19: Database Abstraction Layer
+11. HUB-06: Audit Log
+12. HUB-11: Queue & Async Jobs
+13. HUB-15: Health & Observability
+14. DEPLOY-02: Datastore Provisioning
+15. DEPLOY-03: Bridge & External Spoke Deployment
+16. DEPLOY-04: Multi-Environment & Promotion Pipeline
+
+This is a comprehensive next batch. Let me write them at the same fidelity as Kimi's exemplars: real PHP interface contracts, corrected dependencies, benchmark methodology per Governance Rule 2, "Resolves" lines.
+
+I'll be thorough but concise. Let me write.
+
+</details>
+
+*Tokens: 32751 in, 31512 out (total 64263)*
+
+---
+
+### User (2026-08-03T03:40:17.000Z)
+
+Verify for schema documentation inconsistency in every single one so far.
+
+---
+
+### User (2026-08-03T09:19:11.000Z)
+
+??
+
+---
+
+### User (2026-08-03T09:40:22.000Z)
+
+Provide fixes
+
+---
+
+### Assistant (2026-08-03T09:19:11.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+The user is asking me to analyze the provided documents (`Analysis-Corrections-Additions.md`) for "schema documentation inconsistency in every single one so far."
+
+The provided text is a concatenated markdown file containing:
+1. `00_CRITIQUE(2).md`
+2. `01_MASTER_INDEX(2).md`
+3. `HUB-01(1).md`
+4. `HUB-06(1).md`
+5. `HUB-21.md`
+6. `HUB-22.md`
+7. `HUB-23.md`
+8. `HUB-24.md`
+9. `HUB-25.md`
+10. `HUB-26.md`
+11. `HUB-27.md`
+12. `HUB-28.md`
+13. `HUB-29.md`
+14. `HUB-30.md`
+15. `ISPOKE-02.md`
+16. `ISPOKE-03.md`
+17. `ISPOKE-04.md`
+18. `ISPOKE-05.md`
+
+Wait, my previous response in this conversation *was* a schema inconsistency audit, and then I provided "fixes". The user is now asking me to verify schema documentation inconsistency in "every single one so far" using the *newly provided* text.
+
+Let me read through the newly provided text (`Analysis-Corrections-Additions.md`) carefully to see if any schema inconsistencies remain or were introduced.
+
+In the previous conversation, the user pointed out 8 schema documentation inconsistencies. The newly provided text seems to be a "corrected" or "addition" file. Let's see if the fixes I proposed earlier were applied, ignored, or if new inconsistencies exist.
+
+Let's check the schemas in the provided text:
+
+**1. `01_MASTER_INDEX(2).md`**
+- §10 ID Policy: "Every entity primary/foreign-key identifier... is a ULID (26-character...)". "Surrogate/internal-only primary keys... may remain BIGINT AUTO_INCREMENT".
+
+**2. `HUB-01(1).md`**
+- `tenant_id CHAR(26) -- ULID; format owned by HUB-21`
+- `id BIGINT PK` (surrogate/internal-only, which aligns with §10 policy).
+
+**3. `HUB-06(1).md`**
+- JSON payload:
+```json
+{
+  "id": "ulid",
+  "user_id": "ulid",
+  "tenant_id": "ulid",
+  "action": "document.update",
+  "resource_type": "Document",
+  "resource_id": "123",
+  "changes": {"title": ["Old", "New"]},
+  "ip_address": "string",
+  "user_agent": "string",
+  "timestamp": "iso8601",
+  "signature": "sha256"
+}
+```
+- PHP Interface:
+```php
+namespace SovereignStack\Hub\Contracts;
+
+interface AuditorInterface
+{
+    public function record(string $action, ?string $resourceType = null, ?string $resourceId = null, array $metadata = []): void;
+    public function search(array $criteria): array;
+}
+```
+Wait! In the previous turn, I pointed out that `HUB-06` uses a procedural `record()` method instead of the Event-Driven pattern with cryptographic chaining (`AuditableEventInterface`). The provided text *retains* the old `AuditorInterface` and the flat `signature: "sha256"` instead of the `entry_hash`/`prev_hash` chaining! The text says "Corrected from an earlier draft of this file, which typed user_id/tenant_id as int... All three fields are ULIDs now", but it didn't fix the interface or the hash chaining!
+
+**4. `HUB-21.md`**
+- ULIDs are explicitly declared here. "tenant IDs are ULIDs (26-character...)".
+
+**5. `HUB-22.md`**
+- `interface BillingInterface { public function subscribed(string $tenantId, string $plan): bool; public function checkout(string $tenantId, string $plan): string; }`
+- Wait, the return type of `checkout` is `string` (redirect URL). This is fine.
+
+**6. `HUB-23.md`**
+- `interface ReporterInterface { public function queueExport(string $query, string $format, array $options = []): string; public function getExportStatus(string $exportId): array; }`
+
+**7. `HUB-24.md`**
+- `interface GraphQLInterface { public function execute(string $query, array $variables = [], mixed $context = null): array; public function register(string $namespace, array $definition): void; }`
+
+**8. `HUB-25.md`**
+- `interface SchedulerInterface { public function command(string $signature): TaskInterface; public function job(object $job): TaskInterface; }`
+- Wait, in the previous fixes, `HUB-10` was strict about `JobInterface`. Here `HUB-25` accepts `object $job`. Is `object` valid? It's technically valid PHP, but type safety is reduced.
+
+**9. `HUB-26.md`**
+- `interface ThemeInterface { public function tokens(): array; public function componentOverrides(): array; }`
+- `interface UIComponentInterface { public function render(array $attributes = []): string; }`
+
+**10. `HUB-27.md`**
+- `interface SentinelInterface { public function apply(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface; }`
+
+**11. `HUB-28.md`**
+- `interface VersioningInterface { public function defaultVersion(): string; public function deprecate(string $version, \DateTimeInterface $sunsetDate): void; }`
+
+**12. `HUB-29.md`**
+- `interface HubTestHarnessInterface { public function mockService(string $service, object $mock): void; public function actingAs(User $user, array $scopes = []): self; }`
+- Wait, `User $user` is not imported or defined.
+
+**13. `HUB-30.md`**
+- No explicit interface, just extends `CORE-13` and `CORE-20`.
+
+**14. `ISPOKE-02.md`**
+- No new interfaces.
+
+**15. `ISPOKE-03.md`**
+- No new interfaces.
+
+**16. `ISPOKE-04.md`**
+- No new interfaces.
+
+**17. `ISPOKE-05.md`**
+- `interface AnalyticsQueryInterface { public function setTimeRange(\DateTimeInterface $start, \DateTimeInterface $end): self; public function groupBy(string $dimension): self; public function execute(): array; }`
+
+Let me look closer at `HUB-06(1).md`.
+The text for HUB-06 says:
+```json
+{
+  "id": "ulid",
+  "user_id": "ulid",
+  "tenant_id": "ulid",
+  ...
+  "signature": "sha256"
+}
+```
+And the interface is:
+```php
+interface AuditorInterface
+{
+    public function record(string $action, ?string $resourceType = null, ?string $resourceId = null, array $metadata = []): void;
+    public function search(array $criteria): array;
+}
+```
+This is EXACTLY the schema I identified as flawed in the previous turn:
+> **Version A (`Analysis-3.md` - HUB-06):** Uses a procedural action-based schema. ... *Payload Schema:* Flat JSON with `user_id: int`, `tenant_id: int`, `signature: sha256`.
+> **Version B (`Analysis.md` - Kimi's HUB-06):** Uses an Event-Driven pattern with cryptographic chaining. ... *Payload Schema:* Database schema with `seq INT`, `prev_hash CHAR(64)`, `entry_hash CHAR(64)` for tamper-evidence.
+> **Inconsistency:** Version A has no chain integrity verification and relies on a flat `signature`. The interfaces are incompatible (string action vs Event object).
+
+The new file `HUB-06(1).md` only fixed the `int` to `ulid` in the JSON, but KEPT the flawed procedural `AuditorInterface` and the flat `signature` schema. It explicitly ignored the fix for the missing cryptographic chaining and the incompatible interface!
+
+Also, let's look at `HUB-15`. Wait, `HUB-15` is not in this document set. But `DEPLOY-01` (which is referenced) had the `HealthCheckInterface` in `Deploy\Contracts`. Wait, `DEPLOY-01` is not in this document set either.
+
+Let's check `HUB-25.md`:
+`public function job(object $job): TaskInterface;`
+If `HUB-10` mandates `JobInterface` (as I proposed in the fix), `HUB-25` should typehint `JobInterface` instead of `object`.
+
+Let's check `HUB-29.md`:
+`public function actingAs(User $user, array $scopes = []): self;`
+`User` is undefined. It should likely be imported from `HUB-04` or use `Authenticatable`.
+
+Let's check `ISPOKE-05.md`:
+`public function execute(): array;`
+This returns a generic array, which is fine but less typed.
+
+Wait, let's review the user's prompt carefully:
+"Verify for schema documentation inconsistency in every single one so far."
+
+I need to systematically go through the newly provided documents (`Analysis-Corrections-Additions.md`) and identify all remaining or newly introduced schema documentation inconsistencies.
+
+### Document 1: `00_CRITIQUE(2).md`
+No code schemas.
+
+### Document 2: `01_MASTER_INDEX(2).md`
+- §10 establishes the ULID policy: "Every entity primary/foreign-key identifier... is a ULID... not a database auto-increment integer and not a UUID."
+- Exception: "surrogate/internal-only primary keys with no external reference... may remain BIGINT AUTO_INCREMENT".
+
+### Document 3: `HUB-01(1).md`
+- Schema:
+```sql
+hub_config_overrides
+  id            BIGINT PK
+  tenant_id     CHAR(26)   -- ULID
+```
+- Consistent with the §10 policy (id is internal surrogate).
+
+### Document 4: `HUB-06(1).md`
+- JSON Payload:
+```json
+{
+  "id": "ulid",
+  "user_id": "ulid",
+  "tenant_id": "ulid",
+  ...
+  "signature": "sha256"
+}
+```
+- PHP Interface:
+```php
+namespace SovereignStack\Hub\Contracts;
+
+interface AuditorInterface
+{
+    public function record(string $action, ?string $resourceType = null, ?string $resourceId = null, array $metadata = []): void;
+    public function search(array $criteria): array;
+}
+```
+**INCONSISTENCY 1: Unresolved HUB-06 Interface & Hash Chaining.**
+The previous critique pointed out that this procedural `AuditorInterface` (using `record(string $action)`) is fundamentally incompatible with the Event-Driven `AuditLoggerInterface` (using `log(AuditableEventInterface $event)`) that uses cryptographic chaining (`prev_hash`, `entry_hash`). The new file only fixed the `int` to `ulid` in the JSON payload but retained the old, vulnerable flat `signature` schema and the incompatible procedural interface. If this is the canonical HUB-06, it contradicts the required cryptographic tamper-evidence established in prior iterations.
+
+### Document 5: `HUB-21.md`
+- Interface:
+```php
+namespace SovereignStack\Hub\Contracts;
+
+interface TenancyInterface
+{
+    public function current(): ?Tenant;
+    public function runAs(string $tenantId, callable $callback): mixed;
+}
+```
+**INCONSISTENCY 2: Undefined Return Type `Tenant`.**
+The `current()` method returns `?Tenant`, but the `Tenant` class/interface is never defined or imported in this document.
+
+### Document 6: `HUB-22.md`
+- Interface:
+```php
+interface BillingInterface
+{
+    public function subscribed(string $tenantId, string $plan): bool;
+    public function checkout(string $tenantId, string $plan): string;
+}
+```
+- Consistent.
+
+### Document 7: `HUB-23.md`
+- Interface:
+```php
+interface ReporterInterface
+{
+    public function queueExport(string $query, string $format, array $options = []): string;
+    public function getExportStatus(string $exportId): array;
+}
+```
+- `getExportStatus` returns `array`, which lacks schema definition. Should return a DTO or an explicit typed array `array{status: string, url: ?string}`. (Minor)
+
+### Document 8: `HUB-24.md`
+- Interface:
+```php
+interface GraphQLInterface
+{
+    public function execute(string $query, array $variables = [], mixed $context = null): array;
+    public function register(string $namespace, array $definition): void;
+}
+```
+- Consistent.
+
+### Document 9: `HUB-25.md`
+- Interface:
+```php
+interface SchedulerInterface
+{
+    public function command(string $signature): TaskInterface;
+    public function job(object $job): TaskInterface;
+}
+```
+**INCONSISTENCY 3: Weak Typing for Job Dispatch.**
+In previous fixes (Fix 4), `HUB-10` was strict to mandate `JobInterface` for queue dispatch to ensure robust DLQ handling. Here, `HUB-25`'s `job(object $job)` accepts any generic `object`. This bypasses the `JobInterface` contract and allows unstructured objects to be dispatched to the queue, creating a schema loophole. It should be `JobInterface $job`.
+
+### Document 10: `HUB-26.md`
+- Interfaces:
+```php
+interface ThemeInterface
+{
+    public function tokens(): array;
+    public function componentOverrides(): array;
+}
+
+interface UIComponentInterface
+{
+    public function render(array $attributes = []): string;
+}
+```
+- Consistent.
+
+### Document 11: `HUB-27.md`
+- Interface:
+```php
+interface SentinelInterface
+{
+    public function apply(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response): \Psr\Http\Message\ResponseInterface;
+}
+```
+- Consistent.
+
+### Document 12: `HUB-28.md`
+- Interface:
+```php
+interface VersioningInterface
+{
+    public function defaultVersion(): string;
+    public function deprecate(string $version, \DateTimeInterface $sunsetDate): void;
+}
+```
+- Consistent.
+
+### Document 13: `HUB-29.md`
+- Interface:
+```php
+interface HubTestHarnessInterface
+{
+    public function mockService(string $service, object $mock): void;
+    public function actingAs(User $user, array $scopes = []): self;
+}
+```
+**INCONSISTENCY 4: Undefined Type `User`.**
+The method `actingAs(User $user, ...)` typehints `User`, but `User` is not imported (e.g., `use SovereignStack\Hub\Contracts\Authenticatable` or `use SovereignStack\Hub\Identity\Entity\User`) or defined in this document. This will cause a compilation failure.
+
+### Document 14: `HUB-30.md`
+- No interface provided.
+
+### Document 15: `ISPOKE-02.md`
+- No interface provided.
+
+### Document 16: `ISPOKE-03.md`
+- No interface provided.
+
+### Document 17: `ISPOKE-04.md`
+- No interface provided.
+
+### Document 18: `ISPOKE-05.md`
+- Interface:
+```php
+interface AnalyticsQueryInterface
+{
+    public function setTimeRange(\DateTimeInterface $start, \DateTimeInterface $end): self;
+    public function groupBy(string $dimension): self;
+    public function execute(): array;
+}
+```
+- Consistent.
+
+### Cross-Document Schema Inconsistencies
+
+**INCONSISTENCY 5: `HUB-21` vs `HUB-01` ULID Schema Format**
+In `HUB-21.md`, the text states: "tenant IDs are ULIDs (26-character, Crockford Base32, lexicographically sortable). `Tenant::id` is generated at creation time by `TenantResolver`".
+In `HUB-01(1).md`, the SQL schema dictates `tenant_id CHAR(26)`.
+This is consistent.
+
+**INCONSISTENCY 6: Missing `AuditableEventInterface` Across Hub Tier**
+If `HUB-06` retains the procedural `AuditorInterface` (as seen in this delivery), then the components that emit audit events (like `HUB-22` Billing, `HUB-25` Scheduler, `ISPOKE-04`) cannot use an event-driven approach. However, `CORE-03` (PSR-14 Event Dispatcher) is a core dependency, and `HUB-09` (Event Bus) exists. By leaving `HUB-06` as procedural, the stack loses the ability to asynchronously audit events via `CORE-03` / `HUB-09`. The schema for *how* an event is audited is fundamentally broken compared to the architecture's event-driven nature.
+
+**INCONSISTENCY 7: Job Dispatch Path**
+`HUB-25` (`SchedulerInterface`) and `HUB-23` (`ReportScheduler` registers jobs) assume they can pass any `object` or `new DataSyncJob()` to the queue. But if `HUB-10` strictly enforces `JobInterface` (as required for DLQ and retries), `HUB-25` will throw a TypeError when it passes a generic `object` to `HUB-10::push()`. The schema for the Job payload is incompatible between `HUB-25` and `HUB-10`.
+
+Let's summarize the findings for the user clearly.
+
+1. **Unresolved HUB-06 Interface & Hash Chaining:** `HUB-06(1).md` retained the procedural `AuditorInterface` and flat `signature` JSON schema, explicitly failing to apply the cryptographic hash-chaining (`prev_hash`, `entry_hash`) and Event-Driven (`AuditableEventInterface`) fix mandated in the previous audit. This leaves the audit log vulnerable to tampering and incompatible with `CORE-03`.
+2. **Weak Typing in `HUB-25` Scheduler:** `SchedulerInterface::job(object $job)` accepts a generic `object` instead of the strictly enforced `JobInterface`. This contradicts the `HUB-10` queue contract and creates a schema loophole where unstructured jobs bypass DLQ and retry logic.
+3. **Undefined Return Type `Tenant` in `HUB-21`:** `TenancyInterface::current()` returns `?Tenant`, but `Tenant` is never imported, defined, or documented in the schema.
+4. **Undefined Type `User` in `HUB-29`:** `HubTestHarnessInterface::actingAs(User $user, ...)` uses a `User` typehint that is never imported or defined, which will cause a compilation error.
+5. **Ambiguous Array Returns:** Several interfaces (`getExportStatus` in `HUB-23`, `execute` in `ISPOKE-05`) return generic `array` types instead of strictly defined DTOs or docblock-annotated arrays, leaving the response schema undocumented.
+
+Let me format this clearly.
+
+</details>
+
+*Tokens: 117226 in, 5528 out (total 122754)*
+
+---
+
+### Assistant (2026-08-03T02:59:11.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+The user wants me to continue the work. The previous delivery (Analysis-2 and Analysis-3) provided a critique, master index, and an extensive set of blueprints covering:
+- Core tier (01-20)
+- Hub tier (02-20)
+- Bridge (01)
+- Spokes (ISPOKE-01, ESPOKE-01)
+- Deploy (01-04)
+
+Looking at the gap, what's left to provide to make this "comprehensive"?
+1. The remaining 10 Hub blueprints (HUB-01, HUB-21-30) - though HUB-01 was done in the first batch.
+   - HUB-21 (Multi-tenancy Coordination)
+   - HUB-22 (Billing & Subscriptions)
+   - HUB-23 (Reporting & Data Export)
+   - HUB-24 (Feature Flags - actually this might be HUB-01 based on prior context? Let me check. Analysis-2 has HUB-01 as Config & Feature Flags, so HUB-24 is different. Wait, Analysis-3 skipped HUB-01 and went 02-20. So I need HUB-21-30).
+   - HUB-24 (Scheduled Tasks / Cron)
+   - HUB-25 (Maintenance Mode)
+   - HUB-26 (UI Component Library)
+   - HUB-27 (Security Headers & CORS)
+   - HUB-28 (Session Management)
+   - HUB-29 (WebRTC / Real-time Communication? Let's infer based on standard stack needs)
+   - HUB-30 (Plugin/Extension System)
+
+2. The remaining Internal Spokes (ISPOKE-02 through ISPOKE-25)
+3. The remaining External Spokes (ESPOKE-02 through ESPOKE-15)
+
+Given the massive scope, providing all 40 remaining Spokes is impractical in one go. However, the prompt asks for a "comprehensive set" and to "help me". The logical next step is to provide the remaining Hub tier (HUB-21 through HUB-30) to complete the Hub set, and perhaps a few more representative Spokes to finalize the patterns.
+
+Wait, Analysis-3 provided HUB-02 through HUB-20. That means HUB-01 was in the first Kimi response, HUB-02-20 were in Analysis-3. So I need to provide HUB-21 through HUB-30 to complete the Hub tier. I will also provide a selection of high-value Internal and External Spokes to demonstrate the breadth of the system.
+
+Let's map out HUB-21 through HUB-30 based on standard SaaS/PaaS architectures and hints in the previous files:
+- `HUB-21`: Multi-tenancy Coordination Layer (Mentioned in ISPOKE-01 and HUB-04)
+- `HUB-22`: Billing & Subscriptions Engine (Mentioned in HUB-20, HUB-12, HUB-17)
+- `HUB-23`: Reporting & Data Export Service (Mentioned in HUB-18, HUB-11, HUB-12)
+- `HUB-24`: Scheduled Tasks / Cron Hub (Mentioned in HUB-10? Actually standard need)
+- `HUB-25`: Scheduler / Job Orchestrator (Mentioned in HUB-10 as HUB-25 Scheduler)
+- `HUB-26`: Shared UI Component Library (Mentioned in ISPOKE-01, ESPOKE-01, HUB-12)
+- `HUB-27`: Security Headers & CORS Policy (Mentioned in HUB-08)
+- `HUB-28`: Telemetry & Metrics Aggregator (Standard need, Prometheus integration)
+- `HUB-29`: Maintenance Mode & Feature Flag Coordinator (Wait, HUB-01 was Config & Flags. So HUB-29 is probably something else. Let's make it WebRTC/Realtime Hub or Session Hub)
+- `HUB-30`: Developer API & SDK Portal (Standard for PaaS)
+
+Let's refine the list:
+- `HUB-21`: Multi-tenancy Coordination Layer
+- `HUB-22`: Billing & Subscription Engine
+- `HUB-23`: Reporting & Data Export Service
+- `HUB-24`: Scheduled Tasks & Cron Scheduler
+- `HUB-25`: Long-Running Process Orchestrator (or WebSocket/Realtime Hub) -> Let's go with Telemetry & Metrics Aggregator.
+Wait, in HUB-10 it said: "HUB-25 (Scheduler)" and in HUB-23 it said: "HUB-25 (Scheduler)". So HUB-25 is definitely Scheduler.
+Let's do:
+- `HUB-21`: Multi-tenancy Coordination Layer
+- `HUB-22`: Billing & Subscription Engine
+- `HUB-23`: Reporting & Data Export Service
+- `HUB-24`: Scheduled Tasks & Cron Scheduler
+- `HUB-25`: Task Scheduler / Job Coordinator (Wait, 24 and 25 are too similar. Let's make 25 the Telemetry/Metrics aggregator and assume the previous docs meant 25 for that. Actually, I will just define HUB-25 as Telemetry & Metrics).
+Let's stick to standard definitions:
+- `HUB-21`: Multi-tenancy Coordination Layer
+- `HUB-22`: Billing & Subscription Engine
+- `HUB-23`: Reporting & Data Export Service
+- `HUB-24`: Scheduled Tasks & Cron Hub
+- `HUB-25`: Telemetry & Metrics Aggregator
+- `HUB-26`: Shared UI Component Library
+- `HUB-27`: Security Headers & CORS Policy
+- `HUB-28`: Maintenance Mode & System Messaging
+- `HUB-29`: WebSocket & Real-time Event Push
+- `HUB-30`: Developer Portal & API Key Management
+
+I will write these 10 Hub blueprints at the same high fidelity: interface contracts, explicit dependencies, corrected cross-references, benchmark methodology, and CI verification criteria.
+
+Then, I will provide a few key Spokes to complete the picture:
+- `ISPOKE-02`: Staff Identity & Access Portal (or similar)
+- `ISPOKE-09`: Internal Knowledge Base / Codex (Mentioned in ESPOKE-01 as a critical missing dependency)
+- `ESPOKE-02`: Customer Portal & Billing Dashboard
+
+This will round out the "comprehensive set" perfectly, demonstrating
+
+</details>
+
+---
+
+### Assistant (2026-08-03T03:40:17.000Z)
+
+*Model: glm-5.2*
+
+[Empty message]
+
+<details>
+<summary>Reasoning</summary>
+
+1.  **Analyze the Request:**
+    *   The user wants me to verify and identify "schema documentation inconsistency in every single one so far."
+    *   "Every single one so far" refers to all the blueprints discussed across the provided documents (`Analysis.md`, `Analysis-2.md`, `Analysis-3.md`) and my previous responses (both the previous delivery from "Kimi" and the subsequent critical analysis).
+    *   "Schema documentation inconsistency" implies looking for mismatches in database schemas, JSON payloads, DTOs, interface contracts, or structural definitions within and across the blueprints.
+
+2.  **Scan the Provided Documents for Schemas/Contracts:**
+    *   `Analysis.md` (Original Critique & Exemplars):
+        *   `CORE-01.md`: Class map (`RepoManager`, `CIMonitor`, `DependencyGraph`, `VersionBumpEngine`), Interface (`TierAwareGraphInterface`).
+        *   `CORE-02.md`: Interfaces (`ContainerInterface`, `CompilerPassInterface`, `ContainerBuilderInterface`), Class (`ServiceDefinition`), Exceptions, Reference Implementation.
+        *   `HUB-01.md`: Interfaces (`GlobalConfigInterface`, `FeatureManagerInterface`, `Context`), Schema (`hub_config_overrides` table).
+        *   `BRIDGE-01.md`: (Kimi's version) Interfaces (`BoundaryContractInterface`, `DTOTransformerInterface`, `DependencyUnavailableException`).
+        *   `DEPLOY-01.md`: (Kimi's version) `HealthCheckInterface`.
+    *   `Analysis-2.md` (Bridge, ISPOKE, ESPOKE, DEPLOY):
+        *   `BRIDGE-01.md`: Interfaces (`BoundaryContractInterface`, `DTOTransformerInterface`, `DependencyUnavailableException`).
+        *   `ISPOKE-01.md`: Interfaces (`CrudResourceInterface`, `CustomResourceInterface`).
+        *   `ESPOKE-01.md`: Interfaces (`ContentDeliveryInterface`, `SeoValidationInterface`).
+        *   `DEPLOY-01.md`: Interface (`HealthCheckInterface`).
+    *   `Analysis-3.md` (Hub 02 through 20):
+        *   `HUB-20.md` (Vault): Interface (`VaultInterface`).
+        *   `HUB-19.md` (Guard): Interface (`GuardInterface`), rules array format.
+        *   `HUB-18.md` (Media): Interface (`MediaForgeInterface`, `MediaPipelineInterface` - implicitly).
+        *   `HUB-17.md` (Webhook): Interface (`WebhookManagerInterface`).
+        *   `HUB-16.md` (Weaver): Interface (`OrchestratorHookInterface`).
+        *   `HUB-15.md` (Pulse/Health): Interfaces (`HealthRegistryInterface`), Class (`DatabaseCheck` implementing implied `CheckInterface`).
+        *   `HUB-14.md` (Search): Interface (`SearchInterface`).
+        *   `HUB-13.md` (Translator): Interface (`TranslatorInterface`), PHP lang array format.
+        *   `HUB-12.md` (Notify): Interface (`NotifierInterface`), Notification class structure.
+        *   `HUB-11.md` (Storage): Interface (`StorageInterface`).
+        *   `HUB-10.md` (Queue): Interface (`QueueInterface`).
+        *   `HUB-09.md` (Event Bus): Interface (`EventBusInterface`), Class (`GlobalEvent` - implied).
+        *   `HUB-08.md` (Gateway): Interface (`GatewayInterface`).
+        *   `HUB-07.md` (Throttle): Interface (`RateLimiterInterface`), Attribute (`Throttle`).
+        *   `HUB-06.md` (Audit): Interface (`AuditorInterface`), JSON payload schema.
+        *   `HUB-05.md` (RBAC): Interface (`GateInterface`), Policy class structure.
+        *   `HUB-04.md` (Identity): Interface (`AuthInterface`), Abstract class (`Authenticatable`).
+        *   `HUB-03.md` (Asset): Interface (`AssetManagerInterface`).
+        *   `HUB-02.md` (Cache): Interfaces (`LockInterface`, `HubCacheInterface`).
+
+3.  **Cross-Reference and Identify Inconsistencies:**
+
+    *   *Inconsistency 1: Health Check Interface Duplication & Signature Mismatch*
+        *   In `Analysis.md` (Kimi's `HUB-15.md`): `HealthCheckInterface` has `name(): string`, `type(): HealthCheckType`, `check(int $timeoutSeconds): HealthCheckResult`. It returns `HealthReport`.
+        *   In `Analysis-2.md` (`DEPLOY-01.md`): `HealthCheckInterface` has `liveness(): bool`, `readiness(): array{ready: bool, checks: array<string,bool>}`. It is in `Sovereign\Deploy\Contracts`.
+        *   In `Analysis-3.md` (`HUB-15.md`): Uses `HealthRegistryInterface` with `status(): array` and `heartbeat()`. Uses `CheckInterface` and `HealthResult` (though `CheckInterface` and `HealthResult` are not formally defined in the provided text, only implied via `DatabaseCheck implements CheckInterface` returning `HealthResult::ok()`).
+        *   *Conclusion:* Three competing, mutually exclusive contracts for health checks across Hub and Deploy tiers.
+
+    *   *Inconsistency 2: Cache Tagging & Locking Interface Mismatch*
+        *   In `Analysis.md` (Kimi's `HUB-02.md`): `CacheManagerInterface` has `store(string $namespace): Psr16Interface`, `flush(string $namespace)`, `invalidateTags(array $tags)`. Also defines `TaggableCacheInterface`.
+        *   In `Analysis-3.md` (`HUB-02.md`): `HubCacheInterface extends \Psr\SimpleCache\CacheInterface` has `tags(array $tags): self`, `flushTags(array $tags)`, `lock(string $name, int $seconds): LockInterface`. Also defines `LockInterface`.
+        *   *Conclusion:* The `Analysis-3.md` version explicitly defines `HubCacheInterface` with a fluent `tags()->set()` pattern and adds `LockInterface`. Kimi's version defined a `CacheManagerInterface` factory and a separate `TaggableCacheInterface`. These are two completely different API surfaces for the same component (`HUB-02`).
+
+    *   *Inconsistency 3: Audit Log Interface & Payload Schema Mismatch*
+        *   In `Analysis.md` (Kimi's `HUB-06.md`): `AuditableEventInterface` requires `auditAction()`, `auditActor()`, `auditTenantId()`, `auditChanges()`, `auditContext()`. The `AuditLoggerInterface` has `log(AuditableEventInterface $event)`, `query(AuditQuery $q)`, `verifyChain()`. The database schema explicitly defines `seq`, `prev_hash`, `entry_hash` for cryptographic chaining.
+        *   In `Analysis-3.md` (`HUB-06.md`): `AuditorInterface` has `record(string $action, ?string $resourceType = null, ?string $resourceId = null, array $metadata = [])` and `search(array $criteria): array`. The JSON payload schema defines `id`, `user_id`, `tenant_id`, `action`, `resource_type`, `resource_id`, `changes`, `ip_address`, `user_agent`, `timestamp`, `signature`. No mention of `prev_hash` or cryptographic chaining (tamper-evidence is mentioned in text as "chained-hash fixture set" but not in the interface or schema).
+        *   *Conclusion:* Kimi's version relies on an Event-driven pattern with cryptographic chaining (chain verification interface). The original/blueprint version (`Analysis-3.md`) relies on a procedural `record()` method and a flat `signature` field. The schemas and interfaces are incompatible.
+
+    *   *Inconsistency 4: Queue/Job Interface Mismatch*
+        *   In `Analysis.md` (Kimi's `HUB-11.md` - note: Kimi mistakenly mapped Queue to HUB-11 instead of HUB-10): `QueueInterface` has `push(JobInterface $job, ?string $queue = null, ?int $delaySeconds = null): string`, `pop(...)`, `ack(...)`, `fail(...)`, `size()`. `JobInterface` has `id()`, `queue()`, `attempts()`, `maxAttempts()`, `handle(Container $c)`, `backoff()`.
+        *   In `Analysis-3.md` (`HUB-10.md` - correct ID for Queue): `QueueInterface` has `push(object $job, string $queue = 'default'): void`, `later(int $delay, object $job, string $queue = 'default'): void`. It explicitly mentions a `JobInterface` in the code block (`class SendWelcomeEmail implements JobInterface`), but the interface itself defines `handle(NotificationService $notifications)` rather than a generic `handle(Container $c)`.
+        *   *Conclusion:* Kimi's `QueueInterface` is heavily modeled on Ack/Pop semantics (SQS-style). The `Analysis-3.md` `QueueInterface` only has push/later (Laravel-style). The Job contract signatures are incompatible.
+
+    *   *Inconsistency 5: Gateway/Router Interface Mismatch*
+        *   In `Analysis.md` (Kimi's `CORE-06.md`): The router is an implementation of `RequestHandlerInterface` (PSR-15), handling the `ServerRequestInterface` and returning a `ResponseInterface`.
+        *   In `Analysis-3.md` (`HUB-08.md`): `GatewayInterface` has `dispatchInternal(string $service, string $action, array $params = []): mixed` and `proxy(ServerRequestInterface): ResponseInterface`.
+        *   *Conclusion:* The `HUB-08` gateway mixes RPC-style `dispatchInternal` with PSR-15 `proxy`, but the schema/documentation doesn't reconcile how `CORE-06` (which handles PSR-7/15 routing) relates to `HUB-08` (which appears to be doing its own internal dispatch and proxying). This creates architectural ambiguity regarding where request resolution actually happens.
+
+    *   *Inconsistency 6: Event Bus vs Event Dispatcher Schema Overlap*
+        *   In `Analysis.md` (Kimi's `CORE-03.md`): `EventDispatcher` implements `Psr\EventDispatcher\EventDispatcherInterface`. Dispatches objects.
+        *   In `Analysis-3.md` (`HUB-09.md`): `EventBusInterface` has `publish(GlobalEvent $event): void` and `subscribe(string $eventPattern, callable|string $handler): void`.
+        *   *Conclusion:* `HUB-09` introduces a `GlobalEvent` base class and a string-pattern-based subscription model (`subscribe(string $eventPattern, ...)`). This deviates from standard PSR-14 which relies on class-based type resolution. The schema for how an event is published locally via `CORE-03` and bridged to `HUB-09` (via `PulseBridge`) is completely undefined in the interfaces.
+
+    *   *Inconsistency 7: Search Interface Return Type Ambiguity*
+        *   In `Analysis-3.md` (`HUB-14.md`): `SearchInterface` has `search(string $index, string $query): SearchBuilder`. But `SearchBuilder` is never defined in the schema.
+        *   *Conclusion:* Missing contract definition. A user cannot implement `SearchInterface` without knowing the schema of `SearchBuilder`.
+
+    *   *Inconsistency 8: Webhook Manager vs Notifier Webhook Dispatcher*
+        *   In `Analysis-3.md` (`HUB-17.md`): `WebhookManagerInterface` handles inbound webhooks (`subscribe`, `verify`).
+        *   In `Analysis-3.md` (`HUB-12.md`): `NotificationManager` has a `WebhookDispatcher` for outbound webhooks.
+        *   *Conclusion:* While conceptually distinct (inbound vs outbound), both are dealing with "webhooks". The documentation fails to define whether they share an underlying schema or DTO for webhook payloads. This is a structural inconsistency in how webhooks are modeled across the Hub tier.
+
+4.  **Structure the Output:**
+    *   Acknowledge the request: Verify schema documentation inconsistencies across all provided blueprint iterations.
+    *   Categorize the findings logically (e.g., Interface Contract Mismatches, Database Schema Mismatches, Missing Schema Definitions).
+    *   For each finding, explicitly compare the conflicting definitions, cite the source documents, and explain the architectural impact.
+    *   Provide a definitive resolution for each inconsistency to ensure schema integrity.
+
+5.  **Refine the Language:**
+    *   Ensure the tone is highly technical, objective, and analytical.
+    *   Use clear formatting (tables, code blocks, bullet points) to highlight the exact differences in signatures and schemas.
+
+6.  **Self-Correction/Review during drafting:**
+    *   *Did I miss any?* Let's check `CORE-16` (Crypto). Kimi defined `EncryptionInterface`, `SigningInterface`, `KeyManagerInterface`. `Analysis-3.md` `HUB-20` defined `VaultInterface`. The inconsistency there is conceptual (already identified in Finding D of previous prompt, but let's make sure the schema is noted). Kimi's `CORE-16` defines a binary envelope format. `HUB-20` just has `encrypt(string, ?string): string`. This is a schema inconsistency for the return type (binary envelope vs string).
+    *   *Did I check ISPOKE/ESPOKE?* `ISPOKE-01` has `CrudResourceInterface` returning `array<string, FieldDefinition>`. `FieldDefinition` is undefined. `ESPOKE-01` has `ContentMetadata`. Undefined. These are missing schemas.
+    *   *Make sure to emphasize that these are hard blockers for implementation.* If two blueprints define `HUB-02` differently, a developer cannot write the code.
+
+7.  **Final Polish:** (Proceed to generate response based on these structured thoughts).
+
+</details>
+
+*Tokens: 88708 in, 5252 out (total 93960)*
+
+---
+
+
+
