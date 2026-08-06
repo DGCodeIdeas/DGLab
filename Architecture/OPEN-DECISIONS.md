@@ -88,7 +88,18 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
   `HUB-15`, and *Pulse* is the reserved architectural noun (`STRUCTURE-01-Wheel.md`).
 - **`DEPLOY-00` rename.** The docs-only `DEPLOY-01` was renamed `DEPLOY-00` and its document root
   corrected to `Architecture/`; the application deployment is now `DEPLOY-01`.
-- **MySQL → PostgreSQL.** Resolved across `STRUCTURE-05/07/08/09` per `ADR-007`; the `docs/blueprints/`
-  tree (still MySQL) is archived, never merged.
+ - **MySQL → PostgreSQL → MySQL (decision shift 2026-08-05).** The first consolidation adopted PostgreSQL
+   16 as primary per `ADR-013`; a later decision shift **reversed** it — `ADR-013` now makes **MySQL 8
+   (InnoDB)** the primary datastore, with the PostgreSQL driver **relegated behind CORE-19 and disabled by
+   default** (re-enabled only at the next decision scale). `STRUCTURE-05/07/08/09`, `CORE-19`, `DEPLOY-02`,
+   and the spoke/datastore blueprints are aligned to MySQL; the `docs/blueprints/` tree (MySQL) is archived
+   and never merged. The reversal is recorded in `INCONSISTENCIES.md` #1.
 - **ADR number collision.** `THREAT_MODEL.md` §10's "ADR-011" → ADR-012 (pending); `Migration/04`'s
   "ADR-011" SuperPHP reference → ADR-005 (already Accepted).
+- **Placeholder/stub blueprints promoted to full fidelity.** On 2026-08-05, `ISPOKE-16`–`25` (10
+  Internal Spokes) and `DEPLOY-02`–`04` (3 Deploy) were rewritten from placeholders/stubs into
+  implementation-ready blueprints (class maps, PHP interface contracts, MySQL/InnoDB DDL, integration
+  strategy, security properties, CI criteria). `ISPOKE-21` was renamed **Sovereign Scan** to avoid the
+  `HUB-27` "Sentinel" collision. `INDEX.md` §4 now reports 96 documented / 0 placeholder and the CI lint
+  is green. This closes the "below the fidelity bar" gap (OD-05's concern about placeholder content is
+  resolved); the filename↔name mapping question in OD-05 remains a cosmetic open item.

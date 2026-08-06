@@ -45,7 +45,7 @@ The HUB-04 `users.password_hash` column is `VARCHAR(255)` to accommodate future 
 - The `ext-sodium` or `libargon2` library must be present on the PHP runtime. The Dockerfile (per DEPLOY-01) must install `libargon2-dev` before PHP is compiled; one-time setup cost.
 
 ## Links
-- Related ADRs: ADR-003 (ES256 for JWTs — companion cryptographic primitive in CORE-16), ADR-007 (PostgreSQL — stores the password hashes), ADR-009 (ULID — primary key on the `users` table)
+- Related ADRs: ADR-003 (ES256 for JWTs — companion cryptographic primitive in CORE-16), ADR-013 (MySQL — stores the password hashes), ADR-009 (ULID — primary key on the `users` table)
 - Related blueprints: CORE-16 (Binary Encryption Envelope — owns the `PasswordHasher`), HUB-04 (Global Identity — calls the hasher), HUB-07 (Rate Limiter — protects the login endpoint), HUB-01 (Global Config — per-tenant parameter overrides)
 - Related findings: Finding 19 (no ADRs existed), Finding 11 (CORE-16 mentions both Argon2id and HKDF without fixing the password-hashing choice)
 - External references: RFC 9106 (Argon2, 2021); NIST SP 800-63B (Digital Identity Guidelines, §5.1.1); PHP `password_hash()` documentation (php.net/manual/en/function.password-hash.php); Password Hashing Competition (password-hashing.net)

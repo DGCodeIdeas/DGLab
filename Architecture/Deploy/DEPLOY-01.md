@@ -5,18 +5,18 @@ Deploy (Infrastructure — Application Containerization & Local Development Envi
 
 ## Resolves
 - **Finding 9** (the only "Deploy" blueprint deploys only Markdown documentation on Render free tier) — replaced with a real containerized deployment specification for the Core and Hub tiers: per-service OCI images, a shared PHP-FPM + Nginx + Supervisor base, a `/health` endpoint contract, and a complete local-development `docker-compose.yml`.
-- **Finding 17** (`docker-compose.yml` is essentially empty — "Nothing here yet") — replaced with a full multi-service compose file that brings up PostgreSQL, Redis, and the Hub-tier service images so a developer can `docker-compose up` and have a running stack.
+- **Finding 17** (`docker-compose.yml` is essentially empty — "Nothing here yet") — replaced with a full multi-service compose file that brings up MySQL, Redis, and the Hub-tier service images so a developer can `docker-compose up` and have a running stack.
 - **Finding 18** (the root `Dockerfile` serves the *legacy* `docs/architecture/origin/` directory via `php -S`) — replaced with a real application image Dockerfile that builds, runs, and health-checks an actual Sovereign Stack service; the legacy docs-only image is split off to `DEPLOY-00` if a documentation site is still desired.
 
 ## Component Name
 Core & Hub Service Deployment — `infrastructure/deploy/core-hub` (deployable artefact namespace; there is no PHP namespace because this blueprint specifies *containers*, not classes — but every image it produces runs PHP code from the canonical Core and Hub packages, PSR-4 mapped via each package's `composer.json`).
 
 ## Description
-DEPLOY-01 is the deployment specification for the Sovereign Stack's Core and Hub tiers. It defines (a) a shared OCI base image that bundles PHP-FPM 8.3, Nginx, Supervisor, and the PHP extensions required by CORE-19 (`pdo_pgsql`), CORE-16 (`openssl`), and CORE-15 (`redis`); (b) a per-Hub-service image recipe that layers the service's composer dependencies and source on top of the base; (c) the `/health` HTTP contract that every Hub service must implement and that HUB-15 polls every 10 seconds; (d) the local-development `docker-compose.yml` that brings up PostgreSQL, Redis, and a representative set of Hub services so a developer can clone the polyrepo, run `docker-compose up`, and reach a working stack on `http://localhost:8081`.
+DEPLOY-01 is the deployment specification for the Sovereign Stack's Core and Hub tiers. It defines (a) a shared OCI base image that bundles PHP-FPM 8.3, Nginx, Supervisor, and the PHP extensions required by CORE-19 (`pdo_pgsql`), CORE-16 (`openssl`), and CORE-15 (`redis`); (b) a per-Hub-service image recipe that layers the service's composer dependencies and source on top of the base; (c) the `/health` HTTP contract that every Hub service must implement and that HUB-15 polls every 10 seconds; (d) the local-development `docker-compose.yml` that brings up MySQL, Redis, and a representative set of Hub services so a developer can clone the polyrepo, run `docker-compose up`, and reach a working stack on `http://localhost:8081`.
 
 This blueprint exists because the current `Dockerfile` (399 bytes, Finding 18) and `render.yaml` (164 bytes, Finding 9) together deploy *Markdown documentation* — and the *legacy* documentation at that — using PHP's built-in development server on Render's free tier. That is not a deployment of the application; it is a documentation hosting workaround masquerading as infrastructure. The current `docker-compose.yml` (292 bytes, Finding 17) is a comment-only placeholder. Together they make the repository *appear* deployable while in fact no Core service, no Hub service, no datastore, and no Bridge has ever been containerized. DEPLOY-01 replaces all three artefacts.
 
-What DEPLOY-01 is **not**: it does not provision datastores (that is DEPLOY-02: PostgreSQL, Redis, queue broker, with connection-secret management via Vault or sealed-secrets); it does not deploy the Bridge or External Spokes (that is DEPLOY-03, with CDN/edge caching and the "Zero-Exposure Test" network isolation rules); it does not define the dev→staging→production promotion pipeline (that is DEPLOY-04, with immutable image-digest promotion and CORE-01/Loom integration for cross-repo version bumps); it does not specify Kubernetes manifests or Helm charts (deferred until the manual `docker-compose` flow is proven); it does not specify a service mesh beyond plain HTTP/1.1 over internal DNS (mTLS via Linkerd or Istio is explicitly Phase 2).
+What DEPLOY-01 is **not**: it does not provision datastores (that is DEPLOY-02: MySQL, Redis, queue broker, with connection-secret management via Vault or sealed-secrets); it does not deploy the Bridge or External Spokes (that is DEPLOY-03, with CDN/edge caching and the "Zero-Exposure Test" network isolation rules); it does not define the dev→staging→production promotion pipeline (that is DEPLOY-04, with immutable image-digest promotion and CORE-01/Loom integration for cross-repo version bumps); it does not specify Kubernetes manifests or Helm charts (deferred until the manual `docker-compose` flow is proven); it does not specify a service mesh beyond plain HTTP/1.1 over internal DNS (mTLS via Linkerd or Istio is explicitly Phase 2).
 
 The blueprint's scope is deliberately narrow: one base image, one per-service recipe, one health contract, one local compose file. This is the smallest deployment surface that lets a developer run the system end-to-end.
 
@@ -25,8 +25,8 @@ The blueprint's scope is deliberately narrow: one base image, one per-service re
 
 ## Dependency Status
 - **Upward (consumes at build/run time):** CORE-01 (Polyrepo Orchestrator / Loom — triggers the per-service image rebuild when a package version bumps; per ADR-004 the Core tier is always upstream of Deploy, so this edge points Deploy → Core, never the reverse), CORE-18 (Kernel — boots the application inside PHP-FPM), CORE-10 (Config — reads `config.json` and `APP_ENV`), CORE-19 (DBAL — requires `ext-pdo_pgsql` in the base image), CORE-15 (Cache Abstraction — requires `ext-redis` in the base image), CORE-16 (Encryption — requires `ext-openssl`), CORE-08 (Error Handler — owns the `/health` failure response), CORE-09 (Logging — structured log output to stdout for Supervisor/Docker collection), HUB-15 (Health — orchestrator that polls `/health`), HUB-01 (Config & Flags — supplies tenant-aware config overlays), HUB-02 (Cache — supplies the `RedisAdapter` probed by `/health`).
-- **Downward (consumed by):** DEPLOY-02 (Datastore Provisioning — supplies the PostgreSQL and Redis services that the compose file references), DEPLOY-03 (Bridge & External Spoke Deployment — reuses the base image recipe and `/health` contract), DEPLOY-04 (Multi-Environment Promotion — promotes the per-service images by digest across environments).
-- **Runtime:** PHP 8.3-FPM, Nginx 1.27, Supervisor 4, Alpine 3.20 (base image); PostgreSQL 16, Redis 7 (datastore services, supplied by DEPLOY-02 in production and by `docker-compose.yml` in development); Composer 2.7 (build-time only); `dive` and `trivy`/`grype` (CI-time image inspection); `curl` (health-check probe inside the container).
+- **Downward (consumed by):** DEPLOY-02 (Datastore Provisioning — supplies the MySQL and Redis services that the compose file references), DEPLOY-03 (Bridge & External Spoke Deployment — reuses the base image recipe and `/health` contract), DEPLOY-04 (Multi-Environment Promotion — promotes the per-service images by digest across environments).
+- **Runtime:** PHP 8.3-FPM, Nginx 1.27, Supervisor 4, Alpine 3.20 (base image); MySQL 8 (InnoDB), Redis 7 (datastore services, supplied by DEPLOY-02 in production and by `docker-compose.yml` in development); Composer 2.7 (build-time only); `dive` and `trivy`/`grype` (CI-time image inspection); `curl` (health-check probe inside the container).
 
 ## Architectural Design
 
@@ -260,7 +260,7 @@ final class CacheProbe implements DependencyProbe
 
 ### SQL DDL
 
-Not applicable. DEPLOY-01 specifies stateless container images; persistence is delegated to DEPLOY-02 (PostgreSQL, Redis, queue broker). The `/health` endpoint performs a `SELECT 1` against the database but creates no tables.
+Not applicable. DEPLOY-01 specifies stateless container images; persistence is delegated to DEPLOY-02 (MySQL, Redis, queue broker). The `/health` endpoint performs a `SELECT 1` against the database but creates no tables.
 
 ### Image Architecture
 
@@ -426,22 +426,23 @@ This replaces the empty `docker-compose.yml` (Finding 17). Written to the reposi
 
 ```yaml
 # Sovereign Stack — local development environment
-# Brings up PostgreSQL, Redis, and the Hub-tier services.
+# Brings up MySQL, Redis, and the Hub-tier services.
 # Developer workflow: clone the polyrepo, `docker-compose up`, then
 # reach the services on the mapped host ports below.
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8
     environment:
-      POSTGRES_DB: sovereign
-      POSTGRES_USER: sovereign
-      POSTGRES_PASSWORD: dev-only-not-production
-    ports: ['5432:5432']
-    volumes: ['pgdata:/var/lib/postgresql/data']
+      MYSQL_DATABASE: sovereign
+      MYSQL_USER: sovereign
+      MYSQL_PASSWORD: dev-only-not-production
+      MYSQL_ROOT_PASSWORD: dev-only-not-production
+    ports: ['3306:3306']
+    volumes: ['mysqldata:/var/lib/mysql']
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sovereign -d sovereign']
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u sovereign -p$$MYSQL_PASSWORD --silent']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -462,12 +463,12 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_ENV: dev
-      DB_DSN: postgresql://sovereign:dev-only-not-production@postgres:5432/sovereign
+      DB_DSN: mysql://sovereign:dev-only-not-production@mysql:3306/sovereign
       REDIS_URL: redis://redis:6379
     ports: ['8081:80']
     depends_on:
-      postgres: {condition: service_healthy}
-      redis:    {condition: service_healthy}
+      mysql:  {condition: service_healthy}
+      redis: {condition: service_healthy}
 
   hub-identity:
     build:
@@ -475,16 +476,16 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_ENV: dev
-      DB_DSN: postgresql://sovereign:dev-only-not-production@postgres:5432/sovereign
+      DB_DSN: mysql://sovereign:dev-only-not-production@mysql:3306/sovereign
       REDIS_URL: redis://redis:6379
     ports: ['8084:80']
     depends_on:
-      postgres:   {condition: service_healthy}
+      mysql:      {condition: service_healthy}
       redis:      {condition: service_healthy}
       hub-config: {condition: service_healthy}
 
 volumes:
-  pgdata:
+  mysqldata:
 ```
 
 ### Sequence Diagram
@@ -493,7 +494,7 @@ volumes:
 sequenceDiagram
     participant Dev as Developer
     participant Compose as docker-compose
-    participant PG as postgres:16
+    participant PG as mysql:8
     participant Redis as redis:7
     participant Hub as hub-config image
     participant Health as /health endpoint
@@ -557,9 +558,9 @@ stateDiagram-v2
 > `CORE-01` was moved from *Downward* to *Upward*: ADR-004 makes the Core tier unconditionally upstream
 > of Deploy, so a Deploy → Core downward edge is a tier violation.
 
-**Downward (consumed by):** DEPLOY-02 supplies the PostgreSQL and Redis services referenced by the compose file's `DB_DSN` and `REDIS_URL` environment variables; in production, DEPLOY-02 also supplies the connection-secret material via Vault or sealed-secrets, never via a compose env var. DEPLOY-03 (Bridge + External Spokes) reuses the base image recipe and the `/health` contract, but adds public-ingress and CDN concerns that are out of scope here. DEPLOY-04 (Promotion Pipeline) promotes the per-service images by immutable digest across environments — the image tag policy (`sovereign-stack/hub-config:<sha>`) is the contract DEPLOY-04 reads. (CORE-01/Loom is *upstream* of this blueprint, not downstream — see the Upward list. Loom triggers per-service image rebuilds when a package version bumps: Loom opens a PR per downstream package, the PR's CI runs the per-service Dockerfile, and on merge the image is pushed to the registry with the package's new SemVer tag.)
+**Downward (consumed by):** DEPLOY-02 supplies the MySQL and Redis services referenced by the compose file's `DB_DSN` and `REDIS_URL` environment variables; in production, DEPLOY-02 also supplies the connection-secret material via Vault or sealed-secrets, never via a compose env var. DEPLOY-03 (Bridge + External Spokes) reuses the base image recipe and the `/health` contract, but adds public-ingress and CDN concerns that are out of scope here. DEPLOY-04 (Promotion Pipeline) promotes the per-service images by immutable digest across environments — the image tag policy (`sovereign-stack/hub-config:<sha>`) is the contract DEPLOY-04 reads. (CORE-01/Loom is *upstream* of this blueprint, not downstream — see the Upward list. Loom triggers per-service image rebuilds when a package version bumps: Loom opens a PR per downstream package, the PR's CI runs the per-service Dockerfile, and on merge the image is pushed to the registry with the package's new SemVer tag.)
 
-**Upward (consumes at runtime):** Inside the container, the application boots via CORE-18 (Kernel). CORE-18 reads `APP_ENV` (set by the compose file or the orchestrator) and dispatches to CORE-10 (Config), which loads `config.json` (mounted from a ConfigMap in Kubernetes, or from a bind mount in Docker Compose) and merges it with environment variables. CORE-19 (DBAL) reads the `DB_DSN` environment variable to open the PostgreSQL connection. CORE-15 / HUB-02 read `REDIS_URL` for the cache. CORE-09 (Logging) writes structured JSON to stdout, which Supervisor redirects to `/dev/fd/1` so Docker captures it via `docker logs`. HUB-15 (Health) is the orchestrator that polls every Hub service's `/health` endpoint every 10 seconds; 3 consecutive 503s trigger a restart.
+**Upward (consumes at runtime):** Inside the container, the application boots via CORE-18 (Kernel). CORE-18 reads `APP_ENV` (set by the compose file or the orchestrator) and dispatches to CORE-10 (Config), which loads `config.json` (mounted from a ConfigMap in Kubernetes, or from a bind mount in Docker Compose) and merges it with environment variables. CORE-19 (DBAL) reads the `DB_DSN` environment variable to open the MySQL connection. CORE-15 / HUB-02 read `REDIS_URL` for the cache. CORE-09 (Logging) writes structured JSON to stdout, which Supervisor redirects to `/dev/fd/1` so Docker captures it via `docker logs`. HUB-15 (Health) is the orchestrator that polls every Hub service's `/health` endpoint every 10 seconds; 3 consecutive 503s trigger a restart.
 
 **Service mesh:** Hub services communicate over plain HTTP/1.1 using the internal DNS names declared in the compose file (`hub-config`, `hub-identity`, `hub-cache`), with connection pooling via CORE-04's `HttpFactoryInterface`. mTLS via Linkerd or Istio is explicitly Phase 2 — the current contract assumes a trusted internal network (the `bridge` Docker network in compose, or a private subnet in production). The `/health` endpoint is reachable only on this internal network; it is **never** exposed to the public internet (see Security Properties).
 
@@ -615,7 +616,7 @@ stateDiagram-v2
 
 **Downstream unblock (in order):**
 
-- DEPLOY-02 (Datastore Provisioning) — supplies the PostgreSQL 16 and Redis 7 services that the compose file references; specifies the production secret-management pipeline (Vault or sealed-secrets) for `DB_DSN` and `REDIS_URL`.
+- DEPLOY-02 (Datastore Provisioning) — supplies the MySQL 8 (InnoDB) and Redis 7 services that the compose file references; specifies the production secret-management pipeline (Vault or sealed-secrets) for `DB_DSN` and `REDIS_URL`.
 - DEPLOY-03 (Bridge & External Spoke Deployment) — reuses the base image recipe and the `/health` contract; adds public-ingress, CDN, and the "Zero-Exposure Test" network isolation rules.
 - DEPLOY-04 (Multi-Environment Promotion) — promotes per-service images by digest across dev → staging → production; integrates with CORE-01 (Loom) for cross-repo version-bump automation.
 - CORE-01 (Loom) — once DEPLOY-04 lands, Loom triggers per-service image rebuilds when a package version bumps: the bump opens a PR per downstream package, the PR's CI builds the new image, and on merge the image is pushed with the new SemVer tag.
@@ -624,7 +625,7 @@ stateDiagram-v2
 
 1. Revert the PR that landed this blueprint. The old root-level `Dockerfile` (399 bytes, serves legacy docs), `render.yaml` (164 bytes, free-tier docs), and `docker-compose.yml` (292 bytes, "Nothing here yet") are restored. The `infrastructure/deploy/core-hub/` directory is removed. The legacy `DEPLOY-01.md` (renamed to `DEPLOY-00`) is renamed back.
 2. The system was never deployable as a functioning application before this blueprint landed — reverting returns to that state. This is a regression, but not a fatal one: the documentation site (if `DEPLOY-00` was kept) continues to serve on Render free tier, and the documentation site alone (Findings 9, 18) is the only public-facing artefact.
-3. No data migration is needed — DEPLOY-01 specifies no stateful resources of its own; the PostgreSQL and Redis containers in the compose file are ephemeral and lose their state on `docker-compose down -v` regardless.
+3. No data migration is needed — DEPLOY-01 specifies no stateful resources of its own; the MySQL and Redis containers in the compose file are ephemeral and lose their state on `docker-compose down -v` regardless.
 4. Rollback is a SemVer **major** for the deployment artefacts because the public-facing root-level `Dockerfile`'s semantics change (it no longer serves documentation; it serves an application). Downstream consumers who scripted against the docs-serving behaviour (e.g., a CI job that scraped the rendered docs) must update.
 
 ## SemVer Impact

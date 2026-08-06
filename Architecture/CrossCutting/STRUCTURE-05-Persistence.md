@@ -1,11 +1,14 @@
 # DGLab Wheel Architecture
 ## Structure 05: Data Flow & Persistence Architecture
 
-> **Reconciled to ADR-007 / ADR-009** (`Verification/INCONSISTENCIES.md` #1 and #6). The predecessor of
-> this file shipped MySQL DDL (`ENGINE=InnoDB`, `JSON`, `ON UPDATE CURRENT_TIMESTAMP`,
-> `BIGINT AUTO_INCREMENT`) while ADR-007 makes **PostgreSQL 16** the only sanctioned relational store
-> and ADR-009 makes **`CHAR(26)` ULID** the only sanctioned entity primary key. All DDL below is
-> PostgreSQL 16 with `JSONB` + GIN, partial indexes, RLS, and ULID keys.
+> **Reconciled to ADR-013 / ADR-009** (`Verification/INCONSISTENCIES.md` #1 and #6). Per the 2026-08-05
+> decision shift, **MySQL 8.0+ (InnoDB) is the primary relational datastore** (ADR-013). The predecessor
+> of this file shipped PostgreSQL 16 DDL; that is now **relegated behind the CORE-19 driver** — the
+> PostgreSQL driver remains implemented but is **disabled by default** and only activated at the next
+> decision scale. ADR-009 makes **`CHAR(26)` ULID** the only sanctioned entity primary key. All DDL below
+> is MySQL 8 / InnoDB with the `JSON` column type, generated-column indexes, and ULID keys. Tenant
+> isolation is enforced by the DBAL `TenantScope` (CORE-19 + HUB-21), **not** engine-level RLS (MySQL has
+> no RLS; the driver + application layer provide it).
 
 > **Repository:** https://github.com/DGCodeIdeas/DGLab  
 > **Framework:** Custom PHP MVC Framework  
@@ -99,83 +102,78 @@ Entity ──► Outer Spoke ──► Hub Cache? ──► Yes ──► Return
 ### 3.2 Table Categories
 
 ```sql
--- PostgreSQL 16 (ADR-007). MySQL/MariaDB syntax is not permitted anywhere in this tree.
--- All entity primary keys are CHAR(26) ULIDs (ADR-009); BIGINT AUTO_INCREMENT is rejected
+-- MySQL 8.0+ (InnoDB), primary datastore per ADR-013. MySQL DDL is permitted ONLY when the
+-- PostgreSQL driver is explicitly enabled at the next decision scale; the default migrations target
+-- MySQL. All entity primary keys are CHAR(26) ULIDs (ADR-009); BIGINT AUTO_INCREMENT is rejected
 -- unconditionally, including for internal/surrogate tables.
--- Semi-structured columns are JSONB (never bare JSON) so they can carry GIN indexes.
+-- Semi-structured columns are JSON (MySQL 8), queried via generated columns + functional indexes
+-- (MySQL has no GIN / no SQL-standard partial indexes — emulate both with generated columns).
+-- Tenant isolation is enforced by the DBAL TenantScope (CORE-19 + HUB-21); there is no engine RLS.
 
--- Category 1: Tenant-Scoped (isolated per tenant, additionally protected by RLS)
+-- Category 1: Tenant-Scoped (isolated per tenant via the DBAL TenantScope decorator)
 CREATE TABLE users (
-    id           CHAR(26) PRIMARY KEY,
-    tenant_id    CHAR(26) NOT NULL REFERENCES tenants (id),
+    id           CHAR(26)     NOT NULL,
+    tenant_id    CHAR(26)     NOT NULL,
     email        VARCHAR(255) NOT NULL,
     name         VARCHAR(255) NOT NULL,
-    avatar_url   VARCHAR(512),
+    avatar_url   VARCHAR(512) DEFAULT NULL,
     role         VARCHAR(50)  NOT NULL DEFAULT 'user',
-    metadata     JSONB,
-    created_at   TIMESTAMPTZ(6) NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ(6) NOT NULL DEFAULT now(),
-    deleted_at   TIMESTAMPTZ(6),
-    CONSTRAINT uk_tenant_email UNIQUE (tenant_id, email)
-);
-CREATE INDEX idx_users_tenant_created ON users (tenant_id, created_at);
--- Partial index: the hot path only ever reads live rows.
-CREATE INDEX idx_users_tenant_live ON users (tenant_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_metadata ON users USING GIN (metadata);
+    metadata     JSON         DEFAULT NULL,
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at   TIMESTAMP(6) DEFAULT NULL,
+    is_live      TINYINT(1)   NOT NULL DEFAULT 1,            -- generated below
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_email (tenant_id, email),
+    KEY idx_users_tenant_created (tenant_id, created_at),
+    KEY idx_users_tenant_live (tenant_id, is_live),          -- emulates PostgreSQL partial index
+    KEY idx_users_metadata_region ((CAST(metadata->>'$.region' AS CHAR(32))))  -- functional index
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- `updated_at ON UPDATE CURRENT_TIMESTAMP` is MySQL-only; PostgreSQL uses a trigger.
-CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
-BEGIN
-    NEW.updated_at := now();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
--- Defence in depth behind CORE-19's TenantScope decorator (see THREAT_MODEL §10.4).
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY users_tenant_isolation ON users
-    USING (tenant_id = current_setting('sovereign.tenant_id', TRUE));
+-- Emulate PostgreSQL "WHERE deleted_at IS NULL" partial index: a stored generated column.
+ALTER TABLE users
+    MODIFY is_live TINYINT(1) GENERATED ALWAYS AS (deleted_at IS NULL) STORED NOT NULL;
 
 -- Category 2: System-Wide (shared across tenants)
 CREATE TABLE tenants (
-    id          CHAR(26) PRIMARY KEY,
+    id          CHAR(26)     NOT NULL,
     name        VARCHAR(255) NOT NULL,
-    domain      VARCHAR(255) NOT NULL UNIQUE,
+    domain      VARCHAR(255) NOT NULL,
     plan        VARCHAR(50)  NOT NULL DEFAULT 'free',
-    is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
-    settings    JSONB,
-    created_at  TIMESTAMPTZ(6) NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_tenants_settings ON tenants USING GIN (settings);
+    is_active   TINYINT(1)   NOT NULL DEFAULT 1,
+    settings    JSON         DEFAULT NULL,
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenants_domain (domain),
+    KEY idx_tenants_settings_plan ((CAST(settings->>'$.theme' AS CHAR(32))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Category 3: Audit (append-only, hash-chained; owned by HUB-06)
 CREATE TABLE audit_log (
-    id          CHAR(26) PRIMARY KEY,          -- ULID, not BIGINT AUTO_INCREMENT (ADR-009)
-    seq         BIGINT   NOT NULL,
-    tenant_id   CHAR(26),                      -- NULL for system-level actions
+    id          CHAR(26)     NOT NULL,          -- ULID, not BIGINT AUTO_INCREMENT (ADR-009)
+    seq         BIGINT       NOT NULL,
+    tenant_id   CHAR(26)     DEFAULT NULL,      -- NULL for system-level actions
     action      VARCHAR(100) NOT NULL,
-    actor_id    CHAR(26) NOT NULL,
-    changes     JSONB,
-    context     JSONB    NOT NULL,
-    prev_hash   CHAR(64) NOT NULL,
-    entry_hash  CHAR(64) NOT NULL,
-    created_at  TIMESTAMPTZ(6) NOT NULL DEFAULT now(),
-    CONSTRAINT uk_audit_tenant_seq UNIQUE (tenant_id, seq)
-);
-CREATE INDEX idx_audit_context ON audit_log USING GIN (context);
+    actor_id    CHAR(26)     NOT NULL,
+    changes     JSON         DEFAULT NULL,
+    context     JSON         NOT NULL,
+    prev_hash   CHAR(64)     NOT NULL,
+    entry_hash  CHAR(64)     NOT NULL,
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_audit_tenant_seq (tenant_id, seq),
+    KEY idx_audit_context_action ((CAST(context->>'$.ip' AS CHAR(45))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Category 4: Queue (internal state, no tenant column)
 CREATE TABLE failed_jobs (
-    id          CHAR(26) PRIMARY KEY,          -- ULID (ADR-009)
+    id          CHAR(26)     NOT NULL,          -- ULID (ADR-009)
     queue       VARCHAR(255) NOT NULL,
-    payload     JSONB    NOT NULL,
-    exception   TEXT     NOT NULL,
-    failed_at   TIMESTAMPTZ(6) NOT NULL DEFAULT now()
-);
+    payload     JSON         NOT NULL,
+    exception   TEXT         NOT NULL,
+    failed_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ### 3.3 Query Builder with Tenant Enforcement

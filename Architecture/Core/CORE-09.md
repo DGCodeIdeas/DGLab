@@ -609,7 +609,7 @@ The `SyslogHandler` shares the same shape as `FileHandler` but calls `openlog()`
 
 ### SQL DDL
 
-This component does not persist state to a relational database. The `FileHandler` writes to flat files; the `SyslogHandler` writes to the OS syslog socket. No DDL is applicable. If a future variant writes log records to PostgreSQL for audit purposes (overlapping with HUB-06 Audit Hub), that schema is owned by HUB-06 and defined in its blueprint, not here.
+This component does not persist state to a relational database. The `FileHandler` writes to flat files; the `SyslogHandler` writes to the OS syslog socket. No DDL is applicable. If a future variant writes log records to MySQL for audit purposes (overlapping with HUB-06 Audit Hub), that schema is owned by HUB-06 and defined in its blueprint, not here.
 
 ### Sequence Diagram
 

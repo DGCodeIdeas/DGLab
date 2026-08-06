@@ -238,7 +238,7 @@ Type B, §A.7) expressible: a Pulse entering via HTTP may exit via the event bus
 |---|---|
 | `DEPLOY-00` Documentation Site | The manual bolted to the frame |
 | `DEPLOY-01` Core & Hub Service Deployment | The hub mount — keeps the Hub ring centred |
-| `DEPLOY-02` Datastore Provisioning | The axle bearings — PostgreSQL 16 + Redis 7 |
+| `DEPLOY-02` Datastore Provisioning | The axle bearings — MySQL 8 (InnoDB) + Redis 7 |
 | `DEPLOY-03` Bridge & External Spoke Deployment | The rim clamps — secures the Outer Rim |
 | `DEPLOY-04` Multi-Environment & Promotion Pipeline | The maintenance lift |
 
@@ -258,7 +258,7 @@ Type B, §A.7) expressible: a Pulse entering via HTTP may exit via the event bus
 ├── spokes/internal/          ISPOKE-01..25          ★ INNER SPOKES — Thick (staff)
 ├── spokes/external/          ESPOKE-01..15          ★ OUTER SPOKES — Thin (public)
 └── deploy/                   DEPLOY-00..04          ★ FRAME
-    ├── terraform/            DEPLOY-02  (PostgreSQL 16, Redis 7 — ADR-006/ADR-007)
+    ├── terraform/            DEPLOY-02  (MySQL 8 (InnoDB), Redis 7 — ADR-006/ADR-013)
     ├── kubernetes/           DEPLOY-01, DEPLOY-03
     └── pipelines/            DEPLOY-04
 ```

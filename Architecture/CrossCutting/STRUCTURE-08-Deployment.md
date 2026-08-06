@@ -1,8 +1,8 @@
 # DGLab Wheel Architecture
 ## Structure 08: Deployment & Infrastructure Architecture
 
-> **Reconciled to ADR-007 / ADR-001** (`Verification/INCONSISTENCIES.md` #1 and #5):
-> connection URIs use the `postgresql://…:5432` scheme, and the directory trees below describe
+> **Reconciled to ADR-013 / ADR-001** (`Verification/INCONSISTENCIES.md` #1 and #5):
+> connection URIs use the `mysql://...:3306` scheme, and the directory trees below describe
 > the layout **within a single repository of the polyrepo**, not a monorepo.
 
 

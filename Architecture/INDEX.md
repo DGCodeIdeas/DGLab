@@ -21,11 +21,12 @@ cross-reference, **this index is correct and the other document is stale** (Gove
 |---|---|
 | `Architecture/Core/CORE-01..20` | 20 Core-tier blueprints |
 | `Architecture/Hub/HUB-01..30` | 30 Hub-tier blueprints |
-| `Architecture/Spoke/Internal/ISPOKE-01..25` | 25 Internal Spoke blueprints (16–25 are placeholder blueprints) |
+| `Architecture/Spoke/Internal/ISPOKE-01..25` | 25 Internal Spoke blueprints (all documented; ISPOKE-16–25 promoted from placeholders on 2026-08-05) |
 | `Architecture/Spoke/External/ESPOKE-01..15` | 15 External Spoke blueprints |
 | `Architecture/Spoke/Bridge/BRIDGE-01` | 1 Bridge blueprint |
-| `Architecture/Deploy/DEPLOY-00..04` | 5 Deploy blueprints (00 renamed; 02/03/04 are stubs) |
+| `Architecture/Deploy/DEPLOY-00..04` | 5 Deploy blueprints (all documented; 00 renamed, 02/03/04 promoted from stubs on 2026-08-05) |
 | `Architecture/ADRs/ADR-001..010` | 10 Accepted Architecture Decision Records |
+| `Architecture/ADRs/ADR-013` | **Accepted** (2026-08-05) — MySQL 8 (InnoDB) primary datastore; **supersedes ADR-007** (PostgreSQL), which is now relegated behind the CORE-19 driver (disabled by default) |
 | `Architecture/ADRs/ADR-011` | 1 **Proposed** ADR (HUB-31) — not accepted, not counted |
 | `Architecture/CrossCutting/` | STRUCTURE-01..09, OBSERVABILITY, GLOSSARY, THREAT_MODEL |
 | `orchestrator/` | CORE-01 reference implementation (real, tested) |
@@ -137,12 +138,11 @@ Full descriptions and categories: `CrossCutting/GLOSSARY.md` §1.2.
 
 Full name tables: `CrossCutting/GLOSSARY.md` §1.3–§1.5.
 
-- **Internal Spokes** — `ISPOKE-01..15` documented; `ISPOKE-16..25` are placeholder blueprints
-  (present as files, deliberately below the fidelity bar).
+- **Internal Spokes** — `ISPOKE-01..25` documented (ISPOKE-16–25 promoted from placeholders on 2026-08-05; all 25 now meet the fidelity bar).
 - **External Spokes** — `ESPOKE-01..15`, all documented.
 - **Bridge** — `BRIDGE-01` (The Vanguard), `SovereignStack\Bridge`.
 - **Deploy** — `DEPLOY-00` (Documentation Site, renamed), `DEPLOY-01` (Core & Hub Service Deployment),
-  `DEPLOY-02`/`03`/`04` (stubs).
+  `DEPLOY-02`/`03`/`04` (documented, promoted from stubs on 2026-08-05).
 
 **Namespace rule.** Every PHP namespace in this architecture starts with `SovereignStack\`. Internal
 Spokes are `SovereignStack\Internal\<Name>`; External Spokes `SovereignStack\External\<Name>`; Hub
@@ -190,11 +190,11 @@ mismatch.
 |---|---|---|---|
 | Core | 20 | 0 | **20** |
 | Hub | 30 | 0 | **30** |
-| Internal Spoke | 15 | 10 (`ISPOKE-16`–`25`) | **25** |
+| Internal Spoke | 25 | 0 | **25** |
 | External Spoke | 15 | 0 | **15** |
 | Bridge | 1 | 0 | **1** |
-| Deploy | 2 (`DEPLOY-00`, `DEPLOY-01`) | 3 (`DEPLOY-02`–`04`, stubs) | **5** |
-| **Total** | **83** | **13** | **96** |
+| Deploy | 5 | 0 | **5** |
+| **Total** | **96** | **0** | **96** |
 
 **Not counted:** `HUB-31` — proposed only (ADR-011). If ADR-011 is accepted, Hub becomes 31 and the
 total becomes 97.
@@ -211,7 +211,7 @@ listing 5, and totalled 31 against 30 rows):
 
 **Timeline impact.** Every "32-week total timeline" claim in the archived evaluation layer assumed 15
 Internal Spokes. With 25, Phase 3 re-estimates at roughly 1.6×, or is split into Phase 3a (the 15
-documented spokes) and Phase 3b (`ISPOKE-16`–`25`). See `Migration/04_MIGRATION_PLAN.md`; the realistic
+documented spokes) and Phase 3b (`ISPOKE-16`–`25`, now all documented). See `Migration/04_MIGRATION_PLAN.md`; the realistic
 end-to-end figure is **40–48 weeks** with a 3-person team (Finding 15), not 32.
 
 ---
@@ -374,7 +374,7 @@ Core numbering and is wrong (Finding 2). The correct sequence, derived from the 
 | 2 | **CORE-10, CORE-09, CORE-08** — parallelizable | Step 1 lands | All three pass CI; Config loads `.env` + JSON; Logging writes structured JSON; Error Handler converts all PHP errors to exceptions | 2 weeks |
 | 3 | **CORE-18** (Kernel) | Steps 1–2 land | Kernel boots, runs boot-phase events via CORE-03, terminates cleanly | 1 week |
 | 4 | **CORE-04 → CORE-05 → CORE-06** — sequential | Step 3 lands | A "Hello World" request completes the full pipeline | 2 weeks |
-| 5 | **CORE-19, CORE-15, CORE-14, CORE-16** — parallelizable | Step 1 lands (Kernel not required) | Each passes CI; DBAL targets **PostgreSQL 16** (ADR-007); Cache is PSR-6/16 over **Redis 7** (ADR-006); Filesystem abstracts local + S3; Encryption is AES-256-GCM + Argon2id (ADR-008) | 3 weeks |
+| 5 | **CORE-19, CORE-15, CORE-14, CORE-16** — parallelizable | Step 1 lands (Kernel not required) | Each passes CI; DBAL targets **MySQL 8 (InnoDB)** (ADR-013); Cache is PSR-6/16 over **Redis 7** (ADR-006); Filesystem abstracts local + S3; Encryption is AES-256-GCM + Argon2id (ADR-008) | 3 weeks |
 | 6 | **CORE-07 → CORE-11 → CORE-12** (SuperPHP) — sequential | None | SuperPHP renders a template with variables and conditionals (ADR-005: Blade/Twig are rejected) | 3 weeks |
 | 7 | **CORE-13, CORE-17, CORE-20** — parallelizable | Steps 1–3 land | CLI runs commands; providers register bindings; Forge scaffolds a new Hub service | 2 weeks |
 | 8 | **Hub tier** (30 blueprints) | Steps 1–7 land | All 30 pass CI; HUB-15 reports all Hub services healthy | 12 weeks |
@@ -397,9 +397,9 @@ documentation at that (Finding 18). The tier is 5 blueprints:
 |---|---|---|---|
 | DEPLOY-00 | Documentation Site | Renamed from the docs-only `DEPLOY-01`; document root corrected to `Architecture/` | Documented |
 | DEPLOY-01 | Core & Hub Service Deployment | New — containerized Core+Hub, one OCI image per Hub service, health checks wired to `HUB-15` | Documented |
-| DEPLOY-02 | Datastore Provisioning | New — **PostgreSQL 16** + **Redis 7** + queue broker; secrets via `HUB-20`/sealed-secrets; backup/restore | Stub |
-| DEPLOY-03 | Bridge & External Spoke Deployment | New — public tier, CDN/edge caching via `HUB-02`, network-policy enforcement of the Zero-Exposure Test, 3-replica Vanguard | Stub |
-| DEPLOY-04 | Multi-Environment & Promotion Pipeline | New — dev → staging → production across 50+ repos; ties into `CORE-01` (Loom); immutable image-digest promotion | Stub |
+| DEPLOY-02 | Datastore Provisioning | New — **MySQL 8 (InnoDB)** + **Redis 7** + queue broker; secrets via `HUB-20`/sealed-secrets; backup/restore | Documented |
+| DEPLOY-03 | Bridge & External Spoke Deployment | New — public tier, CDN/edge caching via `HUB-02`, network-policy enforcement of the Zero-Exposure Test, 3-replica Vanguard | Documented |
+| DEPLOY-04 | Multi-Environment & Promotion Pipeline | New — dev → staging → production across 50+ repos; ties into `CORE-01` (Loom); immutable image-digest promotion | Documented |
 
 ---
 
@@ -467,3 +467,5 @@ php Architecture/Verification/lint/run.php
 |---|---|---|
 | 2026-08-04 | Initial canonical declaration; supersedes the stale evaluation layer | Independent re-analysis |
 | 2026-08-05 | Consolidation: merged `01_MASTER_INDEX(4)`+`(5)`; `Architecture/` declared sole source of truth; 4 legacy trees archived; 20 documented inconsistencies reconciled (see `Verification/INCONSISTENCIES.md`); `HUB-09` renamed; `DEPLOY-00` rename executed; `ISPOKE-16..25` and `DEPLOY-02..04` materialised; ADR-011 (HUB-31) filed as Proposed; CI lint added | Consolidation pass |
+| 2026-08-05 | Blueprint promotion: `ISPOKE-16`–`25` (10 Internal Spokes) and `DEPLOY-02`–`04` (3 Deploy) promoted from placeholders/stubs to full-fidelity, implementation-ready blueprints; `ISPOKE-21` renamed Sovereign Scan to avoid the `HUB-27` "Sentinel" collision; `GLOSSARY`/`INDEX` §4 counts updated (96 documented, 0 placeholder); CI lint green | Promotion pass |
+| 2026-08-05 | Decision shift: `ADR-013` revised — **MySQL 8 (InnoDB) is now the primary datastore**; PostgreSQL is relegated behind the CORE-19 driver and disabled by default (re-enabled only at the next decision scale). `ADR-007` marked Superseded. `STRUCTURE-05`, `CORE-19`, `STRUCTURE-07/08/09`, `DEPLOY-02`, the spoke/datastore blueprints, and `GLOSSARY` realigned to MySQL; `INCONSISTENCIES.md` #1 updated | Datastore reversal |

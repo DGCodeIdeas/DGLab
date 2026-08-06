@@ -1,67 +1,84 @@
-# ISPOKE-19: SLA & Uptime Dashboard
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
-
-> **Cross-reference correction applied (INDEX §3 Pattern B).** The source placeholder cited
-> `HUB-28 (Analytics)`. `HUB-28` is **Sovereign Versioner** (API versioning). The real-time analytics
-> dependency is `HUB-31`, which is *proposed, not accepted* — see `ADRs/ADR-011-hub-31-real-time-analytics.md`
-> and `OPEN-DECISIONS.md`.
+# PHASE ISPOKE-19: Sovereign SLA Monitor
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign SLA Monitor — `SovereignStack\Internal\SlaMonitor`
+Sovereign SLA Monitor — `SovereignStack\Internal\SlaMonitor`. Real-time + historical SLA-compliance
+monitoring for internal and external services: uptime tracking, incident-timeline visualization, SLA
+breach alerting.
 
 ## Description
-Real-time and historical SLA compliance monitoring for internal and external services. Uptime tracking, incident timeline visualization, and SLA breach alerting.
-
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-19 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+ISPOKE-19 consumes health signals from **HUB-15 (Sovereign Pulse — Health Check & Service Discovery)**
+and the health dashboard (ISPOKE-03) to compute SLA attainment per service and per tenant. It maintains
+rolling windows (e.g. 30/90/365-day availability), detects breaches against configured SLA targets, and
+raises alerts via **HUB-12 (Sovereign Notify)**. It is a **reporting/alerting** layer over HUB-15 — it
+does not perform health checks itself.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-15 (Health), HUB-06 (Audit), HUB-31 (Real-Time Analytics & Metrics Ledger — **pending**, see `ADRs/ADR-011-hub-31-real-time-analytics.md`)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Depends on ISPOKE-03 (Observability Dashboard) for the health data foundation. Extends to contractual SLA monitoring.
-
-**Estimated documentation window:** Weeks 32–35 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** HUB-15 (Sovereign Pulse — health signal source), ISPOKE-03 (Sovereign Health &
+  Observability Dashboard — timeline source), HUB-12 (Sovereign Notify — breach alerts), HUB-02
+  (Sovereign Cache — hot SLA windows), CORE-19 (Database — SLA target + breach store), HUB-21 (Sovereign
+  Nexus — tenancy scoping), HUB-06 (Sovereign Auditor — breach record).
+- **Downward:** ISPOKE-01 (UI shell).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `SlaTarget` | `final readonly class` | `service`, `tenant_id`, `window`, `target_pct` (e.g. 99.95). |
+| `SlaMonitorInterface` | interface | `attainment(string $service, string $tenantId, string $window): float`, `breaches(string $tenantId): BreachPage`. |
+| `AvailabilityWindow` | class | Rolling-window aggregator backed by HUB-02; recomputed from HUB-15 samples. |
+| `BreachDetector` | class | Compares attainment vs `SlaTarget`; emits HUB-12 alerts. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\SlaMonitor;
+
+interface SlaMonitorInterface
+{
+    public function attainment(string $service, string $tenantId, string $window): float;
+    public function breaches(string $tenantId): BreachPage;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE sla_targets (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id   ULID NOT NULL REFERENCES tenants(id),
+    service     text NOT NULL,
+    window      text NOT NULL,           -- '30d' | '90d' | '365d'
+    target_pct  numeric(5,2) NOT NULL CHECK (target_pct > 0 AND target_pct <= 100),
+    UNIQUE (tenant_id, service, window)
+);
+CREATE TABLE sla_breaches (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id   ULID NOT NULL REFERENCES tenants(id),
+    service     text NOT NULL,
+    window      text NOT NULL,
+    detected_at timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves HUB-15/ISPOKE-03/HUB-12/HUB-02/CORE-19/HUB-21/HUB-06 through the container
+(CORE-02). **Downward:** UI in ISPOKE-01.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. SLA computation is read-only over HUB-15 signals; it cannot influence health state.
+2. Breach alerts carry the service + window + measured attainment (HUB-12); no secret data is emitted.
+3. Windows are tenancy-scoped (HUB-21); cross-tenant SLA is not computable from one tenant's view.
+4. Breach records are immutable audit rows (HUB-06).
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `AvailabilityWindow` computes 99.9% over a seeded sample set with one downtime blip;
+  `BreachDetector` fires exactly when `attainment < target_pct`.
+- Integration (MySQL 16): seeding `sla_targets` + HUB-15 samples yields the expected
+  `sla_breaches` rows.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `BreachDetector`.

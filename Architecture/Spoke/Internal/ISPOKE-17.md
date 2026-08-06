@@ -1,67 +1,91 @@
-# ISPOKE-17: Data Retention Manager
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
-
-> **Cross-reference correction applied (INDEX §3 Pattern B).** The source placeholder cited
-> `HUB-28 (Analytics)`. `HUB-28` is **Sovereign Versioner** (API versioning). The real-time analytics
-> dependency is `HUB-31`, which is *proposed, not accepted* — see `ADRs/ADR-011-hub-31-real-time-analytics.md`
-> and `OPEN-DECISIONS.md`.
+# PHASE ISPOKE-17: Sovereign Vault Keeper (Retention)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Vault Keeper (Retention) — `SovereignStack\Internal\VaultKeeper`
+Sovereign Vault Keeper — `SovereignStack\Internal\VaultKeeper`. Policy-based data lifecycle:
+retention schedules, automated purging, legal-hold management, and archival-workflow orchestration.
 
 ## Description
-Policy-based data lifecycle management, retention schedule configuration, automated purging, legal hold management, and archival workflow orchestration.
+ISPOKE-17 enforces data-retention policy across tenants. Policies are declarative rules
+(`entity → retain_for → action`) evaluated by a sweeper that walks eligible tables in MySQL 8 (InnoDB) and
+either purges, anonymizes, or archives rows past their retention horizon. Legal holds pin records so the
+sweeper skips them. Archival ships pinned/aged rows to cold object storage (HUB-11) as encrypted
+blobs (CORE-16) before optional purge.
 
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-17 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+It is a **policy engine**, not a backup system (that is ISPOKE-24). It operates on live data under
+retention rules; it never restores.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-31 (Real-Time Analytics & Metrics Ledger — **pending**, see `ADRs/ADR-011-hub-31-real-time-analytics.md`), HUB-06 (Audit), HUB-11 (Storage), HUB-03 (Asset Pipeline)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Follows ISPOKE-10 (Compliance) to enforce data retention policies discovered during audit processes.
-
-**Estimated documentation window:** Weeks 29–33 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** CORE-19 (Database), CORE-16 (Encryption Envelope), HUB-20 (Sovereign Vault — key
+  custody for archive blobs), HUB-11 (Sovereign Cloud Storage — cold archive sink), HUB-06 (Sovereign
+  Auditor — every purge is audited), HUB-15 (Sovereign Pulse — sweeper health), HUB-21 (Sovereign Nexus
+  — tenancy scoping), ISPOKE-10 (Sovereign Compliance — policy source), HUB-31 (Real-Time Analytics —
+  *proposed, pending* — retention-metric emission).
+- **Downward:** ISPOKE-01 (UI shell), ISPOKE-22 (Sovereign Registrar — reads retention evidence).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `RetentionPolicy` | `final readonly class` | `entity`, `retain_for` (interval), `action` (`purge`\|`anonymize`\|`archive`), `legal_hold_tag`. |
+| `RetentionEngineInterface` | interface | `evaluate(ULID $tenantId): SweepReport`, `placeHold(ULID $recordId, string $reason): void`, `releaseHold(ULID $recordId): void`. |
+| `Sweeper` | class | Paginated walker over eligible rows; applies action inside a tenant transaction. |
+| `ArchiveSink` | class | Encrypts + streams aged rows to HUB-11. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\VaultKeeper;
+
+interface RetentionEngineInterface
+{
+    public function evaluate(string $tenantId): SweepReport;
+    public function placeHold(string $recordId, string $reason): void;
+    public function releaseHold(string $recordId): void;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE retention_policies (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id   ULID NOT NULL REFERENCES tenants(id),
+    entity      text NOT NULL,
+    retain_for  interval NOT NULL,
+    action      text NOT NULL CHECK (action IN ('purge','anonymize','archive')),
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (tenant_id, entity)
+);
+CREATE TABLE legal_holds (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    record_id   ULID NOT NULL,
+    reason      text NOT NULL,
+    created_by  ULID NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves CORE-19/CORE-16/HUB-20/HUB-11/HUB-06/HUB-15/HUB-21 through the container (CORE-02).
+**Downward:** UI in ISPOKE-01; evidence consumed by ISPOKE-22.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Purge is non-destructive until the tenant transaction commits; a swept batch is audited (HUB-06)
+   with before/after counts before deletion.
+2. Legal holds are immutable until explicitly released by a holder with `retention:release` (HUB-05).
+3. Archive blobs are envelope-encrypted (CORE-16) with keys custodied by HUB-20; plaintext never leaves
+   the pod.
+4. Every sweeper run is tenancy-scoped (HUB-21) — cross-tenant data is never visible.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `Sweeper` purges exactly the rows past `retain_for` and skips any with an active `legal_holds`
+  row; a held row is never touched.
+- Integration (MySQL 16): `evaluate()` over a seeded tenant deletes N rows and writes one
+  `SweepReport` row to HUB-06.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `Sweeper`.

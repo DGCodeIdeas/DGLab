@@ -48,7 +48,7 @@ The 22 load-bearing terms of the architecture. Component-level terms (CORE-xx, H
 
 ### I
 
-**Internal Spoke** — A staff-only application (ISPOKE-01..25) accessible via VPN or bastion, never through the public Bridge. Examples include Sovereign Command Center (ISPOKE-01) and Sovereign Forge Portal (ISPOKE-02, the internal developer portal). ISPOKE-16..25 exist as **placeholder blueprints** (Finding 13) and must not be relied on for production.
+**Internal Spoke** — A staff-only application (ISPOKE-01..25) accessible via VPN or bastion, never through the public Bridge. Examples include Sovereign Command Center (ISPOKE-01) and Sovereign Forge Portal (ISPOKE-02, the internal developer portal). ISPOKE-16..25 were promoted from placeholder blueprints to full fidelity on 2026-08-05 (see `INDEX.md` §9) and are now implementation-ready.
 
 ### L
 
@@ -135,7 +135,7 @@ The 20 foundational blueprints. Codenames appear in the third column where defin
 | CORE-16 | Binary Encryption Envelope | — | AES-256-GCM with envelope-wrapped DEKs. The only sanctioned cryptographic primitive. |
 | CORE-17 | Service Provider System | — | Boot-time registration of bindings, tags, boot callbacks. The only sanctioned extension point. |
 | CORE-18 | Core Kernel & Lifecycle | — | Application entry point: boots container, dispatches boot events via CORE-03, routes through CORE-06, terminates. Only component allowed to call `exit()`. |
-| CORE-19 | Database Abstraction Layer (DBAL) | — | PostgreSQL-primary (ADR-007) abstraction: prepared statements, transaction nesting, schema introspection. Not an ORM. |
+| CORE-19 | Database Abstraction Layer (DBAL) | — | MySQL-primary (ADR-013) abstraction: prepared statements, transaction nesting, schema introspection. Not an ORM. |
 | CORE-20 | Developer CLI Toolchain | Sovereign Forge | Scaffolds new Hub services, Spokes, and blueprints from Fidelity-Bar-compliant templates. The only sanctioned way to start a new repository. |
 
 ### §1.2 HUB Component Names (HUB-01..30, plus proposed HUB-31)
@@ -181,7 +181,7 @@ The 30 shared-service blueprints. Category abbreviations: **Infra** = Infrastruc
 ### §1.3 Internal Spoke Component Names (ISPOKE-01..25)
 
 Names are taken from each blueprint's `## Component Name` field and are authoritative only insofar as
-they agree with `INDEX.md` §2. `ISPOKE-16`–`25` are placeholder blueprints.
+they agree with `INDEX.md` §2. `ISPOKE-16`–`25` were promoted to full fidelity on 2026-08-05 and are implementation-ready.
 
 | ID | Component | Status |
 |---|---|---|
@@ -200,16 +200,16 @@ they agree with `INDEX.md` §2. `ISPOKE-16`–`25` are placeholder blueprints.
 | ISPOKE-13 | Sovereign Ledger (Billing) | Documented |
 | ISPOKE-14 | Sovereign Nexus (Tenancy) | Documented |
 | ISPOKE-15 | Sovereign Sentry (Security / SOC) | Documented |
-| ISPOKE-16 | Sovereign Transporter (Import/Export) | 📝 Placeholder |
-| ISPOKE-17 | Sovereign Vault Keeper (Retention) | 📝 Placeholder |
-| ISPOKE-18 | Sovereign Cron (Scheduling) | 📝 Placeholder |
-| ISPOKE-19 | Sovereign SLA Monitor | 📝 Placeholder |
-| ISPOKE-20 | Sovereign Scribe (Reports) | 📝 Placeholder |
-| ISPOKE-21 | Sovereign Sentinel (Vulnerability) | 📝 Placeholder |
-| ISPOKE-22 | Sovereign Registrar (Compliance) | 📝 Placeholder |
-| ISPOKE-23 | Sovereign Role Play (Simulation) | 📝 Placeholder |
-| ISPOKE-24 | Sovereign Restore (Backup) | 📝 Placeholder |
-| ISPOKE-25 | Sovereign Responder (Incident Response) | 📝 Placeholder |
+| ISPOKE-16 | Sovereign Transporter (Import/Export) | ✅ Documented |
+| ISPOKE-17 | Sovereign Vault Keeper (Retention) | ✅ Documented |
+| ISPOKE-18 | Sovereign Cron (Scheduling) | ✅ Documented |
+| ISPOKE-19 | Sovereign SLA Monitor | ✅ Documented |
+| ISPOKE-20 | Sovereign Scribe (Reports) | ✅ Documented |
+| ISPOKE-21 | Sovereign Scan (Vulnerability) | ✅ Documented |
+| ISPOKE-22 | Sovereign Registrar (Compliance) | ✅ Documented |
+| ISPOKE-23 | Sovereign Role Play (Simulation) | ✅ Documented |
+| ISPOKE-24 | Sovereign Restore (Backup) | ✅ Documented |
+| ISPOKE-25 | Sovereign Responder (Incident Response) | ✅ Documented |
 
 ### §1.4 External Spoke Component Names (ESPOKE-01..15)
 
@@ -238,9 +238,9 @@ they agree with `INDEX.md` §2. `ISPOKE-16`–`25` are placeholder blueprints.
 | BRIDGE-01 | The Vanguard (Architectural Enforcement Layer) — `SovereignStack\Bridge` |
 | DEPLOY-00 | Documentation Site *(renamed from the docs-only DEPLOY-01)* |
 | DEPLOY-01 | Sovereign Core/Hub Runtime Deployment |
-| DEPLOY-02 | Sovereign Datastore Provisioning — *stub* |
-| DEPLOY-03 | Sovereign Edge Deployment (Bridge & External Spokes) — *stub* |
-| DEPLOY-04 | Sovereign Promotion Pipeline — *stub* |
+| DEPLOY-02 | Sovereign Datastore Provisioning |
+| DEPLOY-03 | Sovereign Edge Deployment (Bridge & External Spokes) |
+| DEPLOY-04 | Sovereign Promotion Pipeline |
 
 ---
 
@@ -281,7 +281,8 @@ The standards and specifications external to PHP-FIG that the Sovereign Stack de
 | AES-256-GCM (NIST SP 800-38D) | | CORE-16 encryption (the only symmetric cipher permitted) | https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf |
 | Argon2id (RFC 9106) | | HUB-04 password hashing (memory-hard, side-channel resistant) | https://datatracker.ietf.org/doc/html/rfc9106 |
 | HKDF (RFC 5869) | | Key derivation within CORE-16/HUB-20 envelope encryption | https://datatracker.ietf.org/doc/html/rfc5869 |
-| PostgreSQL | 16+ | Primary RDBMS per ADR-007 (CORE-19, HUB-06, HUB-19, HUB-21) | https://www.postgresql.org/docs/16/ |
+| MySQL | 8.0+ (InnoDB) | **Primary RDBMS** per ADR-013 (CORE-19, HUB-06, HUB-19, HUB-21) | https://dev.mysql.com/doc/ |
+| PostgreSQL | 16+ | Secondary driver, **disabled by default** per ADR-013; re-enabled only at the next decision scale via the CORE-19 `DriverInterface` | https://www.postgresql.org/docs/16/ |
 | Redis | 7+ | Cache + queue + session store per ADR-006 (HUB-02, HUB-09, HUB-10) | https://redis.io/docs/ |
 | OCI Image Spec | 1.1 | Container images produced by DEPLOY-01 | https://github.com/opencontainers/image-spec |
 | Kubernetes | 1.29+ | Container orchestration (DEPLOY-01, DEPLOY-03) | https://kubernetes.io/ |
@@ -304,7 +305,7 @@ Alphabetical. Definition is the in-stack meaning.
 | CI/CD | Continuous Integration / Continuous Deployment | Automated build, test, deploy pipeline. Loom orchestrates the CD half. |
 | CLDR | Common Locale Data Repository | Unicode locale database backing HUB-13. |
 | DAG | Directed Acyclic Graph | Used by CORE-01 for tier ordering and by the Tier-Enforcement DAG. |
-| DBAL | Database Abstraction Layer | CORE-19. The uniform interface over PostgreSQL. |
+| DBAL | Database Abstraction Layer | CORE-19. The uniform interface over MySQL. |
 | DEK | Data Encryption Key | Per-payload symmetric key wrapped by the KEK in envelope encryption. |
 | DI | Dependency Injection | CORE-02. The autowiring container pattern. |
 | DTO | Data Transfer Object | Public-safe object produced by the Bridge transformer; never contains internal schema. |
@@ -377,10 +378,10 @@ documentation tree listed below is archived and read-only (see the `ARCHIVED.md`
 | `Architecture/ADRs/` | ADR-001..010 (Accepted) + ADR-011 (Proposed — HUB-31) |
 | `Architecture/Core/` | 20 CORE blueprint files (CORE-01..20) |
 | `Architecture/Hub/` | 30 HUB blueprint files (HUB-01..30) |
-| `Architecture/Spoke/Internal/` | 25 ISPOKE files (ISPOKE-16..25 are placeholder blueprints) |
+| `Architecture/Spoke/Internal/` | 25 ISPOKE files (all documented; ISPOKE-16..25 promoted from placeholders on 2026-08-05) |
 | `Architecture/Spoke/External/` | 15 ESPOKE files (ESPOKE-01..15) |
 | `Architecture/Spoke/Bridge/` | BRIDGE-01 (Vanguard) — the only Bridge blueprint |
-| `Architecture/Deploy/` | DEPLOY-00..04 (00 renamed; 02/03/04 are stubs) |
+| `Architecture/Deploy/` | DEPLOY-00..04 (all documented; 00 renamed, 02/03/04 promoted from stubs on 2026-08-05) |
 | `Architecture/CrossCutting/` | STRUCTURE-01..09, OBSERVABILITY, GLOSSARY, THREAT_MODEL |
 | `Architecture/Critiques/` | `00_CRITIQUE.md` — the 21-finding review this tree resolves |
 | `Architecture/Migration/` | `04_MIGRATION_PLAN.md` — the 48-week remediation plan |

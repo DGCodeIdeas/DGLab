@@ -45,7 +45,7 @@ Redis is also the message broker for HUB-09 (Pub/Sub) and HUB-10 (Queue, using R
 - Redlock (the distributed-lock algorithm) is *not* formally proven safe under all network partitions (see Martin Kleppmann's critique). For locks that must be safe under partition, HUB-02 should expose a fencing token; this is a future enhancement.
 
 ## Links
-- Related ADRs: ADR-007 (PostgreSQL — Redis and Postgres together cover the persistence tiers), ADR-009 (ULID for cache keys — sortable keys help LRU locality), ADR-010 (OPcache preload — Redis client classes must be preloaded)
+- Related ADRs: ADR-013 (MySQL — Redis and Postgres together cover the persistence tiers), ADR-009 (ULID for cache keys — sortable keys help LRU locality), ADR-010 (OPcache preload — Redis client classes must be preloaded)
 - Related blueprints: CORE-15 (Cache Abstraction — PSR-6/16 layer), HUB-02 (Sovereign Hub Cache), HUB-09 (Sovereign Signal / Event Bus — Redis Pub/Sub), HUB-10 (Sovereign Queue — Redis Streams), HUB-07 (Rate Limiter — Redis atomic counters)
 - Related findings: Finding 19 (no ADRs existed), Finding 10 (HUB-02's "< 0.1ms tag overhead" target has no benchmark methodology)
 - External references: Redis documentation (redis.io/docs); PSR-16 Simple Cache (php-fig.org/psr/psr-16); Redlock algorithm (redis.io/topics/distlock); Martin Kleppmann, "How to do distributed locking" (2016)

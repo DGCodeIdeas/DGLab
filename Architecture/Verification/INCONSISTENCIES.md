@@ -22,7 +22,7 @@ php Architecture/Verification/lint/run.php
 
 | # | Class | Contradiction | Status |
 |---|---|---|---|
-| 1 | Datastore | MySQL/InnoDB/JSON/AUTO_INCREMENT vs `ADR-007` PostgreSQL 16 / JSONB / ULID | Resolved |
+| 1 | Datastore | MySQL/InnoDB/JSON/AUTO_INCREMENT vs PostgreSQL 16 / JSONB / ULID | Resolved (MySQL) → **reversed 2026-08-05** by revised `ADR-013` (MySQL/InnoDB primary; PostgreSQL via disabled driver) |
 | 2 | Core map | Evaluation scores a Core tier that no longer exists | Resolved (archived) |
 | 3 | Cross-ref | `BRIDGE-01` cites `CORE-09` for crypto; real crypto is `CORE-16` | Resolved |
 | 4 | Quality | "Approved" thinner than "disapproved" | Documented; Phase 2 |
@@ -48,12 +48,18 @@ php Architecture/Verification/lint/run.php
 ## Detailed findings
 
 ### #1 — Datastore engine conflict
-- **Conflict.** `CrossCutting/STRUCTURE-05/07/08/09` (predecessor) specified MySQL 8 / InnoDB / JSON /
-  `AUTO_INCREMENT`; `ADR-007` mandates PostgreSQL 16 / JSONB / ULID. `docs/blueprints/` still uses MySQL.
-- **Resolution.** PostgreSQL 16 is canonical. `STRUCTURE-05` DDL rewritten to JSONB + ULID primary keys
-  + partial GIN indexes + RLS; `STRUCTURE-07/08/09` rewritten from MySQL to PostgreSQL. The MySQL tree
-  (`docs/blueprints/`) is archived and must never be merged (governance Rule 1).
-- **Authority.** `ADR-007`, `Architecture/CrossCutting/STRUCTURE-05.md`.
+- **Conflict (original).** `CrossCutting/STRUCTURE-05/07/08/09` (predecessor) specified MySQL 8 / InnoDB / JSON /
+  `AUTO_INCREMENT`; the first pass of this consolidation adopted `ADR-013` mandating PostgreSQL 16 / JSONB / ULID, and
+  `STRUCTURE-05` DDL was rewritten to JSONB + ULID + partial GIN indexes + RLS; `docs/blueprints/` still uses MySQL.
+- **Decision shift (2026-08-05).** `ADR-013` was **superseded** by a new `ADR-013` (MySQL/InnoDB primary; PostgreSQL
+  relegated behind the CORE-19 driver, disabled by default). MySQL 8 (InnoDB) is now the canonical primary datastore;
+  PostgreSQL remains available via the DBAL `DriverInterface` and is re-enabled only at the next decision scale.
+- **Resolution.** MySQL 8 (InnoDB) is canonical per the revised `ADR-013`. `STRUCTURE-05` DDL uses `ENGINE=InnoDB`, the
+  `JSON` column type with generated-column + functional indexes, `CHAR(26)` ULID keys, and tenant scoping enforced by the
+  DBAL `TenantScope` (CORE-19 + HUB-21) rather than engine RLS. `STRUCTURE-07/08/09`, `CORE-19`, `DEPLOY-02`, and the
+  spoke/datastore blueprints are aligned to MySQL. The `docs/blueprints/` MySQL tree is archived and must never be merged
+  (governance Rule 1).
+- **Authority.** `ADR-013` (revised), `Architecture/CrossCutting/STRUCTURE-05.md`.
 
 ### #2 — Evaluation layer describes a dead Core tier
 - **Conflict.** `docs/evaluation/*` scores `CORE-01..20` against names that match no current file

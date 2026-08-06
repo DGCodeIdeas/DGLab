@@ -230,7 +230,7 @@ The complete `AuthMiddleware`, `RateLimitMiddleware`, `WafMiddleware`, `ServiceR
 
 ### SQL DDL
 
-Not applicable. HUB-08 is stateless. `ServiceRegistry` mappings are loaded from CORE-10 config (`gateway.routes` key, JSON-encoded). Rate-limit state lives in HUB-07 (which persists to HUB-02 Redis). Audit events emitted by the WAF (on block) are written to HUB-06 (PostgreSQL `audit_log` table, schema owned by HUB-06). Access logs are written to CORE-09's structured JSON sink. No Gateway-owned table exists.
+Not applicable. HUB-08 is stateless. `ServiceRegistry` mappings are loaded from CORE-10 config (`gateway.routes` key, JSON-encoded). Rate-limit state lives in HUB-07 (which persists to HUB-02 Redis). Audit events emitted by the WAF (on block) are written to HUB-06 (MySQL `audit_log` table, schema owned by HUB-06). Access logs are written to CORE-09's structured JSON sink. No Gateway-owned table exists.
 
 ### Sequence Diagram
 

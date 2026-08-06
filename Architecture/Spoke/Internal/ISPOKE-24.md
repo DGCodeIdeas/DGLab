@@ -1,62 +1,80 @@
-# ISPOKE-24: Backup Admin Console
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
+# PHASE ISPOKE-24: Sovereign Restore (Backup)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Restore (Backup) — `SovereignStack\Internal\Restore`
+Sovereign Restore — `SovereignStack\Internal\Restore`. Centralised backup management: schedule
+configuration, retention-policy management, restore-workflow initiation, backup-integrity verification.
 
 ## Description
-Centralised management console for system backups: schedule configuration, retention policy management, restore workflow initiation, and backup integrity verification.
-
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-24 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+ISPOKE-24 manages the backup lifecycle. It schedules snapshots of datastores (delegated to **DEPLOY-02**
+datastore provisioning) to cold object storage (**HUB-11** Cloud Storage) with keys custodied by
+**HUB-20** (Sovereign Vault), verifies integrity (checksum + envelope-decrypt probe via CORE-16), and
+initiates restore by driving the import pipeline (**ISPOKE-16** Sovereign Transporter). It is the
+operator console + orchestration; the actual byte movement is DEPLOY-02/HUB-11.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-03 (Asset Pipeline), HUB-11 (Storage), HUB-15 (Health), HUB-21 (Tenancy)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Depends on ISPOKE-14 (Multi-tenancy Console) to understand tenant data boundaries for backup and restore scoping.
-
-**Estimated documentation window:** Weeks 41–45 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** HUB-11 (Sovereign Cloud Storage — backup sink), HUB-20 (Sovereign Vault — key custody),
+  CORE-16 (Encryption Envelope — integrity probe), CORE-19 (Database — backup-catalog store), HUB-03
+  (Sovereign Asset Engine — asset/binary snapshots), HUB-15 (Sovereign Pulse — job health), HUB-06
+  (Sovereign Auditor — every restore audited), HUB-21 (Sovereign Nexus — tenancy scoping), ISPOKE-14
+  (Sovereign Nexus console — hosts shared backup config), ISPOKE-16 (import pipeline for restore).
+- **Downward:** ISPOKE-01 (UI shell).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `BackupJob` | `final readonly class` | `tenant_id`, `target`, `schedule`, `retention`. |
+| `RestoreConsoleInterface` | interface | `schedule(BackupJob $j): void`, `verify(string $backupId): VerifyReport`, `restore(string $backupId, string $target): JobId`. |
+| `IntegrityVerifier` | class | Checksum + CORE-16 decrypt-probe on a stored backup. |
+| `RestoreDriver` | class | Calls ISPOKE-16 `import()` with the backup as source. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\Restore;
+
+interface RestoreConsoleInterface
+{
+    public function schedule(BackupJob $job): void;
+    public function verify(string $backupId): VerifyReport;
+    public function restore(string $backupId, string $target): string;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE backup_catalog (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id    ULID NOT NULL REFERENCES tenants(id),
+    target       text NOT NULL,
+    object_ref   text NOT NULL,             -- HUB-11 key
+    checksum     bytea NOT NULL,
+    verified_at  timestamptz,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves HUB-11/HUB-20/CORE-16/CORE-19/HUB-03/HUB-15/HUB-06/HUB-21/ISPOKE-14/ISPOKE-16 through
+the container (CORE-02). **Downward:** UI in ISPOKE-01.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. A restore is the highest-risk action — it is always audited (HUB-06) with `created_by` and a
+   signed backup reference (CORE-16).
+2. Backups are envelope-encrypted (CORE-16); `IntegrityVerifier` proves decryptability before any
+   restore proceeds.
+3. Restore targets are tenancy-scoped (HUB-21); a backup cannot be restored into another tenant.
+4. `verify()` is read-only — it never mutates the live system.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `IntegrityVerifier` passes a good checksum + decrypt-probe and fails a flipped checksum.
+- Integration (MySQL 8 (InnoDB) + HUB-11 stub): `schedule()` writes `backup_catalog`; `restore()` calls
+  ISPOKE-16 `import()` and returns a job id.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `IntegrityVerifier`.

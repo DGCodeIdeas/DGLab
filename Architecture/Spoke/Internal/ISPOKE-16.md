@@ -1,67 +1,110 @@
-# ISPOKE-16: Advanced Import/Export Engine
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
-
-> **Cross-reference correction applied (INDEX §3 Pattern B).** The source placeholder cited
-> `HUB-28 (Analytics)`. `HUB-28` is **Sovereign Versioner** (API versioning). The real-time analytics
-> dependency is `HUB-31`, which is *proposed, not accepted* — see `ADRs/ADR-011-hub-31-real-time-analytics.md`
-> and `OPEN-DECISIONS.md`.
+# PHASE ISPOKE-16: Sovereign Transporter (Import/Export)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only application — VPN/bastion, never via the public Bridge)
 
 ## Component Name
-Sovereign Transporter (Import/Export) — `SovereignStack\Internal\Transporter`
+Sovereign Transporter — `SovereignStack\Internal\Transporter`. Bulk import/export of system entities
+(users, content, configurations) with mapping, transformation, and validation pipelines.
 
 ## Description
-Enables bulk import and export of system entities (users, content, configurations) with mapping, transformation, and validation pipelines.
+ISPOKE-16 is the bulk data-movement console. It reads source files (CSV, JSON, NDJSON, Parquet
+metadata) or streams from a queue, maps source columns to the target entity schema, runs a
+transformation pipeline (typing, normalization, reference resolution), validates against the target
+entity's invariants, and writes via the canonical persistence path (CORE-19 Database over MySQL
+16 / JSONB). Exports are the inverse: a configured projection over entities is serialized to the
+requested format and streamed to object storage (HUB-11 Cloud Storage) or returned inline.
 
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-16 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+The component is **not** an ETL platform. It deliberately scopes itself to operator-initiated, audited,
+entity-level migrations — not continuous replication. Long-running jobs are delegated to HUB-10
+(Sovereign Queue); the Transporter only orchestrates and reports.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.** Promoted from placeholder blueprint (Finding 13) on
+2026-08-05.
 
 ## Dependency Status
-- **Upward:** HUB-10 (Queue), HUB-11 (Storage), HUB-31 (Real-Time Analytics & Metrics Ledger — **pending**, see `ADRs/ADR-011-hub-31-real-time-analytics.md`), HUB-06 (Audit)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Follows ISPOKE-01's CRUD engine as a higher-level data movement capability. Depends on mature entity definitions.
-
-**Estimated documentation window:** Weeks 27–32 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward (consumes):** CORE-19 (Database), CORE-16 (Encryption Envelope — for credential/secret
+  columns in transit), HUB-10 (Sovereign Queue — async job execution), HUB-11 (Sovereign Cloud
+  Storage — artifact sink), HUB-04 (Sovereign Identity — operator authn), HUB-05 (Sovereign Guardian —
+  RBAC for export scopes), HUB-06 (Sovereign Auditor — every job is an audited action), HUB-15
+  (Sovereign Pulse — health of the job worker), ISPOKE-01 (Sovereign Command Center — hosts the UI).
+- **Downward (consumed by):** ISPOKE-01 (UI shell), ISPOKE-24 (Sovereign Restore — backup restore uses
+  the import pipeline).
+- **Runtime:** PHP 8.3, `league/csv` (dev only, for CSV mapping) or an equivalent streaming parser;
+  MySQL 8 (InnoDB) (ADR-013); Redis 7 (ADR-006) for job state.
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+### Class Map
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `TransporterInterface` | interface | `import(JobSpec $spec): JobId`, `export(JobSpec $spec): JobId`, `status(JobId $id): JobStatus`. |
+| `ImportJob` / `ExportJob` | `final readonly class` | Value objects describing source, mapping, validation rules, target. |
+| `MappingEngine` | class | Applies column→field mappings and transformations. |
+| `ValidationPipeline` | class | Runs entity invariants; collects `ValidationError` list (never throws mid-batch). |
+| `JobWorker` | class | Consumes HUB-10 messages; drives the pipeline; reports progress to HUB-15. |
+
+### Key interface contract
+
+```php
+<?php
+declare(strict_types=1);
+
+namespace SovereignStack\Internal\Transporter;
+
+use SovereignStack\Core\Database\DatabaseInterface;
+
+interface TransporterInterface
+{
+    /** Enqueue an import. Returns the queue job id (HUB-10). */
+    public function import(ImportJob $job): string;
+
+    /** Enqueue an export. Returns the queue job id (HUB-10). */
+    public function export(ExportJob $job): string;
+
+    /** Poll job status; pulls progress from HUB-15 when the worker is live. */
+    public function status(string $jobId): JobStatus;
+}
+```
+
+## Data Model (MySQL 8 (InnoDB) / JSON / ULID)
+
+```sql
+CREATE TABLE transporter_jobs (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id   ULID NOT NULL REFERENCES tenants(id),
+    kind        text NOT NULL CHECK (kind IN ('import','export')),
+    spec        jsonb NOT NULL,            -- serialized ImportJob/ExportJob
+    status      text NOT NULL DEFAULT 'queued'
+                    CHECK (status IN ('queued','running','succeeded','failed','rolled_back')),
+    rows_total  integer NOT NULL DEFAULT 0,
+    rows_done   integer NOT NULL DEFAULT 0,
+    errors      jsonb NOT NULL DEFAULT '[]'::jsonb,
+    created_by  ULID NOT NULL,             -- operator (HUB-04)
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON transporter_jobs (tenant_id, status) WHERE status <> 'succeeded';
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves CORE-19/CORE-16/HUB-10/HUB-11/HUB-04/HUB-05/HUB-06/HUB-15 through the container
+(CORE-02). **Downward:** renders its UI inside ISPOKE-01; ISPOKE-24 calls `import()` for restore.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Every job is an audited action (HUB-06) with `created_by` and a signed spec hash (CORE-16).
+2. Export scopes are RBAC-gated (HUB-05); PII columns are masked unless the operator holds the
+   `export:pii` permission.
+3. Secret/credential columns are envelope-encrypted (CORE-16) before write; plaintext never touches
+   object storage (HUB-11).
+4. Rollback: a failed import runs compensating deletes within the same tenant transaction; partial
+   imports are never left dangling.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `MappingEngine` round-trips a 5-column CSV→entity with 3 transforms; `ValidationPipeline`
+  collects exactly the expected `ValidationError` set for an invalid row.
+- Integration (docker-compose MySQL 8 (InnoDB)): `import()` of 1,000 rows via HUB-10 worker leaves
+  `transporter_jobs.status = 'succeeded'` and `rows_done = rows_total`.
+- Static: phpstan `level: max` clean over `src/`.
+- Coverage: ≥95% branch coverage on `MappingEngine` and `ValidationPipeline`.

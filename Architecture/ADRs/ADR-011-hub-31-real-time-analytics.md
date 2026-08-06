@@ -67,7 +67,7 @@ Proposed scope, sufficient to distinguish it from `HUB-15` and `HUB-23`:
 - **Ingest.** Subscribes to `HUB-09` (Sovereign Signal — Event Bus) for business events carrying a
   `lane` (tenant ULID) and a metric name. Ingest is fire-and-forget from the producer's perspective;
   back-pressure is handled inside `HUB-31`, never propagated to the producer's request path.
-- **Store.** A tenant-scoped, append-only metric series. PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
+- **Store.** A tenant-scoped, append-only metric series. MySQL 8 (InnoDB) per ADR-013, `CHAR(26)` ULID
   primary keys per ADR-009, `JSONB` + GIN for metric dimensions, and time-based partitioning for the
   series table.
 - **Query.** A read API returning windowed aggregates (`sum`, `count`, `p50/p95/p99`, rate) with a

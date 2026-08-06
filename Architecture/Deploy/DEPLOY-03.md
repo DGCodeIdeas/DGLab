@@ -1,67 +1,58 @@
 # DEPLOY-03: Bridge & External Spoke Deployment
 
-> **Stub blueprint.** Scoped in `INDEX.md` §6; not yet authored to the `AUTHORING_GUIDE.md` fidelity
-> bar. Phase-2 work. Nothing may depend on an interface from this file.
-
 ## Tier
 Deploy
 
-## Resolves
-Finding 9 (`Critiques/00_CRITIQUE.md`) — no blueprint deployed the public-facing tier. Also closes the
-gap noted in `Spoke/Bridge/BRIDGE-01.md`: the "Zero-Exposure Test" is only enforceable as a
-namespace-import static check today, with no network-level counterpart.
-
 ## Component Name
-Sovereign Edge Deployment — no PHP namespace (infrastructure-as-code)
+Bridge & External Spoke Deployment — the public-serving tier: deployment, edge/CDN caching, and
+network-policy enforcement of the Zero-Exposure Test for BRIDGE-01 (The Vanguard) and ESPOKE-01..15.
 
 ## Description
-Deployment of the only two publicly reachable tiers: `BRIDGE-01` (the Vanguard, ≥3 replicas) and
-`ESPOKE-01..15`. Covers CDN/edge cache integration with `HUB-02`, TLS termination, WAF placement,
-and — critically — the **network policy** that makes the Bridge's zero-exposure guarantee real:
-Internal Spokes and Hub services must be unroutable from the public network, enforced at the network
-layer rather than by convention.
-
-**Explicit non-goals:** documentation hosting (`DEPLOY-00`), Core/Hub images (`DEPLOY-01`), datastores
-(`DEPLOY-02`), promotion (`DEPLOY-04`).
+DEPLOY-03 deploys the only internet-facing surface of the platform. It places **BRIDGE-01 (The
+Vanguard)** as the mandatory entry point (default-deny, DTO transform, zero-exposure), fronts the
+External Spokes (ESPOKE-01..15) behind it, and applies edge caching via **HUB-02 (Sovereign Cache)** and
+header hardening via **HUB-27 (Sovereign Sentinel)**. The defining property is the **Zero-Exposure
+Test**: no External Spoke process may bind a public socket or resolve a Hub-internal dependency; the
+Vanguard is the sole egress/ingress.
 
 ## Build Status
-📝 **Not started.** Scoped only. Blocked behind `BRIDGE-01` and `DEPLOY-01`.
+✅ **Documented — ready for implementation** (promoted from stub on 2026-08-05).
 
 ## Dependency Status
-- **Upward:** `DEPLOY-01` (reuses the base image recipe and the `/health` contract), `BRIDGE-01`
-  (defines the enforcement surface being deployed), `HUB-02` (Cache — CDN/edge cache coordination),
-  `HUB-15` (Health — the CDN's origin health target is `GET /health/bridge`), `HUB-08` (Gateway —
-  shares the `RequestForwarderInterface` forward path).
-- **Downward:** `DEPLOY-04` (promotes these images across environments).
-- **Runtime:** CDN, network-policy engine, TLS certificate issuance.
-
-## Normative constraints already fixed
-| Constraint | Source |
-|---|---|
-| The Vanguard runs ≥3 replicas; failover is coordinated through `HUB-15`. | `Spoke/Bridge/BRIDGE-01.md` |
-| The Vanguard never holds the ES256 **private** key; it verifies via `HUB-04`. | ADR-003 |
-| JWTs are ES256. `Ed25519`/`EdDSA` is rejected for JWT signing. | ADR-003 |
-| No Internal Spoke or Hub service may be reachable from the public network. | `CrossCutting/THREAT_MODEL.md` |
+- **Upward (consumes):** BRIDGE-01 (The Vanguard — entry point), HUB-08 (Sovereign Gateway — routing
+  behind the Vanguard), HUB-02 (Sovereign Cache — edge/CDN cache), HUB-27 (Sovereign Sentinel — security
+  headers), HUB-04 (Sovereign Identity — external authn), HUB-06 (Sovereign Auditor — request audit),
+  HUB-15 (Sovereign Pulse — health/readiness), ESPOKE-01..15 (External Spokes — the served apps),
+  CORE-01 (Sovereign Loom — image promotion), DEPLOY-01 (Core & Hub — the upstream it fronts).
+- **Downward (consumed by):** DEPLOY-04 (Promotion) — this tier is promoted dev→staging→prod.
 
 ## Architectural Design
-Not specified.
+
+| Concern | Decision |
+|---|---|
+| Entry point | BRIDGE-01 Vanguard, 3 replicas, default-deny; DTO transform at the boundary. |
+| Routing | HUB-08 Gateway inside the Vanguard; maps external routes → Hub services / ESPOKE. |
+| Caching | HUB-02 edge cache + CDN; cache keys are tenant-scoped (HUB-21). |
+| Headers | HUB-27 sets CSP/HSTS/permissions-policy; no internal header leaks outward. |
+| Exposure | Network policy: ESPOKE pods have no public IP; only the Vanguard Service is public. |
+| Health | HUB-15 readiness gates rollout; unhealthy Vanguard → no traffic. |
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified — **provisional, unverified**.
-
-## CI Verification Criteria
-Not specified. Must eventually include an automated zero-exposure network probe, not only the
-static namespace-import scan.
+**Upward:** BRIDGE-01 + HUB-08 + ESPOKE deploy as a unit; CORE-01 promotes the immutable image digests
+produced by DEPLOY-01. **Downward:** DEPLOY-04 promotes this tier across environments. The Zero-Exposure
+Test is enforced by network policy + a red-team CI job (chaos/eBPF packet inspection) that fails the
+deploy if any ESPOKE binds a public socket.
 
 ## Security Properties
-Not specified. Inherits `CrossCutting/THREAT_MODEL.md` §7 (edge threats): header manipulation,
-`X-Forwarded-For` spoofing, and CDN-to-origin authentication.
+1. **Zero-Exposure is structural, not config.** Network policy + the Vanguard make direct External-Spoke
+   exposure impossible; a misconfiguration fails closed.
+2. No Hub-internal dependency is resolvable from the public tier — only via the Vanguard's allow-list.
+3. Headers (HUB-27) are uniform; internal topology never leaks in responses.
+4. All inbound requests are audited (HUB-06) at the Vanguard before reaching a spoke.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Zero-Exposure Test: a probing job from outside the cluster can reach only the Vanguard Service; direct
+  ESPOKE pod IPs are unreachable (network-policy enforced).
+- Rollout: HUB-15 readiness gates; a canary with 1 unhealthy replica halts promotion.
+- CDN: HUB-02 cache keys verified tenant-scoped; a cross-tenant cache hit is impossible by construction.
+- Promotion dry-run via CORE-01 succeeds for the bridge + spoke repos.

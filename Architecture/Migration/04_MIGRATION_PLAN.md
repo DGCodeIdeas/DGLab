@@ -98,7 +98,7 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 | QW-2 | Rewrite root `Dockerfile` to serve `docs/blueprints/` until DEPLOY-01 lands | `Dockerfile` | 0.5d | 18 | Public docs site no longer shows wrong architecture |
 | QW-3 | Add `Valid as of commit <sha>` header to every `docs/evaluation/` file | `docs/evaluation/{BLUEPRINT_RANKINGS,EVALUATION_SUMMARY,SOLUTIONS_TO_WEAKNESSES}.md` | 0.5d | 2 | Stakeholders stop citing stale scores |
 | QW-4 | Create `orchestrator/bin/loom` shebang (Symfony Console) wiring to existing `CIMonitor` | `orchestrator/bin/loom` (new) | 1d | 21 | `composer install && vendor/bin/loom` works as documented |
-| QW-5 | Add `docker-compose.yml` with PHP-FPM 8.3 + PostgreSQL 16 + Redis 7 + Nginx + Mailpit | `docker-compose.yml`, `docker/php/Dockerfile`, `docker/nginx/default.conf` | 2d | 17 | Every developer gets identical local environment |
+| QW-5 | Add `docker-compose.yml` with PHP-FPM 8.3 + MySQL 8 (InnoDB) + Redis 7 + Nginx + Mailpit | `docker-compose.yml`, `docker/php/Dockerfile`, `docker/nginx/default.conf` | 2d | 17 | Every developer gets identical local environment |
 | QW-6 | Replace boilerplate `disapproved/REASON.md` with per-file `REASON.md` citing the specific deviation | `docs/blueprints/disapproved/*/REASON.md` (72 new files, scripted) | 2d | 12 | Future contributors can mine the disapproved set |
 | QW-7 | Implement CORE-02 DI Container: PSR-11 conformance, autowiring, compiler passes, cycle detection | `packages/core/container/src/Container.php` + 6 supporting classes + tests | 5d | 8 | Unblocks the entire Hub tier — highest-leverage PR in the system |
 
@@ -119,7 +119,7 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 2. **Fix root `Dockerfile` (interim).** Change `-t docs/architecture/origin` to `-t docs/blueprints`. Replaced by DEPLOY-01 image in P7. Closes Finding 18.
 3. **Date-stamp evaluation docs.** Add header `<!-- Valid as of commit <sha>. Do not use for planning without re-verification. -->` (sha from `git log -1 --format=%H -- <file>`) to `docs/evaluation/{BLUEPRINT_RANKINGS,EVALUATION_SUMMARY,SOLUTIONS_TO_WEAKNESSES}.md`. Closes Finding 2.
 4. **Create `orchestrator/bin/loom`.** `#!/usr/bin/env php` shebang wiring to `SovereignStack\Orchestrator\Console\LoomCommand` (extends `Symfony\Console\Command\Command`), delegating to existing `CIMonitor::checkViaLocalExecution()` and `DependencyGraph::topologicalSort()`. `chmod +x`. Closes Finding 21.
-5. **Stand up `docker-compose.yml`.** Services: `php-fpm` (PHP 8.3 from `docker/php/Dockerfile` with required Core extensions), `nginx` (config at `docker/nginx/default.conf`), `postgres` (PostgreSQL 16, volume `pgdata`), `redis` (Redis 7), `mailpit`. Add `.env.example`. Closes Finding 17.
+5. **Stand up `docker-compose.yml`.** Services: `php-fpm` (PHP 8.3 from `docker/php/Dockerfile` with required Core extensions), `nginx` (config at `docker/nginx/default.conf`), `postgres` (MySQL 8 (InnoDB), volume `mysqldata`), `redis` (Redis 7), `mailpit`. Add `.env.example`. Closes Finding 17.
 6. **Land initial ADR-001 through ADR-005** from `02_ADR/`: polyrepo-vs-monorepo, PSR-11 container choice, ES256 JWT, Argon2id, ULID-over-UUID. Pre-conditions for P1 and P2. Closes Finding 19 (partial).
 7. **Replace boilerplate rejection reason.** Delete the single shared reason file. Generate one `REASON.md` per rejected blueprint via scripted diff against the approved equivalent, citing the specific deviation. Closes Finding 12.
 8. **Rewrite CORE-03 blueprint** to match the existing `packages/core/event-dispatcher/` implementation: PSR-14 strict compliance (not "Emit and Forget"); remove `thephpleague/event` reference (not a dependency); correct "referencing CORE-08" to "referencing CORE-09 (Logging Service)". Closes Finding 20.
@@ -176,7 +176,7 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 
 **Goal:** Build the three foundational services that every other Core component depends on, in parallel.
 
-**Entry criteria:** P1 merged; ADR-006 (PostgreSQL-over-MySQL), ADR-007 (Redis-over-Memcached), ADR-008 (Argon2id-over-bcrypt) merged.
+**Entry criteria:** P1 merged; ADR-006 (MySQL-over-MySQL), ADR-013 (Redis-over-Memcached), ADR-008 (Argon2id-over-bcrypt) merged.
 
 **Work items (parallel tracks, one engineer per track):**
 
@@ -268,12 +268,12 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 
 **Goal:** Build the persistence and IO primitives the Hub tier requires: DBAL, Cache, Filesystem, Encryption, and the SuperPHP template chain.
 
-**Entry criteria:** P1 (CORE-02) merged — P5 components depend on the container, not on the Kernel. ADR-005 (SuperPHP design rationale — Blade/Twig rejected), ADR-006 (PostgreSQL), ADR-007 (Redis), ADR-008 (Argon2id) merged or in flight.
+**Entry criteria:** P1 (CORE-02) merged — P5 components depend on the container, not on the Kernel. ADR-005 (SuperPHP design rationale — Blade/Twig rejected), ADR-006 (MySQL), ADR-013 (Redis), ADR-008 (Argon2id) merged or in flight.
 
 **Work items (two parallel tracks):**
 
 **Track A — Data primitives (3 engineers, 3 weeks parallel):**
-- **CORE-19 DBAL** (`packages/core/database/`, 3w): PostgreSQL-first abstraction over PDO — prepared statements, transactions, schema introspection, query builder. Source: `Connection.php`, `QueryBuilder.php`, `Schema/`, `Type/TypeRegistry.php`. Tests: `ConnectionTest.php` (real PostgreSQL via P0 docker-compose), `QueryBuilderTest.php`. Benchmark: 1,000 inserts < 500ms.
+- **CORE-19 DBAL** (`packages/core/database/`, 3w): MySQL-first abstraction over PDO — prepared statements, transactions, schema introspection, query builder. Source: `Connection.php`, `QueryBuilder.php`, `Schema/`, `Type/TypeRegistry.php`. Tests: `ConnectionTest.php` (real MySQL via P0 docker-compose), `QueryBuilderTest.php`. Benchmark: 1,000 inserts < 500ms.
 - **CORE-15 Cache** (`packages/core/cache/`, 2w): PSR-6 + PSR-16 with Redis adapter (`predis/predis`). Source: `CacheItemPool.php`, `SimpleCache.php`, `Adapter/{RedisAdapter,MemoryAdapter}.php`. Tests: PSR conformance + `RedisAdapterTest.php`. Benchmark: 10,000 cache hits < 50ms.
 - **CORE-14 Filesystem** (`packages/core/filesystem/`, 2w): Abstracts local + S3 (`async-aws/s3`). Source: `Filesystem.php`, `File.php`, `Adapter/{LocalAdapter,S3Adapter}.php`. Tests: `LocalAdapterTest.php`, `S3AdapterTest.php` (LocalStack).
 - **CORE-16 Encryption Envelope** (`packages/core/crypto/`, 2w): AES-256-GCM for payloads, Argon2id for password hashing. Source: `Envelope.php`, `Key.php`, `PasswordHasher.php`. Tests: `EnvelopeTest.php` (256 fixtures), `PasswordHasherTest.php`. Benchmark: encrypt 1KB < 0.5ms.
@@ -288,7 +288,7 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 **Exit criteria:**
 - All eight packages have `src/` populated with real PHP 8.3 classes (CI file existence checks).
 - Each PHPUnit suite passes with ≥95% branch coverage (raise to 100% before P7 Hub starts).
-- CORE-19: `Connection::query('SELECT 1')->fetchColumn()` returns `'1'` against docker-compose PostgreSQL.
+- CORE-19: `Connection::query('SELECT 1')->fetchColumn()` returns `'1'` against docker-compose MySQL.
 - CORE-15: `SimpleCache::set/get` round-trips against docker-compose Redis.
 - CORE-14: `Filesystem::write/read` round-trips on local + LocalStack S3 adapters.
 - CORE-16: `Envelope::encrypt/decrypt` round-trips all 256 fixtures; `PasswordHasher::hash('test')` returns `$argon2id$...`.
@@ -347,12 +347,12 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 
 3. **BRIDGE-01 Vanguard (week 11–12).** Rewrite `blueprints/Bridge/BRIDGE-01-vanguard.md` with corrected cross-references (Finding 3): replace `CORE-09: Cryptography & Hashing` with `CORE-16: Binary Encryption Envelope`; remove the `CORE-01: Polyrepo Orchestrator (Enforcement Logic)` reference; remove redundant `CORE-06: Router (Gateway Routing)` (HUB-08 covers it). Implement 3-replica Vanguard with default-deny policy, DTO transformation, zero-exposure test suite. Closes Findings 3 and 11.
 
-4. **DEPLOY-02/03/04 (weeks 9–12, parallel).** `blueprints/Deploy/DEPLOY-02-datastores.md` (PostgreSQL 16, Redis 7, NATS, sealed-secrets, backup/restore runbook); `DEPLOY-03-bridge-spokes.md` (CDN/edge caching, network isolation, 3-replica Vanguard, zero-exposure test harness); `DEPLOY-04-promotion.md` (dev → staging → production across 50+ repos via CORE-01 Loom; immutable image digest promotion).
+4. **DEPLOY-02/03/04 (weeks 9–12, parallel).** `blueprints/Deploy/DEPLOY-02-datastores.md` (MySQL 8 (InnoDB), Redis 7, NATS, sealed-secrets, backup/restore runbook); `DEPLOY-03-bridge-spokes.md` (CDN/edge caching, network isolation, 3-replica Vanguard, zero-exposure test harness); `DEPLOY-04-promotion.md` (dev → staging → production across 50+ repos via CORE-01 Loom; immutable image digest promotion).
 
 **Exit criteria (all measurable):**
 - All 30 Hub blueprints have a corresponding `services/hub-<name>/` directory with real PHP code (≥150 PHP files total).
 - Each Hub service's CI is green on `main` (GitHub API query).
-- `docker compose up` brings up all 30 Hub + Core + Bridge + Postgres + Redis + NATS; `docker compose ps --format json | jq 'length'` returns ≥ 35.
+- `docker compose up` brings up all 30 Hub + Core + Bridge + MySQL + Redis + NATS; `docker compose ps --format json | jq 'length'` returns ≥ 35.
 - HUB-15 reports all 30 Hub services healthy: `curl http://localhost:8080/hub-15/health` returns JSON with `services: [...]` of length 30 and `healthy: true` for each.
 - BRIDGE-01 zero-exposure test passes: `php services/bridge/tests/ZeroExposureTest.php` runs 1,000 adversarial requests; asserts 0 leaked tenant data.
 - DEPLOY-01 image pushed to `ghcr.io/dgcodeideas/sovereign-core:<sha>`; `docker pull` + `docker run` succeeds.
@@ -386,7 +386,7 @@ These items deliver immediate, demonstrable value with low effort. All seven are
 | R-04 | SuperPHP design drifts between Lexer (CORE-07), Parser (CORE-11), Compiler (CORE-12) | Medium | High | ADR-005 merged before CORE-07 starts; 100 fixture files drive all three components; `SuperPHPRenderTest` is integration contract | P5 |
 | R-05 | BRIDGE-01 zero-exposure test passes locally but fails in production (network leaks) | Low | Critical | Red-team review; chaos engineering in staging; 3-replica Vanguard with network policy enforcement; eBPF packet inspection | P7 |
 | R-06 | 3-person team is slower than estimated; P2 or P5 slips by 1+ weeks | High | High | Weekly Gantt checkpoint; if slip ≥ 1 week, hire contractor for 4 weeks; re-baseline via ADR-012 | P2 |
-| R-07 | PostgreSQL chosen (ADR-006) but a Hub service requires MySQL-specific feature | Low | High | CORE-19 DBAL abstracts dialect; CI matrix tests both PostgreSQL and MySQL; ADR-006 records migration cost if reversed | P5 |
+| R-07 | MySQL chosen (ADR-013) but a Hub service requires MySQL-specific feature | Low | High | CORE-19 DBAL abstracts dialect; CI matrix tests both MySQL and the (disabled) PostgreSQL driver; ADR-006 records migration cost if reversed | P5 |
 | R-08 | DEPLOY-01 image exceeds Render free-tier limit (512MB RAM) | Medium | Medium | Multi-stage alpine Dockerfile; `docker images` size gate < 200MB in CI; paid tier if exceeded (cost-benefit ADR) | P7 |
 | R-09 | HUB-15 fails to detect a Hub service that is alive but unhealthy (deadlocked) | Medium | High | HUB-15 spec frozen before Hub build starts; each Hub exposes `/health/deep` (DB + cache ping); HUB-15 polls every 5s with 15s timeout | P7 |
 | R-10 | ADRs land late, blocking blueprint merges that depend on them | Medium | Medium | CI check: every blueprint cites an ADR in `Decision:` front-matter; PR template requires ADR link; code-owner review | P0 |

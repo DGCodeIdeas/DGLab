@@ -5,7 +5,7 @@ Core (Foundational Infrastructure)
 
 ## Resolves
 - **Finding 2** (the stale evaluation layer in `docs/evaluation/BLUEPRINT_RANKINGS.md` labels CORE-19 as "Service Locator" — this is wrong; the canonical identity per `01_MASTER_INDEX.md` §2 is **Database Abstraction Layer**, namespace `SovereignStack\Core\Database`, status 📝 Not started). The evaluation's CORE-19 is a fabricated component that does not exist in the actual `docs/blueprints/Core/CORE-19.md` file in the repository. This blueprint re-anchors CORE-19 to its verified identity: a thin PDO-based DBAL providing fluent query builders, prepared statements, nested transactions, and tenant-scoped query emission. A service locator is a different (and broadly deprecated) pattern; CORE-02 (DI Container) is the closest Sovereign Stack has to a service locator, and CORE-02 explicitly rejects the service-locator API surface (no `get(string $id)` lookup by arbitrary string from application code).
-- **Finding 4** (the approved `docs/blueprints/Core/CORE-19.md` is 4,118 bytes — larger than most approved blueprints but still prose-only: zero compilable classes, zero real interface signatures with docblocks, no SQL DDL with constraints/indexes, no sequence diagram, no state diagram, no benchmark methodology table, no security invariants). This blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.3 interfaces, complete compilable `QueryBuilder` reference implementation, PostgreSQL DDL with FK + ULID + partial index, two Mermaid diagrams (sequence + state), named-harness benchmark table, eight CI verification methods including a SQL-injection payload test, five security properties including enforced tenant scoping.
+- **Finding 4** (the approved `docs/blueprints/Core/CORE-19.md` is 4,118 bytes — larger than most approved blueprints but still prose-only: zero compilable classes, zero real interface signatures with docblocks, no SQL DDL with constraints/indexes, no sequence diagram, no state diagram, no benchmark methodology table, no security invariants). This blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.3 interfaces, complete compilable `QueryBuilder` reference implementation, MySQL/InnoDB DDL with FK + ULID + generated-column index, two Mermaid diagrams (sequence + state), named-harness benchmark table, eight CI verification methods including a SQL-injection payload test, five security properties including enforced tenant scoping.
 - **Finding 10** (the approved blueprint asserts no specific latency number but lists bare qualitative targets — "minimal overhead", "robust transaction handling" — with no harness, baseline, or load model). The bare qualitative claims are **withdrawn** and replaced with the named-harness table below; every absolute number is marked "provisional, unverified" per Governance Rule 2 in `01_MASTER_INDEX.md`.
 
 ## Component Name
@@ -13,11 +13,11 @@ Database Abstraction Layer (DBAL) — `SovereignStack\Core\Database`
 
 ## Description
 
-CORE-19 is the **relational database abstraction layer** for the SovereignStack Core tier. It is a thin, dependency-light wrapper over PHP's PDO extension that provides four concrete capabilities: (1) a `Connection` class that wraps a single `\PDO` instance with sensible defaults (ERRMODE_EXCEPTION, default fetch mode ASSOC, emulated prepares off, READ COMMITTED isolation), (2) a fluent `QueryBuilder` that emits parameterised SELECT / INSERT / UPDATE / DELETE statements — the only place in the stack where SQL strings are constructed, (3) a `SchemaBuilder` for DDL operations (create table, add column, create index) used by CORE-20 (Forge) migrations, and (4) a `Transaction` class that supports nested transactions via PostgreSQL savepoints (`SAVEPOINT sp_n` / `RELEASE SAVEPOINT sp_n` / `ROLLBACK TO SAVEPOINT sp_n`).
+CORE-19 is the **relational database abstraction layer** for the SovereignStack Core tier. It is a thin, dependency-light wrapper over PHP's PDO extension that provides four concrete capabilities: (1) a `Connection` class that wraps a single `\PDO` instance with sensible defaults (ERRMODE_EXCEPTION, default fetch mode ASSOC, emulated prepares off, READ COMMITTED isolation), (2) a fluent `QueryBuilder` that emits parameterised SELECT / INSERT / UPDATE / DELETE statements — the only place in the stack where SQL strings are constructed, (3) a `SchemaBuilder` for DDL operations (create table, add column, create index) used by CORE-20 (Forge) migrations, and (4) a `Transaction` class that supports nested transactions via savepoints (`SAVEPOINT sp_n` / `RELEASE SAVEPOINT sp_n` / `ROLLBACK TO SAVEPOINT sp_n` — supported by MySQL and PostgreSQL).
 
-Per ADR-007, **PostgreSQL 16+ is the primary backend**. The DBAL supports SQLite for the test fixture and dev environment (`pdo_sqlite`) and MySQL 8.0+ as a supported-but-not-recommended alternative (`pdo_mysql`), but every migration, every DDL example, and every CI fixture in the Sovereign Stack targets PostgreSQL semantics first. PostgreSQL-specific features (JSONB, partial indexes, Row-Level Security, `RETURNING *`, `ON CONFLICT DO UPDATE`, generated columns) are first-class; the `DriverInterface::supports(string $feature): bool` method gates them so MySQL/SQLite callers degrade gracefully rather than crash. This blueprint is **not** an ORM — there is no active-record base class, no model autodiscovery, no lazy-loading proxy, noUnitOfWork. Hub-tier services (HUB-04 Identity, HUB-06 Audit, HUB-19 Validation) map query results to plain PHP objects manually or via a thin `TypeMapper`; the DBAL stops at "execute parameterised SQL, return rows as associative arrays."
+Per ADR-013, **MySQL 8.0+ (InnoDB) is the primary backend**. The DBAL also ships a PostgreSQL driver, but it is **disabled by default** and only activated at the next decision scale (see ADR-013); SQLite remains the test/dev fixture (`pdo_sqlite`). Every migration, every DDL example, and every CI fixture targets MySQL/InnoDB semantics first. MySQL-supported features (`JSON` column type with generated-column + functional indexes, `ON UPDATE CURRENT_TIMESTAMP`, `ON DUPLICATE KEY UPDATE` upsert, generated columns) are first-class; the `DriverInterface::supports(string $feature): bool` method gates engine-specific features (e.g. `jsonb`, `partial_index`, `rls`) so a caller on a driver that lacks a feature degrades gracefully or fails loud rather than crashing. This blueprint is **not** an ORM — there is no active-record base class, no model autodiscovery, no lazy-loading proxy, no UnitOfWork. Hub-tier services (HUB-04 Identity, HUB-06 Audit, HUB-19 Validation) map query results to plain PHP objects manually or via a thin `TypeMapper`; the DBAL stops at "execute parameterised SQL, return rows as associative arrays."
 
-The component exists because allowing each Hub service to call `\PDO` directly produces three predictable failure modes: (a) **SQL injection** — direct string concatenation in WHERE clauses; the QueryBuilder's "every value is a named parameter" rule makes this structurally impossible, (b) **dialect drift** — HUB-06 uses `RETURNING *` on PostgreSQL but silently breaks on MySQL; the SchemaBuilder and DriverInterface make the dialect boundary explicit, and (c) **tenant leakage** — a developer who forgets `WHERE tenant_id = ?` on a query against a multi-tenant table leaks data across tenants; the QueryBuilder auto-injects `tenant_id = :tenant_id` when a `TenantContext` is active, which is the application-level complement to PostgreSQL Row-Level Security (HUB-21 owns the RLS policy; CORE-19 owns the application-level guard).
+The component exists because allowing each Hub service to call `\PDO` directly produces three predictable failure modes: (a) **SQL injection** — direct string concatenation in WHERE clauses; the QueryBuilder's "every value is a named parameter" rule makes this structurally impossible, (b) **dialect drift** — HUB-06 must avoid `RETURNING *` (a PostgreSQL-only feature) on the default MySQL driver; the SchemaBuilder and `DriverInterface` make the dialect boundary explicit, and (c) **tenant leakage** — a developer who forgets `WHERE tenant_id = ?` on a query against a multi-tenant table leaks data across tenants; the QueryBuilder auto-injects `tenant_id = :tenant_id` when a `TenantContext` is active, which is the application-level guard that *replaces* engine Row-Level Security (MySQL has no RLS; HUB-21 owns the tenant policy and CORE-19 owns the application-level guard).
 
 What this component is **not**: it is not an ORM (Doctrine ORM is a separate, heavier dependency that downstream Hubs may add if they want active-record semantics; CORE-19 stops at the DBAL layer — Doctrine DBAL was the reference, but this is minimal). It is not a migration runner (CORE-20 Forge owns migration discovery, ordering, and execution; the SchemaBuilder is its building block). It is not a multi-tenant policy engine (HUB-21 Sovereign Nexus owns RLS policies; CORE-19's tenant scoping is an application-level guard that catches the developer-error class of leakage, not a security boundary on its own). It is not a connection pool (PHP-FPM is a shared-nothing process model; pooling is per-request, and the `Connection` is a single PDO instance — persistent connections via `PDO::ATTR_PERSISTENT` are configurable but disabled by default due to connection-state leakage risk).
 
@@ -29,9 +29,9 @@ The implementation does not yet exist. The `packages/core/dbal/` directory has n
 🔴 **Blocked on CORE-10** (Config) for DSN resolution from environment — `Connection::fromConfig(ConfigInterface $config)` requires CORE-10. Tests construct `Connection` directly via `new Connection($dsn, $user, $password, $options)` and do not need CORE-10. **Soft dependency** on CORE-02 (DI Container) for service wiring; **soft dependency** on CORE-09 (Logging) for query-execution logging via the PSR-3 interface (logger is nullable, falls back to a `NullLogger`).
 
 ## Dependency Status
-- **Upward:** `ext-pdo` (always present in PHP 8.3 distributions), `ext-pdo_pgsql` (required for production; suggested for tests, with `ext-pdo_sqlite` as the test-fixture driver). `psr/log:^3.0` for query-execution logging (nullable — `NullLogger` is the default). CORE-10 (Config) for DSN resolution (optional at runtime; tests bypass). CORE-02 (DI Container) for wiring `ConnectionInterface` as a singleton in the container (optional at runtime). No Core-tier component is a *hard* upward dependency — CORE-19 is a leaf primitive over PDO.
-- **Downward:** HUB-04 (Identity) — user storage, session persistence, password-hash columns; HUB-06 (Audit Log) — high-volume append-only audit table with partial indexes on `deleted_at IS NULL`; HUB-01 (Config & Feature Flags) — dynamic tenant overrides stored as JSONB with GIN index; HUB-19 (Validation) — validation-rule registry persisted as JSONB; HUB-21 (Sovereign Nexus) — multi-tenant coordination tables with PostgreSQL RLS policies layered on top of CORE-19's application-level tenant scoping. CORE-20 (Forge) uses `SchemaBuilder` for migration scaffolding. CORE-18 (Kernel) binds `ConnectionInterface` to a single `Connection` instance per request via CORE-02.
-- **Runtime:** `php:^8.3`, `ext-pdo`, `ext-pdo_pgsql` (^8.3 compatible), `psr/log:^3.0`. PostgreSQL 16+ server (per ADR-007). Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`, `doctrine/dbal:^4.0` (dev-only, for the migration test fixtures — not a runtime dependency).
+- **Upward:** `ext-pdo` (always present in PHP 8.3 distributions), `ext-pdo_mysql` (required for production; suggested for tests, with `ext-pdo_sqlite` as the test-fixture driver). `psr/log:^3.0` for query-execution logging (nullable — `NullLogger` is the default). CORE-10 (Config) for DSN resolution (optional at runtime; tests bypass). CORE-02 (DI Container) for wiring `ConnectionInterface` as a singleton in the container (optional at runtime). No Core-tier component is a *hard* upward dependency — CORE-19 is a leaf primitive over PDO.
+- **Downward:** HUB-04 (Identity) — user storage, session persistence, password-hash columns; HUB-06 (Audit Log) — high-volume append-only audit table with generated-column index on `(deleted_at IS NULL)`; HUB-01 (Config & Feature Flags) — dynamic tenant overrides stored as JSON via a generated-column + functional index; HUB-19 (Validation) — validation-rule registry persisted as JSON; HUB-21 (Sovereign Nexus) — multi-tenant coordination tables with application-level tenant scoping (MySQL has no RLS) layered on top of CORE-19's application-level tenant scope. CORE-20 (Forge) uses `SchemaBuilder` for migration scaffolding. CORE-18 (Kernel) binds `ConnectionInterface` to a single `Connection` instance per request via CORE-02.
+- **Runtime:** `php:^8.3`, `ext-pdo`, `ext-pdo_mysql` (^8.3 compatible), `psr/log:^3.0`. MySQL 8 (InnoDB) server (per ADR-013). Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`, `doctrine/dbal:^4.0` (dev-only, for the migration test fixtures — not a runtime dependency).
 
 ## Architectural Design
 
@@ -41,10 +41,10 @@ The implementation does not yet exist. The `packages/core/dbal/` directory has n
 |---|---|---|
 | `Connection` | `final class implements ConnectionInterface` | Wraps a single `\PDO` instance. Constructor takes DSN/user/password/options and forces ERRMODE_EXCEPTION, ASSOC fetch, emulated prepares off. Provides `prepare()`, `query()`, `beginTransaction()`, `commit()`, `rollBack()`, `lastInsertId()`, `exec()`, `quote()`. Tracks a transaction-depth counter for savepoint nesting. Holds a per-instance prepared-statement cache keyed by SQL hash (performance + security: a re-executed query reuses the same `PDOStatement`). |
 | `QueryBuilder` | `final class implements QueryBuilderInterface` | Fluent SELECT/INSERT/UPDATE/DELETE builder. Accumulates state in a `$parts` array (`select`, `from`, `where`, `orderBy`, `limit`, `offset`, `join`, `groupBy`, `having`). `execute()` builds the SQL string with named parameters (`:param_1`, `:param_2`, ...), delegates to `Connection::prepare()`, binds values, executes, returns `array<int, array<string, mixed>>`. WHERE conditions are stored as structured tuples, never concatenated as strings. Auto-injects `tenant_id = :tenant_id` when `TenantContext` is active. |
-| `SchemaBuilder` | `final class` | DDL builder. Methods: `createTable(string $name, \Closure $columns): self`, `addColumn(string $table, string $name, string $type, array $options = []): self`, `createIndex(string $table, array $columns, ?string $name = null, array $options = []): self`, `dropTable(string $name): self`, `execute(): int` (returns affected-row count from `Connection::exec()`). Column definitions are typed via a `ColumnDefinition` value object. Emits PostgreSQL-first DDL; MySQL/SQLite fallbacks via `DriverInterface::supports()`. Used by CORE-20 Forge migrations; not intended for application code. |
+| `SchemaBuilder` | `final class` | DDL builder. Methods: `createTable(string $name, \Closure $columns): self`, `addColumn(string $table, string $name, string $type, array $options = []): self`, `createIndex(string $table, array $columns, ?string $name = null, array $options = []): self`, `dropTable(string $name): self`, `execute(): int` (returns affected-row count from `Connection::exec()`). Column definitions are typed via a `ColumnDefinition` value object. Emits MySQL-first DDL; MySQL/SQLite fallbacks via `DriverInterface::supports()`. Used by CORE-20 Forge migrations; not intended for application code. |
 | `Transaction` | `final class` | Nested-transaction manager via savepoints. Outer `begin()` calls `Connection::beginTransaction()`; nested `begin()` calls `exec("SAVEPOINT sp_n")`. `commit()` releases the savepoint or commits the outer transaction. `rollBack()` rolls back to the savepoint or rolls back the outer transaction. Constructor takes a `ConnectionInterface`. Disposable: one `Transaction` instance per logical unit of work; not reusable after commit/rollback. |
-| `TypeMapper` | `final class` | PHP-type ↔ SQL-type mapper. Maps `\DateTimeInterface` → PostgreSQL `TIMESTAMPTZ` (formatted as `Y-m-d\TH:i:s.uP`), `\DateInterval` → `INTERVAL`, `bool` → `boolean` (true/false literals, not 1/0), `int` → native, `float` → native, `null` → `NULL`, `string` → native, `array` → PostgreSQL `ANY(:param)` (for `WHERE id = ANY(:ids)` IN-lists), ULID strings → `CHAR(26)`. Bidirectional: `toSql(mixed $value): mixed` for binding, `fromSql(string $sqlType, mixed $value): mixed` for fetching (e.g., TIMESTAMPTZ → `\DateTimeImmutable`). |
-| `DriverInterface` | `interface` | Backend feature-detection contract. `getName(): string` (`'pgsql'`, `'mysql'`, `'sqlite'`), `supports(string $feature): bool` (returns true for `'jsonb'`, `'partial_index'`, `'rls'`, `'returning'`, `'upsert'` on PostgreSQL; subset on MySQL/SQLite), `quoteIdentifier(string $name): string`. Implementations: `PgsqlDriver`, `MysqlDriver`, `SqliteDriver`. |
+| `TypeMapper` | `final class` | PHP-type ↔ SQL-type mapper. Maps `\DateTimeInterface` → MySQL `TIMESTAMP(6)` (formatted as `Y-m-d H:i:s.u`), `\DateInterval` → `VARCHAR` (ISO8601), `bool` → `TINYINT(1)` (1/0 literals), `int` → native, `float` → native, `null` → `NULL`, `string` → native, `array`/`object` → `JSON` (encoded via `json_encode`), ULID strings → `CHAR(26)`. Bidirectional: `toSql(mixed $value): mixed` for binding, `fromSql(string $sqlType, mixed $value): mixed` for fetching (e.g., `TIMESTAMP(6)` → `\DateTimeImmutable`). |
+| `DriverInterface` | `interface` | Backend feature-detection contract. `getName(): string` (`'mysql'`, `'pgsql'`, `'sqlite'`), `supports(string $feature): bool` (the default MySQL driver returns true for `'json'` via generated-column + functional index, and `'upsert'` (`ON DUPLICATE KEY UPDATE`); false for `'jsonb'`, `'partial_index'`, `'rls'`, `'returning'` — the PostgreSQL driver, **disabled by default**, returns true for those when explicitly enabled). `quoteIdentifier(string $name): string`. Implementations: `MysqlDriver` (default, enabled), `PgsqlDriver` (shipped, disabled by default), `SqliteDriver`. |
 | `DatabaseException` | `final class extends \RuntimeException` | Marker exception for all DBAL errors. Wraps `\PDOException` with a structured message (SQL state, driver message, the offending SQL hash — never the full SQL with parameter values, to avoid leaking secrets to logs). Constructor takes `(string $message, int $code = 0, ?\Throwable $previous = null, ?string $sqlHash = null)`. |
 | `TenantContext` | `final class` | Immutable value object carrying the active tenant ULID. Constructed by HUB-04 (Identity) after authentication. Stored in a request-scoped service container; `QueryBuilder` checks `TenantContext::isActive()` and auto-injects `WHERE tenant_id = :tenant_id`. `null` tenant context = unscoped queries (for system tables, migrations, fixtures) — explicitly logged as unscoped. |
 
@@ -142,7 +142,7 @@ interface ConnectionInterface
     /**
      * Return the ID of the last inserted row.
      *
-     * @param string|null $name Sequence name (PostgreSQL). Pass null for
+     * @param string|null $name Sequence name (engine-specific; MySQL uses AUTO_INCREMENT or a ULID). Pass null for
      *     SERIAL/IDENTITY columns.
      * @return string The ID as a string (ULIDs are 26-char strings; bigint
      *     IDs are stringified to avoid int overflow on 32-bit PHP).
@@ -377,7 +377,7 @@ final class QueryBuilder implements QueryBuilderInterface
     public function execute(): array
     {
         // Auto-inject tenant scoping. This is the application-level guard
-        // that complements PostgreSQL Row-Level Security (HUB-21). It
+        // that complements the DBAL tenant scope (HUB-21); MySQL has no RLS. It
         // catches developer-error queries that forget the WHERE clause;
         // it is NOT a security boundary on its own.
         if ($this->tenant !== null && $this->tenant->isActive()) {
@@ -521,51 +521,33 @@ final class QueryBuilder implements QueryBuilderInterface
 
 ### SQL DDL
 
-Canonical PostgreSQL DDL for the `users` table — the reference fixture for HUB-04 (Identity). ULID primary keys (CHAR(26)) per ADR-009; tenant FK enforced at the column level (DB-level complement to CORE-19's application-level tenant scoping); `TIMESTAMPTZ` for all timestamps; partial index on the active-rows predicate is a HUB-06 pattern shown here for reference.
+Canonical MySQL DDL for the `users` table — the reference fixture for HUB-04 (Identity). ULID primary keys (CHAR(26)) per ADR-009; tenant FK enforced at the column level (DB-level complement to CORE-19's application-level tenant scoping); `TIMESTAMP(6)` for all timestamps; generated-column index on the active-rows predicate is a HUB-06 pattern shown here for reference.
 
 ```sql
 -- CORE-19 reference DDL: users table (HUB-04 Identity)
--- Target: PostgreSQL 16+ (per ADR-007)
+-- Target: MySQL 8 (InnoDB) (per ADR-013)
 
 CREATE TABLE users (
-    id            CHAR(26)    PRIMARY KEY,                                  -- ULID per ADR-009
-    tenant_id     CHAR(26)    NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    id            CHAR(26)     NOT NULL,
+    tenant_id     CHAR(26)     NOT NULL,
     email         VARCHAR(255) NOT NULL,
-    password_hash TEXT        NOT NULL,                                      -- argon2id hash
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at    TIMESTAMPTZ,                                               -- soft-delete; NULL = active
+    password_hash TEXT         NOT NULL,                          -- argon2id hash
+    created_at    TIMESTAMP(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at    TIMESTAMP(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at    TIMESTAMP(6)  DEFAULT NULL,
+    is_live       TINYINT(1)    NOT NULL DEFAULT 1,              -- see generated column below
+    PRIMARY KEY (id),
+    CONSTRAINT fk_users_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE RESTRICT,
+    UNIQUE KEY uk_users_tenant_email (tenant_id, email),
+    KEY idx_users_tenant (tenant_id),
+    KEY idx_users_tenant_email (tenant_id, email),
+    KEY idx_users_tenant_active (tenant_id, is_live)             -- emulates PostgreSQL partial index
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-    -- Cross-tenant uniqueness: a tenant cannot have two users with the same email.
-    UNIQUE (tenant_id, email)
-);
-
--- Hot lookup path: list users within a tenant.
-CREATE INDEX idx_users_tenant ON users(tenant_id);
-
--- Hot lookup path: login by email within a tenant.
-CREATE INDEX idx_users_tenant_email ON users(tenant_id, email);
-
--- Partial index: skip soft-deleted rows on the common list query.
--- This is a PostgreSQL-only feature (per ADR-007); gated behind
--- DriverInterface::supports('partial_index') in SchemaBuilder.
-CREATE INDEX idx_users_tenant_active ON users(tenant_id)
-    WHERE deleted_at IS NULL;
-
--- updated_at auto-maintenance trigger (PostgreSQL does not have an
--- ON UPDATE CURRENT_TIMESTAMP clause; this is the canonical pattern).
-CREATE OR REPLACE FUNCTION touch_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER users_touch_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION touch_updated_at();
+-- Emulate PostgreSQL "WHERE deleted_at IS NULL" partial index: a stored generated column.
+ALTER TABLE users
+    MODIFY is_live TINYINT(1) GENERATED ALWAYS AS (deleted_at IS NULL) STORED NOT NULL;
+```
 ```
 
 ### Sequence Diagram
@@ -675,9 +657,9 @@ stateDiagram-v2
 **Downward (what consumes CORE-19):**
 - HUB-04 (Identity) — `users`, `sessions`, `password_resets` tables; uses `QueryBuilder` for all queries; depends on auto-tenant-scoping for `users` and `sessions`.
 - HUB-06 (Audit Log) — `audit_log` table with high write volume; uses `Connection::prepare()` directly (not `QueryBuilder`) for batch inserts; uses partial indexes (`WHERE deleted_at IS NULL`) gated on `DriverInterface::supports('partial_index')`.
-- HUB-01 (Config & Feature Flags) — `tenant_overrides` table with JSONB column; uses `QueryBuilder::where('overrides', $payload, 'JSONB_CONTAINS')` (operator mapped to PostgreSQL `@>`; throws `DatabaseException` on MySQL).
-- HUB-19 (Validation) — `validation_rules` table with JSONB column for rule definitions; same JSONB pattern.
-- HUB-21 (Sovereign Nexus) — multi-tenant coordination; layers PostgreSQL RLS policies on top of CORE-19's application-level tenant scoping (defense in depth).
+- HUB-01 (Config & Feature Flags) — `tenant_overrides` table with JSON column; uses `QueryBuilder::where('overrides', $payload, 'JSON_CONTAINS')` (operator mapped to MySQL `JSON_CONTAINS`; throws `DatabaseException` on the PostgreSQL driver when enabled).
+- HUB-19 (Validation) — `validation_rules` table with JSON column for rule definitions; same JSON pattern.
+- HUB-21 (Sovereign Nexus) — multi-tenant coordination; layers application-level tenant scoping (MySQL has no RLS) on top of CORE-19's application-level tenant scope (defense in depth).
 - CORE-20 (Forge) — uses `SchemaBuilder` for the migration scaffold; migrations are PHP files that call `$schema->createTable('users', function (ColumnDefinition $c) { ... })`.
 
 **Concrete wiring example (CORE-02 Container binding):**
@@ -705,24 +687,24 @@ $container->singleton(QueryBuilderInterface::class, function (Container $c): Que
 
 | Target | Method |
 |---|---|
-| SELECT throughput (prepared-statement reuse) | Harness: `phpunit --group performance`, baseline: GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, PostgreSQL 16 via local Unix socket (no TLS), 4-core runner. Load: 10 000-row `users` table; 1 000 SELECT queries (`SELECT id, email FROM users WHERE tenant_id = :tenant_id AND email = :param_1 LIMIT 10`), each with a distinct random `email` value drawn from the fixture. Wall-clock via `microtime(true)`; median of 5 runs after 100-query warm-up. Provisional, unverified: expect sub-millisecond per-query on the local-socket baseline; absolute number recorded in `docs/perf/CORE-19-baselines.md` on first CI run. |
+| SELECT throughput (prepared-statement reuse) | Harness: `phpunit --group performance`, baseline: GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, MySQL 8 (InnoDB) via local Unix socket (no TLS), 4-core runner. Load: 10 000-row `users` table; 1 000 SELECT queries (`SELECT id, email FROM users WHERE tenant_id = :tenant_id AND email = :param_1 LIMIT 10`), each with a distinct random `email` value drawn from the fixture. Wall-clock via `microtime(true)`; median of 5 runs after 100-query warm-up. Provisional, unverified: expect sub-millisecond per-query on the local-socket baseline; absolute number recorded in `docs/perf/CORE-19-baselines.md` on first CI run. |
 | Prepared-statement reuse vs re-prepare | Same harness and baseline as above. Two runs: (a) `Connection` with the per-instance prepared-statement cache enabled (default), (b) cache disabled (each `prepare()` call hits `\PDO::prepare()`). Compare medians. Provisional, unverified: expect cache-enabled to be measurably faster (single-digit percent); the absolute delta recorded on first CI run. |
 | Transaction round-trip | Harness: `phpunit --group performance`. Load: 1 000 cycles of `beginTransaction() → INSERT one row → commit()`. Compare against 1 000 bare `INSERT` statements (no transaction). Provisional, unverified: expect the transaction-wrapped insert to be faster on aggregate (one fsync vs 1 000). |
 | Nested transaction (savepoint) overhead | Harness: `phpunit --group performance`. Load: 1 000 cycles of outer-begin → inner-begin (SAVEPOINT) → INSERT → inner-rollback (ROLLBACK TO SAVEPOINT) → outer-commit. Compare against flat single-transaction equivalent. Provisional, unverified: expect savepoint to add single-digit-percent overhead vs flat. |
 
-**Iron rule compliance:** No bare millisecond targets. Every target names the harness (PHPUnit `--group performance`), the baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug, PostgreSQL 16, local socket), and the load model (1 000 queries on a 10 000-row table). Every absolute number is marked "provisional, unverified" per Governance Rule 2 in `01_MASTER_INDEX.md`. The first CI run on a tagged release writes the measured numbers to `docs/perf/CORE-19-baselines.md` and removes the "provisional, unverified" markers from any target that lands.
+**Iron rule compliance:** No bare millisecond targets. Every target names the harness (PHPUnit `--group performance`), the baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug, MySQL 8 (InnoDB), local socket), and the load model (1 000 queries on a 10 000-row table). Every absolute number is marked "provisional, unverified" per Governance Rule 2 in `01_MASTER_INDEX.md`. The first CI run on a tagged release writes the measured numbers to `docs/perf/CORE-19-baselines.md` and removes the "provisional, unverified" markers from any target that lands.
 
 ## CI Verification Criteria
 
 - **Branch coverage: 100%** on `QueryBuilder` (`select`, `from`, `where`, `orWhere`, `orderBy`, `limit`, `offset`, `execute`, `toSql`, `addCondition`, `nextParamName`, `assertIdentifier`, `pdoType`, `hashSql`) and on `Connection` (`prepare`, `query`, `exec`, `beginTransaction`, `commit`, `rollBack`, `lastInsertId`, `quote`, `getTransactionNestingLevel`). The tenant-context branches (active / inactive / explicit-tenant-condition-already-present) must each be covered. Measured via `phpunit --coverage-html` with `xdebug` enabled in the CI matrix.
 - **Static analysis: phpstan level 8** with `bleedingEdge` enabled. Zero baseline-ignored errors. The `mixed` type in `where(string $column, mixed $value, ...)` is acceptable (the value flows through `TypeMapper::toSql()` which has a return type); phpstan must not flag it.
-- **SQL injection test:** A `@dataProvider` of 50 payloads (including `'; DROP TABLE users; --`, `' OR '1'='1`, `'; --`, `' UNION SELECT * FROM sessions --`, `"\xff\x27"` byte-sequence, `' OR ''='`, `' /* comment */`, `1; WAITFOR DELAY '0:0:5'` even though PostgreSQL ignores it). Each payload is passed as the `email` value to `QueryBuilder::where('email', $payload)->execute()`. The test asserts (a) no exception is thrown (the payload is bound as a string literal, never executed as SQL), (b) the `users` table still exists after the test (`SELECT COUNT(*) FROM users` succeeds), (c) the returned row count is 0 (the payload does not match any email). Additional negative test: a direct attempt to inject a column-name payload via `where("email; DROP TABLE users", 'x')` throws `InvalidArgumentException` (the identifier validator rejects it).
-- **Transaction rollback test:** `begin() → INSERT a row → rollBack()`. After rollback, `SELECT * FROM users WHERE id = :id` returns 0 rows. The test runs on all three drivers (PostgreSQL, MySQL, SQLite).
+- **SQL injection test:** A `@dataProvider` of 50 payloads (including `'; DROP TABLE users; --`, `' OR '1'='1`, `'; --`, `' UNION SELECT * FROM sessions --`, `"\xff\x27"` byte-sequence, `' OR ''='`, `' /* comment */`, `1; WAITFOR DELAY '0:0:5'` even though MySQL ignores it). Each payload is passed as the `email` value to `QueryBuilder::where('email', $payload)->execute()`. The test asserts (a) no exception is thrown (the payload is bound as a string literal, never executed as SQL), (b) the `users` table still exists after the test (`SELECT COUNT(*) FROM users` succeeds), (c) the returned row count is 0 (the payload does not match any email). Additional negative test: a direct attempt to inject a column-name payload via `where("email; DROP TABLE users", 'x')` throws `InvalidArgumentException` (the identifier validator rejects it).
+- **Transaction rollback test:** `begin() → INSERT a row → rollBack()`. After rollback, `SELECT * FROM users WHERE id = :id` returns 0 rows. The test runs on the MySQL driver (primary) and SQLite; the PostgreSQL driver is exercised only when explicitly enabled at the next decision scale.
 - **Nested transaction test:** `outer-begin → INSERT row A → inner-begin → INSERT row B → inner-rollBack → outer-commit`. After commit, row A exists, row B does not. Then a second test: `outer-begin → INSERT row A → inner-begin → INSERT row B → inner-commit → outer-rollBack`. After rollback, neither row exists (the inner commit only released the savepoint; the outer rollback rolled back everything).
 - **Type mapping test (round-trip):** Insert a row with `created_at = new \DateTimeImmutable('2026-08-04T12:34:56.789+02:00')`. Fetch the row back. Assert the fetched `created_at` (via `TypeMapper::fromSql('timestamptz', $value)`) equals the original `\DateTimeImmutable` to microsecond precision, including timezone offset. Repeat with `bool` (true / false), `null`, `int`, `float`, ULID string.
 - **Tenant-scoping test:** With `TenantContext` active (tenantId='T1'), call `QueryBuilder::from('users')->execute()`. Assert the built SQL (via `toSql()`) contains `WHERE tenant_id = :tenant_id AND` (auto-prepended). Assert the bound `:tenant_id` equals 'T1'. Then with `TenantContext` inactive, assert no tenant_id clause is added. Then with `TenantContext` active AND an explicit `where('tenant_id', 'T2')` call, assert the explicit condition is preserved and no duplicate auto-condition is added.
 - **Prepared-statement cache test:** Call `Connection::prepare($sql)` twice with the same SQL. Assert the returned `\PDOStatement` is the same object instance (`spl_object_id()` matches). Call with different SQL. Assert different instances.
-- **Driver parity test:** The same `QueryBuilder` code (`select('id')->from('users')->where('email', 'x@y.z')->execute()`) produces a result set on PostgreSQL 16 and SQLite 3.44 (in-memory). MySQL is tested only in the optional extended CI matrix. The test asserts the SQL string differs only in dialect-specific syntax (e.g., `LIMIT 10 OFFSET 5` vs `LIMIT 5, 10` — the QueryBuilder emits the standard form, which PostgreSQL and SQLite accept).
+- **Driver parity test:** The same `QueryBuilder` code (`select('id')->from('users')->where('email', 'x@y.z')->execute()`) produces a result set on MySQL 8 (InnoDB) and SQLite 3.44 (in-memory). The PostgreSQL driver is exercised only when enabled. The test asserts the SQL string differs only in dialect-specific syntax (e.g., `LIMIT 10 OFFSET 5` vs `LIMIT 5, 10` — the QueryBuilder emits the standard form, which MySQL/SQLite accept).
 - **Connection lifecycle test:** A `Connection` that has an open transaction at end-of-request (simulated via `register_shutdown_function`) MUST roll back automatically and log a warning. The test asserts no row was committed.
 
 ## Security Properties
@@ -730,8 +712,8 @@ $container->singleton(QueryBuilderInterface::class, function (Container $c): Que
 1. **No string concatenation of user input into SQL.** The `QueryBuilder` accumulates WHERE conditions as structured tuples (`['column', 'operator', 'value']`) and only emits parameter placeholders (`:param_n`) into the SQL string. The `Connection::quote()` method exists but is annotated for DDL-only use; application queries that use `quote()` for values are flagged in code review and rejected by the CI static-analysis rule (`phpstan` custom rule forbidding `Connection::quote()` outside `SchemaBuilder`). This is the structural SQL-injection defense.
 2. **Operator and identifier allowlists.** The `where()` operator is validated against `['=', '!=', '<', '>', '<=', '>=', 'LIKE', 'ILIKE']`; anything else throws `InvalidArgumentException`. Column names are validated against `[A-Za-z_][A-Za-z0-9_.]*`; this prevents `where("email; DROP TABLE users", ...)` from reaching the SQL layer. The `IN` and `IS NULL` operators are handled by separate methods (`whereIn()`, `whereNull()`) not shown in the reference implementation but part of the full interface.
 3. **Prepared statements cached per connection.** A re-executed query reuses the same `\PDOStatement`. This is both a performance property (no re-parse) and a security property (the parameter-binding protocol is exercised consistently; there is no path where a "fast path" bypasses binding).
-4. **Transaction isolation level configurable; default READ COMMITTED.** Set via `Connection::setIsolationLevel(string $level)` (accepts `'READ UNCOMMITTED'`, `'READ COMMITTED'`, `'REPEATABLE READ'`, `'SERIALIZABLE'`). Default `READ COMMITTED` matches PostgreSQL's default and is the safest level for the Sovereign Stack's workload (HUB-06 Audit Log cannot afford `SERIALIZABLE` overhead; HUB-04 Identity does not need `REPEATABLE READ`). The isolation level is set per-transaction via `SET TRANSACTION ISOLATION LEVEL ...` issued inside `beginTransaction()`; CI test asserts the level is observable via `SHOW transaction_isolation`.
-5. **Tenant scoping enforced at the QueryBuilder level.** When `TenantContext::isActive()` returns true, every query auto-prepends `WHERE tenant_id = :tenant_id` (unless an explicit `tenant_id` condition is already present). This catches the developer-error class of leakage (forgot the WHERE clause). It is **not** a security boundary on its own — a malicious caller can construct a `Connection` without a `TenantContext` and emit unscoped queries. The hard security boundary is PostgreSQL Row-Level Security (HUB-21), which CORE-19's tenant scoping complements. Both layers must pass for a query to return cross-tenant data.
+4. **Transaction isolation level configurable; default READ COMMITTED.** Set via `Connection::setIsolationLevel(string $level)` (accepts `'READ UNCOMMITTED'`, `'READ COMMITTED'`, `'REPEATABLE READ'`, `'SERIALIZABLE'`). Default `READ COMMITTED` matches MySQL's default and is the safest level for the Sovereign Stack's workload (HUB-06 Audit Log cannot afford `SERIALIZABLE` overhead; HUB-04 Identity does not need `REPEATABLE READ`). The isolation level is set per-transaction via `SET TRANSACTION ISOLATION LEVEL ...` issued inside `beginTransaction()`; CI test asserts the level is observable via `SELECT @@transaction_isolation`.
+5. **Tenant scoping enforced at the QueryBuilder level.** When `TenantContext::isActive()` returns true, every query auto-prepends `WHERE tenant_id = :tenant_id` (unless an explicit `tenant_id` condition is already present). This catches the developer-error class of leakage (forgot the WHERE clause). It is **not** a security boundary on its own — a malicious caller can construct a `Connection` without a `TenantContext` and emit unscoped queries. The hard boundary is the DBAL tenant scope (MySQL has no Row-Level Security); HUB-21 owns the tenant policy that CORE-19's tenant scoping complements. Both layers must pass for a query to return cross-tenant data.
 6. **Parameter values never logged.** The PSR-3 logger receives the SQL hash, parameter count, row count, and elapsed time — never the parameter values themselves. This prevents PII (email addresses, password hashes — though password hashes are never queried by value) and secrets (API keys stored in HUB-01 config overrides) from leaking into log aggregators.
 7. **ABORTED transaction state.** If a nested transaction rolls back, the outer transaction is marked ABORTED. A subsequent `commit()` on the outer transaction throws `DatabaseException` rather than persisting partial writes. This prevents the "partial commit after inner failure" anti-pattern.
 
@@ -742,7 +724,7 @@ $container->singleton(QueryBuilderInterface::class, function (Container $c): Que
 1. Create `packages/core/dbal/` with the following layout:
    ```
    packages/core/dbal/
-     composer.json          # php:^8.3, ext-pdo, ext-pdo_pgsql, psr/log:^3.0
+     composer.json          # php:^8.3, ext-pdo, ext-pdo_mysql, psr/log:^3.0
      src/
        Connection.php
        ConnectionInterface.php
@@ -777,12 +759,12 @@ $container->singleton(QueryBuilderInterface::class, function (Container $c): Que
    ```
 2. Add `packages/core/dbal/composer.json` with `psr-4: { "SovereignStack\\Core\\Database\\": "src/" }` and the runtime deps listed in Dependency Status.
 3. Register the service provider in `packages/core/kernel/providers.php` (CORE-17): bind `ConnectionInterface` and `QueryBuilderInterface` per the Integration Strategy example.
-4. Add `ext-pdo_pgsql` to the CI matrix (GitHub Actions) — currently only `ext-pdo_sqlite` is in the workflow.
-5. Add a PostgreSQL 16 service container to the GitHub Actions workflow:
+4. Add `ext-pdo_mysql` to the CI matrix (GitHub Actions) — currently only `ext-pdo_sqlite` is in the workflow.
+5. Add a MySQL 8 (InnoDB) service container to the GitHub Actions workflow:
    ```yaml
    services:
-     postgres:
-       image: postgres:16
+     mysql:
+       image: mysql:8
        env: { POSTGRES_PASSWORD: test }
        ports: ['5432:5432']
        options: >-
@@ -791,9 +773,9 @@ $container->singleton(QueryBuilderInterface::class, function (Container $c): Que
          --health-timeout 5s
          --health-retries 5
    ```
-6. Land in Step 5 of the build sequence (parallelisable with CORE-14, CORE-15, CORE-16). Exit criterion: all CI criteria above pass on PostgreSQL 16 + SQLite 3.44.
+6. Land in Step 5 of the build sequence (parallelisable with CORE-14, CORE-15, CORE-16). Exit criterion: all CI criteria above pass on MySQL 8 (InnoDB) + SQLite 3.44.
 
-**Rollback procedure:** `git rm packages/core/dbal/ && composer remove sovereign-stack/core-dbal`. Downstream impact: HUB-04, HUB-06, HUB-01, HUB-19, HUB-21 cannot persist data; the Hub tier becomes read-only-if-cached, write-blocked. CORE-20 Forge's migration scaffolding falls back to raw SQL strings (degraded mode). No data migration is needed on rollback — the schema lives in PostgreSQL and persists independently of the DBAL package.
+**Rollback procedure:** `git rm packages/core/dbal/ && composer remove sovereign-stack/core-dbal`. Downstream impact: HUB-04, HUB-06, HUB-01, HUB-19, HUB-21 cannot persist data; the Hub tier becomes read-only-if-cached, write-blocked. CORE-20 Forge's migration scaffolding falls back to raw SQL strings (degraded mode). No data migration is needed on rollback — the schema lives in MySQL/InnoDB and persists independently of the DBAL package.
 
 **Compatibility notes:**
 - No existing Core-tier code type-hints `ConnectionInterface` today (verified 2026-08-04 — the package does not exist). The 1.0.0 contract is the surface defined in this blueprint's Interface Contracts section.
@@ -812,4 +794,4 @@ Subsequent **minor** versions may add: `whereIn()`, `whereNull()`, `join()`, `gr
 
 A **major** version is required only if: (a) any method signature on `ConnectionInterface` or `QueryBuilderInterface` changes incompatibly, (b) `DatabaseException` no longer extends `\RuntimeException`, (c) the prepared-statement cache contract changes (e.g., from per-Connection to per-process), (d) tenant-scoping semantics change (e.g., from opt-out to opt-in), (e) the `QueryExecuted` event payload loses fields.
 
-The PostgreSQL-first dialect choice (ADR-007) is **not** a SemVer-major concern: adding MySQL or SQLite support is additive (new `DriverInterface` implementations), and removing PostgreSQL support is not anticipated.
+The MySQL-first dialect choice (ADR-013) is **not** a SemVer-major concern: adding MySQL or SQLite support is additive (new `DriverInterface` implementations), and removing PostgreSQL support is not anticipated.

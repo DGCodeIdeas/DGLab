@@ -1,62 +1,92 @@
-# ISPOKE-18: Scheduled Task Manager
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
+# PHASE ISPOKE-18: Sovereign Cron (Scheduling)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Cron (Scheduling) — `SovereignStack\Internal\Cron`
+Sovereign Cron — `SovereignStack\Internal\Cron`. UI + engine for defining, scheduling, monitoring, and
+managing recurring background tasks: cron-expression configuration, failure notification, retry policy.
 
 ## Description
-A UI and engine for defining, scheduling, monitoring, and managing recurring background tasks. Cron-expression configuration with failure notification and retry policies.
+ISPOKE-18 is the operator console for recurring jobs. Schedules are expressed as standard cron
+expressions (optionally with time-zone + jitter). The console persists schedule definitions; the actual
+firing is delegated to **HUB-25 (Sovereign Chronos — Scheduler)**, which emits a trigger that ISPOKE-18
+catches and dispatches to **HUB-10 (Sovereign Queue)** for execution. ISPOKE-18 owns the run ledger,
+retry policy, and failure alerting (HUB-12 Notify).
 
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-18 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+It is a **management plane**, not a scheduler daemon — HUB-25 is the scheduler; HUB-10 is the executor.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-10 (Queue), HUB-01 (Config), HUB-15 (Health), ISPOKE-07 (Notifications)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Extends ISPOKE-08 (Workflow Engine) with time-based trigger capabilities not covered in the base workflow definition.
-
-**Estimated documentation window:** Weeks 30–34 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** HUB-25 (Sovereign Chronos — schedule firing), HUB-10 (Sovereign Queue — job execution),
+  HUB-12 (Sovereign Notify — failure alerts), HUB-07 (Sovereign Throttle — per-tenant dispatch rate),
+  HUB-06 (Sovereign Auditor — run ledger), HUB-15 (Sovereign Pulse — worker health), HUB-21 (Sovereign
+  Nexus — tenancy scoping), CORE-19 (Database — schedule + run store), ISPOKE-08 (hosts shared task
+  definitions).
+- **Downward:** ISPOKE-01 (UI shell).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `Schedule` | `final readonly class` | `tenant_id`, `cron_expr`, `timezone`, `task`, `retry_policy`, `enabled`. |
+| `SchedulerConsoleInterface` | interface | `define(Schedule $s): void`, `enable(string $id): void`, `disable(string $id): void`, `runs(string $id): RunPage`. |
+| `TriggerHandler` | class | Consumes HUB-25 triggers; enqueues HUB-10 jobs; records runs. |
+| `RetryPolicy` | `final readonly class` | `max_attempts`, `backoff` (fixed|expo), `backoff_ms`. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\Cron;
+
+interface SchedulerConsoleInterface
+{
+    public function define(Schedule $schedule): string;
+    public function enable(string $scheduleId): void;
+    public function disable(string $scheduleId): void;
+    public function runs(string $scheduleId): RunPage;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE cron_schedules (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id    ULID NOT NULL REFERENCES tenants(id),
+    cron_expr    text NOT NULL,
+    timezone     text NOT NULL DEFAULT 'UTC',
+    task         text NOT NULL,
+    retry_policy jsonb NOT NULL,
+    enabled      boolean NOT NULL DEFAULT true,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE cron_runs (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    schedule_id  ULID NOT NULL REFERENCES cron_schedules(id),
+    status       text NOT NULL CHECK (status IN ('queued','running','success','failed','retrying')),
+    attempts     integer NOT NULL DEFAULT 0,
+    finished_at  timestamptz,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves HUB-25/HUB-10/HUB-12/HUB-07/HUB-06/HUB-15/HUB-21/CORE-19 through the container
+(CORE-02). **Downward:** UI in ISPOKE-01.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Schedule definitions are tenancy-scoped (HUB-21); a tenant cannot enqueue work for another.
+2. Retry storms are bounded by `RetryPolicy` + HUB-07 throttling; a poisoned task backs off, never
+   spins.
+3. Every run is audited (HUB-06); disabled schedules cannot fire (HUB-25 honours the `enabled` flag).
+4. Failure alerts route through HUB-12 with the run id and last error hash (CORE-16).
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `RetryPolicy` computes the expected backoff sequence for fixed + exponential; a disabled
+  schedule is rejected by `enable()` guard.
+- Integration (MySQL 8 (InnoDB) + HUB-10 stub): defining a schedule writes `cron_schedules`; a simulated
+  HUB-25 trigger enqueues exactly one HUB-10 job and creates a `cron_runs` row.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `TriggerHandler`.

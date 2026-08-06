@@ -1,62 +1,84 @@
-# ISPOKE-23: Role Simulation Lab
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
+# PHASE ISPOKE-23: Sovereign Role Play (Simulation)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Role Play (Simulation) — `SovereignStack\Internal\RolePlay`
+Sovereign Role Play — `SovereignStack\Internal\RolePlay`. Sandbox for testing RBAC configurations before
+deployment: "what-if" analysis of permission changes, role preview, conflict detection.
 
 ## Description
-A sandbox environment for testing RBAC configurations before deployment. "What-if" analysis showing permission changes impact, role preview, and conflict detection.
-
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-23 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+ISPOKE-23 lets administrators preview the effect of a proposed RBAC change (new role, permission grant,
+role merge) against a **simulated** subject, without touching live policy in **HUB-05 (Sovereign
+Guardian)**. It clones the current policy graph, applies the candidate change in the clone, and reports
+the resulting effective permissions plus any conflicts (e.g. a Permission X granted to a role that is
+denied elsewhere, or a separation-of-duties violation). It is read-only against production and writes
+only to its own simulation store.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-05 (RBAC), HUB-04 (Identity), HUB-01 (Config)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Depends on ISPOKE-04 (Staff Identity) and HUB-05 (RBAC Engine) for the role definitions and permission model to simulate.
-
-**Estimated documentation window:** Weeks 40–43 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** HUB-05 (Sovereign Guardian — live policy source + the target it previews), ISPOKE-04
+  (Sovereign Staff Hub — the staff identity entry gate), CORE-19 (Database — simulation store), HUB-06
+  (Sovereign Auditor — simulation audit), HUB-21 (Sovereign Nexus — tenancy scoping).
+- **Downward:** ISPOKE-01 (UI shell).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `PolicyPatch` | `final readonly class` | A candidate change: `grant`\|`revoke`\|`merge` on a role/permission. |
+| `RolePlayInterface` | interface | `simulate(PolicyPatch $p, string $tenantId): SimulationResult`, `conflicts(string $tenantId): ConflictPage`. |
+| `PolicyCloner` | class | Snapshots HUB-05 graph into the simulation store. |
+| `ConflictDetector` | class | Computes effective perms + flags SoD/deny conflicts. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\RolePlay;
+
+interface RolePlayInterface
+{
+    public function simulate(PolicyPatch $patch, string $tenantId): SimulationResult;
+    public function conflicts(string $tenantId): ConflictPage;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE sim_policies (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id   ULID NOT NULL REFERENCES tenants(id),
+    snapshot    jsonb NOT NULL,          -- cloned HUB-05 graph
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE sim_results (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    sim_id       ULID NOT NULL REFERENCES sim_policies(id),
+    patch        jsonb NOT NULL,
+    effective_perms jsonb NOT NULL,
+    conflicts    jsonb NOT NULL DEFAULT '[]'::jsonb,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves HUB-05/ISPOKE-04/CORE-19/HUB-06/HUB-21 through the container (CORE-02). **Downward:**
+UI in ISPOKE-01.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Simulation is strictly read-only against HUB-05; the clone is isolated and never promoted without an
+   explicit admin action outside ISPOKE-23.
+2. Conflict detection surfaces separation-of-duties violations before a real grant — the whole point of
+   the sandbox.
+3. Simulations are tenancy-scoped (HUB-21); a clone cannot read another tenant's policy.
+4. Every simulation is audited (HUB-06) with the proposing operator id.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `ConflictDetector` flags a deny/grant collision and an SoD violation on seeded graphs; a clean
+  patch yields zero conflicts.
+- Integration (MySQL 16): `simulate()` writes `sim_results` with the expected `effective_perms`
+  and `conflicts`.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `ConflictDetector`.

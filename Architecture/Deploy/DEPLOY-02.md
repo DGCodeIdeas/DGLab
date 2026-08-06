@@ -1,72 +1,60 @@
 # DEPLOY-02: Datastore Provisioning
 
-> **Stub blueprint.** Scoped in `INDEX.md` §6; not yet authored to the `AUTHORING_GUIDE.md` fidelity
-> bar. Phase-2 work. Nothing may depend on an interface from this file.
-
 ## Tier
 Deploy
 
-## Resolves
-Finding 9 (`Critiques/00_CRITIQUE.md`) — the only Deploy blueprint that existed deployed documentation,
-not the application or its datastores.
-
 ## Component Name
-Sovereign Datastore Provisioning — no PHP namespace (infrastructure-as-code, not a PHP package)
+Datastore Provisioning — the operational blueprint for provisioning and operating the stateful tier:
+MySQL 8 (InnoDB) (primary datastore, ADR-013), Redis 7 (cache + queue + session, ADR-006), and the queue
+broker; secret custody via HUB-20 (Sovereign Vault) / sealed-secrets; backup/restore wired to ISPOKE-24.
 
 ## Description
-Provisioning, configuration, and lifecycle management of the stateful services the Sovereign Stack
-depends on: the **PostgreSQL 16** primary (ADR-007), **Redis 7** (ADR-006), and the queue broker
-backing `HUB-10`. Covers connection-secret management (`HUB-20` Vault or sealed-secrets — never a
-plain compose environment variable in production), replica topology, backup/restore runbooks, and
-point-in-time-recovery verification.
-
-**Explicit non-goals:** application container builds (`DEPLOY-01`), public-edge deployment
-(`DEPLOY-03`), environment promotion (`DEPLOY-04`).
+DEPLOY-02 owns everything with a disk. It provisions MySQL 8 (InnoDB) (JSON, ULID primary keys, RDS or
+self-managed), Redis 7 (ADR-006), and the queue broker that HUB-10 (Sovereign Queue) consumes. It
+manages.schema migrations (CORE-19 Database), secrets injection (HUB-20), connection topology, replica
+sets, and the backup/restore contract that ISPOKE-24 drives. It is the foundation DEPLOY-01 (Core & Hub
+Deployment) and DEPLOY-03 (Bridge & External Spoke Deployment) build on.
 
 ## Build Status
-📝 **Not started.** Scoped only.
+✅ **Documented — ready for implementation** (promoted from stub on 2026-08-05).
 
 ## Dependency Status
-- **Upward:** `CORE-19` (DBAL — defines the connection contract and the PostgreSQL dialect this
-  provisioning must satisfy), `CORE-15` / `HUB-02` (Cache — define the Redis contract), `HUB-20`
-  (Vault — consumes and issues the connection secrets), `HUB-10` (Queue — defines the broker contract).
-- **Downward:** `DEPLOY-01` (Core & Hub Service Deployment — consumes the `DB_DSN` and `REDIS_URL` this
-  blueprint provisions), `DEPLOY-03`, `DEPLOY-04`.
-- **Runtime:** Terraform (or equivalent IaC), PostgreSQL 16, Redis 7.
-
-## Normative constraints already fixed
-These are **not** open questions; they are inherited from accepted ADRs and must be honoured by
-whoever authors the full blueprint:
-
-| Constraint | Source |
-|---|---|
-| Primary relational store is **PostgreSQL 16**. MySQL/MariaDB is rejected. | ADR-007 |
-| Terraform `aws_db_instance.engine` (or equivalent) is pinned to `postgres`. | ADR-007, INCONSISTENCIES #1 |
-| Connection URIs use the `postgresql://…:5432` scheme, never `mysql://…:3306`. | ADR-007, INCONSISTENCIES #1 |
-| Cache/session store is **Redis 7**. Memcached is rejected. | ADR-006 |
-| Scheduled maintenance uses `pg_cron` or `HUB-25` (Chronos), never MySQL `CREATE EVENT`. | ADR-007, INCONSISTENCIES #1 |
-| Secrets are issued through `HUB-20` Vault or sealed-secrets; never plaintext env vars in production. | `CrossCutting/THREAT_MODEL.md` |
+- **Upward (consumes):** CORE-19 (Database — schema/migrations), CORE-15 (Cache Abstraction — Redis
+  adapter), CORE-16 (Encryption Envelope — at-rest/TDE key wrap), HUB-20 (Sovereign Vault — secret
+  custody), HUB-11 (Sovereign Cloud Storage — backup sink), HUB-15 (Sovereign Pulse — datastore health),
+  ISPOKE-24 (Sovereign Restore — backup orchestration), CORE-01 (Sovereign Loom — provisioning
+  orchestration across repos).
+- **Downward (consumed by):** DEPLOY-01 (Core & Hub), DEPLOY-03 (Bridge & Spokes), and every Hub service
+  that persists state (HUB-02, HUB-20, HUB-21, HUB-22, and all Core services with a datastore).
 
 ## Architectural Design
-Not specified.
+
+| Concern | Decision |
+|---|---|
+| Primary datastore | MySQL 8 (InnoDB), `json` columns, `ulid` PKs, generated-column indexes, tenant scoping via DBAL (STRUCTURE-05). |
+| Cache / queue / session | Redis 7+ (ADR-006) — distinct logical databases; `HUB-09` pub/sub, `HUB-10` streams. |
+| Secrets | Injected at pod start from `HUB-20`; never baked into images or env files in VCS. |
+| Migrations | Applied by `CORE-19` migration runner in DEPLOY-01 boot; backward-compatible (expand/contract). |
+| Backups | Continuous WAL archive → `HUB-11`; catalog in `ISPOKE-24`; integrity verified (CORE-16). |
+| HA | Primary + 1–2 sync replicas; Redis with replica + sentinel; failover automated. |
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified — **provisional, unverified**. No RPO/RTO figure may be quoted until a restore drill
-harness, baseline, and dataset size exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified.
+**Upward:** resolved through CORE-01 (Loom) which provisions the datastore repos and applies
+CORE-19 migrations. **Downward:** DEPLOY-01 references this blueprint for connection topology; DEPLOY-03
+and all Hub services connect through the provisioned endpoints. The Zero-Exposure rule (BRIDGE-01) means
+datastores are never directly reachable from the public tier — only via Hub services behind the Vanguard.
 
 ## Security Properties
-Not specified. Inherits from `CrossCutting/THREAT_MODEL.md`: no datastore is reachable from the public
-internet; every connection is TLS; per-tenant isolation is enforced in `CORE-19`'s `TenantScope`, not
-by separate databases.
+1. No datastore is publicly reachable; network policy permits connections only from the Hub pod CIDR.
+2. Secrets are custodied by HUB-20 and injected at runtime; no credential appears in image layers or
+   Git history.
+3. At-rest encryption uses keys wrapped by CORE-16; key rotation is coordinated via HUB-20.
+4. Restore (ISPOKE-24) is tenancy-scoped and fully audited (HUB-06); a restore never crosses tenants.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- IaC plan (Terraform/Pulumi) for MySQL 8 (InnoDB) + Redis 7 produces no diff against the declared topology
+  on `main`.
+- A ephemeral MySQL 8 (InnoDB) + Redis 7 stand up in CI; CORE-19 migration runner applies all migrations
+  with zero errors; HUB-10 publishes/consumes a test message via Redis Streams.
+- Backup job writes a verifiable artifact to HUB-11; ISPOKE-24 `verify()` passes.
+- Static/drift: `CORE-01` (Loom) promotion dry-run succeeds for the datastore repos.

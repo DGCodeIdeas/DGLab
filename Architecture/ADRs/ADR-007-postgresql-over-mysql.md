@@ -1,6 +1,10 @@
 # ADR-007: PostgreSQL as the Primary Relational Datastore
 
-**Status:** Accepted
+> ⚠️ **Superseded.** This ADR is superseded by **ADR-013 (MySQL/InnoDB primary; PostgreSQL relegated
+> behind the CORE-19 driver, disabled by default)** as of 2026-08-05. Retained for historical context
+> only. Do not implement PostgreSQL as the primary datastore; MySQL/InnoDB is now primary per ADR-013.
+
+**Status:** Superseded by ADR-013
 **Date:** 2026-08-04
 **Deciders:** DGLab architecture team
 

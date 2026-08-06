@@ -1,62 +1,88 @@
-# ISPOKE-25: Incident Response Console
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
+# PHASE ISPOKE-25: Sovereign Responder (Incident Response)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Responder (IR) — `SovereignStack\Internal\Responder`
+Sovereign Responder — `SovereignStack\Internal\Responder`. End-to-end incident-response management:
+detection alerting, triage workflow, containment actions, forensic data collection, post-mortem
+documentation, metrics tracking. The operational layer above ISPOKE-15 (SOC) and ISPOKE-21 (Scan).
 
 ## Description
-End-to-end incident response management: detection alerting, triage workflow, containment actions, forensic data collection, post-mortem documentation, and metrics tracking.
-
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-25 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+ISPOKE-25 is the incident console. It ingests alerts (from ISPOKE-15 SOC, ISPOKE-21 Scan critical
+findings, HUB-12 Notify escalations), drives a triage→containment→eradication→recovery workflow, collects
+forensic snapshots (read-only copies of relevant state via CORE-19/HUB-11), and produces a post-mortem.
+Containment actions that mutate live systems are gated behind explicit operator confirmation and audited
+(HUB-06). It is the **coordination** layer — it calls other components; it does not itself detect or
+remediate autonomously.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-06 (Audit), HUB-15 (Health), HUB-04 (Identity), ISPOKE-07 (Notifications), ISPOKE-15 (SOC)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-The final Internal Spoke — monitors and protects all preceding spokes. Provides the operational layer above ISPOKE-15 (SOC) and ISPOKE-21 (Vulnerability Scanner).
-
-**Estimated documentation window:** Weeks 43–48 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** ISPOKE-15 (Sovereign SOC — detection source), ISPOKE-07 (Sovereign Webhook Nexus — alert
+  ingestion), ISPOKE-21 (Sovereign Scan — critical findings), HUB-12 (Sovereign Notify — paging), HUB-06
+  (Sovereign Auditor — every action audited), HUB-04 (Sovereign Identity — responder authn), CORE-19
+  (Database — incident store), HUB-11 (Sovereign Cloud Storage — forensic snapshot sink), HUB-15
+  (Sovereign Pulse — system health during incident), HUB-21 (Sovereign Nexus — tenancy scoping).
+- **Downward:** ISPOKE-01 (UI shell).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `Incident` | `final readonly class` | `tenant_id`, `severity`, `status` (`triaged`\|`contained`\|`eradicated`\|`recovered`\|`closed`), `timeline`. |
+| `ResponderInterface` | interface | `open(array $alert): string`, `contain(string $incidentId, Containment $c): void`, `postMortem(string $incidentId): Document`. |
+| `TriageWorkflow` | class | State machine over `Incident.status`; gates mutating actions. |
+| `ForensicCollector` | class | Read-only snapshots to HUB-11 for later analysis. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\Responder;
+
+interface ResponderInterface
+{
+    public function open(array $alert): string;
+    public function contain(string $incidentId, Containment $action): void;
+    public function postMortem(string $incidentId): Document;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE incidents (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id    ULID NOT NULL REFERENCES tenants(id),
+    severity     text NOT NULL CHECK (severity IN ('sev1','sev2','sev3','sev4')),
+    status       text NOT NULL DEFAULT 'triaged'
+                      CHECK (status IN ('triaged','contained','eradicated','recovered','closed')),
+    opened_by    ULID NOT NULL,
+    opened_at    timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE incident_timeline (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    incident_id  ULID NOT NULL REFERENCES incidents(id),
+    event        jsonb NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves ISPOKE-15/ISPOKE-07/ISPOKE-21/HUB-12/HUB-06/HUB-04/CORE-19/HUB-11/HUB-15/HUB-21
+through the container (CORE-02). **Downward:** UI in ISPOKE-01.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Every containment action is audited (HUB-06) with `opened_by`/`operator` and a before/after record —
+   incident response is itself observable.
+2. Forensic snapshots are written to HUB-11 read-only; they never alter the live system.
+3. Mutating containment requires explicit operator confirmation, never automatic execution.
+4. Incidents are tenancy-scoped (HUB-21); a responder cannot act across tenants.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `TriageWorkflow` rejects an illegal status transition (e.g. `triaged → closed` skipping
+  `contained`); `ForensicCollector` writes a snapshot without modifying source rows.
+- Integration (MySQL 16): `open()` writes `incidents`; `contain()` appends an `incident_timeline`
+  event and advances status.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `TriageWorkflow`.

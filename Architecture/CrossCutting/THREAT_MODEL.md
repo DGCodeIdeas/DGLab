@@ -109,7 +109,7 @@ For each trust boundary we enumerate all six STRIDE classes — Spoofing, Tamper
 
 | Threat class | Specific threat | Asset at risk | Mitigation | Owning blueprint |
 |---|---|---|---|---|
-| Spoofing | Rogue pod impersonates a Hub service to PostgreSQL. | Database contents | mTLS to datastore (DEPLOY-02 issues per-service DB client cert); `pg_hba.conf` rejects non-cert connections. | DEPLOY-02 |
+| Spoofing | Rogue pod impersonates a Hub service to the MySQL datastore. | Database contents | mTLS to datastore (DEPLOY-02 issues per-service DB client cert); MySQL auth (TLS client cert / password) rejects unauthorized connections. | DEPLOY-02 |
 | Tampering | Attacker with DB access modifies rows directly. | Row integrity | Row-level `tenant_id` constraint + app DB user has `INSERT, UPDATE, SELECT` only; DDL requires a separate `ddl_owner` user. | CORE-19, DEPLOY-02 |
 | Repudiation | Data is changed but no audit row exists. | Audit chain | HUB-06 writes via a separate `audit_writer` DB user with `INSERT`-only privilege (see §8); app DB user cannot write to the audit table. | HUB-06, DEPLOY-02 |
 | Information disclosure | Backups stolen from object storage. | Tenant data at rest | Volumes and S3 objects encrypted with AES-256-GCM via CORE-16 envelope keys; envelope keys stored in HUB-20 Vault. | CORE-16, HUB-20, DEPLOY-02 |
@@ -323,13 +323,13 @@ HUB-06 is the system of record for forensics. If it can be tampered with, no oth
 ### 8.3 Log deletion
 
 - **Vector:** Attacker with filesystem or object-storage access deletes audit logs or the DB table.
-- **Mitigation:** HUB-06 writes to two destinations in parallel: (1) PostgreSQL `audit_log` (low-latency search) and (2) an S3 WORM bucket with Object Lock in `COMPLIANCE` mode (DEPLOY-02). Once written, an object cannot be deleted by any identity, including root, until retention expires (default 7 years). A daily HUB-10 job reconciles the two: a DB row lacking a WORM object is `integrity_warning`; a WORM object lacking a DB row is `integrity_critical`.
+- **Mitigation:** HUB-06 writes to two destinations in parallel: (1) MySQL `audit_log` (low-latency search) and (2) an S3 WORM bucket with Object Lock in `COMPLIANCE` mode (DEPLOY-02). Once written, an object cannot be deleted by any identity, including root, until retention expires (default 7 years). A daily HUB-10 job reconciles the two: a DB row lacking a WORM object is `integrity_warning`; a WORM object lacking a DB row is `integrity_critical`.
 - **Test case:** Delete an audit object from the WORM bucket via the S3 root account → `AccessDenied` (Object Lock). Delete a DB row via `audit_owner` in a test env, run reconciliation → `integrity_critical`.
 
 ### 8.4 Time manipulation
 
 - **Vector:** Attacker submits a forged `timestamp` in an audit-event payload to make an action appear to have happened at a different time.
-- **Mitigation:** HUB-06 never accepts a client-supplied timestamp. The `timestamp` is set server-side via PostgreSQL `NOW()` at insert time. `AuditManager::record()` takes `(action, resource_type, resource_id, metadata)` — no `timestamp` parameter. The chained-hash integrity scheme (HUB-06) means each row's `signature` covers the previous row's hash; a DB-level timestamp modification breaks the chain and is detected by the integrity verifier (HUB-06 CI: "Must provide a utility that verifies the integrity of the audit chain").
+- **Mitigation:** HUB-06 never accepts a client-supplied timestamp. The `timestamp` is set server-side via MySQL `NOW()` at insert time. `AuditManager::record()` takes `(action, resource_type, resource_id, metadata)` — no `timestamp` parameter. The chained-hash integrity scheme (HUB-06) means each row's `signature` covers the previous row's hash; a DB-level timestamp modification breaks the chain and is detected by the integrity verifier (HUB-06 CI: "Must provide a utility that verifies the integrity of the audit chain").
 - **Test case:** Submit an audit event with `metadata.timestamp = '2020-01-01'`; stored row's `timestamp` is the server's current time. Modify a row's `timestamp` via `audit_owner` in a test env; integrity verifier reports `chain_broken` at that row.
 
 ---

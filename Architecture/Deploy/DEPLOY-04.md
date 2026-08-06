@@ -1,64 +1,57 @@
 # DEPLOY-04: Multi-Environment & Promotion Pipeline
 
-> **Stub blueprint.** Scoped in `INDEX.md` §6; not yet authored to the `AUTHORING_GUIDE.md` fidelity
-> bar. Phase-2 work. Nothing may depend on an interface from this file.
-
 ## Tier
 Deploy
 
-## Resolves
-Finding 9 (`Critiques/00_CRITIQUE.md`) — nothing described how a change reaches production. Also the
-practical consequence of ADR-001 (polyrepo): with ~50+ independently deployable repositories, promotion
-cannot be a per-repo manual step.
-
 ## Component Name
-Sovereign Promotion Pipeline — no PHP namespace (infrastructure-as-code + `CORE-01` Loom automation)
+Multi-Environment & Promotion Pipeline — dev → staging → production promotion across the 50+ service
+repositories, using immutable image digests and CORE-01 (Sovereign Loom) as the release orchestrator.
 
 ## Description
-How a change moves `dev → staging → production` across the ~50+ repositories of the polyrepo
-(ADR-001). Images are promoted by **immutable digest**, never rebuilt per environment. Ties into
-`CORE-01` (Loom) for cross-repo version bumps, release gating, and the merge gate that consults
-`HUB-15`'s aggregate health before tagging.
-
-**Explicit non-goals:** the image build itself (`DEPLOY-01`), datastore migration mechanics
-(`DEPLOY-02`), edge configuration (`DEPLOY-03`).
+DEPLOY-04 is the promotion control plane. Each service (Core, Hub, Bridge, Spokes, Deploy-02/03
+datastores) is built once into an **immutable image digest** and promoted dev → staging → production by
+**CORE-01 (Sovereign Loom)**; the same digest that passed staging is the only artifact allowed in prod
+(no rebuild-per-environment). It coordinates the ordering implied by the tier DAG (INDEX.md §5):
+datastores (DEPLOY-02) → Core/Hub (DEPLOY-01) → Bridge/Spokes (DEPLOY-03), with HUB-15 readiness gates at
+each step.
 
 ## Build Status
-📝 **Not started.** Scoped only.
+✅ **Documented — ready for implementation** (promoted from stub on 2026-08-05).
 
 ## Dependency Status
-- **Upward:** `CORE-01` (Polyrepo Orchestrator / Loom — supplies the cross-repo version-bump and
-  release-gate automation), `DEPLOY-01`, `DEPLOY-02`, `DEPLOY-03` (supply the artefacts being
-  promoted), `HUB-15` (Health — the merge gate's health signal).
-- **Downward:** none — this is the terminal tier.
-- **Runtime:** CI/CD engine, container registry supporting digest pinning.
-
-## Normative constraints already fixed
-| Constraint | Source |
-|---|---|
-| Repository topology is **polyrepo** (~50+ repos), not a monorepo. | ADR-001 |
-| Promotion is by immutable image **digest**, not by re-tagging or rebuilding. | `Deploy/DEPLOY-01.md` |
-| A Hub service reporting `unhealthy` blocks the release tag. | `Hub/HUB-15.md`, `INDEX.md` §5 |
-| Opcache preload changes require a container **replacement**, not `systemctl reload php8.3-fpm`. | ADR-010, INCONSISTENCIES #7 |
+- **Upward (consumes):** CORE-01 (Sovereign Loom — release orchestration + digest registry), DEPLOY-01
+  (Core & Hub — produces the digests), DEPLOY-02 (Datastores — first promoted), DEPLOY-03 (Bridge &
+  Spokes — last promoted), HUB-06 (Sovereign Auditor — promotion audit trail), HUB-15 (Sovereign Pulse —
+  readiness gate), HUB-20 (Sovereign Vault — environment secrets).
+- **Downward (consumed by):** none — this is the terminal tier of the deployment DAG.
 
 ## Architectural Design
-Not specified.
+
+| Concern | Decision |
+|---|---|
+| Artifact | Single immutable image digest per service; promoted, never rebuilt per env. |
+| Orchestrator | CORE-01 (Loom) drives the promotion graph across 50+ repos from one command. |
+| Ordering | Tier DAG (INDEX §5): DEPLOY-02 → DEPLOY-01 → DEPLOY-03. |
+| Gates | HUB-15 readiness + HUB-06 audit + required CI (lint, phpstan, tests) before each env bump. |
+| Rollback | `CORE-01` repoints the env to the previous good digest; no rebuild, no data migration for stateless tiers. |
+| Secrets | Per-env secrets injected by HUB-20; the same digest runs in every env with different secret material. |
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified — **provisional, unverified**.
-
-## CI Verification Criteria
-Not specified.
+**Upward:** CORE-01 is the engine; it reads the deploy manifests produced by DEPLOY-01/02/03 and applies
+the promotion order. **Downward:** terminal — it promotes the other three deploy blueprints. Depends on
+ARCHIVED root `Dockerfile`/`render.yaml` having been superseded by DEPLOY-00 (docs) and DEPLOY-01
+(application); see INDEX.md §1.
 
 ## Security Properties
-Not specified. At minimum: production promotion requires a signed approval; the registry credential
-used for production promotion must not be available to `dev`/`staging` pipelines.
+1. Immutability: prod runs exactly the digest validated in staging — no "works on my env" drift.
+2. Every promotion is audited (HUB-06) with operator + digest + source env; promotion is non-repudiable.
+3. Gate failure (HUB-15 not ready, CI red, audit missing) blocks the bump — fail closed.
+4. Secrets are environment-scoped via HUB-20; the promoted digest carries no env-specific secret.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- CORE-01 promotion dry-run: given seeded dev/staging digests, produces the expected ordered promotion
+  plan dev→staging→prod with the tier DAG order.
+- Gate test: a simulated HUB-15 unhealthy state causes the bump to abort with a clear error.
+- Rollback test: `CORE-01 rollback <env>` repoints to the previous digest and the served digest matches
+  the recorded prior value (verified via HUB-15 metadata).
+- Audit: each successful bump writes exactly one HUB-06 record with digest + operator.

@@ -1,67 +1,86 @@
-# ISPOKE-20: Audit Report Builder
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
-
-> **Cross-reference correction applied (INDEX §3 Pattern B).** The source placeholder cited
-> `HUB-28 (Analytics)`. `HUB-28` is **Sovereign Versioner** (API versioning). The real-time analytics
-> dependency is `HUB-31`, which is *proposed, not accepted* — see `ADRs/ADR-011-hub-31-real-time-analytics.md`
-> and `OPEN-DECISIONS.md`.
+# PHASE ISPOKE-20: Sovereign Scribe (Reports)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Scribe (Reports) — `SovereignStack\Internal\Scribe`
+Sovereign Scribe — `SovereignStack\Internal\Scribe`. Configurable audit-report generation: custom
+report templates, scheduled delivery, signed export of audit packages.
 
 ## Description
-A configurable audit report generation tool allowing compliance officers to define custom report templates, schedule automated report delivery, and export signed audit packages.
-
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-20 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+ISPOKE-20 lets compliance officers define report templates over the audit log (HUB-06) and entity
+stores (CORE-19), schedule their delivery, and export the result as a tamper-evident package. Each
+export is hashed and signed with a key custodied by **HUB-20 (Sovereign Vault)**; the signature is
+recorded so a recipient can verify integrity later. It is the human-facing reporting layer over HUB-06 —
+it does not itself store audit events.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-31 (Real-Time Analytics & Metrics Ledger — **pending**, see `ADRs/ADR-011-hub-31-real-time-analytics.md`), HUB-06 (Audit), HUB-10 (Queue), HUB-11 (Storage)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Extends ISPOKE-10 with advanced reporting capabilities. Focuses on report template definition and scheduled distribution.
-
-**Estimated documentation window:** Weeks 33–36 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** HUB-06 (Sovereign Auditor — audit data source), CORE-19 (Database — entity projections),
+  HUB-20 (Sovereign Vault — signing keys), HUB-12 (Sovereign Notify — scheduled delivery), HUB-02
+  (Sovereign Cache — rendered report cache), ISPOKE-10 (Sovereign Compliance — template governance),
+  HUB-31 (Real-Time Analytics — *proposed, pending* — report-metric emission), HUB-21 (Sovereign Nexus
+  — tenancy scoping).
+- **Downward:** ISPOKE-01 (UI shell), ISPOKE-22 (Sovereign Registrar — consumes report packages).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `ReportTemplate` | `final readonly class` | `tenant_id`, `query`, `format` (`pdf`\|`csv`\|`json`), `schedule`. |
+| `ReportBuilderInterface` | interface | `build(ReportTemplate $t): SignedReport`, `list(string $tenantId): TemplatePage`. |
+| `Signer` | class | Hashes + signs the rendered package via HUB-20; records the signature. |
+| `DeliveryScheduler` | class | Enqueues HUB-12 delivery on the template's `schedule`. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\Scribe;
+
+interface ReportBuilderInterface
+{
+    public function build(ReportTemplate $template): SignedReport;
+    public function list(string $tenantId): TemplatePage;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE report_templates (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id   ULID NOT NULL REFERENCES tenants(id),
+    query       jsonb NOT NULL,
+    format      text NOT NULL CHECK (format IN ('pdf','csv','json')),
+    schedule    jsonb,
+    created_by  ULID NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE signed_reports (
+    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
+    template_id ULID NOT NULL REFERENCES report_templates(id),
+    content_hash bytea NOT NULL,
+    signature    bytea NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves HUB-06/CORE-19/HUB-20/HUB-12/HUB-02/ISPOKE-10/HUB-31/HUB-21 through the container
+(CORE-02). **Downward:** UI in ISPOKE-01; packages consumed by ISPOKE-22.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Reports are built read-only over HUB-06/CORE-19; they cannot mutate source data.
+2. Every package is signed (HUB-20) and the signature recorded — recipient verification is possible
+   without trusting the builder.
+3. Templates are tenancy-scoped (HUB-21); a tenant's report cannot query another tenant's rows.
+4. Delivery goes through HUB-12 with the operator's `created_by` for non-repudiation.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `Signer` produces a signature that `HUB-20.verify()` accepts and that fails verification after
+  a single byte of the package is flipped.
+- Integration (MySQL 16): defining a template then `build()` writes `signed_reports` with a
+  non-null `content_hash` + `signature`.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `Signer`.

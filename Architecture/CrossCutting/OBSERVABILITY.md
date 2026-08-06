@@ -45,7 +45,7 @@ DGLab adopts the **W3C Trace Context** standard (`traceparent` and `tracestate` 
 | BRIDGE-01 → Hub service | HTTP request | Bridge injects headers via OTel SDK propagator | BRIDGE-01 |
 | Hub service → Hub service (same pod) | In-process | Span context shared via OTel context; child span created | calling Hub service |
 | Hub service → Hub service (separate pod) | HTTP request | Headers re-injected by OTel SDK propagator | calling Hub service |
-| Hub service → Database (PostgreSQL) | SQL comment | `/*trace_id=abc,span_id=def*/` prepended to query by CORE-19 DBAL | CORE-19 |
+| Hub service → Database (MySQL) | SQL comment | `/*trace_id=abc,span_id=def*/` prepended to query by CORE-19 DBAL | CORE-19 |
 | Hub service → Redis | Redis command | `CLIENT SETINFO LIB-NAME trace:<trace_id>` on connection acquisition; OR cache-key prefix `t:<trace_id>:` for cacheable reads | CORE-15 / HUB-02 |
 | Hub service → Queue (publish) | Message metadata | `headers.traceparent` field on every enqueued job | HUB-10 |
 | Queue worker → Hub service (consume) | In-process context restore | Worker extracts `traceparent` from message headers and starts a consumer span with `messaging.operation=process` | HUB-10 |
@@ -402,7 +402,7 @@ DGLab follows the OpenTelemetry semantic conventions for attribute names whereve
 | `http.route` | HTTP server spans | `/api/v1/users/{id}` |
 | `http.status_code` | HTTP spans | `200` |
 | `http.url` | HTTP client spans (full URL, not on server spans to avoid leaking query strings) | `https://identity.svc/api/v1/users/42` |
-| `db.system` | DB spans | `postgresql` |
+| `db.system` | DB spans | `mysql` |
 | `db.statement` | DB spans (sanitized — parameters stripped) | `SELECT * FROM users WHERE tenant_id = $1` |
 | `messaging.destination` | Queue spans | `audit.fanout` |
 | `messaging.operation` | Queue spans | `publish` / `process` |
@@ -425,7 +425,7 @@ The audit log is a **compliance artifact** regulated by SOC 2 Type II and GDPR A
 3. **Append-only.** No `UPDATE`, no `DELETE`. No role — including `super_admin` — has anything but `INSERT` and `SELECT`.
 4. **Hash-chained.** Each row carries `prev_hash` and `self_hash` so tampering is detectable (tamper-evidence, not tamper-proofing).
 
-### Schema (PostgreSQL DDL)
+### Schema (MySQL DDL)
 
 ```sql
 CREATE TABLE audit_events (
@@ -474,8 +474,8 @@ GRANT  SELECT        ON audit_events TO dglab_super_admin_readonly;
 
 | Stage | Storage | Duration | Mechanism |
 |---|---|---|---|
-| Hot (queryable) | PostgreSQL primary, partitioned monthly | 90 days | HUB-06 maintenance job detaches old partitions |
-| Warm (queryable, slower) | PostgreSQL read replica + S3 Standard | 1 year | Detached partitions exported to S3 as Parquet |
+| Hot (queryable) | MySQL primary, partitioned monthly | 90 days | HUB-06 maintenance job detaches old partitions |
+| Warm (queryable, slower) | MySQL read replica + S3 Standard | 1 year | Detached partitions exported to S3 as Parquet |
 | Cold (compliance archive) | S3 Object Lock (WORM, Compliance mode) | 7 years | Parquet files written with Object Lock; no role can delete until lock expires |
 
 ### Access policy

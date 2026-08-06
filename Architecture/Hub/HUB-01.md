@@ -4,7 +4,7 @@
 Hub (Shared Services — Infra category)
 
 ## Resolves
-- **Finding 4** (thin blueprints) — The approved `HUB-01.md` is 2,659 bytes, prose-only, ships an interface stub with no method bodies, references a `FlagEvaluator` class that does not exist, asserts a bare `< 0.005ms` target with no methodology, and provides no SQL DDL despite depending on CORE-19. Replaced here with real PHP 8.3 interfaces, a complete compilable `FeatureFlagManager`, PostgreSQL DDL with JSONB + indexes, Mermaid sequence + state diagrams, a methodology-grounded benchmark table, and explicit security invariants.
+- **Finding 4** (thin blueprints) — The approved `HUB-01.md` is 2,659 bytes, prose-only, ships an interface stub with no method bodies, references a `FlagEvaluator` class that does not exist, asserts a bare `< 0.005ms` target with no methodology, and provides no SQL DDL despite depending on CORE-19. Replaced here with real PHP 8.3 interfaces, a complete compilable `FeatureFlagManager`, MySQL DDL with JSON + indexes, Mermaid sequence + state diagrams, a methodology-grounded benchmark table, and explicit security invariants.
 - **Finding 8** (stub dependencies) — `01_MASTER_INDEX.md` §2 marks CORE-02 (DI Container) as a stub (`packages/core/container/` is `.gitkeep` only); CORE-10, CORE-19, HUB-02 are all "Not started". Build Status is declared `🔴 Blocked` and no work is scheduled until those land. The approved blueprint claimed to "extend CORE-10" without acknowledging CORE-10 did not exist.
 - **Finding 10** (bare performance targets) — The `< 0.005ms` assertion is replaced with a benchmark table whose every row names harness (PHPUnit `--group performance`, `microtime(true)`), baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug, Redis 7.2 TCP loopback), and load model (10 000 flag lookups). The `< 0.005ms` target is retained as a *provisional, unverified* ceiling — not an assertion.
 - **Finding 11** (solutions not merged) — `SOLUTIONS_TO_WEAKNESSES.md` calls for: tenant-override isolation at read time, override-key validation at write time, deterministic percentage rollouts, bounded cache-invalidation windows. All four are merged into the Security Properties and CI Verification Criteria sections below. Once HUB-01 lands, the corresponding rows in the solutions doc are deleted (Governance Rule 5).
@@ -13,7 +13,7 @@ Hub (Shared Services — Infra category)
 Sovereign Hub Config & Flags — `SovereignStack\Hub\Config` (PSR-4 mapped to `packages/hub/config/src/` per the package's `composer.json`).
 
 ## Description
-HUB-01 is the Hub-tier configuration authority. It extends the frozen, immutable `ConfigInterface` from CORE-10 with three runtime capabilities CORE-10 explicitly declines to provide: (1) per-tenant overrides loaded from PostgreSQL, (2) dynamic feature flags with percentage rollouts and A/B/C variants, and (3) a bounded cache-invalidation window so that database-side changes become visible to all Hub and Spoke services within a configurable deadline (default 60 seconds). Every Hub service and every Spoke resolves both config values and feature-flag state through `GlobalConfigInterface`; consumers that bypass it and read CORE-10's `ConfigInterface` directly fail CI when they reach for keys outside the global-default namespace.
+HUB-01 is the Hub-tier configuration authority. It extends the frozen, immutable `ConfigInterface` from CORE-10 with three runtime capabilities CORE-10 explicitly declines to provide: (1) per-tenant overrides loaded from MySQL, (2) dynamic feature flags with percentage rollouts and A/B/C variants, and (3) a bounded cache-invalidation window so that database-side changes become visible to all Hub and Spoke services within a configurable deadline (default 60 seconds). Every Hub service and every Spoke resolves both config values and feature-flag state through `GlobalConfigInterface`; consumers that bypass it and read CORE-10's `ConfigInterface` directly fail CI when they reach for keys outside the global-default namespace.
 
 The component exists because multi-tenant deployments need operator-controlled divergence from the committed baseline: tenant A may need `cache.ttl=900` while tenant B keeps the default `3600`; an operator may need to kill-switch `new_billing_flow` for everyone; a product team may need to roll out `new_ui` to 10% of users and read which variant (A, B, or C) each user sees. CORE-10 cannot do any of this — it is immutable after Kernel boot. HUB-01 layers a mutable, tenant-scoped, time-bounded view on top.
 
@@ -23,7 +23,7 @@ What HUB-01 is **not**: not a secrets manager (HUB-20 serves rotating secrets, a
 🔴 **Blocked** on:
 - **CORE-02** (DI Container) — singleton binding of `GlobalConfigInterface` → `HubConfigRegistry`, and constructor injection of `ConfigInterface`, `ConfigOverrideRepository`, `FeatureFlagRepository`, HUB-02's `CacheInterface`.
 - **CORE-10** (Config Loader) — HUB-01 wraps the frozen `ConfigInterface`; without it there is no global-default layer to extend.
-- **CORE-19** (DBAL) — `ConfigOverrideRepository` and `FeatureFlagRepository` are DBAL-backed; the DDL presumes PostgreSQL 16+ per ADR-007.
+- **CORE-19** (DBAL) — `ConfigOverrideRepository` and `FeatureFlagRepository` are DBAL-backed; the DDL presumes MySQL 8 (InnoDB) per ADR-013.
 - **HUB-02** (Cache) — resolved flag/config values are cached with 60s TTL and tag-based invalidation; HUB-01 cannot meet its consistency bound without HUB-02's `tag()` and `invalidateTags()` primitives.
 
 📝 Not started. Implementation may be written and unit-tested in isolation against the interfaces declared here (using in-memory fakes for the repositories and cache), but production wiring requires all four blockers to land. Per Build Sequence §5, CORE-19 lands in Step 5; per §8, HUB-01 lands in Step 8 (Hub tier) after HUB-02.
@@ -123,7 +123,7 @@ namespace SovereignStack\Hub\Config;
  * Evaluates feature flags against an immutable Context.
  *
  * Flag definitions live in hub_feature_flags and are cached in HUB-02 with a
- * 60s TTL and tag ['config']. Cache misses load from CORE-19 (PostgreSQL). For
+ * 60s TTL and tag ['config']. Cache misses load from CORE-19 (MySQL). For
  * a given Context the result is deterministic — the same user always lands on
  * the same side of a rollout and always sees the same variant.
  *
@@ -381,7 +381,7 @@ final class RolloutBucket
 
 ### SQL DDL
 
-PostgreSQL 16+ per ADR-007. The `tenants(id)` reference presumes HUB-04's `tenants` table (CHAR(26) ULID per ADR-009); HUB-01 lands after HUB-04 per Build Sequence Step 8.
+MySQL 8 (InnoDB) per ADR-013. The `tenants(id)` reference presumes HUB-04's `tenants` table (CHAR(26) ULID per ADR-009); HUB-01 lands after HUB-04 per Build Sequence Step 8.
 
 ```sql
 -- Per-tenant configuration overrides.
@@ -429,7 +429,7 @@ sequenceDiagram
     participant FFM as FeatureFlagManager
     participant Cache as HUB-02 Cache
     participant Repo as FeatureFlagRepository
-    participant DB as CORE-19 PostgreSQL
+    participant DB as CORE-19 MySQL
 
     Caller->>FFM: isEnabled('new_ui', $context)
     FFM->>FFM: context ??= Context::anonymous()
@@ -542,7 +542,7 @@ Baseline for all rows: GitHub Actions `ubuntu-latest`, PHP 8.3.0, opcache enable
 | Target | Load model | Assert |
 |---|---|---|
 | `isEnabled()` cached path | 1 flag definition pre-cached; 10 000 calls with 1 000 distinct userIds (rollout_percentage=50); measure wall-clock per call | **provisional, unverified** — the approved `< 0.005ms` target is retained as a ceiling hypothesis, not an assertion. First CI run records the real median; subsequent runs assert median ≤ recorded baseline × 1.25. O(1) in user count (no per-user cache lookup). |
-| `isEnabled()` cache-miss path | Cache flushed between every call; 1 000 calls; measure wall-clock including DB round-trip | **provisional, unverified** — dominated by PostgreSQL round-trip (~0.3–1.0 ms loopback); assert cache-miss ≤ 100× cached path. |
+| `isEnabled()` cache-miss path | Cache flushed between every call; 1 000 calls; measure wall-clock including DB round-trip | **provisional, unverified** — dominated by MySQL round-trip (~0.3–1.0 ms loopback); assert cache-miss ≤ 100× cached path. |
 | `getVariant()` cached path | 3-variant flag (50/30/20); 10 000 calls with 1 000 distinct userIds | **provisional, unverified** — within 1.5× of `isEnabled()` cached path. |
 | `RolloutBucket::compute()` | 1 000 000 distinct keys; xxh3 and crc32b measured separately | **provisional, unverified** — both O(1); xxh3 ≥ 2× faster than crc32b expected, not asserted. |
 | Distribution uniformity | 100 000 distinct userIds; flag at 50% rollout; count `true` returns | `true` count in [49 500, 50 500] (±1%); CI assertion, not perf target. Same test at 10% / 25% / 75% / 90%. |

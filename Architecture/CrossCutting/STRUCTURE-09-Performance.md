@@ -1,7 +1,7 @@
 # DGLab Wheel Architecture
 ## Structure 09: Performance & Scaling Architecture
 
-> **Reconciled to ADR-007** (`Verification/INCONSISTENCIES.md` #1): MySQL `CREATE EVENT` is
+> **Reconciled to ADR-013** (`Verification/INCONSISTENCIES.md` #1): MySQL `CREATE EVENT` is
 > replaced with `pg_cron` / `HUB-25` scheduling.
 
 
@@ -586,8 +586,9 @@ spec:
 
 ```sql
 -- Automated cleanup of old data.
--- PostgreSQL has no MySQL-style `CREATE EVENT` scheduler (ADR-007). Recurring work is scheduled
--- either by `pg_cron` (shown here) or by HUB-25 (Sovereign Chronos) calling the function.
+-- MySQL 8 (InnoDB) is primary (ADR-013). Recurring cleanup is driven by HUB-25 (Sovereign Chronos) /
+-- HUB-10 (Queue) on the default MySQL driver. The PostgreSQL form below is shown for the (disabled)
+-- PostgreSQL driver, where `pg_cron` or HUB-25 calls this function.
 CREATE OR REPLACE FUNCTION cleanup_old_sessions() RETURNS void AS $$
 BEGIN
     DELETE FROM sessions

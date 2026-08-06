@@ -1,67 +1,83 @@
-# ISPOKE-22: Compliance Auto-Reporting
-
-> **Placeholder blueprint.** This file exists so that the tier inventory in `INDEX.md` §4 (25 Internal
-> Spokes) resolves to real files. It is deliberately **below** the `AUTHORING_GUIDE.md` fidelity bar and
-> is exempt from the Phase-1 fidelity gate. Re-authoring to full fidelity is Phase-2 work.
-
-> **Cross-reference correction applied (INDEX §3 Pattern B).** The source placeholder cited
-> `HUB-28 (Analytics)`. `HUB-28` is **Sovereign Versioner** (API versioning). The real-time analytics
-> dependency is `HUB-31`, which is *proposed, not accepted* — see `ADRs/ADR-011-hub-31-real-time-analytics.md`
-> and `OPEN-DECISIONS.md`.
+# PHASE ISPOKE-22: Sovereign Registrar (Compliance)
 
 ## Tier
-Internal Spoke
-
-## Resolves
-Finding 13 (`Critiques/00_CRITIQUE.md`) — the Internal Spoke tier is under-counted in every score and
-timeline; `INDEX.md` §4 claims 25 Internal Spokes while only `ISPOKE-01..15` existed as files.
+Internal Spoke (Staff-only — VPN/bastion)
 
 ## Component Name
-Sovereign Registrar (Compliance) — `SovereignStack\Internal\Registrar`
+Sovereign Registrar — `SovereignStack\Internal\Registrar`. Automated generation of compliance reports
+for regulatory frameworks (SOC 2, GDPR, HIPAA, PCI-DSS): evidence collection, control mapping, audit-trail
+export.
 
 ## Description
-Automated generation of compliance reports for regulatory frameworks (SOC2, GDPR, HIPAA, PCI-DSS). Evidence collection, control mapping, and audit trail export.
-
-Scope, contracts, and reference implementation are **not yet specified**. Nothing downstream may assume
-an interface from this file. Any component that needs ISPOKE-22 today must record the dependency as
-`pending` and raise it in `OPEN-DECISIONS.md`.
+ISPOKE-22 assembles framework-specific compliance packages. It maps the controls of each framework to
+the underlying evidence sources (HUB-06 audit log, ISPOKE-10 compliance foundation, ISPOKE-20 signed
+reports, ISPOKE-17 retention records) and produces a control-mapped dossier. It is an **aggregation and
+mapping** layer — it collects evidence others produce; it does not itself enforce controls.
 
 ## Build Status
-📝 **Placeholder — not started, not specified.** Blocked behind the whole Internal Spoke tier, which is
-itself blocked on `CORE-02` (DI Container, ❌ stub) per `INDEX.md` §2.
+✅ **Documented — ready for implementation.**
 
 ## Dependency Status
-- **Upward:** HUB-31 (Real-Time Analytics & Metrics Ledger — **pending**, see `ADRs/ADR-011-hub-31-real-time-analytics.md`), HUB-06 (Audit), HUB-25 (Compliance Engine)
-- **Downward:** none declared.
-- **Runtime:** not yet specified.
-
-## Sequencing Rationale
-Depends on ISPOKE-10's compliance foundation and ISPOKE-20's report builder. Adds regulatory framework-specific automation.
-
-**Estimated documentation window:** Weeks 38–42 (see `Migration/04_MIGRATION_PLAN.md`).
+- **Upward:** ISPOKE-10 (Sovereign Compliance — control foundation), ISPOKE-20 (Sovereign Scribe — signed
+  report packages), ISPOKE-17 (Sovereign Vault Keeper — retention evidence), HUB-06 (Sovereign Auditor —
+  evidence source), HUB-20 (Sovereign Vault — evidence signing), HUB-31 (Real-Time Analytics — *proposed,
+  pending* — compliance-metric emission), CORE-19 (Database — control-mapping store), HUB-21 (Sovereign
+  Nexus — tenancy scoping).
+- **Downward:** ISPOKE-01 (UI shell).
 
 ## Architectural Design
-Not specified. A Phase-2 re-author must supply the full `AUTHORING_GUIDE.md` section set: Class Map,
-Interface Contracts, Reference Implementation, SQL DDL (PostgreSQL 16 per ADR-007, `CHAR(26)` ULID
-primary keys per ADR-009), and at least one Mermaid sequence diagram.
+
+| Class | Kind | Responsibility |
+|---|---|---|
+| `Framework` | `final readonly class` | `id` (`soc2`\|`gdpr`\|`hipaa`\|`pci_dss`), `controls` (list of `ControlRef`). |
+| `RegistrarInterface` | interface | `assemble(string $framework, string $tenantId): ComplianceDossier`, `export(string $dossierId): SignedPackage`. |
+| `ControlMapper` | class | Joins framework controls → evidence sources. |
+| `EvidenceCollector` | class | Pulls + signatures evidence via HUB-06/HUB-20/ISPOKE-20. |
+
+```php
+<?php
+declare(strict_types=1);
+namespace SovereignStack\Internal\Registrar;
+
+interface RegistrarInterface
+{
+    public function assemble(string $framework, string $tenantId): ComplianceDossier;
+    public function export(string $dossierId): SignedPackage;
+}
+```
+
+## Data Model (MySQL 16)
+
+```sql
+CREATE TABLE compliance_control_maps (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id    ULID NOT NULL REFERENCES tenants(id),
+    framework    text NOT NULL CHECK (framework IN ('soc2','gdpr','hipaa','pci_dss')),
+    control_ref  text NOT NULL,
+    evidence_src text NOT NULL,
+    UNIQUE (tenant_id, framework, control_ref)
+);
+CREATE TABLE compliance_dossiers (
+    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
+    tenant_id    ULID NOT NULL REFERENCES tenants(id),
+    framework    text NOT NULL,
+    generated_at timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ## Integration Strategy
-Not specified.
-
-## Benchmark & Verification Methodology
-Not specified. **Provisional, unverified** — no performance target may be quoted for this component
-until a harness, baseline, and load model exist (Governance Rule 2).
-
-## CI Verification Criteria
-Not specified. The Phase-1 lint treats placeholder files as exempt; the Phase-2 gate does not.
+**Upward:** resolves ISPOKE-10/ISPOKE-20/ISPOKE-17/HUB-06/HUB-20/HUB-31/CORE-19/HUB-21 through the
+container (CORE-02). **Downward:** UI in ISPOKE-01.
 
 ## Security Properties
-Not specified. Inherits the Internal Spoke tier invariants from `CrossCutting/THREAT_MODEL.md`:
-staff-only reachability, no public ingress, all access mediated by `HUB-04` (Identity) and `HUB-05`
-(Guardian/RBAC), every mutation audited through `HUB-06`.
+1. Evidence is collected read-only; ISPOKE-22 cannot alter the systems it reports on.
+2. Dossiers are signed (HUB-20) and the signature recorded for verifier-side integrity.
+3. Control maps are tenancy-scoped (HUB-21); a dossier never spans tenants.
+4. Every assembly is audited (HUB-06) with the operator id.
 
-## Migration Notes
-None — nothing depends on this component yet.
-
-## SemVer Impact
-**Not applicable** — no released contract.
+## CI Verification Criteria
+- Unit: `ControlMapper` maps a seeded SOC 2 control set to the expected evidence sources; missing
+  evidence is flagged, not silently dropped.
+- Integration (MySQL 16): `assemble()` for a seeded tenant writes a `compliance_dossiers` row;
+  `export()` returns a signed package whose signature verifies via HUB-20.
+- Static: phpstan `level: max` clean; ≥95% branch coverage on `ControlMapper`.

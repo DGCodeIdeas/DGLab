@@ -1,8 +1,8 @@
 # DGLab Wheel Architecture
 ## Structure 07: Testing Architecture
 
-> **Reconciled to ADR-007** (`Verification/INCONSISTENCIES.md` #1): the CI service container
-> and the chaos-test target are PostgreSQL 16, not MySQL 8.0.
+> **Reconciled to ADR-013** (`Verification/INCONSISTENCIES.md` #1): the CI service container
+> and the chaos-test target are MySQL 8 (InnoDB), not PostgreSQL.
 
 
 > **Repository:** https://github.com/DGCodeIdeas/DGLab  
@@ -531,7 +531,7 @@ final class DatabaseChaosTest extends ChaosTestCase
         $this->warmCache();
 
         // Act: Kill primary database
-        $this->infrastructure()->killService('postgres-primary');
+        $this->infrastructure()->killService('mysql-primary');
 
         // Assert: Read requests still succeed (from cache or replica)
         $response = $this->getJson('/api/public/content');
@@ -597,7 +597,7 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     services:
-      postgres: { image: postgres:16, env: { POSTGRES_PASSWORD: postgres } }
+      mysql: { image: mysql:8, env: { POSTGRES_PASSWORD: postgres } }
       redis: { image: redis:7, ports: ['6379:6379'] }
     steps:
       - uses: actions/checkout@v4
