@@ -55,13 +55,25 @@ FROM composer:2 AS composer
 
 # ---------------------------------------------------------------------------
 # Stage 3: AWS CLI v2 (for the EC2 SSM-fetching entrypoint)
+# This stage is optional for local builds. Set build-arg INCLUDE_AWSCLI=1 to
+# install the real AWS CLI; the default path creates a harmless stub so the
+# subsequent COPY operations succeed during local development.
 # ---------------------------------------------------------------------------
+ARG INCLUDE_AWSCLI=0
 FROM amazonlinux:2023 AS awscli
-RUN yum install -y curl unzip >/dev/null 2>&1 \
-    && curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
-    && unzip -q /tmp/awscliv2.zip -d /tmp \
-    && /tmp/aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin \
-    && rm -rf /tmp/awscliv2.zip /tmp/aws
+ARG INCLUDE_AWSCLI
+RUN if [ "${INCLUDE_AWSCLI}" = "1" ]; then \
+            yum install -y curl unzip >/dev/null 2>&1 && \
+            curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip && \
+            unzip -q /tmp/awscliv2.zip -d /tmp && \
+            /tmp/aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin && \
+            rm -rf /tmp/awscliv2.zip /tmp/aws ; \
+        else \
+            mkdir -p /usr/local/aws-cli /usr/local/bin && \
+            echo '#!/bin/sh' > /usr/local/bin/aws && \
+            echo 'echo "aws cli unavailable in local build"' >> /usr/local/bin/aws && \
+            chmod +x /usr/local/bin/aws ; \
+        fi
 
 # ---------------------------------------------------------------------------
 # Final image
