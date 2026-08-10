@@ -1,0 +1,56 @@
+Four real things this pass, two spec-level, two edge-case. Then a recommendation.
+
+## Spec-level (need v3.4)
+
+### 1. §4.2 wasn't updated to match the per-blueprint floor
+
+§4.3's fix replaced the global lap floor with a per-blueprint relative floor. But §4.2 still reads: "pick the ring with the lowest average depth... and deepen it to **the current lap's target floor**... Bet 1 is 'Core to depth 3' — a named target ring and depth."
+
+There is no single "current lap's target floor" anymore — each blueprint has its own. And "Core to depth 3" assumes the four Core blueprints all share the same target in lap 1, which under the per-blueprint rule is only true if they all shared the same admission depth (they didn't — Milestone 0 brought CORE-02 to depth 2 and CORE-04/05/06 to depth 1). So in lap 1, CORE-02's target is 3, CORE-04/05/06's targets are 2. "Core to depth 3" is false under the new floor.
+
+§4.2 needs rewriting in per-blueprint terms. Concretely: "pick the ring with the lowest average depth, and deepen its below-floor blueprints to their own per-blueprint targets (§4.3)." The "named target ring and depth" example should also be reformulated — "Core's below-floor blueprints to their per-blueprint targets" rather than "Core to depth 3."
+
+### 2. Bet 1's 1.5× kill trigger can't be computed
+
+§4.2: "A bet's time-box is the throughput-derived estimate for its scoped work (§5), with a 1.5× ceiling."
+
+§5: throughput from Milestone 0 is explicitly a **build** rate (depth 0→2), and §5 + §9 both flag that deepening (depth 2→3→4→5) is "very likely a different unit." Bet 1 is a deepening bet (depth 2→3 for Core). So computing Bet 1's time-box from §5's throughput is exactly the unit mismatch §5 warns against — and yet §4.2's kill trigger formula requires it.
+
+The doc's §9 catches the throughput mismatch in the abstract but doesn't follow through to its consequence for §4.2. Two clean fixes:
+
+- **Use W (Milestone 0 duration) directly as Bet 1's ceiling**, with 1.5×W as the kill trigger. Honest about being a placeholder; Bet 1's actual duration becomes the first deepening-throughput data point.
+- **Defer Bet 1's kill trigger entirely** — set no ceiling for Bet 1, run it to completion, use the measured duration as the baseline for Bet 2's ceiling. Riskier (no kill trigger for the first deepening bet) but cleaner unit-wise.
+
+Either is fine; the current state (formula that produces a number with the wrong unit) is not.
+
+## Edge-case (file as ODs, don't block)
+
+### 3. OD-02 vs lap 1 widen sequencing risk
+
+§8.1 says OD-02 resolves during Cooldown 1 — *after* Bet 1 runs. §4.3's widen rule admits "next-most-depended-upon" blueprints based on the dependency graph. If that graph says CORE-16 (Crypto) or HUB-04 (Identity) is next-most-depended-upon for lap 1's widen step — which is plausible, since BRIDGE-01 references them and BRIDGE-01 is already in the matrix — then lap 1 admits CORE-16 or HUB-04 at depth 1, their interfaces freeze (§2.1), and OD-02's decision in Cooldown 1 may then require an ADR-gated interface change to implement.
+
+This is a real risk but not a guaranteed problem — it depends on what the dependency graph actually says about lap-1 widening order. Two options:
+
+- **Constrain lap 1 widen to exclude CORE-16/HUB-04** until OD-02 resolves. Adds one sentence to §4.3.
+- **Accept the ADR-gated-change risk** explicitly, file as OD. Cheaper to write, more expensive if it bites.
+
+I'd take the constraint — one sentence versus a potential ADR-thrash on a freshly-frozen interface.
+
+### 4. §9's "50% admitted" trigger is ambiguous
+
+The new §9 entry for §5.2 coverage extension says: "extend §5.2 for a ring's remaining blueprints once its covered set is 50% admitted." 50% of what — the covered set (so 5 of HUB's 10 covered), or the ring's total (15 of HUB's 30)? Different meanings, different trigger fires at different times.
+
+Minor — easy to clarify before the trigger fires. File as OD with the clarification, or just resolve it inline in §9.
+
+## Smaller observations (not gaps, not blocking)
+
+- The per-blueprint floor has a structural consequence the doc doesn't acknowledge: early laps are widen-heavy (few deepening bets needed, since few blueprints are in the matrix), late laps are deepen-heavy (many blueprints all below their per-blueprint floors). This isn't a bug — it's the natural shape of spiral deepening — but it does mean the lap cadence accelerates over time, which affects cooldown frequency. Not a gap to fix; just something to know for capacity planning once lap data exists.
+- §4.3's widen step says "For each of the 6 rings, admit its next-most-depended-upon not-yet-touched blueprint." Once a ring is fully widened, this rule has no target. Gap A's "up to 6 ring-admissions" softens this, but §4.3's main text doesn't. One-sentence fix: "For each ring that still has unadmitted blueprints..."
+
+## Recommendation
+
+**One more pass — v3.4 — then push.** Two spec fixes (§4.2 rewrite, Bet 1 kill trigger fallback), two OD filings (lap 1 widen constraint, §9 50% trigger clarification), one one-sentence fix (§4.3 fully-widened ring). Then file as canonical.
+
+The honest assessment: gap-hunting is still finding real things, but the things it's finding are getting smaller and more localized. v3.2 → v3.3 found a real spec contradiction; v3.3 → v3.4 would find two real spec inconsistencies plus edge-case ODs. That's still worth one more round, but it's also a clear signal that the marginal return is dropping fast. After v3.4, the doc is genuinely good enough that further passes should wait for real lap data — the remaining unknowns (§9's six entries) are data-dependent by design, and gap-hunting on data-dependent unknowns is the analysis paralysis this whole process exists to prevent.
+
+Push v3.4, then stop. Don't iterate to v3.5 without lap data.
