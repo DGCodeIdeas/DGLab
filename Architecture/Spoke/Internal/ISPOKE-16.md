@@ -11,8 +11,8 @@ Sovereign Transporter — `SovereignStack\Internal\Transporter`. Bulk import/exp
 ISPOKE-16 is the bulk data-movement console. It reads source files (CSV, JSON, NDJSON, Parquet
 metadata) or streams from a queue, maps source columns to the target entity schema, runs a
 transformation pipeline (typing, normalization, reference resolution), validates against the target
-entity's invariants, and writes via the canonical persistence path (CORE-19 Database over MySQL
-16 / JSONB). Exports are the inverse: a configured projection over entities is serialized to the
+entity's invariants, and writes via the canonical persistence path (CORE-19 Database over MySQL 8
+(InnoDB) / JSON). Exports are the inverse: a configured projection over entities is serialized to the
 requested format and streamed to object storage (HUB-11 Cloud Storage) or returned inline.
 
 The component is **not** an ETL platform. It deliberately scopes itself to operator-initiated, audited,
