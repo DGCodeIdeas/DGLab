@@ -12,7 +12,7 @@ ISPOKE-16 is the bulk data-movement console. It reads source files (CSV, JSON, N
 metadata) or streams from a queue, maps source columns to the target entity schema, runs a
 transformation pipeline (typing, normalization, reference resolution), validates against the target
 entity's invariants, and writes via the canonical persistence path (CORE-19 Database over MySQL
-16 / JSONB). Exports are the inverse: a configured projection over entities is serialized to the
+8 (InnoDB) / JSON). Exports are the inverse: a configured projection over entities is serialized to the
 requested format and streamed to object storage (HUB-11 Cloud Storage) or returned inline.
 
 The component is **not** an ETL platform. It deliberately scopes itself to operator-initiated, audited,
@@ -76,12 +76,12 @@ CREATE TABLE transporter_jobs (
     id          ULID PRIMARY KEY DEFAULT ulid_generate(),
     tenant_id   ULID NOT NULL REFERENCES tenants(id),
     kind        text NOT NULL CHECK (kind IN ('import','export')),
-    spec        jsonb NOT NULL,            -- serialized ImportJob/ExportJob
+    spec        json NOT NULL,            -- serialized ImportJob/ExportJob
     status      text NOT NULL DEFAULT 'queued'
                     CHECK (status IN ('queued','running','succeeded','failed','rolled_back')),
     rows_total  integer NOT NULL DEFAULT 0,
     rows_done   integer NOT NULL DEFAULT 0,
-    errors      jsonb NOT NULL DEFAULT '[]'::jsonb,
+    errors      json NOT NULL DEFAULT ('[]'),
     created_by  ULID NOT NULL,             -- operator (HUB-04)
     created_at  timestamptz NOT NULL DEFAULT now()
 );

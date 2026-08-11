@@ -102,3 +102,18 @@ Stage Summary:
 ---
 
 *End of WORKLOG.md. Append new entries below; never edit above.*
+
+---
+Task ID: 6
+Agent: Kilo (review-fix pass, 2026-08-11)
+Task: Address review findings — fix D-12 (ISPOKE-16 PostgreSQL leftover) and confirm CI/lint claims are accurate.
+
+Work Log:
+- Reviewed external analysis of commits `a35a90da` (raw `Design_Models_Misc/` dump) and `bd25141b` (CrossCutting reconciliation). Analysis confirmed hospitality count (96, not 101), D-01 (CORE-16/HUB-04 lap-1 exclusion dropped), D-08 (6 rings = 4 layers + 2 checkpoints), two-scale separation — all correct.
+- **D-12 fix applied** to `Architecture/Spoke/Internal/ISPOKE-16.md`: "MySQL 16 / JSONB" → "MySQL 8 (InnoDB) / JSON" (lines 14-15); `jsonb NOT NULL` → `json NOT NULL` and `DEFAULT '[]'::jsonb` → `DEFAULT ('[]')` (lines 79, 84). Verified grep-clean of PostgreSQL-era syntax.
+- Verified the consolidated `PROMPTS.md` does NOT falsely claim CI runs lint — line 325 explicitly warns agents not to believe a CI Pulse lint exists; `SDLC-AGRD.md` §6 and `REPO-STATE-AUDIT.md` §6 state run.php is 3 checks only and `architecture-lint.yml` is unwired. No doc falsely asserts automated CI gating.
+- Confirmed `ADR-012` (OD-02 target) and `ADR-014` (ratify SDLC) remain absent — correctly logged as open process gaps in `DISCREPANCY-REGISTER.md` (D-06, D-07) and `REPO-STATE-AUDIT.md` §4. Not invented (would be silently resolving an OD / architectural decision — forbidden by `MEMORY.md` §5 rule 7).
+
+Stage Summary:
+- `ISPOKE-16.md` D-12 closed in source. `DISCREPANCY-REGISTER.md` D-12 marked Resolved; closing note updated to "Two items (D-06, D-07)".
+- No new lint failures introduced; hospitality-ID failures (D-15) unchanged/expected.
