@@ -102,8 +102,7 @@ resolvable by this effort (needs a decision/commit).
 - **Source claim/audit:** `ISPOKE-16.md` described persistence as "MySQL 16 / JSONB" — a pre-`ADR-013` leftover
   (16 = Postgres version, JSONB = Postgres-only).
 - **Canonical truth:** MySQL 8 + plain `JSON` (`ADR-013`). The line slipped through a 42-file find-and-replace.
-- **Logged / Open:** `SDLC-HISTORY.md` §2 (audit caught it). Needs a one-line fix in `ISPOKE-16.md` (out of
-  scope for this cross-cutting consolidation).
+- **Resolved (2026-08-11):** the one-line fix was applied to `ISPOKE-16.md` — "MySQL 16 / JSONB" -> "MySQL 8 (InnoDB) / JSON" (lines 14-15), and the `jsonb` DDL columns -> `json` (lines 79, 84: `spec json NOT NULL`, `errors json NOT NULL DEFAULT ('[]')`). Verified clean of PostgreSQL-era syntax. The discrepancy is now closed in the source blueprint, not just logged.
 - **Severity:** Low (single-line drift, but exactly the class this audit exists to catch).
 
 ## D-13 — "Sovereign" naming collisions
@@ -151,9 +150,9 @@ resolvable by this effort (needs a decision/commit).
 | D-09 | Two depth scales | Medium | Corrected |
 | D-10 | Radial Incremental-era model | Medium | Corrected |
 | D-11 | v0.5 not adopted | Low | Logged |
-| D-12 | ISPOKE-16 PG leftover | Low | Logged/Open |
+| D-12 | ISPOKE-16 PG leftover | Low | **Resolved** |
 | D-13 | Sovereign collisions | Low–Med | Corrected/Open (OD-05) |
 | D-14 | §10 changelog superseded | Low | Corrected |
 
-**Three items (D-06, D-07, D-12) require repo commits/ADRs to fully close** and are intentionally left Open
+**Two items (D-06, D-07) require repo commits/ADRs to fully close** and are intentionally left Open
 rather than silently resolved.
