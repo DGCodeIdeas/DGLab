@@ -1,4 +1,4 @@
-# PHASE ISPOKE-01: Administration Panel and Control Centre
+# ISPOKE-01: Sovereign Command Center — Internal Exemplar
 
 ## Tier
 Internal Spoke (Staff-only Application)

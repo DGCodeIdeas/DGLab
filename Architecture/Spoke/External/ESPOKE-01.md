@@ -1,4 +1,4 @@
-# PHASE ESPOKE-01: Public CMS and Content Delivery Layer
+# ESPOKE-01: Sovereign Canvas — External Exemplar
 
 ## Tier
 External Spoke (Public-facing Application)

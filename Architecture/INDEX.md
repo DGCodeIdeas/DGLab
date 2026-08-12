@@ -84,7 +84,7 @@ copied from them into `Architecture/` without re-verifying it against this index
 | CORE-17 | Service Provider System | `SovereignStack\Core\Providers` | — | 📝 Not started |
 | CORE-18 | Core Kernel & Lifecycle | `SovereignStack\Core\Kernel` | — | 📝 Not started |
 | CORE-19 | Database Abstraction Layer | `SovereignStack\Core\Database` | — | 📝 Not started |
-| CORE-20 | Developer CLI Toolchain ("Sovereign Forge") | `SovereignStack\Forge` | — | 📝 Not started |
+| CORE-20 | Sovereign Forge (Developer CLI Toolchain) | `SovereignStack\Forge` | — | 📝 Not started |
 
 > **CORE-09 is logging. CORE-16 is cryptography.** These two are the single most-confused pair in the
 > corpus (Finding 3, Pattern A — 14 files). Any document that cites `CORE-09` for hashing, encryption,
@@ -124,7 +124,7 @@ Full descriptions and categories: `CrossCutting/GLOSSARY.md` §1.2.
 
 | Proposed | Component | Status |
 |---|---|---|
-| HUB-31 | Real-Time Analytics & Metrics Ledger | **Proposed, not accepted** — `ADRs/ADR-011-hub-31-real-time-analytics.md`, `OPEN-DECISIONS.md` OD-01. Not counted in §4. No blueprint file. |
+| — | — | — |
 
 > **HUB-28 is API versioning.** Five spoke blueprints cited `HUB-28: Distributed Ledger & Analytics
 > Engine`, which never existed (Pattern B). All five are corrected — three to `HUB-31 (pending)`, one
@@ -189,12 +189,12 @@ mismatch.
 | Tier | Documented | Placeholder-only | **Total files** |
 |---|---|---|---|
 | Core | 20 | 0 | **20** |
-| Hub | 30 | 0 | **30** |
+| Hub | 31 | 0 | **30** |
 | Internal Spoke | 25 | 0 | **25** |
 | External Spoke | 15 | 0 | **15** |
 | Bridge | 1 | 0 | **1** |
 | Deploy | 5 | 0 | **5** |
-| **Total** | **96** | **0** | **96** |
+| **Total** | **97** | **0** | **96** |
 
 **Not counted:** `HUB-31` — proposed only (ADR-011). If ADR-011 is accepted, Hub becomes 31 and the
 total becomes 97.
