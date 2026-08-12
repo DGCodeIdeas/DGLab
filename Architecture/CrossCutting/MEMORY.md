@@ -16,15 +16,15 @@ curation discipline is what makes it trustworthy).
 ## 1. Project identity
 
 **DGLab / Sovereign Stack** — a custom PHP MVC framework, multi-tenant, event-driven, structured as a
-concentric wheel: **6 rings, 96 canonical blueprints**.
+concentric wheel: **6 rings, 101 canonical blueprints**.
 
 | Ring | Blueprint count | Example IDs | Role |
 |---|---|---|---|
 | Core | 20 | CORE-01..20 | Framework kernel / domain model — innermost invariants |
 | Hub | 30 | HUB-01..30 | Stateful aggregates / application services around Core |
-| Thick Spokes (Inner Spokes) | 25 | ISPOKE-01..25 | Service adapters (Codex, etc.) — staff-facing |
+| Thick Spokes (Inner Spokes) | 27 | ISPOKE-01..27 | Service adapters (Codex, etc.) — staff-facing |
 | Inner Rim | 1 | BRIDGE-01 | Stateless contract checkpoint between Inner and Outer Spokes |
-| Thin Spokes (Outer Spokes) | 15 | ESPOKE-01..15 | UI/edge adapters (Canvas, etc.) — public-facing, untrusted |
+| Thin Spokes (Outer Spokes) | 18 | ESPOKE-01..18 | UI/edge adapters (Canvas, etc.) — public-facing, untrusted |
 | Outer Rim | 5 | DEPLOY-00..04 | Deployment / runtime edge |
 
 **Pulse** — the canonical end-to-end request trace: an HTTP request enters at the Outer Rim, crosses the Inner
@@ -34,9 +34,11 @@ working, not a diagram of it.
 **Polyrepo (Vision B canonical)** — multiple repos, not a monolith. Cross-repo consistency is enforced by the
 Pulse 6-tuple (see `PULSE-MODEL.md`).
 
-> **Canonical count = 96.** Five hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) plus `ADR-015`
-> were *designed* (in chat sessions) but **never committed to the repo** — they are not counted in the live
-> 96 and are tracked separately in `HOSPITALITY-VERTICAL.md`. Do not assume them to exist in `Architecture/`.
+> **Canonical count = 101.** The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) plus
+> `ADR-015` were *designed* (in chat sessions) and historically **not committed to the repo**; they
+> were promoted to canonical on 2026-08-12 per `ADR-015` (Proposed; ratification deferred until the
+> hospitality V1 track ships against Bet 3 Hub Full). The count is now 101; see `HOSPITALITY-VERTICAL.md`
+> for the design source and `DISCREPANCY-REGISTER.md` D-02/D-15 for the closure record.
 
 ## 2. Team reality
 
@@ -216,5 +218,7 @@ Merged from three `Design_Models_Misc` variants: `MEMORY.md` (curated entry-poin
 update protocol), `MEMORY(1).md` (tech-stack table, hazard matrix, source hierarchy), and `MEMORY(2).md`
 (repo-accurate spine: live-repo truth rule, ADR-013 MySQL, naming-collision pattern, implementation status, PAT
 security note). **Corrections applied:** MEMORY-rule-7 lap-1 widen exclusion for CORE-16/HUB-04 **removed**
-(per v3.4(3)); inventory normalized to 96 canonical (hospitality 5 + ADR-015 noted as designed-but-not-in-repo);
+(per v3.4(3)); inventory normalized to 96 canonical on 2026-08-05 (hospitality 5 + ADR-015 noted as
+designed-but-not-in-repo), then **promoted to 101 canonical on 2026-08-12** per ADR-015 (hospitality
+vertical blueprints committed, linter scope extended, D-02/D-15 closed);
 all sandbox `/home/z/my-project/*` paths re-pointed to `Architecture/CrossCutting/*`.

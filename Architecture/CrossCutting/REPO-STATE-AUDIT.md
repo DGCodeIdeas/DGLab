@@ -7,22 +7,23 @@ contradiction is logged in `DISCREPANCY-REGISTER.md`.
 
 ---
 
-## 1. Blueprint inventory — 96 canonical
+## 1. Blueprint inventory — 101 canonical
 
 | Tier | Count | IDs |
 |---|---|---|
 | Core | 20 | `CORE-01..20` |
 | Hub | 30 | `HUB-01..30` |
-| Internal Spoke (Thick) | 25 | `ISPOKE-01..25` |
-| External Spoke (Thin) | 15 | `ESPOKE-01..15` |
+| Internal Spoke (Thick) | 27 | `ISPOKE-01..27` |
+| External Spoke (Thin) | 18 | `ESPOKE-01..18` |
 | Bridge (Inner Rim) | 1 | `BRIDGE-01` |
 | Deploy (Outer Rim) | 5 | `DEPLOY-00..04` |
-| **Total** | **96** | |
+| **Total** | **101** | |
 
-**Not counted:** 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) and `ADR-015` — designed in chat,
-**never committed** (see `HOSPITALITY-VERTICAL.md`). Any source draft claiming "101 blueprints" is counting the
-uncommitted hospitality set. These five IDs are out of the current `INDEX.md` range, so `run.php` check 1 flags
-them wherever named — an expected, correct failure (see `DISCREPANCY-REGISTER.md` D-15) that resolves on promotion.
+**Promoted 2026-08-12 (per ADR-015):** 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`)
+were designed in chat and historically not committed; they are now canonical. `ADR-015` is **Proposed**
+(ratification deferred until the hospitality V1 track ships against Bet 3 Hub Full). The previous
+"designed-but-not-committed" note is now historical — see `HOSPITALITY-VERTICAL.md` for the design
+source and `DISCREPANCY-REGISTER.md` D-02/D-15 for the closure record.
 
 **Implementation status:** only `CORE-01` (Loom, orchestrator) and `CORE-03` (event dispatcher) have real,
 tested code. `CORE-02` (DI Container) is a stub (`.gitkeep` only) and is the critical-path blocker. Do not
@@ -33,7 +34,7 @@ assume any other component is built.
 - `INDEX.md` §2 is the canonical tier/ID catalog.
 - `INDEX.md` §5.1 carries the dependency DAG with **binding edge-direction semantics** (a fix from the
   refinement audit — the `HUB-03`↔`HUB-11` cycle was resolved here).
-- `INDEX.md` §5.2 carries a **Mermaid dependency graph covering 37 of 96 blueprints** (all 20 Core, 10 "selected
+- `INDEX.md` §5.2 carries a **Mermaid dependency graph covering 37 of 101 blueprints** (all 20 Core, 10 "selected
   critical" Hub, `BRIDGE-01`, exemplar `ISPOKE-01`/`ESPOKE-01`, all 4 Deploy). `HUB-02` and `HUB-04` are in the
   covered set with real edges. This coverage is what the SDLC widen rule computes against; it must be extended
   before widening exhausts the 37 nodes (trigger: 50% of a ring's covered set admitted — `SDLC-AGRD.md` §9).

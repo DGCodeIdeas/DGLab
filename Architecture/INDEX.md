@@ -2,7 +2,7 @@
 
 **Status:** Canonical.
 **Scope:** the polyrepo, tier-isolated Sovereign Stack (Core → Hub → Bridge → Spokes → Deploy).
-**Last verified against `main`:** 2026-08-05.
+**Last verified against `main`:** 2026-08-12.
 **Merged from:** `01_MASTER_INDEX(4).md` (governance rules, DAG, build sequence, fidelity bar) and
 `01_MASTER_INDEX(5).md` (the eight cross-reference drift patterns, HUB-31 registration, Finding 15).
 Five other `01_MASTER_INDEX*` revisions are archived under `Analysis_Critiques_Rewrites/`.
@@ -21,12 +21,15 @@ cross-reference, **this index is correct and the other document is stale** (Gove
 |---|---|
 | `Architecture/Core/CORE-01..20` | 20 Core-tier blueprints |
 | `Architecture/Hub/HUB-01..30` | 30 Hub-tier blueprints |
-| `Architecture/Spoke/Internal/ISPOKE-01..25` | 25 Internal Spoke blueprints (all documented; ISPOKE-16–25 promoted from placeholders on 2026-08-05) |
-| `Architecture/Spoke/External/ESPOKE-01..15` | 15 External Spoke blueprints |
+| `Architecture/Spoke/Internal/ISPOKE-01..27` | 27 Internal Spoke blueprints (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26/27 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
+| `Architecture/Spoke/External/ESPOKE-01..18` | 18 External Spoke blueprints (ESPOKE-16/17/18 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
 | `Architecture/Spoke/Bridge/BRIDGE-01` | 1 Bridge blueprint |
 | `Architecture/Deploy/DEPLOY-00..04` | 5 Deploy blueprints (all documented; 00 renamed, 02/03/04 promoted from stubs on 2026-08-05) |
 | `Architecture/ADRs/ADR-001..010` | 10 Accepted Architecture Decision Records |
+| `Architecture/ADRs/ADR-012` | **Accepted** (2026-08-12) — post-quantum JWT algorithm-agility roadmap; 3-phase plan (Phase 0: configurable `alg` allowlist; Phase 1: hybrid ES256+ML-DSA-65; Phase 2: PQ-only). Records the OD-02 decision. Extends (does not supersede) ADR-003. |
 | `Architecture/ADRs/ADR-013` | **Accepted** (2026-08-05) — MySQL 8 (InnoDB) primary datastore; **supersedes ADR-007** (PostgreSQL), which is now relegated behind the CORE-19 driver (disabled by default) |
+| `Architecture/ADRs/ADR-014` | **Accepted** (2026-08-12) — ratifies SDLC-AGRD v3.4(3) Spiral Deepening as the canonical SDLC; anchors `MEMORY-GOVERNANCE.md` Tier-3 rule. Closes D-06. |
+| `Architecture/ADRs/ADR-015` | **Proposed** (2026-08-12; ratification deferred until V1 ships against Bet 3 Hub Full) — promotes the 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) from design-only to canonical; count 96 → 101. Closes D-02 and D-15. |
 | `Architecture/ADRs/ADR-011` | 1 **Proposed** ADR (HUB-31) — not accepted, not counted |
 | `Architecture/CrossCutting/` | STRUCTURE-01..09, OBSERVABILITY, GLOSSARY, THREAT_MODEL |
 | `orchestrator/` | CORE-01 reference implementation (real, tested) |
@@ -138,8 +141,8 @@ Full descriptions and categories: `CrossCutting/GLOSSARY.md` §1.2.
 
 Full name tables: `CrossCutting/GLOSSARY.md` §1.3–§1.5.
 
-- **Internal Spokes** — `ISPOKE-01..25` documented (ISPOKE-16–25 promoted from placeholders on 2026-08-05; all 25 now meet the fidelity bar).
-- **External Spokes** — `ESPOKE-01..15`, all documented.
+- **Internal Spokes** — `ISPOKE-01..27` documented (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26 Sovereign Reservations and ISPOKE-27 Sovereign Front Desk promoted from the hospitality-vertical design on 2026-08-12 per ADR-015).
+- **External Spokes** — `ESPOKE-01..18`, all documented (ESPOKE-16 Sovereign Booking Portal, ESPOKE-17 Sovereign Concierge, ESPOKE-18 Sovereign Mobile Check-in promoted from the hospitality-vertical design on 2026-08-12 per ADR-015).
 - **Bridge** — `BRIDGE-01` (The Vanguard), `SovereignStack\Bridge`.
 - **Deploy** — `DEPLOY-00` (Documentation Site, renamed), `DEPLOY-01` (Core & Hub Service Deployment),
   `DEPLOY-02`/`03`/`04` (documented, promoted from stubs on 2026-08-05).
@@ -189,15 +192,17 @@ mismatch.
 | Tier | Documented | Placeholder-only | **Total files** |
 |---|---|---|---|
 | Core | 20 | 0 | **20** |
-| Hub | 31 | 0 | **30** |
-| Internal Spoke | 25 | 0 | **25** |
-| External Spoke | 15 | 0 | **15** |
+| Hub | 30 | 0 | **30** |
+| Internal Spoke | 27 | 0 | **27** |
+| External Spoke | 18 | 0 | **18** |
 | Bridge | 1 | 0 | **1** |
 | Deploy | 5 | 0 | **5** |
-| **Total** | **97** | **0** | **96** |
+| **Total** | **101** | **0** | **101** |
 
-**Not counted:** `HUB-31` — proposed only (ADR-011). If ADR-011 is accepted, Hub becomes 31 and the
-total becomes 97.
+**Not counted:** `HUB-31` — proposed only (ADR-011, not yet accepted). If ADR-011 is accepted, Hub
+becomes 31 and the total becomes 102. The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`)
+*are* counted — they were promoted from design-only to canonical on 2026-08-12 per ADR-015 (Proposed,
+ratification deferred until the hospitality V1 track ships against Bet 3 Hub Full).
 
 **Hub criticality distribution** (corrected from Finding 14: the taxonomy claimed "Medium | 6" while
 listing 5, and totalled 31 against 30 rows):
@@ -210,9 +215,11 @@ listing 5, and totalled 31 against 30 rows):
 | **Total** | **30** | |
 
 **Timeline impact.** Every "32-week total timeline" claim in the archived evaluation layer assumed 15
-Internal Spokes. With 25, Phase 3 re-estimates at roughly 1.6×, or is split into Phase 3a (the 15
-documented spokes) and Phase 3b (`ISPOKE-16`–`25`, now all documented). See `Migration/04_MIGRATION_PLAN.md`; the realistic
-end-to-end figure is **40–48 weeks** with a 3-person team (Finding 15), not 32.
+Internal Spokes. With 27 (25 + 2 hospitality), Phase 3 re-estimates at roughly 1.7×, or is split into Phase 3a (the 15
+documented spokes), Phase 3b (`ISPOKE-16`–`25`, now all documented), and Phase 3c (`ISPOKE-26/27` +
+`ESPOKE-16/17/18` hospitality vertical, wk 17–29 per `HOSPITALITY-VERTICAL.md` §3). See `Migration/04_MIGRATION_PLAN.md`; the realistic
+end-to-end figure is **40–48 weeks** with a 3-person team (Finding 15), not 32 — and the hospitality
+vertical is a parallel track that starts after Bet 3 Hub Full, not on the critical path.
 
 ---
 
@@ -469,3 +476,5 @@ php Architecture/Verification/lint/run.php
 | 2026-08-05 | Consolidation: merged `01_MASTER_INDEX(4)`+`(5)`; `Architecture/` declared sole source of truth; 4 legacy trees archived; 20 documented inconsistencies reconciled (see `Verification/INCONSISTENCIES.md`); `HUB-09` renamed; `DEPLOY-00` rename executed; `ISPOKE-16..25` and `DEPLOY-02..04` materialised; ADR-011 (HUB-31) filed as Proposed; CI lint added | Consolidation pass |
 | 2026-08-05 | Blueprint promotion: `ISPOKE-16`–`25` (10 Internal Spokes) and `DEPLOY-02`–`04` (3 Deploy) promoted from placeholders/stubs to full-fidelity, implementation-ready blueprints; `ISPOKE-21` renamed Sovereign Scan to avoid the `HUB-27` "Sentinel" collision; `GLOSSARY`/`INDEX` §4 counts updated (96 documented, 0 placeholder); CI lint green | Promotion pass |
 | 2026-08-05 | Decision shift: `ADR-013` revised — **MySQL 8 (InnoDB) is now the primary datastore**; PostgreSQL is relegated behind the CORE-19 driver and disabled by default (re-enabled only at the next decision scale). `ADR-007` marked Superseded. `STRUCTURE-05`, `CORE-19`, `STRUCTURE-07/08/09`, `DEPLOY-02`, the spoke/datastore blueprints, and `GLOSSARY` realigned to MySQL; `INCONSISTENCIES.md` #1 updated | Datastore reversal |
+| 2026-08-12 | OD resolution pass (PR #104): **ADR-012** (post-quantum JWT agility) and **ADR-014** (ratify AGRD as canonical SDLC) authored and **Accepted**. All 6 Open Decisions resolved — OD-01 (HUB-31 acceptance noted in ADR-011, still Proposed), OD-02 (ADR-012), OD-03 (CI lint reality corrected), OD-04 (ISPOKE-01/ESPOKE-01 qualified as Internal/External Exemplars), OD-05 (Sovereign Forge collision resolved — ISPOKE-02→A1 Atlas, ISPOKE-11→B1 Penumbra, ESPOKE-12→C1 Pulsar), OD-06 (provisional flag). `OPEN-DECISIONS.md` rewritten with all 6 resolutions. | OD resolution pass |
+| 2026-08-12 | D-12 PostgreSQL leftover fix + hospitality vertical promotion (PR #103): **D-12 fixed across 14 canonical files** (10 Spoke + 3 Hub + 1 Cross-cutting) — all PG-isms (`jsonb`, `timestamptz`, `now()`, `bytea`, `BIGSERIAL`, PG `CHECK`, PG partial indexes, PG RLS, PG `PARTITION OF`) converted to MySQL 8 (InnoDB) per ADR-013. **ADR-015** (hospitality vertical promotion) authored and **Proposed** (ratification deferred until V1 ships against Bet 3 Hub Full). **5 blueprints promoted from design-only to canonical** — `ISPOKE-26` (Sovereign Reservations), `ISPOKE-27` (Sovereign Front Desk), `ESPOKE-16` (Sovereign Booking Portal), `ESPOKE-17` (Sovereign Concierge), `ESPOKE-18` (Sovereign Mobile Check-in). `INDEX.md` §1/§2.3/§4 canonical ranges extended (`ISPOKE-01..27`, `ESPOKE-01..18`); canonical count **96 → 101**. `Verification/lint/run.php` `buildValidIds()` + `checkStructure()` extended to cover the new ranges — check 1 now passes on every doc that references the hospitality IDs (D-15 mechanically resolved). `DISCREPANCY-REGISTER.md` D-02 and D-15 marked **Resolved 2026-08-12**. CI workflow file `.github/workflows/architecture-lint.yml` restored from commit `33deaed` (was lost in PR #102 merge). | Discrepancy closure + hospitality promotion |

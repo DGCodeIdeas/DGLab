@@ -1,16 +1,16 @@
-# HOSPITALITY-VERTICAL.md — The Hospitality Vertical (Designed, Not Yet in Repo)
+# HOSPITALITY-VERTICAL.md — The Hospitality Vertical
 
-**Status:** **Designed only.** The five blueprints (`ISPOKE-26`, `ISPOKE-27`, `ESPOKE-16`, `ESPOKE-17`,
-`ESPOKE-18`) and `ADR-015` were produced in a chat session but **never committed** to `Architecture/`. The live
-repo's canonical count is **96**; these would bring it to **101** only if merged. They are tracked here so the
-design is not lost, but they are **not authoritative** until committed with `INDEX.md`/ADR updates.
+**Status:** **Promoted to canonical 2026-08-12.** The five blueprints (`ISPOKE-26`, `ISPOKE-27`,
+`ESPOKE-16`, `ESPOKE-17`, `ESPOKE-18`) and `ADR-015` are now committed to `Architecture/` (Spoke/Internal/,
+Spoke/External/, ADRs/ respectively). The live repo's canonical count is **101** (was 96 before promotion).
+Ratification as Accepted is deferred until the hospitality V1 track (wk 17–29 per §3) ships against
+Bet 3 Hub Full — see `ADR-015` for the decision record.
 
-> **Lint expectation:** because these IDs are not in `INDEX.md`, `Verification/lint/run.php` (check 1,
-> reference existence) will flag every `ESPOKE-16/17/18` and `ISPOKE-26/27` reference in this file **and in any
-> cross-cutting doc that names them** (e.g., `DISCREPANCY-REGISTER.md` D-02, `REPO-STATE-AUDIT.md` §1). This is
-> the linter working correctly — it is the mechanical proof behind D-02 (the blueprints are not in the repo).
-> The failure is expected and resolves itself once the blueprints are promoted per §7. Do **not** "fix" it by
-> adding the IDs to `INDEX.md` or inventing stub files — that would silently contradict D-02.
+> **Lint expectation:** `Verification/lint/run.php` `buildValidIds()` and `checkStructure()` were extended
+> to `ISPOKE-01..27` and `ESPOKE-01..18` per ADR-015 on 2026-08-12; check 1 (reference existence) now
+> passes cleanly on every doc that references the hospitality IDs. The 30 previously-flagged references
+> across 6 docs are now valid. This unblocks D-03 (CI wiring) — `architecture-lint.yml` can be wired
+> to GitHub Actions on PR/push without producing a false failure.
 
 ---
 
@@ -109,10 +109,23 @@ a fork. The adapter lives in the Hub; the hotel logic lives in the Spoke.
 
 ## 7. Status & next step to make this real
 
-To promote these from "designed" to "canonical": drop the five blueprints into `Architecture/Spoke/Internal/`
-and `Architecture/Spoke/External/`, add `ADR-015` to `Architecture/ADRs/`, update `INDEX.md` §2 with the new IDs,
-and extend `run.php`'s `--ring` lint scope to include the new Spokes. Until then they remain out-of-repo design
-artifacts and are **excluded from the 96-blueprint canonical count**.
+**Promoted to canonical 2026-08-12 per ADR-015.** The five blueprints are now in:
+- `Architecture/Spoke/Internal/ISPOKE-26.md` — Sovereign Reservations
+- `Architecture/Spoke/Internal/ISPOKE-27.md` — Sovereign Front Desk
+- `Architecture/Spoke/External/ESPOKE-16.md` — Sovereign Booking Portal
+- `Architecture/Spoke/External/ESPOKE-17.md` — Sovereign Concierge
+- `Architecture/Spoke/External/ESPOKE-18.md` — Sovereign Mobile Check-in
+
+`ADR-015` is at `Architecture/ADRs/ADR-015-hospitality-vertical-promotion.md` (Proposed; ratification
+deferred until V1 ships against Bet 3 Hub Full). `INDEX.md` §1/§2.3/§4 canonical ranges extended
+(`ISPOKE-01..27`, `ESPOKE-01..18`); canonical count is **101**. `Verification/lint/run.php`
+`buildValidIds()` and `checkStructure()` extended to cover the new ranges — check 1 passes cleanly
+on every doc that references the hospitality IDs. `DISCREPANCY-REGISTER.md` D-02 (96 vs 101 count)
+and D-15 (hospitality references fail lint) marked **Resolved 2026-08-12**.
+
+**Next step:** implementation. The hospitality V1 track (wk 17–29 per §3) starts once Bet 3 Hub Full
+ring lock completes — the blueprints' Build Status fields all block on `CORE-02` (DI Container stub,
+the critical-path blocker per `INDEX.md` §2.1) and on the Bet 3 ring lock.
 
 ---
 
@@ -120,5 +133,5 @@ artifacts and are **excluded from the 96-blueprint canonical count**.
 
 Synthesized from `Design_Models_Misc/2026-08-10-Check Repo Updates-Kimi.md` (the hospitality vertical section:
 domain mapping, 5 Pulse flows, AGRD integration, new components, tenant model, integration rule, and the
-"All" follow-up that produced the 5 blueprint stubs + `ADR-015`). None of these were committed to the repo;
-this file preserves the design pending promotion.
+"All" follow-up that produced the 5 blueprint stubs + `ADR-015`). Originally tracked as design-only pending
+promotion; promoted to canonical 2026-08-12 per `ADR-015`.

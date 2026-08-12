@@ -82,6 +82,16 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
   Internal Spokes) and `DEPLOY-02`–`04` (3 Deploy) were rewritten from placeholders/stubs into
   implementation-ready blueprints (class maps, PHP interface contracts, MySQL/InnoDB DDL, integration
   strategy, security properties, CI criteria). `ISPOKE-21` was renamed **Sovereign Scan** to avoid the
-  `HUB-27` "Sentinel" collision. `INDEX.md` §4 now reports 96 documented / 0 placeholder and the CI lint
-  is green. This closes the "below the fidelity bar" gap (OD-05's concern about placeholder content is
-  resolved); the filename↔name mapping question in OD-05 remains a cosmetic open item.
+  `HUB-27` "Sentinel" collision. `INDEX.md` §4 reported 96 documented / 0 placeholder and the CI lint
+  was green at that point. This closes the "below the fidelity bar" gap (OD-05's concern about
+  placeholder content is resolved); the filename↔name mapping question in OD-05 remains a cosmetic
+  open item.
+- **Hospitality vertical promoted to canonical.** On 2026-08-12, per `ADR-015` (Proposed; ratification
+  deferred until V1 ships against Bet 3 Hub Full), 5 hospitality blueprints (`ISPOKE-26` Sovereign
+  Reservations, `ISPOKE-27` Sovereign Front Desk, `ESPOKE-16` Sovereign Booking Portal, `ESPOKE-17`
+  Sovereign Concierge, `ESPOKE-18` Sovereign Mobile Check-in) were promoted from design-only (tracked
+  in `HOSPITALITY-VERTICAL.md`) to canonical. `INDEX.md` §4 now reports **101 documented / 0
+  placeholder**. `Verification/lint/run.php` `buildValidIds()` + `checkStructure()` extended to cover
+  the new ranges; lint check 1 passes cleanly on every doc that references the hospitality IDs. This
+  closes D-02 (96 vs 101 count) and D-15 (hospitality references fail lint by design); see
+  `DISCREPANCY-REGISTER.md` for the closure record.
