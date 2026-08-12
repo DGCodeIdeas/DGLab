@@ -1,4 +1,4 @@
-# PHASE ESPOKE-12: Developer-Facing Public API Documentation Portal
+# ESPOKE-12: C1 Pulsar
 
 ## Tier
 External Spoke (Public-facing Application)
