@@ -11,71 +11,53 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 
 ## Open
 
-### OD-01 — HUB-31 (Real-Time Analytics & Metrics Ledger): accept as a full Hub tier?
-- **Fork.** Seven spoke blueprints referenced an analytics/ledger capability. Three of them
-  (`ISPOKE-05/10/13`) were pointing at a phantom `HUB-28` analytics engine; they are currently corrected
-  to `HUB-31 (pending)`. `ISPOKE-15` lists it as a Hard Dependency.
-- **Why open.** No Hub exists yet; the topology (in-Hub aggregation vs. hub-local counters shipped to a
-  deploy-time collector) is undecided.
-- **Options.**
-  1. Accept `ADRs/ADR-011-hub-31-real-time-analytics.md` as-is → Hub count becomes 31, total 97.
-  2. Fold the metrics requirement into `HUB-23` (Reporter) or `HUB-06` (Auditor) and drop HUB-31.
-  3. Reject and require spokes to expose Prometheus-style `/metrics` only, aggregated by `DEPLOY-03`.
-- **Owner.** Architecture lead.
-- **Decision route.** Accept/Reject `ADR-011`; if rejected, edit the three `HUB-31 (pending)` references.
+*All open decisions resolved on 2026-08-12. See Resolved section below.*
+
+## Resolved
+
+### OD-01 — HUB-31 (Real-Time Analytics & Metrics Ledger): accepted as full Hub tier
+- **Decision:** Accept `ADR-011` as-is. HUB-31 promoted from Proposed to accepted.
+- **Action:** `INDEX.md` updated — HUB-31 added to Hub tier table; count updated to 97 blueprints.
+- **Decided by:** Architecture lead (DGCI), 2026-08-12.
+- **Citing artefact:** `ADR-011-hub-31-real-time-analytics.md` (already existed, now accepted).
 
 ### OD-02 — Post-quantum / algorithm-agility for JWT signing
-- **Fork.** `THREAT_MODEL.md` §10 recommends "ADR-011" for a post-quantum / algorithm-agility JWT
-  roadmap. That ADR number is already taken (HUB-31). The recommendation is reallocated to **ADR-012**
-  (to be authored).
-- **Why open.** `ADR-003` (ES256) is Accepted and implemented-dependent on `HUB-04`; a migration path to
-  a hybrid / post-quantum scheme is not yet specified.
-- **Options.** (a) Author ADR-012 with a key-rotation + `alg` agility plan now; (b) defer to Phase 2.
-- **Owner.** Security lead.
-- **Decision route.** Author `ADRs/ADR-012-*.md`; update `THREAT_MODEL.md` §10 reference.
+- **Decision:** Author `ADR-012` with a three-phase key-rotation + `alg` agility plan (Phase 1 = registry infrastructure during Cooldown 1; Phase 2 = hybrid experiment when PHP supports ML-DSA; Phase 3 = full PQ migration in project Phase 2).
+- **Action:** `ADR-012-post-quantum-jwt-agility.md` created; `THREAT_MODEL.md` §10 reference updated.
+- **Decided by:** Security lead (DGCI), 2026-08-12.
+- **Citing artefact:** `ADR-012-post-quantum-jwt-agility.md`.
 
 ### OD-03 — "Soft" component-name collisions inside a single document
-- **Fork.** Five spoke blueprints reused a real ID for the wrong role (e.g. `HUB-12` used as an event
-  bus). These are resolved by cross-reference redirection (Finding 15, patterns C–H), but the *root*
-  cause — authors editing spoke blueprints without a live `INDEX.md` in front of them — is a process
-  gap, not a one-off.
-- **Why open.** The fix is procedural; no artefact change closes it.
-- **Options.** (a) Mandate `INDEX.md` open during blueprint edits + lint in CI (done); (b) add a
-  pre-commit hook that runs `Verification/lint/run.php`.
-- **Owner.** Architecture lead.
-- **Decision route.** Confirm CI enforcement is sufficient; consider a pre-commit hook.
+- **Decision:** CI enforcement (`run.php` check 1 + `.github/workflows/architecture-lint.yml`) is sufficient. No pre-commit hook needed for solo operation.
+- **Action:** Mark resolved; no file changes required.
+- **Decided by:** Architecture lead (DGCI), 2026-08-12.
+- **Citing artefact:** `SDLC-AGRD.md` §6, `REPO-STATE-AUDIT.md` §6.
 
 ### OD-04 — Exemplar count
-- **Fork.** `ISPOKE-01` (Command Center) and `ESPOKE-01` (Sovereign Canvas) are both labelled the
-  canonical exemplar. Two documents carrying the title "exemplar" is internally inconsistent.
-- **Why open.** Cosmetic, but the word *exemplar* should be unique or qualified.
-- **Options.** (a) `ISPOKE-01` = "internal exemplar", `ESPOKE-01` = "external exemplar"; (b) drop the
-  label from one.
-- **Owner.** Docs lead.
-- **Decision route.** Edit the header of the non-canonical file.
+- **Decision:** Split the label. `ISPOKE-01` = "Internal Exemplar", `ESPOKE-01` = "External Exemplar".
+- **Action:** Both file headers updated with qualified exemplar labels.
+- **Decided by:** Docs lead (DGCI), 2026-08-12.
+- **Citing artefact:** `ISPOKE-01.md`, `ESPOKE-01.md`.
 
-### OD-05 — `ISPOKE-*` folder names vs. `INDEX.md` component names
-- **Fork.** Internal Spoke *filenames* use `ISPOKE-01..25`; the human-readable component names live in
-  `INDEX.md` §2.3 and `GLOSSARY.md` §1.3. Some chat-era names (`Real-Time Analytics`) are not the
-  §2.3 name.
-- **Why open.** Filename↔name drift is low-risk but should be reconciled before Phase 2 re-authoring.
-- **Options.** (a) Keep ID-only filenames, rely on `INDEX.md`; (b) rename files to include the
-  component slug.
-- **Owner.** Docs lead.
-- **Decision route.** Decide alongside OD-04.
+### OD-05 — `ISPOKE-*` folder names vs. `INDEX.md` component names + Sovereign Forge collision
+- **Decision:** Keep ID-only filenames (Governance Rule 1 — `INDEX.md` is naming authority). Resolve the 4-way "Sovereign Forge" collision by assigning distinct names:
+  - `CORE-20` → "Sovereign Forge" (kept as canonical)
+  - `ISPOKE-02` → "A1 Atlas"
+  - `ISPOKE-11` → "B1 Penumbra"
+  - `ESPOKE-12` → "C1 Pulsar"
+- **Action:** `INDEX.md` §2.3 updated; 3 blueprint files renamed in content (filenames unchanged per decision).
+- **Decided by:** Architecture lead (DGCI), 2026-08-12.
+- **Citing artefact:** `INDEX.md` §2.3, `ISPOKE-02.md`, `ISPOKE-11.md`, `ESPOKE-12.md`.
 
-### OD-06 — `ADR-010` opcache scope vs. CORE-02 blocker interaction
-- **Fork.** `ADR-010` baselines a ~5 ms opcache warm-boot over `Core/Hub` only; `CORE-02` (DI Container)
-  is the build blocker. The warm-boot benchmark currently has no reference implementation to measure
-  against.
-- **Why open.** Performance target (`STRUCTURE-09`) is provisional until `CORE-02` lands and a harness
-  exists (governance Rule 2).
-- **Options.** (a) Keep target provisional and gated behind `CORE-02`; (b) re-baseline after `CORE-02`
-  ships.
-- **Owner.** Performance lead.
-- **Decision route.** Verify `STRUCTURE-09` is flagged provisional; revisit post-CORE-02.
+### OD-06 — `ADR-010` opcache scope vs. `CORE-02` blocker interaction
+- **Decision:** Keep target provisional and gated behind `CORE-02`. `STRUCTURE-09` already flags the ~5 ms target as provisional.
+- **Action:** Mark resolved; no file changes required (provisional flag already present).
+- **Decided by:** Performance lead (DGCI), 2026-08-12.
+- **Citing artefact:** `ADR-010-opcache-preload-strategy.md`, `STRUCTURE-09`.
 
 ---
+
+## Previously Resolved (during consolidation)
 
 ## Resolved (during consolidation)
 
