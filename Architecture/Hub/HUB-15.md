@@ -348,27 +348,25 @@ HUB-15 persists two tables via CORE-19: (1) the runtime-mutable portion of the `
 CREATE TABLE hub_service_registry (
     name            VARCHAR(64)  NOT NULL,
     url             TEXT         NOT NULL,
-    criticality     VARCHAR(16)  NOT NULL DEFAULT 'non-critical'
-                    CHECK (criticality IN ('critical', 'non-critical')),
+    criticality     ENUM('critical','non-critical') NOT NULL DEFAULT 'non-critical',
     timeout_ms      INT          NOT NULL DEFAULT 2000
                     CHECK (timeout_ms BETWEEN 100 AND 10000),
-    registered_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    registered_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     registered_by   VARCHAR(64)  NOT NULL,  -- service-provider class name
     PRIMARY KEY (name)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Audit log of health-state transitions. Retention: 90 days
 -- (per 05_OBSERVABILITY.md §1 events pillar, GDPR Art. 17 default).
 CREATE TABLE hub_health_event_log (
-    id              BIGSERIAL    NOT NULL,
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
     service_name    VARCHAR(64)  NOT NULL,
-    event_type      VARCHAR(32)  NOT NULL
-                    CHECK (event_type IN ('unhealthy', 'degraded', 'recovered')),
+    event_type      ENUM('unhealthy','degraded','recovered') NOT NULL,
     streak_value    INT          NOT NULL,
     detail          TEXT         NULL,
-    observed_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    observed_at     TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE INDEX hub_health_event_log_service_observed_idx
     ON hub_health_event_log (service_name, observed_at DESC);
 ```

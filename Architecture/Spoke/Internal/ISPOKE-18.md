@@ -50,27 +50,31 @@ interface SchedulerConsoleInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE cron_schedules (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id    ULID NOT NULL REFERENCES tenants(id),
-    cron_expr    text NOT NULL,
-    timezone     text NOT NULL DEFAULT 'UTC',
-    task         text NOT NULL,
-    retry_policy jsonb NOT NULL,
-    enabled      boolean NOT NULL DEFAULT true,
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL,
+    cron_expr    VARCHAR(64) NOT NULL,
+    timezone     VARCHAR(64) NOT NULL DEFAULT 'UTC',
+    task         VARCHAR(255) NOT NULL,
+    retry_policy JSON NOT NULL,
+    enabled      TINYINT(1) NOT NULL DEFAULT 1,
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_cron_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE cron_runs (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    schedule_id  ULID NOT NULL REFERENCES cron_schedules(id),
-    status       text NOT NULL CHECK (status IN ('queued','running','success','failed','retrying')),
-    attempts     integer NOT NULL DEFAULT 0,
-    finished_at  timestamptz,
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    schedule_id  CHAR(26) CHARACTER SET ascii NOT NULL,
+    status       ENUM('queued','running','success','failed','retrying') NOT NULL DEFAULT 'queued',
+    attempts     INT NOT NULL DEFAULT 0,
+    finished_at  TIMESTAMP(6) NULL,
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_cron_runs_schedule FOREIGN KEY (schedule_id) REFERENCES cron_schedules(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy

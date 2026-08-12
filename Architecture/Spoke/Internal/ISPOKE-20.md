@@ -46,25 +46,29 @@ interface ReportBuilderInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE report_templates (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id   ULID NOT NULL REFERENCES tenants(id),
-    query       jsonb NOT NULL,
-    format      text NOT NULL CHECK (format IN ('pdf','csv','json')),
-    schedule    jsonb,
-    created_by  ULID NOT NULL,
-    created_at  timestamptz NOT NULL DEFAULT now()
-);
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    query       JSON NOT NULL,
+    format      ENUM('pdf','csv','json') NOT NULL,
+    schedule    JSON NULL,
+    created_by  CHAR(26) CHARACTER SET ascii NOT NULL,
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_templates_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE signed_reports (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    template_id ULID NOT NULL REFERENCES report_templates(id),
-    content_hash bytea NOT NULL,
-    signature    bytea NOT NULL,
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    template_id  CHAR(26) CHARACTER SET ascii NOT NULL,
+    content_hash VARBINARY(255) NOT NULL,
+    signature    VARBINARY(255) NOT NULL,
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_reports_template FOREIGN KEY (template_id) REFERENCES report_templates(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -81,6 +85,6 @@ CREATE TABLE signed_reports (
 ## CI Verification Criteria
 - Unit: `Signer` produces a signature that `HUB-20.verify()` accepts and that fails verification after
   a single byte of the package is flipped.
-- Integration (MySQL 16): defining a template then `build()` writes `signed_reports` with a
+- Integration (MySQL 8 (InnoDB)): defining a template then `build()` writes `signed_reports` with a
   non-null `content_hash` + `signature`.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `Signer`.

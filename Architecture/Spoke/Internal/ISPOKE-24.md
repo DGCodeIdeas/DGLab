@@ -47,18 +47,22 @@ interface RestoreConsoleInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE backup_catalog (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id    ULID NOT NULL REFERENCES tenants(id),
-    target       text NOT NULL,
-    object_ref   text NOT NULL,             -- HUB-11 key
-    checksum     bytea NOT NULL,
-    verified_at  timestamptz,
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL,
+    target       VARCHAR(255) NOT NULL,
+    object_ref   VARCHAR(512) NOT NULL,             -- HUB-11 key
+    checksum     VARBINARY(255) NOT NULL,
+    verified_at  TIMESTAMP(6) NULL,
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_backup_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    INDEX idx_backup_tenant_created (tenant_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy

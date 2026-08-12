@@ -48,18 +48,22 @@ interface ScannerInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE scan_findings (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id    ULID NOT NULL REFERENCES tenants(id),
-    target_ref   text NOT NULL,
-    cve          text NOT NULL,
-    severity     text NOT NULL CHECK (severity IN ('critical','high','medium','low')),
-    status       text NOT NULL DEFAULT 'open' CHECK (status IN ('open','patched','accepted','wont_fix')),
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL,
+    target_ref   VARCHAR(255) NOT NULL,
+    cve          VARCHAR(32) NOT NULL,
+    severity     ENUM('critical','high','medium','low') NOT NULL,
+    status       ENUM('open','patched','accepted','wont_fix') NOT NULL DEFAULT 'open',
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_scan_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    INDEX idx_scan_tenant_status (tenant_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -75,5 +79,5 @@ CREATE TABLE scan_findings (
 ## CI Verification Criteria
 - Unit: `SeverityScorer` maps a CVSS 9.8 finding to `critical`; `CveCorrelator` returns exactly the
   expected `Finding` set for a seeded dependency graph.
-- Integration (MySQL 16): `scan()` writes `scan_findings`; `remediate()` flips status to `patched`.
+- Integration (MySQL 8 (InnoDB)): `scan()` writes `scan_findings`; `remediate()` flips status to `patched`.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `CveCorrelator`.

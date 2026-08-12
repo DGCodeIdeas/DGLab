@@ -422,8 +422,8 @@ CREATE TABLE roles (
     id          CHAR(26)     PRIMARY KEY,                       -- ULID
     tenant_id   CHAR(26)     NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name        VARCHAR(191) NOT NULL,
-    permissions JSONB        NOT NULL DEFAULT '[]'::jsonb,      -- e.g. ["admin","users.write","billing.read"]
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    permissions JSON         NOT NULL,                            -- e.g. ["admin","users.write","billing.read"]; default applied by DBAL (JSON_ARRAY())
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     UNIQUE (tenant_id, name)                                    -- role name is tenant-scoped
 );
 CREATE INDEX roles_tenant_id_idx ON roles(tenant_id);
@@ -431,7 +431,7 @@ CREATE INDEX roles_tenant_id_idx ON roles(tenant_id);
 CREATE TABLE user_roles (
     user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role_id CHAR(26) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    granted_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (user_id, role_id)
 );
 CREATE INDEX user_roles_role_id_idx ON user_roles(role_id);

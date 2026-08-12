@@ -45,23 +45,27 @@ interface RolePlayInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE sim_policies (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id   ULID NOT NULL REFERENCES tenants(id),
-    snapshot    jsonb NOT NULL,          -- cloned HUB-05 graph
-    created_at  timestamptz NOT NULL DEFAULT now()
-);
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    snapshot    JSON NOT NULL,                       -- cloned HUB-05 graph
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_sim_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE sim_results (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    sim_id       ULID NOT NULL REFERENCES sim_policies(id),
-    patch        jsonb NOT NULL,
-    effective_perms jsonb NOT NULL,
-    conflicts    jsonb NOT NULL DEFAULT '[]'::jsonb,
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id               CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    sim_id           CHAR(26) CHARACTER SET ascii NOT NULL,
+    patch            JSON NOT NULL,
+    effective_perms  JSON NOT NULL,
+    conflicts        JSON NOT NULL,                   -- default applied by the DBAL (JSON_ARRAY())
+    created_at       TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_results_sim FOREIGN KEY (sim_id) REFERENCES sim_policies(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -79,6 +83,6 @@ UI in ISPOKE-01.
 ## CI Verification Criteria
 - Unit: `ConflictDetector` flags a deny/grant collision and an SoD violation on seeded graphs; a clean
   patch yields zero conflicts.
-- Integration (MySQL 16): `simulate()` writes `sim_results` with the expected `effective_perms`
+- Integration (MySQL 8 (InnoDB)): `simulate()` writes `sim_results` with the expected `effective_perms`
   and `conflicts`.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `ConflictDetector`.

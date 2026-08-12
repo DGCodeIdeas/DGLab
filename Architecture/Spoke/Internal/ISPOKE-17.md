@@ -50,25 +50,28 @@ interface RetentionEngineInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE retention_policies (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id   ULID NOT NULL REFERENCES tenants(id),
-    entity      text NOT NULL,
-    retain_for  interval NOT NULL,
-    action      text NOT NULL CHECK (action IN ('purge','anonymize','archive')),
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, entity)
-);
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    entity      VARCHAR(255) NOT NULL,
+    retain_for  VARCHAR(32) NOT NULL,               -- ISO 8601 duration (e.g. 'P1Y2M10D')
+    action      ENUM('purge','anonymize','archive') NOT NULL,
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_retention_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    UNIQUE KEY uk_tenant_entity (tenant_id, entity)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE legal_holds (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    record_id   ULID NOT NULL,
-    reason      text NOT NULL,
-    created_by  ULID NOT NULL,
-    created_at  timestamptz NOT NULL DEFAULT now()
-);
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    record_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    reason      VARCHAR(255) NOT NULL,
+    created_by  CHAR(26) CHARACTER SET ascii NOT NULL,
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -86,6 +89,6 @@ CREATE TABLE legal_holds (
 ## CI Verification Criteria
 - Unit: `Sweeper` purges exactly the rows past `retain_for` and skips any with an active `legal_holds`
   row; a held row is never touched.
-- Integration (MySQL 16): `evaluate()` over a seeded tenant deletes N rows and writes one
+- Integration (MySQL 8 (InnoDB)): `evaluate()` over a seeded tenant deletes N rows and writes one
   `SweepReport` row to HUB-06.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `Sweeper`.
