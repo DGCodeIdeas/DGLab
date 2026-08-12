@@ -1,4 +1,4 @@
-# PHASE ISPOKE-11: Internal API Testing and Sandbox Environment
+# ISPOKE-11: B1 Penumbra
 
 ## Tier
 Internal Spoke (Staff-only Application)
