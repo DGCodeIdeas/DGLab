@@ -35,13 +35,13 @@
 Documented order (per `HUB-13.md` Fallback-chain verification target):
 
 ```
-requested locale (e.g. fr-CA)
-   → region-stripped parent (fr-CA → fr)
+requested locale (e.g. en-GB)
+   → region-stripped parent (en-GB → en)
    → default locale (en)
 ```
 
 - Locale detected from request headers or `HUB-04` session (`HUB-13.md` Integration Strategy).
-- A key missing in `fr-CA` falls back to `fr`; if still missing, to `en`. The chain is **explicit and ordered**, never "eventually finds something."
+- A key missing in `en-GB` falls back to `en`; if still missing, to `en`. The chain is **explicit and ordered**, never "eventually finds something."
 - Spoke-level overrides (ESPOKE-05 marketer copy) sit above Hub defaults in the Loader merge order (`HUB-13.md` Architectural Design: Hub + Spoke directories).
 
 ---
