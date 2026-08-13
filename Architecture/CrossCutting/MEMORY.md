@@ -16,12 +16,12 @@ curation discipline is what makes it trustworthy).
 ## 1. Project identity
 
 **DGLab / Sovereign Stack** — a custom PHP MVC framework, multi-tenant, event-driven, structured as a
-concentric wheel: **6 rings, 101 canonical blueprints**.
+concentric wheel: **6 rings, 102 canonical blueprints**.
 
 | Ring | Blueprint count | Example IDs | Role |
 |---|---|---|---|
 | Core | 20 | CORE-01..20 | Framework kernel / domain model — innermost invariants |
-| Hub | 30 | HUB-01..30 | Stateful aggregates / application services around Core |
+| Hub | 31 | HUB-01..31 | Stateful aggregates / application services around Core |
 | Thick Spokes (Inner Spokes) | 27 | ISPOKE-01..27 | Service adapters (Codex, etc.) — staff-facing |
 | Inner Rim | 1 | BRIDGE-01 | Stateless contract checkpoint between Inner and Outer Spokes |
 | Thin Spokes (Outer Spokes) | 18 | ESPOKE-01..18 | UI/edge adapters (Canvas, etc.) — public-facing, untrusted |
@@ -34,11 +34,11 @@ working, not a diagram of it.
 **Polyrepo (Vision B canonical)** — multiple repos, not a monolith. Cross-repo consistency is enforced by the
 Pulse 6-tuple (see `PULSE-MODEL.md`).
 
-> **Canonical count = 101.** The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) plus
-> `ADR-015` were *designed* (in chat sessions) and historically **not committed to the repo**; they
+> **Canonical count = 102.** The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`)
 > were promoted to canonical on 2026-08-12 per `ADR-015` (Proposed; ratification deferred until the
-> hospitality V1 track ships against Bet 3 Hub Full). The count is now 101; see `HOSPITALITY-VERTICAL.md`
-> for the design source and `DISCREPANCY-REGISTER.md` D-02/D-15 for the closure record.
+> hospitality V1 track ships against Bet 3 Hub Full). `HUB-31` was accepted on 2026-08-13 per `ADR-011`.
+> See `HOSPITALITY-VERTICAL.md` for design source, `DISCREPANCY-REGISTER.md` D-02/D-15 for hospitality
+> closure, and `ADR-011` for HUB-31 acceptance.
 
 ## 2. Team reality
 
@@ -133,7 +133,7 @@ Non-negotiable. If a task prompt conflicts with these, the rules win — surface
 
 ## 7. Current state snapshot
 
-**Last updated:** 2026-08-10. (Only this section is updated regularly; when it changes, update the date too. A
+**Last updated:** 2026-08-13. (Only this section is updated regularly; when it changes, update the date too. A
 stale snapshot is worse than none — agents will trust it.)
 
 - **Methodology version:** SDLC-AGRD v3.4(3) Spiral Deepening (companion `PROMPTS.md`).
@@ -147,16 +147,18 @@ stale snapshot is worse than none — agents will trust it.)
 
 ## 8. Open decisions
 
-Six ODs open. Status only — analysis lives in `Architecture/OPEN-DECISIONS.md`. Do not pre-resolve.
+**All 6 ODs resolved on 2026-08-12–13.** See `Architecture/OPEN-DECISIONS.md` for full resolution records.
 
-| OD | Topic | Resolution timing (per §8.1) | Status |
+| OD | Topic | Decision | Status |
 |---|---|---|---|
-| OD-01 | HUB-31 real-time analytics (ADR-011, Proposed) | Lap 1+ / no deadline | Open |
-| OD-02 | Post-quantum / algorithm-agility JWT (ADR-012) | Cooldown 1 (after Milestone 0) | Open — **no lap-1 widen exclusion** (v3.4(3)) |
-| OD-03 | Soft component-name collisions | Before public API | Open |
-| OD-04 | Exemplar labeling (ISPOKE-01 / ESPOKE-01) | Before public API | Open |
-| OD-05 | ISPOKE folder naming vs `INDEX.md` | Before ISPOKE interface freeze | Open |
-| OD-06 | Opcache baseline (ADR-010) | During Milestone 0 (forced by CORE-02) | Open |
+| OD-01 | HUB-31 real-time analytics | Accept `ADR-011`. HUB-31 canonical. Count 101→102. | **Resolved** 2026-08-13 |
+| OD-02 | Post-quantum JWT agility | Author `ADR-012`. 3-phase plan (registry→hybrid→PQ). Targets Cooldown 1. | **Resolved** 2026-08-12 |
+| OD-03 | Soft component-name collisions | CI enforcement (`run.php` check 1 + `architecture-lint.yml`) sufficient. | **Resolved** 2026-08-12 |
+| OD-04 | Exemplar labeling | Split: `ISPOKE-01` = Internal Exemplar, `ESPOKE-01` = External Exemplar. | **Resolved** 2026-08-12 |
+| OD-05 | ISPOKE naming + Forge collision | Keep ID-only filenames. Resolve collision: ISPOKE-02→A1 Atlas, ISPOKE-11→B1 Penumbra, ESPOKE-12→C1 Pulsar. | **Resolved** 2026-08-12 |
+| OD-06 | Opcache baseline provisional | Keep provisional, gated behind `CORE-02`. Already flagged in `STRUCTURE-09`. | **Resolved** 2026-08-12 |
+
+**No ODs remain open.** New decision points must be filed as fresh ODs with new IDs (OD-07+).
 
 ## 9. Known failure modes & hazards
 
@@ -219,6 +221,6 @@ update protocol), `MEMORY(1).md` (tech-stack table, hazard matrix, source hierar
 (repo-accurate spine: live-repo truth rule, ADR-013 MySQL, naming-collision pattern, implementation status, PAT
 security note). **Corrections applied:** MEMORY-rule-7 lap-1 widen exclusion for CORE-16/HUB-04 **removed**
 (per v3.4(3)); inventory normalized to 96 canonical on 2026-08-05 (hospitality 5 + ADR-015 noted as
-designed-but-not-in-repo), then **promoted to 101 canonical on 2026-08-12** per ADR-015 (hospitality
+designed-but-not-in-repo), then **promoted to 101 canonical on 2026-08-12** per ADR-015, then **102 canonical on 2026-08-13** per ADR-011 (hospitality
 vertical blueprints committed, linter scope extended, D-02/D-15 closed);
 all sandbox `/home/z/my-project/*` paths re-pointed to `Architecture/CrossCutting/*`.
