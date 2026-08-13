@@ -20,7 +20,7 @@ cross-reference, **this index is correct and the other document is stale** (Gove
 | Path | Contents |
 |---|---|
 | `Architecture/Core/CORE-01..20` | 20 Core-tier blueprints |
-| `Architecture/Hub/HUB-01..30` | 30 Hub-tier blueprints |
+| `Architecture/Hub/HUB-01..31` | 31 Hub-tier blueprints |
 | `Architecture/Spoke/Internal/ISPOKE-01..27` | 27 Internal Spoke blueprints (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26/27 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
 | `Architecture/Spoke/External/ESPOKE-01..18` | 18 External Spoke blueprints (ESPOKE-16/17/18 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
 | `Architecture/Spoke/Bridge/BRIDGE-01` | 1 Bridge blueprint |
@@ -192,17 +192,17 @@ mismatch.
 | Tier | Documented | Placeholder-only | **Total files** |
 |---|---|---|---|
 | Core | 20 | 0 | **20** |
-| Hub | 30 | 0 | **30** |
+| Hub | 31 | 0 | **30** |
 | Internal Spoke | 27 | 0 | **27** |
 | External Spoke | 18 | 0 | **18** |
 | Bridge | 1 | 0 | **1** |
 | Deploy | 5 | 0 | **5** |
-| **Total** | **101** | **0** | **101** |
+| **Total** | **102** | **0** | **101** |
 
-**Not counted:** `HUB-31` — proposed only (ADR-011, not yet accepted). If ADR-011 is accepted, Hub
-becomes 31 and the total becomes 102. The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`)
-*are* counted — they were promoted from design-only to canonical on 2026-08-12 per ADR-015 (Proposed,
-ratification deferred until the hospitality V1 track ships against Bet 3 Hub Full).
+**HUB-31 is accepted** per `ADR-011` (2026-08-13). Hub tier: 31 blueprints. Total canonical: **102**.
+The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) *are* counted — they were promoted
+from design-only to canonical on 2026-08-12 per ADR-015 (Proposed, ratification deferred until the
+hospitality V1 track ships against Bet 3 Hub Full).
 
 **Hub criticality distribution** (corrected from Finding 14: the taxonomy claimed "Medium | 6" while
 listing 5, and totalled 31 against 30 rows):
