@@ -403,6 +403,6 @@ None that require an ADR or a new OD. Both cross-referenced contracts (HUB-13 ke
 - HUB-13's `TranslatorInterface` (`get(string $key, array $replace, ?string $locale)`) supports the placeholders (`:name`, `:count`, `:amount`, `:period`, `:year`, `:rate`, `:letter`, `:index`, `:plan`, `:feature`) and pluralization forms used here. No interface change needed.
 - HUB-26's `ThemeInterface` (`tokens()` + `componentOverrides()`) supports every color/spacing/type/border/shadow/breakpoint/animation slot referenced. No interface change needed.
 
-> Note (non-blocking, logged to WORKLOG): the Cooldown 0 shared-context block states canonical count = **102**, while `MEMORY.md` §1 (2026-08-12) and `INDEX.md` §4 state **101** (Hub 30 vs 31). This is a count discrepancy, not a contract gap; it does not affect these artifacts. Flagged for the tech lead.
+> Note: canonical count is **102** per `INDEX.md` §4 (updated 2026-08-13) and `ADR-011` acceptance. No discrepancy.
 
 **No source files were modified. This document is a frozen contract, not an implementation.**
