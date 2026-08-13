@@ -127,7 +127,7 @@ namespace SovereignStack\Hub\Config;
  * a given Context the result is deterministic — the same user always lands on
  * the same side of a rollout and always sees the same variant.
  *
- * Variants: when the flag's `variants` JSONB column is non-null, it is decoded
+ * Variants: when the flag's `variants` JSON column is non-null, it is decoded
  * as an object mapping variant keys to percentage weights (e.g. {"A":50,"B":50}).
  * getVariant() returns the variant key whose bucket range contains the user's
  * stable hash. If `variants` is null, getVariant() returns "default".
@@ -391,11 +391,11 @@ MySQL 8 (InnoDB) per ADR-013. The `tenants(id)` reference presumes HUB-04's `ten
 -- Secrets (key matching /password|secret|key|token/i) are rejected outright —
 -- use HUB-20 (Vault) for per-tenant secrets.
 CREATE TABLE hub_config_overrides (
-    id           BIGSERIAL    PRIMARY KEY,
-    tenant_id    CHAR(26)     NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     config_key   VARCHAR(191) NOT NULL,
-    config_value JSONB        NOT NULL,
-    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    config_value JSON         NOT NULL,
+    updated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (tenant_id, config_key)
 );
 
@@ -405,17 +405,17 @@ CREATE INDEX idx_config_overrides_key    ON hub_config_overrides(config_key);
 -- Feature flag definitions.
 -- rollout_percentage is the share of users (by stable hash) for whom isEnabled()
 -- returns true; 0 = nobody, 100 = everyone. variants is null for a binary flag,
--- or a JSONB object {"A": 50, "B": 50} for A/B/C tests (weights must sum to 100,
+-- or a JSON object {"A": 50, "B": 50} for A/B/C tests (weights must sum to 100,
 -- enforced at write time).
 CREATE TABLE hub_feature_flags (
-    id                  BIGSERIAL    PRIMARY KEY,
+    id                  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     flag_key            VARCHAR(191) NOT NULL UNIQUE,
     enabled             BOOLEAN      NOT NULL DEFAULT FALSE,
     rollout_percentage  SMALLINT     NOT NULL DEFAULT 0
                                      CHECK (rollout_percentage BETWEEN 0 AND 100),
-    variants            JSONB,    -- {"A": 50, "B": 50} or NULL
+    variants            JSON,    -- {"A": 50, "B": 50} or NULL
     description         TEXT,
-    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_feature_flags_enabled ON hub_feature_flags(enabled) WHERE enabled = TRUE;
@@ -492,7 +492,7 @@ Config-override lifecycle:
 stateDiagram-v2
     [*] --> Default: tenant uses CORE-10 frozen value
     Default --> Overridden: ConfigOverrideRepository::set(tenant, key, value)
-    Note: set() validates key exists in default schema, value is JSONB, key is not a secret
+    Note: set() validates key exists in default schema, value is JSON, key is not a secret
     Overridden --> Overridden: set() called again with new value (UPSERT)
     Overridden --> Default: ConfigOverrideRepository::delete(tenant, key)
     Overridden --> [*]: tenant deleted (CASCADE)
@@ -565,7 +565,7 @@ Baseline for all rows: GitHub Actions `ubuntu-latest`, PHP 8.3.0, opcache enable
 
 1. **Tenant overrides never leak into the global default pool.** Enforced at read time: `HubConfigRegistry::get($key, $default, $tenantId)` consults the override row only when `$tenantId` is non-null; a `get($key)` call with no tenant argument resolves exclusively against CORE-10's frozen repository. CI: `CrossTenantIsolationTest`. The global pool is read-only by construction (CORE-10 immutability invariant).
 2. **Override keys must exist in the default schema.** Enforced at write time by `ConfigOverrideRepository::set()`: queries CORE-10's `ConfigValidator` schema for the supplied key and throws `InvalidOverrideKeyException` if absent. Shadow-config is impossible — an operator cannot introduce `cache.secret_backdoor_ttl` and have it silently take effect.
-3. **Secrets cannot be overridden.** Any override key matching `/password|secret|key|token/i` is rejected at write time. Per-tenant secrets are HUB-20's responsibility; HUB-01 declines to store them in `hub_config_overrides.config_value` (unencrypted JSONB).
+3. **Secrets cannot be overridden.** Any override key matching `/password|secret|key|token/i` is rejected at write time. Per-tenant secrets are HUB-20's responsibility; HUB-01 declines to store them in `hub_config_overrides.config_value` (unencrypted JSON).
 4. **Percentage rollout is deterministic per user.** `RolloutBucket::compute($flag . ':' . $userId)` is a pure function of a stable hash; the same user always lands on the same side of a rollout and always sees the same variant. CI: `PercentageRolloutStabilityTest`. This prevents UI flicker — a user either always sees the new UI or never does, until the operator raises the percentage past their bucket.
 5. **Flag changes are observable within a bounded cache-invalidation window.** The window is the lesser of (a) the 60s TTL on `hub:flag:{key}` cache entries and (b) the Redis Pub/Sub propagation latency of `invalidateTags(['config'])` called by `FeatureFlagRepository::save()`. CI: `CacheInvalidationTest` asserts ≤ 5s in CI; HUB-15 alerts if production propagation exceeds 30s (half the 60s SLO, allowing investigation before customer-visible drift).
 6. **Unknown flags fail closed (kill-switch semantics).** `GlobalConfigInterface::feature()` returns false for unknown flags rather than throwing — a caller checking `feature('payments.new_flow')` before the flag is defined gets a safe "off" rather than a 500. Callers that need to distinguish "off" from "unknown" use `FeatureManagerInterface::isEnabled()` and catch `UnknownFlagException`.
@@ -589,4 +589,4 @@ Baseline for all rows: GitHub Actions `ubuntu-latest`, PHP 8.3.0, opcache enable
 **Forward-compatibility note:** `Context::$attributes` is reserved for a v2 rule engine (region/segment targeting, userId allow-list/deny-list). v1 `FeatureFlagManager` ignores it; v2 adds a `RuleEvaluator` that consumes it before the percentage check. Adding `RuleEvaluator` is a Minor bump (the `FeatureManagerInterface` signature is unchanged; only `isEnabled()` semantics extend).
 
 ## SemVer Impact
-**Minor** (initial release: `0.1.0`). The package is new; no existing code is modified. `GlobalConfigInterface` and `FeatureManagerInterface` are the public API surface, stable from `0.1.0` forward — breaking changes (adding a required method, changing a signature) require a Major bump. Adding optional methods with default implementations, adding new `Context` constructor parameters (with defaults), or extending the `variants` JSONB shape are Minor bumps. Bug fixes and performance improvements are Patch bumps. The provisional `< 0.005ms` target, once measured, lands as a Patch note (no SemVer impact — performance is not a contract).
+**Minor** (initial release: `0.1.0`). The package is new; no existing code is modified. `GlobalConfigInterface` and `FeatureManagerInterface` are the public API surface, stable from `0.1.0` forward — breaking changes (adding a required method, changing a signature) require a Major bump. Adding optional methods with default implementations, adding new `Context` constructor parameters (with defaults), or extending the `variants` JSON shape are Minor bumps. Bug fixes and performance improvements are Patch bumps. The provisional `< 0.005ms` target, once measured, lands as a Patch note (no SemVer impact — performance is not a contract).
