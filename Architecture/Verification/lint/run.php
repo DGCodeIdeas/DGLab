@@ -58,8 +58,8 @@ final class ArchitectureLint
         $ranges = [
             'CORE'    => range(1, 20),
             'HUB'     => range(1, 30),   // 31 is proposed; allow it explicitly below
-            'ISPOKE'  => range(1, 25),
-            'ESPOKE'  => range(1, 15),
+            'ISPOKE'  => range(1, 27),   // 26/27 promoted from hospitality-vertical design 2026-08-12 (ADR-015)
+            'ESPOKE'  => range(1, 18),   // 16/17/18 promoted from hospitality-vertical design 2026-08-12 (ADR-015)
             'BRIDGE'  => [1],
             'DEPLOY'  => range(0, 4),
         ];
@@ -175,20 +175,23 @@ final class ArchitectureLint
         foreach (range(1, 30) as $n) {
             $expected[] = sprintf('Hub/HUB-%02d.md', $n);
         }
-        foreach (range(1, 25) as $n) {
+        // ISPOKE-01..27: 01..25 canonical since 2026-08-05; 26/27 promoted 2026-08-12 per ADR-015.
+        foreach (range(1, 27) as $n) {
             $expected[] = sprintf('Spoke/Internal/ISPOKE-%02d.md', $n);
         }
-        foreach (range(1, 15) as $n) {
+        // ESPOKE-01..18: 01..15 canonical since 2026-08-05; 16/17/18 promoted 2026-08-12 per ADR-015.
+        foreach (range(1, 18) as $n) {
             $expected[] = sprintf('Spoke/External/ESPOKE-%02d.md', $n);
         }
         $expected[] = 'Spoke/Bridge/BRIDGE-01.md';
         foreach (range(0, 4) as $n) {
             $expected[] = sprintf('Deploy/DEPLOY-%02d.md', $n);
         }
-        foreach (range(1, 10) as $n) {
+        // ADR-001..015: 001..010 Accepted; 011 (HUB-31), 012 (PQ JWT), 014 (AGRD), 015 (hospitality)
+        // Proposed; 013 Accepted (MySQL). The glob matches any suffix.
+        foreach (range(1, 15) as $n) {
             $expected[] = sprintf('ADRs/ADR-%03d-*.md', $n);
         }
-        $expected[] = 'ADRs/ADR-011-*.md';
 
         foreach ($expected as $e) {
             if (str_contains($e, '*')) {

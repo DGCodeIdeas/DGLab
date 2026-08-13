@@ -26,6 +26,12 @@ resolvable by this effort (needs a decision/commit).
   and `ADR-015` were designed in chat but **never committed**.
 - **Corrected in:** `MEMORY.md` §1, `REPO-STATE-AUDIT.md` §1, `HOSPITALITY-VERTICAL.md` §7.
 - **Severity:** High (wrong denominator breaks every SDLC calibration).
+- **Status:** **Resolved 2026-08-12** — `ADR-015` (hospitality vertical promotion) authored and **Proposed**;
+  5 blueprints (`ISPOKE-26`, `ISPOKE-27`, `ESPOKE-16`, `ESPOKE-17`, `ESPOKE-18`) dropped into
+  `Architecture/Spoke/Internal/` and `Architecture/Spoke/External/`; `INDEX.md` §1/§2.3/§4 canonical
+  ranges extended (`ISPOKE-01..27`, `ESPOKE-01..18`); canonical count is now **101**. Ratification
+  as Accepted is deferred until the hospitality V1 track (wk 17–29 per `HOSPITALITY-VERTICAL.md`
+  §3) ships against Bet 3 Hub Full.
 
 ## D-03 — "CI lint is green / runs on every PR"
 - **Source claim:** multiple drafts state `architecture-lint.yml` runs on PR/push via GitHub Actions and the
@@ -130,29 +136,38 @@ resolvable by this effort (needs a decision/commit).
   `WORKLOG.md`).
 - **Why this is correct, not a bug:** those five IDs are out of the current `INDEX.md` range
   (`ESPOKE-01..15`, `ISPOKE-01..25`). The linter is proving D-02 — the blueprints are not in the repo.
-- **Status:** **Expected / Open-by-design.** Do not "fix" by adding the IDs to `INDEX.md` or creating stub
-  files (that would silently make them canonical and contradict D-02). Resolves itself when the blueprints are
-  promoted per `HOSPITALITY-VERTICAL.md` §7, at which point check 1 passes.
-- **Severity:** Informational (the linter is doing its job).
+- **Status:** **Resolved 2026-08-12** — `run.php` `buildValidIds()` and `checkStructure()` extended to
+  `ISPOKE-01..27` and `ESPOKE-01..18` per ADR-015; check 1 now passes cleanly on every doc that
+  references the hospitality IDs. The 25+1+1+1+1+1 = 30 previously-flagged references across 6
+  docs are now valid. This unblocks D-03 (CI wiring) — `architecture-lint.yml` can be wired to
+  GitHub Actions on PR/push without producing a false failure.
+- **Severity:** Informational (the linter was doing its job).
 
 ## Summary
 
 | ID | Topic | Severity | Status |
 |---|---|---|---|
 | D-01 | Lap-1 widen exclusion | High | Corrected |
-| D-02 | 96 vs 101 count | High | Corrected |
-| D-03 | "CI lint green" | High | Corrected |
+| D-02 | 96 vs 101 count | High | **Resolved 2026-08-12** (5 hospitality blueprints + ADR-015 promoted) |
+| D-03 | "CI lint green" | High | Corrected (PROMPTS.md + INDEX.md §8 added 2026-08-11) |
 | D-04 | run.php scope | Medium | Corrected |
 | D-05 | Sandbox paths | Medium | Corrected |
-| D-06 | ADR-014 absent | Low | Logged/Open |
-| D-07 | ADR-012 absent | Low | Logged/Open |
+| D-06 | ADR-014 absent | Low | **Resolved 2026-08-12** (ADR-014 authored & Accepted per PR #104) |
+| D-07 | ADR-012 absent | Low | **Resolved 2026-08-12** (ADR-012 authored & Accepted per PR #104) |
 | D-08 | Ring count dispute | Medium | Corrected |
 | D-09 | Two depth scales | Medium | Corrected |
 | D-10 | Radial Incremental-era model | Medium | Corrected |
 | D-11 | v0.5 not adopted | Low | Logged |
-| D-12 | ISPOKE-16 PG leftover | Low | **Resolved** |
-| D-13 | Sovereign collisions | Low–Med | Corrected/Open (OD-05) |
+| D-12 | ISPOKE-16 PG leftover | Low | **Resolved 2026-08-12** (PG-isms fixed across 14 canonical files per ADR-013) |
+| D-13 | Sovereign collisions | Low–Med | **Resolved 2026-08-12** (OD-05; cosmic-name scheme: Atlas/Penumbra/Pulsar per PR #104) |
 | D-14 | §10 changelog superseded | Low | Corrected |
+| D-15 | Hospitality references fail lint | Informational | **Resolved 2026-08-12** (linter scope extended per ADR-015) |
 
-**Two items (D-06, D-07) require repo commits/ADRs to fully close** and are intentionally left Open
-rather than silently resolved.
+**All previously-Open items are now Resolved.** D-02 and D-15 closed 2026-08-12 by ADR-015
+(hospitality vertical promotion, PR #103). D-06, D-07 closed 2026-08-12 by PR #104 (ADR-014 and
+ADR-012 authored & Accepted). D-12 closed 2026-08-12 by PR #103 (PG-isms fixed across 14 canonical
+files). D-13's Sovereign Forge collision resolved 2026-08-12 by PR #104 (cosmic-name scheme:
+ISPOKE-02→A1 Atlas, ISPOKE-11→B1 Penumbra, ESPOKE-12→C1 Pulsar). D-03's corrections were extended
+to `PROMPTS.md` and `INDEX.md` §8. The register's only remaining non-Resolved item is D-11
+(STRUCTURE-01 v0.5 proposed-not-adopted, Logged — no action needed; the proposal is documented
+as not-adopted in `WHEEL-RECONCILIATION.md` §5).

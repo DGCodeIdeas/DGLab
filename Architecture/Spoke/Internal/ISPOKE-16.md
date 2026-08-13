@@ -12,8 +12,8 @@ ISPOKE-16 is the bulk data-movement console. It reads source files (CSV, JSON, N
 metadata) or streams from a queue, maps source columns to the target entity schema, runs a
 transformation pipeline (typing, normalization, reference resolution), validates against the target
 entity's invariants, and writes via the canonical persistence path (CORE-19 Database over MySQL
-8 (InnoDB) / JSON). Exports are the inverse: a configured projection over entities is serialized to the
-requested format and streamed to object storage (HUB-11 Cloud Storage) or returned inline.
+8 (InnoDB) / JSON, per ADR-013). Exports are the inverse: a configured projection over entities is
+serialized to the requested format and streamed to object storage (HUB-11 Cloud Storage) or returned inline.
 
 The component is **not** an ETL platform. It deliberately scopes itself to operator-initiated, audited,
 entity-level migrations — not continuous replication. Long-running jobs are delegated to HUB-10
@@ -72,20 +72,25 @@ interface TransporterInterface
 ## Data Model (MySQL 8 (InnoDB) / JSON / ULID)
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type is materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() is emitted by the app/DBAL, not the engine.
 CREATE TABLE transporter_jobs (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id   ULID NOT NULL REFERENCES tenants(id),
-    kind        text NOT NULL CHECK (kind IN ('import','export')),
-    spec        json NOT NULL,            -- serialized ImportJob/ExportJob
-    status      text NOT NULL DEFAULT 'queued'
-                    CHECK (status IN ('queued','running','succeeded','failed','rolled_back')),
-    rows_total  integer NOT NULL DEFAULT 0,
-    rows_done   integer NOT NULL DEFAULT 0,
-    errors      json NOT NULL DEFAULT ('[]'),
-    created_by  ULID NOT NULL,             -- operator (HUB-04)
-    created_at  timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX ON transporter_jobs (tenant_id, status) WHERE status <> 'succeeded';
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    kind        ENUM('import','export') NOT NULL,
+    spec        JSON NOT NULL,                       -- serialized ImportJob/ExportJob
+    status      ENUM('queued','running','succeeded','failed','rolled_back') NOT NULL DEFAULT 'queued',
+    rows_total  INT NOT NULL DEFAULT 0,
+    rows_done   INT NOT NULL DEFAULT 0,
+    errors      JSON NOT NULL,                       -- default applied by the DBAL (JSON_ARRAY())
+    created_by  CHAR(26) CHARACTER SET ascii NOT NULL,  -- operator (HUB-04)
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    -- Partial-index equivalent per ADR-013: generated boolean + regular index (MySQL has no
+    -- SQL-standard partial indexes; DriverInterface::supports('partial_index') is false).
+    is_pending  TINYINT(1) GENERATED ALWAYS AS (status <> 'succeeded') STORED NOT NULL,
+    CONSTRAINT fk_transporter_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    INDEX idx_transporter_tenant_pending (tenant_id, is_pending)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy

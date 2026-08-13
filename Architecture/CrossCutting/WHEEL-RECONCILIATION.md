@@ -23,8 +23,8 @@ The Wheel is **6 rings**, organized as **4 layers + 2 checkpoints**:
 | 5 | Thin Spokes (Outer Spokes) | Layer | Public-facing / edge adapters |
 | 6 | Outer Rim | **Checkpoint** | `HUB-08` Gateway — public traffic entry, stateless enforcement |
 
-The 96 blueprints occupy these rings as: Core 20 (`CORE-01..20`), Hub 30 (`HUB-01..30`), Thick Spokes 25
-(`ISPOKE-01..25`), Inner Rim 1 (`BRIDGE-01`), Thin Spokes 15 (`ESPOKE-01..15`), Outer Rim 5 (`DEPLOY-00..04`).
+The 101 blueprints occupy these rings as: Core 20 (`CORE-01..20`), Hub 30 (`HUB-01..30`), Thick Spokes 27
+(`ISPOKE-01..27`), Inner Rim 1 (`BRIDGE-01`), Thin Spokes 18 (`ESPOKE-01..18`), Outer Rim 5 (`DEPLOY-00..04`).
 
 ## 2. The reconciliation criterion (layer vs. checkpoint)
 
@@ -88,10 +88,12 @@ without lap data" assessment. Listed here so the idea isn't lost, not because it
 
 ## 6. Open structural questions
 
-- **HUB-31** (Real-Time Analytics) is Proposed (ADR-011), not part of the 96. If accepted, it would extend the
+- **HUB-31** (Real-Time Analytics) is Proposed (ADR-011), not part of the 101. If accepted, it would extend the
   Hub layer, not add a ring.
-- **Hospitality vertical** (`ISPOKE-26/27`, `ESPOKE-16/17/18`) is designed but not in the repo — see
-  `HOSPITALITY-VERTICAL.md`. If committed, it extends the Spoke layers within the existing 6-ring model.
+- **Hospitality vertical** (`ISPOKE-26/27`, `ESPOKE-16/17/18`) is **canonical as of 2026-08-12** per
+  `ADR-015` (Proposed; ratification deferred until V1 ships against Bet 3 Hub Full). It extends the
+  Spoke layers within the existing 6-ring model. See `HOSPITALITY-VERTICAL.md` for the design source
+  and `DISCREPANCY-REGISTER.md` D-02/D-15 for the closure record.
 - **Agent prompts** that still reference "6 layers" or "Radial Incremental" are stale — the model is 4 layers +
   2 checkpoints, delivered by Spiral Deepening (`SDLC-AGRD.md` §2).
 

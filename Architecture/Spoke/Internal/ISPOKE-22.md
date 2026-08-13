@@ -46,23 +46,27 @@ interface RegistrarInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE compliance_control_maps (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id    ULID NOT NULL REFERENCES tenants(id),
-    framework    text NOT NULL CHECK (framework IN ('soc2','gdpr','hipaa','pci_dss')),
-    control_ref  text NOT NULL,
-    evidence_src text NOT NULL,
-    UNIQUE (tenant_id, framework, control_ref)
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL,
+    framework    ENUM('soc2','gdpr','hipaa','pci_dss') NOT NULL,
+    control_ref  VARCHAR(255) NOT NULL,
+    evidence_src VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_control_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    UNIQUE KEY uk_tenant_framework_control (tenant_id, framework, control_ref)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE compliance_dossiers (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id    ULID NOT NULL REFERENCES tenants(id),
-    framework    text NOT NULL,
-    generated_at timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL,
+    framework    VARCHAR(32) NOT NULL,
+    generated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_dossiers_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -78,6 +82,6 @@ container (CORE-02). **Downward:** UI in ISPOKE-01.
 ## CI Verification Criteria
 - Unit: `ControlMapper` maps a seeded SOC 2 control set to the expected evidence sources; missing
   evidence is flagged, not silently dropped.
-- Integration (MySQL 16): `assemble()` for a seeded tenant writes a `compliance_dossiers` row;
+- Integration (MySQL 8 (InnoDB)): `assemble()` for a seeded tenant writes a `compliance_dossiers` row;
   `export()` returns a signed package whose signature verifies via HUB-20.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `ControlMapper`.

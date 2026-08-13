@@ -520,65 +520,60 @@ final class VaultService implements VaultServiceInterface
 -- vault_secrets: encrypted application-level secret store.
 -- One row per secret version. Active version is the row with
 -- is_active = TRUE AND deleted_at IS NULL for a given name.
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID stored as CHAR(26) CHARACTER SET ascii (ADR-009).
 CREATE TABLE vault_secrets (
     id              CHAR(26)        PRIMARY KEY,   -- ULID
     name            VARCHAR(191)    NOT NULL,
     encrypted_value TEXT            NOT NULL,       -- CORE-16 envelope (base64 JSON)
     version         INT             NOT NULL DEFAULT 1,
-    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
-    metadata        JSONB           NOT NULL DEFAULT '{}'::jsonb,
-    created_by      CHAR(26)        REFERENCES users(id) ON DELETE SET NULL,
-    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    rotated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,                    -- soft-delete timestamp
-    purges_at       TIMESTAMPTZ,                    -- retention expiry (deleted_at + 90 days)
-    UNIQUE (name, version)                          -- version is unique per name
-);
+    is_active       TINYINT(1)      NOT NULL DEFAULT 1,
+    metadata        JSON            NOT NULL,       -- default applied by DBAL (JSON_OBJECT())
+    created_by      CHAR(26)        NULL,           -- references users(id); FK enforced by DBAL to avoid PG-style ON DELETE SET NULL divergence
+    created_at      TIMESTAMP(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    rotated_at      TIMESTAMP(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    deleted_at      TIMESTAMP(6)    NULL,           -- soft-delete timestamp
+    purges_at       TIMESTAMP(6)    NULL,           -- retention expiry (deleted_at + 90 days)
+    UNIQUE KEY uk_name_version (name, version),     -- version is unique per name
+    -- Partial-index equivalents per ADR-013 (MySQL has no SQL-standard partial indexes;
+    -- DriverInterface::supports('partial_index') is false). Generated boolean columns
+    -- mirror the WHERE predicates; regular indexes on (name, col) keep the hot path small.
+    is_live         TINYINT(1)      GENERATED ALWAYS AS (is_active = 1 AND deleted_at IS NULL) STORED NOT NULL,
+    is_purge_due    TINYINT(1)      GENERATED ALWAYS AS (deleted_at IS NOT NULL AND purges_at IS NOT NULL) STORED NOT NULL,
+    is_rotate_due   TINYINT(1)      GENERATED ALWAYS AS (is_active = 1 AND deleted_at IS NULL) STORED NOT NULL,
+    INDEX idx_vault_active (name, is_live),
+    INDEX idx_vault_purge_due (purges_at, is_purge_due),
+    INDEX idx_vault_rotate_due (rotated_at, is_rotate_due)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Hot path: lookup the active version of a secret by name.
--- Partial index — only rows where is_active = TRUE AND
--- deleted_at IS NULL are indexed, keeping the index small.
-CREATE INDEX idx_vault_active
-    ON vault_secrets (name)
-    WHERE is_active = TRUE AND deleted_at IS NULL;
-
--- Index for the retention sweeper (HUB-25 cron) to find rows
--- whose purges_at has elapsed.
-CREATE INDEX idx_vault_purge_due
-    ON vault_secrets (purges_at)
-    WHERE deleted_at IS NOT NULL;
-
--- Index for SecretRotator's "rotation due" query.
-CREATE INDEX idx_vault_rotate_due
-    ON vault_secrets (rotated_at)
-    WHERE is_active = TRUE AND deleted_at IS NULL;
-
--- Privilege enforcement (per threat model §8.1 model).
--- The application DB user has INSERT, SELECT, UPDATE only.
--- A separate vault_owner role (used by CI migrations) has
--- ALTER and TRUNCATE. DELETE is REVOKE'd from all roles; a
--- HUB-25 cron job uses a vault_purger role with DELETE
--- granted only on rows where purges_at < NOW() (enforced
--- via a row-level security policy).
+-- Access control (per threat model §8.1 model; ADR-013 replaces PG RLS with MySQL
+-- privileges + DBAL-enforced access control).
+--
+-- MySQL has no Row-Level Security (ADR-013). The access-control intent of the original
+-- PG RLS policies is enforced by two mechanisms:
+--
+-- 1. MySQL privilege system (GRANT/REVOKE): the application DB user (`dglab_hub_app`)
+--    has INSERT, SELECT, UPDATE only. DELETE is REVOKE'd. A separate `vault_purger`
+--    role (used by the HUB-25 cron job) has DELETE granted on the table.
+--
+-- 2. DBAL-enforced row predicates (CORE-19 + HUB-21): the DBAL injects the
+--    `deleted_at IS NULL OR purges_at > CURRENT_TIMESTAMP(6)` predicate into every
+--    app-role SELECT/UPDATE, and the `purges_at IS NOT NULL AND purges_at < CURRENT_TIMESTAMP(6)`
+--    predicate into every purger-role DELETE. This is application-enforced, not
+--    DB-enforced — the documented trade-off of ADR-013. The DBAL rejects any
+--    vault_secrets statement missing the required predicate context.
+--
+-- If the PostgreSQL driver is ever re-enabled (ADR-013, "next decision scale"), the
+-- PG RLS DDL below can be re-introduced as the engine-level enforcement layer.
 REVOKE DELETE ON vault_secrets FROM PUBLIC;
 REVOKE DELETE ON vault_secrets FROM dglab_hub_app;
-
--- Row-level security: app user can only touch rows where
--- deleted_at IS NULL OR purges_at > NOW(). The purger role
--- is exempt and can physically purge expired rows.
-ALTER TABLE vault_secrets ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY vault_app_access
-    ON vault_secrets
-    FOR ALL
-    TO dglab_hub_app
-    USING (deleted_at IS NULL OR purges_at > NOW());
-
-CREATE POLICY vault_purge_only
-    ON vault_secrets
-    FOR DELETE
-    TO dglab_vault_purger
-    USING (purges_at IS NOT NULL AND purges_at < NOW());
+-- GRANT DELETE ON vault_secrets TO dglab_vault_purger;  -- issued by the HUB-25 cron connection
+--
+-- -- PostgreSQL RLS equivalent (disabled per ADR-013; retained for reference):
+-- -- ALTER TABLE vault_secrets ENABLE ROW LEVEL SECURITY;
+-- -- CREATE POLICY vault_app_access ON vault_secrets FOR ALL TO dglab_hub_app
+-- --     USING (deleted_at IS NULL OR purges_at > NOW());
+-- -- CREATE POLICY vault_purge_only ON vault_secrets FOR DELETE TO dglab_vault_purger
+-- --     USING (purges_at IS NOT NULL AND purges_at < NOW());
 ```
 
 ### Sequence Diagram

@@ -46,24 +46,29 @@ interface SlaMonitorInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE sla_targets (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id   ULID NOT NULL REFERENCES tenants(id),
-    service     text NOT NULL,
-    window      text NOT NULL,           -- '30d' | '90d' | '365d'
-    target_pct  numeric(5,2) NOT NULL CHECK (target_pct > 0 AND target_pct <= 100),
-    UNIQUE (tenant_id, service, window)
-);
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    service     VARCHAR(255) NOT NULL,
+    window      ENUM('30d','90d','365d') NOT NULL,
+    target_pct  DECIMAL(5,2) NOT NULL CHECK (target_pct > 0 AND target_pct <= 100),
+    CONSTRAINT fk_sla_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    UNIQUE KEY uk_tenant_service_window (tenant_id, service, window)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE sla_breaches (
-    id          ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id   ULID NOT NULL REFERENCES tenants(id),
-    service     text NOT NULL,
-    window      text NOT NULL,
-    detected_at timestamptz NOT NULL DEFAULT now()
-);
+    id          CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id   CHAR(26) CHARACTER SET ascii NOT NULL,
+    service     VARCHAR(255) NOT NULL,
+    window      VARCHAR(16) NOT NULL,
+    detected_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_breaches_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    INDEX idx_breaches_tenant_detected (tenant_id, detected_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -79,6 +84,6 @@ CREATE TABLE sla_breaches (
 ## CI Verification Criteria
 - Unit: `AvailabilityWindow` computes 99.9% over a seeded sample set with one downtime blip;
   `BreachDetector` fires exactly when `attainment < target_pct`.
-- Integration (MySQL 16): seeding `sla_targets` + HUB-15 samples yields the expected
+- Integration (MySQL 8 (InnoDB)): seeding `sla_targets` + HUB-15 samples yields the expected
   `sla_breaches` rows.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `BreachDetector`.

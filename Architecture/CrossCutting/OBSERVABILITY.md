@@ -428,24 +428,25 @@ The audit log is a **compliance artifact** regulated by SOC 2 Type II and GDPR A
 ### Schema (MySQL DDL)
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013.
 CREATE TABLE audit_events (
-    id              CHAR(26)      NOT NULL PRIMARY KEY,        -- ULID
+    id              CHAR(26)      NOT NULL PRIMARY KEY,        -- ULID (ADR-009)
     actor_id        VARCHAR(64)   NOT NULL,                    -- user_id or 'system'
     actor_role      VARCHAR(32)   NOT NULL,                    -- 'super_admin'|'tenant_admin'|'user'|'system'
     tenant_id       VARCHAR(64)   NULL,                        -- NULL for system-level events
     event_type      VARCHAR(128)  NOT NULL,                    -- e.g., 'user.login', 'config.override.set'
     tier            VARCHAR(16)   NOT NULL,                    -- 'critical'|'high'|'medium'
-    before_json     JSONB         NULL,                        -- state before the change
-    after_json      JSONB         NULL,                        -- state after the change
-    ip_address      INET          NOT NULL,
+    before_json     JSON          NULL,                        -- state before the change
+    after_json      JSON          NULL,                        -- state after the change
+    ip_address      VARBINARY(16) NOT NULL,                    -- packed IPv4/IPv6 (INET equivalent)
     user_agent      TEXT          NULL,
     trace_id        CHAR(32)      NOT NULL,                    -- W3C trace ID for cross-correlation
     span_id         CHAR(16)      NOT NULL,                    -- W3C span ID
-    request_id      UUID          NULL,                        -- UUIDv4 from BRIDGE-01
+    request_id      CHAR(36)      NULL,                        -- UUIDv4 from BRIDGE-01 (stored as CHAR(36))
     prev_hash       CHAR(64)      NOT NULL,                    -- SHA-256 of previous row's self_hash
     self_hash       CHAR(64)      NOT NULL,                    -- SHA-256 of (id || actor_id || tenant_id || event_type || after_json || prev_hash)
-    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW()
-);
+    created_at      TIMESTAMP(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Indexes for typical queries
 CREATE INDEX idx_audit_events_tenant_time    ON audit_events (tenant_id, created_at DESC);
@@ -454,10 +455,14 @@ CREATE INDEX idx_audit_events_type_time      ON audit_events (event_type, create
 CREATE INDEX idx_audit_events_trace          ON audit_events (trace_id);
 CREATE INDEX idx_audit_events_created_at     ON audit_events (created_at DESC);
 
--- Partition by month for query pruning over 7 years of data
-CREATE TABLE audit_events_y2026m08 PARTITION OF audit_events
-    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
--- ... further monthly partitions auto-created by HUB-06 maintenance job
+-- Partition by month for query pruning over 7 years of data.
+-- MySQL partitioning syntax (per ADR-013; PG `PARTITION OF` syntax is not supported):
+--   PARTITION BY RANGE (TO_DAYS(created_at)) (
+--       PARTITION p202608 VALUES LESS THAN (TO_DAYS('2026-09-01')),
+--       PARTITION p202609 VALUES LESS THAN (TO_DAYS('2026-10-01')),
+--       ...
+--   );
+-- Monthly partitions are auto-created by the HUB-06 maintenance job via ALTER TABLE ... ADD PARTITION.
 ```
 
 ### Privilege model

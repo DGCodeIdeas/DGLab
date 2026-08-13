@@ -49,24 +49,29 @@ interface ResponderInterface
 }
 ```
 
-## Data Model (MySQL 16)
+## Data Model (MySQL 8 (InnoDB))
 
 ```sql
+-- MySQL 8 (InnoDB) DDL per ADR-013. ULID pseudo-type materialised as CHAR(26) CHARACTER SET
+-- ascii by the DBAL (ADR-009); ulid_generate() emitted by the app/DBAL, not the engine.
 CREATE TABLE incidents (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    tenant_id    ULID NOT NULL REFERENCES tenants(id),
-    severity     text NOT NULL CHECK (severity IN ('sev1','sev2','sev3','sev4')),
-    status       text NOT NULL DEFAULT 'triaged'
-                      CHECK (status IN ('triaged','contained','eradicated','recovered','closed')),
-    opened_by    ULID NOT NULL,
-    opened_at    timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    tenant_id    CHAR(26) CHARACTER SET ascii NOT NULL,
+    severity     ENUM('sev1','sev2','sev3','sev4') NOT NULL,
+    status       ENUM('triaged','contained','eradicated','recovered','closed') NOT NULL DEFAULT 'triaged',
+    opened_by    CHAR(26) CHARACTER SET ascii NOT NULL,
+    opened_at    TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_incidents_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    INDEX idx_incidents_tenant_status (tenant_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE incident_timeline (
-    id           ULID PRIMARY KEY DEFAULT ulid_generate(),
-    incident_id  ULID NOT NULL REFERENCES incidents(id),
-    event        jsonb NOT NULL,
-    created_at   timestamptz NOT NULL DEFAULT now()
-);
+    id           CHAR(26) CHARACTER SET ascii PRIMARY KEY,
+    incident_id  CHAR(26) CHARACTER SET ascii NOT NULL,
+    event        JSON NOT NULL,
+    created_at   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_timeline_incident FOREIGN KEY (incident_id) REFERENCES incidents(id),
+    INDEX idx_timeline_incident (incident_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ## Integration Strategy
@@ -83,6 +88,6 @@ through the container (CORE-02). **Downward:** UI in ISPOKE-01.
 ## CI Verification Criteria
 - Unit: `TriageWorkflow` rejects an illegal status transition (e.g. `triaged → closed` skipping
   `contained`); `ForensicCollector` writes a snapshot without modifying source rows.
-- Integration (MySQL 16): `open()` writes `incidents`; `contain()` appends an `incident_timeline`
+- Integration (MySQL 8 (InnoDB)): `open()` writes `incidents`; `contain()` appends an `incident_timeline`
   event and advances status.
 - Static: phpstan `level: max` clean; ≥95% branch coverage on `TriageWorkflow`.
