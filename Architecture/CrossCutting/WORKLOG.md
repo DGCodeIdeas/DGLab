@@ -157,3 +157,67 @@ Stage Summary:
 - **No code changed; no interfaces changed; no public contracts changed.** All changes are documentation, ADR authoring, linter scope extension, and new blueprint authoring.
 - OD count: 7 total (5 resolved, 2 open). ADR count: 13 Accepted (001..010, 012, 013, 014) + 2 Proposed (011, 015). Net: 15 ADR artefacts.
 - Hand-off: PR #103 (discrepancy-closure-pass branch) is now mergeable. Once merged, the linter can be wired to CI cleanly. The 5 new blueprints are implementation-ready (Build Status: 📝 Documented — ready for implementation, blocked on CORE-02 + Bet 3 Hub Full ring lock).
+
+---
+Task ID: 10
+Agent: Local Editor Agent (Kilo)
+Task: Cooldown 0 — Artifact 1: ESPOKE-05-wireframe.md (freeze marketing landing-page wireframe contract under SDLC-AGRD v3.4 §3).
+
+Work Log:
+- Read MEMORY.md (Step 0), shared context block, and ESPOKE-05.md, HUB-26.md, HUB-13.md.
+- Enumerated every user-visible surface from ESPOKE-05's spec: LandingPageRenderer chrome (nav, footer), BlockEngine blocks (Hero, Features, Pricing, Testimonials, lead-capture form), CampaignManager surfaces (variation selector, UTM display, conversion goal UI, HUB-31-pending dashboard with graceful degradation), and renderer-wide loading/empty/error states.
+- For each surface produced an ASCII wireframe with dimension notes, then enumerated COPY SLOTS (headlines, body, button labels, error/empty strings, tooltips, alt-text, form labels+placeholders) and VISUAL SLOTS.
+- Cross-referenced every copy slot to a HUB-13 key (`{domain}.{component}.{slot}`) and every visual slot to a HUB-26 token (`--token-name`).
+- Tagged header with the §3 freeze tag. No source files modified.
+
+Stage Summary:
+- Deliverable: `Architecture/Cooldown0/ESPOKE-05-wireframe.md`.
+- 87 copy slots cited to HUB-13 keys; all visual slots cited to HUB-26 tokens.
+- No frozen interface change required; no ADR triggered.
+
+---
+Task ID: 11
+Agent: Local Editor Agent (Kilo)
+Task: Cooldown 0 — Artifact 2: HUB-26-theme-tokens.md (freeze design-token taxonomy + ThemeInterface contract under SDLC-AGRD v3.4 §3).
+
+Work Log:
+- Extracted token taxonomy from HUB-26.md's Theme Variant Contract and ComponentRegistry: color (brand/semantic scales), spacing, typography, border/radius/shadow, breakpoints, animation.
+- Specified each token's CSS-custom-property name, value, light default, dark override (where applicable), and consuming variants (Admin vs Public).
+- Documented ThemeInterface contract explicitly: `tokens()` → flat `cssVar => value` array; `componentOverrides()` → `componentTag => [cssVar => override]` array; Admin vs Public differences (density, type scale, color, resolution mechanism).
+- Tagged header with the §3 freeze tag. No source files modified.
+
+Stage Summary:
+- Deliverable: `Architecture/Cooldown0/HUB-26-theme-tokens.md`.
+- Tokens sufficient to cover every ESPOKE-05 visual slot; no HUB-26 interface change required.
+
+---
+Task ID: 12
+Agent: Local Editor Agent (Kilo)
+Task: Cooldown 0 — Artifact 3: HUB-13-string-keys.md (freeze canonical string-key taxonomy under SDLC-AGRD v3.4 §3).
+
+Work Log:
+- Produced key taxonomy from HUB-13.md's TranslatorInterface + ESPOKE-05 wireframe copy slots. Groups: marketing (39), navigation (7), footer (9), campaign (23), errors (6), states (3) = 87 keys.
+- Naming convention: `{domain}.{component}.{slot}` (some `domain.slot` for singleton chrome). Documented placeholder syntax (`:name`,`:count`,…) and pluralization syntax (`{0}…|{1}…|[2,*]…`).
+- Documented explicit fallback chain: `fr-CA → fr → en` (default), plus Spoke-level override precedence.
+- Each key specified with default EN, context/max-len, placeholder + pluralization flags. 1 pluralized key (`campaign.dashboard.metric_conversions`).
+- Tagged header with the §3 freeze tag. No source files modified.
+
+Stage Summary:
+- Deliverable: `Architecture/Cooldown0/HUB-13-string-keys.md`.
+- Every ESPOKE-05 copy slot has a matching key; no HUB-13 interface change required.
+
+---
+Task ID: 13
+Agent: Local Editor Agent (Kilo)
+Task: Cooldown 0 — Cross-artifact verification (final step) + discrepancy note.
+
+Work Log:
+- Automated cross-check (grep/comm): all 87 distinct wireframe copy-slot keys present in HUB-13 (exact set match, 87↔87); all wireframe visual-slot tokens present in HUB-26 (only the legend placeholder `--token-name` excluded).
+- Verified HUB-26 tokens are sufficient for HUB-13 contexts (error/danger color, form-field spacing, warning for degraded banner) — all present.
+- No gaps remain; no slot left unmatched. No ADR or new OD required for any of the three contracts.
+- Observed non-blocking discrepancy: Cooldown 0 shared-context block states canonical count = 102; MEMORY.md §1 / INDEX.md §4 state 101 (Hub 30 vs 31). Flagged to tech lead; does not affect these artifacts.
+
+Stage Summary:
+- Cooldown 0 complete. Three frozen contract artifacts produced in `Architecture/Cooldown0/`: ESPOKE-05-wireframe.md, HUB-26-theme-tokens.md, HUB-13-string-keys.md.
+- All carry the §3 freeze tag; no source files modified; no implementation performed.
+- No PR until tech-lead review of all three verified artifacts.
