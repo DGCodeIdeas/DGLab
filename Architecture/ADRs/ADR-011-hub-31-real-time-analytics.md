@@ -1,13 +1,19 @@
 # ADR-011: HUB-31 — Real-Time Analytics & Metrics Ledger
 
-**Status:** **Proposed** — not accepted. Do not treat `HUB-31` as part of the Hub tier until this ADR
-is accepted and `INDEX.md` §2/§4 are updated in the same commit (Governance Rule 1).
-**Date:** 2026-08-05
-**Deciders:** DGLab architecture team (pending)
+**Status:** **Accepted** (2026-08-13)
+
+**Date:** 2026-08-05 (Proposed); 2026-08-13 (Accepted)
+
+**Author:** DGCI (solo tech lead)
+
+**Deciders:** DGCI (architecture lead)
+
+**Closes:** `OPEN-DECISIONS.md` OD-01
+
 **Supersedes:** nothing.
-**Related:** `Critiques/00_CRITIQUE.md` (Finding 14 in critique revisions 2 and 3 — see the appendix
-of that file), `INDEX.md` §3 Pattern B, `CrossCutting/STRUCTURE-01-Wheel.md` §A.8,
-`OPEN-DECISIONS.md` OD-01.
+
+**Related:** `Critiques/00_CRITIQUE.md` (Finding 14 in critique revisions 2 and 3), `INDEX.md` §3 Pattern B,
+`CrossCutting/STRUCTURE-01-Wheel.md` §A.8, `OPEN-DECISIONS.md` OD-01.
 
 > **Numbering note.** Two predecessor documents also claimed the identifier `ADR-011`:
 > `CrossCutting/THREAT_MODEL.md` §10 recommended filing "ADR-011" for post-quantum JWT migration, and
@@ -24,103 +30,96 @@ of that file), `INDEX.md` §3 Pattern B, `CrossCutting/STRUCTURE-01-Wheel.md` §
 Five Internal/External Spoke blueprints independently declared a dependency on
 `HUB-28: Distributed Ledger & Analytics Engine`. **No such component exists.** The real `HUB-28` is
 **Sovereign Versioner** (API versioning: URL-, header-, and Accept-header-based schemes) and has
-nothing to do with analytics. This is Pattern B of the eight cross-reference drift patterns catalogued
-in `INDEX.md` §3.
+nothing to do with analytics.
 
-Reading each dependent's actual described need shows the five references are **not** five instances of
-one problem. They are three different situations:
+This mislabeling was one of eight recurring drift patterns (Finding 14, `INDEX.md` §3 Pattern B). The
+five affected spokes were corrected:
+- `ISPOKE-05`, `ISPOKE-12`, `ISPOKE-13` → `HUB-31 (pending)`
+- `ISPOKE-15` → `HUB-23` (Reporter, async batch export)
+- `ESPOKE-05` → `HUB-23` (Reporter)
 
-1. **A genuinely missing component.** `ISPOKE-05` (Sovereign Insight — BI dashboards, live KPIs),
-   `ISPOKE-12` (Sovereign Toggle — real-time experiment/rollout impact monitoring), and `ISPOKE-13`
-   (Sovereign Ledger — real-time MRR / churn / LTV) each describe a **live, streaming** business-metrics
-   need. Three further External Spokes reference the same gap: `ESPOKE-05` (conversion tracking),
-   `ESPOKE-11`, and `ESPOKE-14` (public metrics).
-2. **A mislabelled pointer to a component that already exists.** `ISPOKE-10`'s real need is async
-   PDF/CSV export, which is exactly `HUB-23` (Sovereign Reporter). Already redirected to `HUB-23`.
-3. **An orphaned declaration.** `ISPOKE-15` listed the dependency but never referenced it in its own
-   design section. Already dropped rather than remapped.
+Three spokes — `ISPOKE-05` (Sovereign Insight), `ISPOKE-12` (Sovereign Impact), and `ISPOKE-13`
+(Sovereign Ledger, Billing) — have carried a hard dependency on a real-time analytics and metrics
+capability since that correction. Each blueprint explicitly marked itself "blocked, `HUB-31` not yet
+specified." This gap was tracked as `OPEN-DECISIONS.md` OD-01.
 
-So the open question is narrow: **does the stack need a real-time business-metrics component, or not?**
+The blueprint itself (`Architecture/Hub/HUB-31.md`) was authored on 2026-08-13 and committed in
+`5d070d0a`. It was designed against the *existing* interface expectations of the three consumer
+spokes — not by inventing a new contract that would require rewriting them. The
+`RealTimeMetricsInterface` (`record()`, `query()`, `currentValue()`) maps directly to the consumer
+shapes already assumed in those blueprints.
 
-Two existing components are near neighbours and neither fits:
+## Decision
 
-- **`HUB-15` (Sovereign Pulse — Health Check & Service Discovery)** is scoped to *operational* health:
-  is a service up, is its dependency reachable, what is its streak of failed probes. It has no notion
-  of tenant-scoped business events, no retention model for metric series, and no query surface for
-  "MRR over the last 30 days by plan."
-- **`HUB-23` (Sovereign Reporter)** is scoped to *asynchronous batch* export — CSV/Excel/PDF generation
-  through `HUB-10` (Queue), written to `HUB-11` (Cloud Storage). Its latency model is minutes, not
-  seconds. Redirecting real-time dependents to it would reintroduce exactly the class of mislabelling
-  this consolidation exists to eliminate.
+**Accept `HUB-31: Sovereign Ledger (Metrics)` — Real-Time Analytics & Metrics Ledger as a canonical
+Hub-tier blueprint.**
 
-Doing nothing is also not free. Six blueprints currently declare a `pending` dependency on an
-unspecified component, which means six blueprints cannot be built and `INDEX.md` §4's Hub total is
-contested (`30` in the canonical index versus `31` in the rewrite set).
+- **ID:** HUB-31
+- **Name:** Sovereign Ledger (Metrics) — distinct from `HUB-22` Sovereign Ledger (Billing) and
+  `ISPOKE-13` Sovereign Ledger (Billing) by tier context. If "Sovereign Ledger" comes up in
+  conversation, confirm which tier before assuming which one.
+- **Namespace:** `SovereignStack\Hub\Contracts\RealTimeMetricsInterface`
+- **Canonical count impact:** 101 → **102** (Hub tier: 30 → 31)
+- **Blocked spokes unblocked (design level):** `ISPOKE-05`, `ISPOKE-12`, `ISPOKE-13` — their
+  "blocked on HUB-31" status is lifted at the design level. Implementation remains gated by HUB-31's
+  own dependency chain.
 
-## Decision (proposed)
+## Consequences
 
-**Register `HUB-31: Real-Time Analytics & Metrics Ledger` as a committed-but-unspecified Hub-tier
-component.**
+### Positive
 
-Proposed scope, sufficient to distinguish it from `HUB-15` and `HUB-23`:
+- **Three spokes unblocked at design level.** `ISPOKE-05`, `ISPOKE-12`, and `ISPOKE-13` no longer carry
+  a phantom dependency. Their blueprints can be deepened without rewriting their analytics contracts.
+- **No new datastore technology.** HUB-31 uses the existing two-tier stack: `HUB-02` (Redis, hot tier)
+  + `CORE-19` (MySQL 8/InnoDB, durable/rollup tier) per `ADR-013`. No time-series database, no third
+  datastore to maintain solo.
+- **Fits existing contracts.** The `RealTimeMetricsInterface` was reverse-engineered from the three
+  consumer blueprints' existing assumptions. No consumer rewrite required.
+- **Tenant isolation by default.** Every table and query is `tenant_id`-scoped via `HUB-21`, matching
+  the isolation severity class of `HUB-21` and `BRIDGE-01`.
 
-- **Ingest.** Subscribes to `HUB-09` (Sovereign Signal — Event Bus) for business events carrying a
-  `lane` (tenant ULID) and a metric name. Ingest is fire-and-forget from the producer's perspective;
-  back-pressure is handled inside `HUB-31`, never propagated to the producer's request path.
-- **Store.** A tenant-scoped, append-only metric series. MySQL 8 (InnoDB) per ADR-013, `CHAR(26)` ULID
-  primary keys per ADR-009, `JSONB` + GIN for metric dimensions, and time-based partitioning for the
-  series table.
-- **Query.** A read API returning windowed aggregates (`sum`, `count`, `p50/p95/p99`, rate) with a
-  freshness target measured in seconds, not minutes. The freshness target is **provisional,
-  unverified** until a harness, baseline, and load model exist (Governance Rule 2).
-- **Non-goals.** Service health (`HUB-15`), batch export artefacts (`HUB-23`), the tamper-evident
-  compliance record (`HUB-06` — `HUB-31` is *not* an audit log and must never be used as one), and
-  raw log storage (`CORE-09`).
+### Negative / Risks
 
-Until this ADR is accepted:
+- **Implementation backlog grows.** HUB-31 is 🔴 **Blocked** on `CORE-02` (DI Container), `CORE-19`
+  (DBAL), `HUB-02` (Cache), `HUB-10` (Queue), and `HUB-25` (Scheduler). None of these are implemented
+  yet. HUB-31 cannot be built until its dependencies are in the matrix and deepened.
+- **Not part of Milestone 0.** Per `SDLC-AGRD.md` §4, Milestone 0 is 8 blueprints: `CORE-02`,
+  `CORE-04/05/06`, `HUB-01`, `BRIDGE-01`, `ISPOKE-09`, `ESPOKE-01`. HUB-31 is a lap-admission
+  candidate once `HUB-02` and `HUB-10` are in the matrix — not earlier.
+- **Count inflation.** 102 blueprints for 1 engineer is a large surface. Mitigation: Spiral Deepening
+  (§4.3) admits blueprints only when their dependencies are ready; HUB-31 will not be admitted until
+  its dependency chain is satisfied.
 
-- `INDEX.md` §4 counts the Hub tier as **30**, with `HUB-31` listed separately as *proposed*.
-- Dependents cite `HUB-31 (pending)` and are marked blocked.
-- No `Hub/HUB-31.md` blueprint file is created. `Verification/lint/run.php` therefore permits
-  `HUB-31` as a *reference* while no file exists, but only if this ADR is present.
+### Neutral
 
-## Alternatives considered
+- HUB-31 does not change any existing blueprint's interface. It is a new blueprint, not a modification.
+- The hospitality vertical (ADR-015) and HUB-31 are independent decisions. ADR-015 added 5 Spokes;
+  ADR-011 adds 1 Hub. Both are recorded separately.
 
-| Option | Pros | Cons |
-|---|---|---|
-| **Accept `HUB-31` as a new Hub component** (this proposal) | Matches six independently-written blueprints' actual described need; keeps `HUB-15` and `HUB-23` correctly scoped; unblocks the Internal Spoke tier | Adds a 31st Hub service — roughly one additional Hub-tier phase in `Migration/04_MIGRATION_PLAN.md`; more operational surface |
-| **Extend `HUB-23` (Reporter) to cover real-time** | No new component; reuses an existing team/package | Fuses two latency models (minutes vs seconds) into one service; the batch export path and the streaming path have opposite storage, retention, and back-pressure requirements; recreates the mislabelling problem in a new form |
-| **Extend `HUB-15` (Health) to cover business metrics** | No new component; already has a polling loop and a Redis-backed state store | Conflates service health with business metrics; `HUB-15` is deliberately stateless-across-restarts, which is wrong for a metrics ledger; would make a Critical-tier operational component depend on tenant business semantics |
-| **Push the requirement to each dependent spoke** | Zero Hub-tier change | Six independent, incompatible metrics implementations; no cross-spoke aggregation; violates the "Hub owns shared services" rule that defines the tier |
-| **Reject the requirement; strike all six references** | Smallest system | Six blueprints independently and consistently described this need. Deleting the references does not delete the requirement — it just hides it until implementation time |
+## Rejected Alternative
 
-## Consequences if accepted
+**Fold metrics into HUB-23 (Reporter).** Rejected because `HUB-23` is explicitly scoped as an *async
+batch export* service (CSV/JSON/Parquet snapshots, scheduled reports). Real-time metrics (sub-second
+`currentValue()`, live dashboards, feature-rollout impact monitoring) require synchronous hot-tier
+reads and a different data model (sliding-window aggregates vs. full-table scans). Folding both
+concerns into HUB-23 would violate single-responsibility and produce a bloated, hard-to-reason-about
+component. The two-tier design (hot/durable) is cleaner as a separate blueprint.
 
-- `INDEX.md` §2 gains a `HUB-31` row; §4's Hub total becomes **31** and the grand total becomes **97**.
-- `Migration/04_MIGRATION_PLAN.md` gains one Hub-tier phase.
-- `ISPOKE-05`, `ISPOKE-12`, `ISPOKE-13`, `ESPOKE-05`, `ESPOKE-11`, and `ESPOKE-14` move from
-  "blocked on an unspecified component" to "blocked on an unwritten blueprint" — a materially better
-  state, because the dependency becomes schedulable.
-- A `Hub/HUB-31.md` blueprint must be authored to the `AUTHORING_GUIDE.md` fidelity bar before any
-  dependent can be built.
-- `HUB-31` becomes a downstream consumer of `HUB-09`, adding one more consumer to the event bus's
-  load model.
+## Related
 
-## Consequences if rejected
+- `Architecture/Hub/HUB-31.md` (the blueprint this ADR accepts)
+- `OPEN-DECISIONS.md` OD-01 (resolution of this OD)
+- `ADR-013` (MySQL 8 InnoDB primary datastore — HUB-31's DDL follows this)
+- `ADR-006` (Redis 7 caching — HUB-31's hot tier follows this)
+- `ISPOKE-05.md`, `ISPOKE-12.md`, `ISPOKE-13.md` (the three unblocked consumers)
+- `HUB-23.md` (Reporter — the rejected fold target)
+- `HUB-22.md` (Sovereign Ledger, Billing — naming disambiguation note)
+- `SDLC-AGRD.md` §4.3 (lap admission — HUB-31 is a candidate once dependencies are ready)
 
-- All six `HUB-31 (pending)` references must be individually re-decided and rewritten — each dependent
-  must either drop the capability, absorb it locally, or be redirected with an explicit rationale.
-- `CrossCutting/STRUCTURE-01-Wheel.md` §A.1 and §A.8 must be updated to state the Hub ring is
-  permanently `HUB-01..30`.
-- `OPEN-DECISIONS.md` OD-01 closes as "rejected", and the rejection rationale must be recorded here.
+---
 
-## Compliance / verification
+### Provenance
 
-`Verification/lint/run.php` enforces the following while this ADR is `Proposed`:
-
-- `HUB-31` may be referenced only with an adjacent `pending`/`proposed` marker.
-- No `Hub/HUB-31.md` file may exist.
-- `INDEX.md` §4 must count the Hub tier as 30.
-
-If the status changes to `Accepted`, those three rules invert — and the lint must be updated in the
-same commit.
+Originally drafted 2026-08-05 as Proposed, pending blueprint specification. Blueprint authored and
+committed in `5d070d0a` (2026-08-13). Accepted 2026-08-13 per architecture lead decision on OD-01.
+This ADR ratifies the acceptance decision and updates the canonical count from 101 to 102.
