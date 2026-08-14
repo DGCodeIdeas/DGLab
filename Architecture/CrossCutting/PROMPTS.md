@@ -65,6 +65,14 @@ violate one of the global rules. With both, the rules are in the agent's context
 stale, ASK before proceeding — its absence is a red flag, not a permission to skip orientation. Cloud agents in
 particular: MEMORY.md must be in the hand-off bundle (§11.13) since you have no other way to see it.
 
+**Why this is non-negotiable, not ceremony:** the solo tech lead rotates across genuinely different agent
+products across this project's phases (Kilo, Zoo, Cline, and others as they become useful) — not just multiple
+sessions of one tool. That means no single tool's memory, conventions, or instruction-following reliability can
+be the thing that carries continuity between tasks — only what's written down here and in `MEMORY.md` can. A
+tool that skips Step 0 because it "remembers" a prior session is wrong by construction: there is no prior
+session from its perspective, regardless of what happened in a different product an hour earlier. Treat every
+task as a cold start unless this block says otherwise.
+
 ```
 SHARED CONTEXT — DGLab Wheel SDLC, solo tech lead mode
 
