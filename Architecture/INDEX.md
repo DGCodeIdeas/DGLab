@@ -373,7 +373,16 @@ graph TD
 ### §5.3 Build sequence (11 steps)
 
 The archived evaluation's sequence (`CORE-01 → 02 → 03 → 05 → 06 → 07 → 10`) is derived from the stale
-Core numbering and is wrong (Finding 2). The correct sequence, derived from the DAG above:
+Core numbering and is wrong (Finding 2). The correct *order*, derived from the DAG above, still holds
+and is kept below for reference.
+
+**The effort estimates and "parallelizable" labels in the table below assume multi-person capacity and
+are superseded.** `ADR-014` (Accepted) ratifies `Architecture/CrossCutting/SDLC-AGRD.md` as the
+canonical methodology for the current solo-tech-lead team composition — under that model there is no
+parallel engineering capacity, "parallelizable" steps run sequentially like everything else, and no
+fixed week-count is trustworthy before `SDLC-AGRD.md`'s Milestone 0 produces a measured throughput
+figure (§5 of that document). This table's *step order* is still a correct DAG reference; its
+*durations* are not. Read the sequence, not the arithmetic.
 
 | Step | Work items | Entry criteria | Exit criteria | Est. effort |
 |---|---|---|---|---|
@@ -389,9 +398,13 @@ Core numbering and is wrong (Finding 2). The correct sequence, derived from the 
 | 10 | **Internal Spokes 01–15**, then **16–25** (Phase 3b) | Step 9 lands | All 25 pass CI; admin panel operational | 12 weeks |
 | 11 | **External Spokes 01–15** | Step 9 lands (may parallel Step 10 if the Bridge is stable) | All 15 pass CI; public CMS serves traffic through the Bridge | 8 weeks |
 
-**Minimum critical path:** Steps 1 → 2 → 3 → 4 → 8 → 9 → 11 = **28 weeks** of sequential work, with
-Steps 5–7 overlapping Step 4 and Step 10 overlapping Step 11. **Realistic end-to-end with a 3-person
-team: 40–48 weeks** (Finding 15).
+**Minimum critical path (step order only, 3-person-era estimate, not current):** Steps 1 → 2 → 3 → 4
+→ 8 → 9 → 11, with Steps 5–7 originally assumed overlapping Step 4 and Step 10 overlapping Step 11 —
+that overlap required a second and third engineer that no longer exist on this project. The **28-week**
+and **"40–48 weeks with a 3-person team" (Finding 15)** figures are both historical estimates from
+before the solo-tech-lead pivot and are not current planning inputs. **Current timeline: none stated
+until `SDLC-AGRD.md` §5's Milestone 0 measurement lands — see that document, not this figure, for
+anything schedule-related.**
 
 ---
 
