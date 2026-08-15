@@ -26,7 +26,9 @@ The container is **not** a service locator. Code that holds a reference to `Cont
 - `packages/core/container/README.md` — already documents the public API (`bind`, `get`) that the reference implementation below delivers.
 
 ## Build Status
-✅ **Depth 2 — Complete (2026-08-15).** Full reference implementation landed in `packages/core/container/src/` (7 files). All CI verification criteria met:
+✅ **Depth 2 — Complete (2026-08-15, conformance pass 2026-08-16).** Full reference implementation landed in `packages/core/container/src/` (7 files). Conformance pass closed 6 review findings against the initial merge:
+
+**Initial merge (commit `221a50b`, 2026-08-15):**
 - 100% branch coverage on `make()`, `autowire()`, `build()`, `compile()`
 - Cycle detection test with resolution chain assertion
 - `compile()` idempotency test + mutation guard test
@@ -35,6 +37,16 @@ The container is **not** a service locator. Code that holds a reference to `Cont
 - 51 tests passing (56 assertions)
 - Code coverage: 97.2% lines, 93.3% methods on Container class
 - No new runtime dependencies beyond `psr/container:^2.0`
+
+**Conformance pass (2026-08-16, branch `fix/core-02-conformance`):**
+- 🔴→✅ PSR-11 conformance suite added (`tests/Psr11Conformance/Psr11ConformanceTest.php`, 13 tests covering every clause of `psr/container` 2.0)
+- 🔴→✅ Generated artifacts (`coverage/*.xml`, `.phpunit.result.cache`) removed from repo; `.gitignore` updated to exclude them
+- 🟡→✅ Cycle detection docstring clarified: keys on concrete class-string (not binding id), because autowire recurses on FQCNs; chain returned on exception preserves binding ids in order
+- 🟡→✅ `make('unbound-non-class-string')` now throws `NotFoundException` instead of returning the string (PSR-11 contract compliance)
+- 🟡→✅ `ContainerBuilderInterface` extended with `bind()` / `singleton()` / `instance()` (honest mutable builder); compiler passes no longer need an `instanceof` cast
+- 🟡→✅ Undocumented `Container::getDefinitionIdForConcrete()` public method removed (was not on any interface; violated "private internals may change" SemVer rule); `$concreteToId` dead state removed with it
+- ➕ `CircularDependencyTest::testExceptionContainsResolutionChain` strengthened from `assertContains` to `assertSame` with exact expected chain `['A', B::class, A::class]`
+- ➕ `packages-ci.yml` workflow added — runs PHPUnit + PHPStan on `packages/**` path changes (previously no CI gate ran on implementation code)
 
 🟢 **Blocked on:** nothing (this is the root).
 🟢 **Unblocks:** HUB-01, HUB-02, CORE-17, CORE-18, CORE-10, and entire Hub tier.

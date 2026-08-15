@@ -8,40 +8,44 @@ namespace SovereignStack\Core\Container;
  * {@see ContainerBuilderInterface}.
  *
  * State:
- *   - $definitions   : id -> ServiceDefinition (the binding table)
- *   - $instances     : id -> resolved object (shared-instance cache)
- *   - $resolving     : id -> true (the resolution stack; presence == on stack)
- *   - $compilerPasses: list of passes to run during compile()
- *   - $compiled      : freeze flag; mutation methods assert false before running
+ *   - $definitions       : id -> ServiceDefinition (the binding table)
+ *   - $instances         : id -> resolved object (shared-instance cache)
+ *   - $resolving         : concrete-key -> true (cycle detection set; presence == on stack)
+ *   - $resolvingChain    : ordered list of [id, concrete] tuples for diagnostics
+ *   - $compilerPasses    : list of passes to run during compile()
+ *   - $compiled          : freeze flag; mutation methods assert false before running
  *
  * Resolution flow (see also the sequence diagram in this blueprint):
  *   make(A) ->
  *     1. if A in $instances -> return cached object
- *     2. if A in $resolving -> throw CircularDependencyException(chain)
- *     3. push A onto $resolving
- *     4. try { build(concrete) } finally { pop A from $resolving }
+ *     2. compute concrete (definition->concrete ?? $id); if concrete already in
+ *        $resolving -> throw CircularDependencyException(chain from $resolvingChain)
+ *     3. push [id, concrete] onto $resolving and $resolvingChain
+ *     4. try { build(concrete) } finally { pop from both }
  *     5. if shared -> cache in $instances
  *     6. return object
  *
- * Cycle detection is resolution-time, not graph-time. This is deliberate:
- * a graph-time analysis would have to walk every Closure binding (which may
- * be opaque) and every constructor argument of every class. Resolution-time
- * detection via a stack + finally is O(depth) per resolution, never
- * stack-overflows, and surfaces the exact chain that closed the cycle.
+ * Cycle detection is resolution-time, not graph-time, and keys on the *concrete*
+ * class being constructed (not the binding id). This is deliberate: autowire()
+ * recurses by calling make() with class-string FQCNs (e.g. `make(B::class)`),
+ * not with the user's binding id. Keying on concrete catches cycles whether
+ * the cycle enters via the user's bound id or via an autowired FQCN, and never
+ * stack-overflows. The full chain of [id, concrete] pairs is preserved on the
+ * exception via getResolutionChain() for diagnostics.
  */
 final class Container implements ContainerInterface, ContainerBuilderInterface
 {
     /** @var array<string, ServiceDefinition> */
     private array $definitions = [];
 
-    /** @var array<string, string> Map from concrete class name to definition ID */
-    private array $concreteToId = [];
-
     /** @var array<string, mixed> */
     private array $instances = [];
 
-    /** @var array<string, true> */
+    /** @var array<string, true> Keys are concrete class-strings currently being built. */
     private array $resolving = [];
+
+    /** @var list<array{0: string, 1: mixed}> Ordered [id, concrete] pairs for chain reporting. */
+    private array $resolvingChain = [];
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -60,11 +64,6 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             shared: $singleton,
             tags: [],
         );
-
-        // Track concrete class name for cycle detection
-        if (is_string($concrete) && class_exists($concrete)) {
-            $this->concreteToId[$concrete] = $id;
-        }
     }
 
     public function singleton(string $id, mixed $concrete = null): void
@@ -83,10 +82,6 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             shared: true,
             tags: [],
         );
-
-        // Track concrete class name for cycle detection
-        $className = get_class($instance);
-        $this->concreteToId[$className] = $id;
     }
 
     public function make(string $id, array $parameters = []): mixed
@@ -96,50 +91,76 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             return $this->instances[$id];
         }
 
-        // 2. Cycle detection — resolution-time, never stack-overflows.
-        // Use the concrete class name for cycle detection if available, otherwise use the ID.
+        // 2. Resolve the concrete binding (fall back to $id when unbound, supporting
+        //    make(SomeClass::class) without an explicit bind() — see blueprint).
         $definition = $this->definitions[$id] ?? null;
         $concrete = $definition->concrete ?? $id;
-        $resolutionKey = (is_string($concrete) && class_exists($concrete)) ? $concrete : $id;
+
+        // 3. Reject unresolvable ids before pushing onto the stack. If there is no
+        //    explicit definition AND $id is not a class-string, the caller asked for
+        //    something that cannot be constructed — throw NotFoundException rather
+        //    than returning the bare string (the old `default => $concrete` arm in
+        //    build() did that, violating the PSR-11 contract).
+        if ($definition === null && !(is_string($concrete) && class_exists($concrete))) {
+            throw new NotFoundException(
+                "No service registered for id [$id] and [$id] is not an instantiable class."
+            );
+        }
+
+        // 4. Cycle detection — keyed on the concrete class being built. Autowire
+        //    recurses by calling make() with class-string FQCNs (e.g. make(B::class)),
+        //    so keying on concrete catches cycles entered via autowire even when the
+        //    user's binding id differs from the FQCN. The chain returned on the
+        //    exception preserves the binding ids for diagnostics.
+        //    After the step-3 guard, $concrete is guaranteed to be either a class-string
+        //    (the autowire path) or an object (Closure or pre-built instance) — never
+        //    a primitive scalar. The is_object check narrows mixed to object for
+        //    spl_object_hash().
+        if (is_string($concrete)) {
+            $resolutionKey = $concrete;
+        } elseif (is_object($concrete)) {
+            $resolutionKey = spl_object_hash($concrete);
+        } else {
+            // Unreachable after the step-3 guard: if $definition is non-null,
+            // $concrete came from $definition->concrete (Closure|object|class-string
+            // per ServiceDefinition docblock); if $definition is null, step 3
+            // required $concrete to be a class-string. Throwing here is a defensive
+            // invariant — if it ever fires, a new ServiceDefinition concrete type
+            // was introduced without updating this dispatch.
+            throw new \LogicException(
+                'Unreachable: $concrete is neither string nor object after step-3 guard. '
+                . 'Got type: ' . get_debug_type($concrete)
+            );
+        }
 
         if (isset($this->resolving[$resolutionKey])) {
-            $chain = array_keys($this->resolving);
-            $chain[] = $resolutionKey;
+            $chain = array_map(
+                static fn(array $pair) => $pair[0],
+                $this->resolvingChain,
+            );
+            $chain[] = $id;
             throw CircularDependencyException::fromChain($chain);
         }
 
-        // 3. Push onto the resolution stack.
+        // 5. Push onto both the cycle-detection set and the chain.
         $this->resolving[$resolutionKey] = true;
+        $this->resolvingChain[] = [$id, $concrete];
 
         try {
-            // 4. If no definition exists and the ID looks like a class name that doesn't exist, throw early.
-            // This ensures make('NonExistent\\Class') throws NotFoundException instead of returning the string.
-            if ($definition === null && is_string($concrete) && str_contains($concrete, '\\') && !class_exists($concrete) && !interface_exists($concrete)) {
-                throw new NotFoundException("Class [$concrete] does not exist and cannot be resolved.");
-            }
-
-            // 5. Build by concrete type.
+            // 6. Build by concrete type.
             $object = $this->build($concrete, $parameters);
         } finally {
-            // 6. Always pop, even on exception — no state leak.
+            // 7. Always pop, even on exception — no state leak (Security Property #3).
             unset($this->resolving[$resolutionKey]);
+            array_pop($this->resolvingChain);
         }
 
-        // 7. Cache shared singletons.
+        // 8. Cache shared singletons.
         if ($definition !== null && $definition->shared) {
             $this->instances[$id] = $object;
         }
 
         return $object;
-    }
-
-    /**
-     * Get the definition ID for a concrete class name.
-     * Used by compiler passes to track concrete-to-id mappings.
-     */
-    public function getDefinitionIdForConcrete(string $concrete): ?string
-    {
-        return $this->concreteToId[$concrete] ?? null;
     }
 
     /**
@@ -230,10 +251,15 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * Construct an instance from the concrete binding.
      *
      * Dispatches on the concrete's runtime type via a match expression:
-     *   - Closure            -> invoke with ($container, $parameters)
+     *   - Closure              -> invoke with ($container, $parameters)
      *   - object (non-Closure) -> return as-is (from instance() or bind($id, $obj))
-     *   - class-string       -> autowire via reflection
-     *   - any other scalar   -> return as-is (primitive bindings)
+     *   - class-string         -> autowire via reflection
+     *   - interface-string     -> throw NotFoundException (must be bound to concrete)
+     *   - any other scalar     -> return as-is (primitive bindings from explicit bind())
+     *
+     * Note: the scalar arm is reachable ONLY via an explicit `bind('key', $scalar)`
+     * call — make() rejects unbound non-class strings before reaching build(), so
+     * this default arm cannot accidentally return an unbound id as a string.
      *
      * @throws NotFoundException If a class-string concrete does not exist.
      * @param array<string, mixed> $parameters
@@ -245,8 +271,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             is_object($concrete) => $concrete,
             is_string($concrete) && class_exists($concrete) => $this->autowire($concrete, $parameters),
             is_string($concrete) && interface_exists($concrete) => throw new NotFoundException("Interface [$concrete] cannot be resolved directly; bind to a concrete implementation."),
-            is_string($concrete) => $concrete, // scalar/primitive value
-            default => $concrete,
+            default => $concrete, // primitive value from explicit bind('key', $scalar)
         };
     }
 

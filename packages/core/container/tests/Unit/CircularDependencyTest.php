@@ -32,8 +32,16 @@ class CircularDependencyTest extends \PHPUnit\Framework\TestCase
             $this->fail('Expected CircularDependencyException');
         } catch (CircularDependencyException $e) {
             $chain = $e->getResolutionChain();
-            $this->assertContains(A::class, $chain);
-            $this->assertContains(B::class, $chain);
+            // The chain must end with the id that closed the cycle and contain
+            // every id touched on the way there, in order. Looser assertions
+            // (assertContains) would not catch a regression that returned a
+            // duplicated or out-of-order chain.
+            $this->assertSame(
+                ['A', B::class, A::class],
+                $chain,
+                'Resolution chain must be [A, B::class, A::class] — user-bound id "A" first, ' .
+                'then the FQCNs autowire recursed through, ending with the id that closed the cycle.'
+            );
         }
     }
 
