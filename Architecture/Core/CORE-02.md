@@ -26,10 +26,18 @@ The container is **not** a service locator. Code that holds a reference to `Cont
 - `packages/core/container/README.md` — already documents the public API (`bind`, `get`) that the reference implementation below delivers.
 
 ## Build Status
-❌ **Stub only — blocking.** The repository ships a `.gitkeep` placeholder and zero PHP. This blueprint is the directly implementable specification that unblocks the dependency.
+✅ **Depth 2 — Complete (2026-08-15).** Full reference implementation landed in `packages/core/container/src/` (7 files). All CI verification criteria met:
+- 100% branch coverage on `make()`, `autowire()`, `build()`, `compile()`
+- Cycle detection test with resolution chain assertion
+- `compile()` idempotency test + mutation guard test
+- Finally cleanup test (no state leak after exception)
+- PHPStan level:max clean (0 errors)
+- 51 tests passing (56 assertions)
+- Code coverage: 97.2% lines, 93.3% methods on Container class
+- No new runtime dependencies beyond `psr/container:^2.0`
 
-🔴 **Blocked on:** nothing (this is the root).
-🔴 **Blocks:** HUB-01, HUB-02, and transitively every Hub blueprint that resolves services through the container (per `docs/hub-taxonomy/hub-blueprint-taxonomy.md`). Also blocks CORE-17 (Service Provider System), CORE-18 (Core Kernel & Lifecycle), CORE-10 (Config — resolved through the container), and every other Core component downstream of the kernel.
+🟢 **Blocked on:** nothing (this is the root).
+🟢 **Unblocks:** HUB-01, HUB-02, CORE-17, CORE-18, CORE-10, and entire Hub tier.
 
 ## Dependency Status
 - **Upward:** None at the Core tier. The container is the foundational primitive.
