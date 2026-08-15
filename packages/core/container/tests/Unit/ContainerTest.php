@@ -276,9 +276,13 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
 
     public function testGetWithParameters(): void
     {
+        // PSR-11 get() only accepts an id — no parameter override. The make()
+        // method is the right API for passing constructor overrides. This test
+        // validates that make() with parameters works for a class that needs
+        // them; calling get() with a second arg would be a TypeError.
         $container = new Container();
         $container->bind(WithParams::class);
-        $service = $container->get(WithParams::class, ['customParam' => 'customValue']);
+        $service = $container->make(WithParams::class, ['customParam' => 'customValue']);
         $this->assertInstanceOf(WithParams::class, $service);
     }
 

@@ -112,7 +112,26 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         //    so keying on concrete catches cycles entered via autowire even when the
         //    user's binding id differs from the FQCN. The chain returned on the
         //    exception preserves the binding ids for diagnostics.
-        $resolutionKey = is_string($concrete) ? $concrete : spl_object_hash($concrete);
+        //    After the step-3 guard, $concrete is guaranteed to be either a class-string
+        //    (the autowire path) or an object (Closure or pre-built instance) — never
+        //    a primitive scalar. The is_object check narrows mixed to object for
+        //    spl_object_hash().
+        if (is_string($concrete)) {
+            $resolutionKey = $concrete;
+        } elseif (is_object($concrete)) {
+            $resolutionKey = spl_object_hash($concrete);
+        } else {
+            // Unreachable after the step-3 guard: if $definition is non-null,
+            // $concrete came from $definition->concrete (Closure|object|class-string
+            // per ServiceDefinition docblock); if $definition is null, step 3
+            // required $concrete to be a class-string. Throwing here is a defensive
+            // invariant — if it ever fires, a new ServiceDefinition concrete type
+            // was introduced without updating this dispatch.
+            throw new \LogicException(
+                'Unreachable: $concrete is neither string nor object after step-3 guard. '
+                . 'Got type: ' . get_debug_type($concrete)
+            );
+        }
 
         if (isset($this->resolving[$resolutionKey])) {
             $chain = array_map(
