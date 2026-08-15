@@ -1,0 +1,53 @@
+name: Packages CI
+
+on:
+  push:
+    paths:
+      - 'packages/**'
+      - '.github/workflows/packages-ci.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - '.github/workflows/packages-ci.yml'
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    name: PHPUnit + PHPStan (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - core/container
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: mbstring, xml, dom
+          tools: composer:v2
+
+      - name: Validate composer.json
+        working-directory: packages/${{ matrix.package }}
+        run: composer validate --strict --no-check-publish
+
+      - name: Install dependencies
+        working-directory: packages/${{ matrix.package }}
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHPStan (level max)
+        working-directory: packages/${{ matrix.package }}
+        run: vendor/bin/phpstan analyse --error-format=github
+
+      - name: PHPUnit (full suite, testdox)
+        working-directory: packages/${{ matrix.package }}
+        run: vendor/bin/phpunit --testdox --colors=never
+
+      - name: PHPUnit (PSR-11 conformance, named)
+        working-directory: packages/${{ matrix.package }}
+        run: vendor/bin/phpunit --filter Psr11Conformance --testdox --colors=never

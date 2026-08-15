@@ -149,19 +149,25 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($service1, $service2);
     }
 
-    public function testGetDefinitionIdForConcrete(): void
+    public function testMakeThrowsNotFoundExceptionForUnboundNonClassString(): void
     {
+        // Per PSR-11: make('foo') with no prior bind('foo', ...) and 'foo' not
+        // being a class-string must throw NotFoundException, not return 'foo'.
+        // The old `default => $concrete` arm in build() returned the bare string,
+        // violating the contract.
         $container = new Container();
-        $container->bind('my-service', Service::class);
-        $id = $container->getDefinitionIdForConcrete(Service::class);
-        $this->assertSame('my-service', $id);
+        $this->expectException(NotFoundException::class);
+        $container->make('unbound.bare.string');
     }
 
-    public function testGetDefinitionIdForConcreteReturnsNullForUnknown(): void
+    public function testMakeReturnsPrimitiveFromExplicitBinding(): void
     {
+        // Explicit bind('key', $scalar) is the supported way to store primitive
+        // values — make() must return them. This is the only path that reaches
+        // the `default => $concrete` arm in build() after the make() guard.
         $container = new Container();
-        $id = $container->getDefinitionIdForConcrete(Service::class);
-        $this->assertNull($id);
+        $container->bind('timezone', 'UTC');
+        $this->assertSame('UTC', $container->make('timezone'));
     }
 
     public function testGetReturnsService(): void
@@ -276,12 +282,4 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertInstanceOf(WithParams::class, $service);
     }
 
-    public function testGetDefinitionIdForConcreteWithInstance(): void
-    {
-        $container = new Container();
-        $instance = new Service();
-        $container->instance('my-instance', $instance);
-        $id = $container->getDefinitionIdForConcrete(Service::class);
-        $this->assertSame('my-instance', $id);
-    }
 }

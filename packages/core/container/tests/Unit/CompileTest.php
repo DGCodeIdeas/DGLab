@@ -34,10 +34,8 @@ class CompileTest extends \PHPUnit\Framework\TestCase
         $container->addCompilerPass(new class implements CompilerPassInterface {
             public function process(ContainerBuilderInterface $builder): void
             {
-                // ContainerBuilderInterface is read-only; cast to ContainerInterface to mutate
-                if ($builder instanceof \SovereignStack\Core\Container\ContainerInterface) {
-                    $builder->bind('CompiledService', Service::class);
-                }
+                // ContainerBuilderInterface exposes bind() directly — no cast needed.
+                $builder->bind('CompiledService', Service::class);
             }
         });
         $container->compile();
