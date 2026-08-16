@@ -413,6 +413,93 @@ final class RepoManagerTest extends TestCase
         $manager2->pushTag('1.0.0', $this->remoteDir);
     }
 
+    // ─── P1 gap 7: assertClean ─────────────────────────────────────────────
+
+    public function testAssertCleanPassesOnCleanTree(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir);
+        // Should not throw.
+        $manager2->assertClean();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAssertCleanFailsOnModifiedTrackedFile(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \file_put_contents($cloneDir . '/tracked.txt', 'original');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add -A && git commit -m "add file" 2>&1');
+
+        // Modify the tracked file.
+        \file_put_contents($cloneDir . '/tracked.txt', 'modified');
+
+        $manager2 = new RepoManager($cloneDir);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('modified');
+        $manager2->assertClean();
+    }
+
+    public function testAssertCleanFailsOnUntrackedFile(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        // Create an untracked file.
+        \file_put_contents($cloneDir . '/untracked.txt', 'surprise');
+
+        $manager2 = new RepoManager($cloneDir);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('untracked');
+        $manager2->assertClean();
+    }
+
+    public function testAssertCleanAllowsUntrackedInAllowlist(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        // Create an untracked file that IS in the allowlist.
+        \file_put_contents($cloneDir . '/repos.json', '[]');
+
+        $manager2 = new RepoManager($cloneDir);
+        // Should not throw — repos.json is allowed.
+        $manager2->assertClean(['repos.json']);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAssertCleanFailsOnUntrackedNotInAllowlist(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        // Create an untracked file that is NOT in the allowlist.
+        \file_put_contents($cloneDir . '/surprise.txt', 'boo');
+
+        $manager2 = new RepoManager($cloneDir);
+
+        $this->expectException(\RuntimeException::class);
+        $manager2->assertClean(['repos.json']);
+    }
+
     /**
      * Recursively remove a directory.
      */

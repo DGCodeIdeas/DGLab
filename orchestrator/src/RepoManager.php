@@ -167,6 +167,77 @@ class RepoManager
     }
 
     /**
+     * Assert that the working tree is clean — no modified tracked files and no
+     * unexpected untracked files.
+     *
+     * @param array<int, string> $allowUntracked Untracked paths to tolerate
+     *     (e.g. ["orchestrator/repos.json"] when the workflow generates that
+     *     file at run start). Paths are matched against the porcelain v1
+     *     output's filename portion (everything after the 2-char status + 1
+     *     space). Both full paths and basenames are compared for robustness.
+     * @throws \RuntimeException if the working tree is dirty.
+     */
+    public function assertClean(array $allowUntracked = []): void
+    {
+        $repo = $this->getRepository();
+
+        try {
+            /** @var array<int, string> $output */
+            $output = $repo->execute('status', '--porcelain');
+        } catch (GitException $e) {
+            throw new \RuntimeException('Failed to check git status: ' . $e->getMessage(), 0, $e);
+        }
+
+        $modified = [];
+        $unexpectedUntracked = [];
+
+        foreach ($output as $line) {
+            if ($line === '') {
+                continue;
+            }
+
+            // Porcelain v1 format: "XY <path>" where XY is a 2-char status.
+            // X = staged status, Y = working-tree status.
+            // '  ' = unmodified (should not appear in --porcelain output).
+            // '??' = untracked.
+            // Anything else (' M', 'M ', 'MM', 'A ', 'D ', etc.) = modified.
+            $status = \substr($line, 0, 2);
+            $path = \ltrim(\substr($line, 2));
+
+            if ($status === '??') {
+                // Untracked — check the allowlist.
+                // Compare both the full path and the basename for robustness.
+                $basename = \basename($path);
+                $allowed = false;
+                foreach ($allowUntracked as $allowedPath) {
+                    if ($path === $allowedPath || $basename === $allowedPath || $basename === \basename($allowedPath)) {
+                        $allowed = true;
+                        break;
+                    }
+                }
+                if (!$allowed) {
+                    $unexpectedUntracked[] = $line;
+                }
+            } elseif ($status !== '  ') {
+                // Any status other than '??' and '  ' is a modification.
+                $modified[] = $line;
+            }
+        }
+
+        if ($modified !== []) {
+            throw new \RuntimeException(
+                'Working tree has modified tracked files:' . "\n" . \implode("\n", $modified)
+            );
+        }
+
+        if ($unexpectedUntracked !== []) {
+            throw new \RuntimeException(
+                'Working tree has unexpected untracked files:' . "\n" . \implode("\n", $unexpectedUntracked)
+            );
+        }
+    }
+
+    /**
      * Return the highest SemVer version among this manager's tags.
      *
      * Tag-name matching uses the configured prefix:
