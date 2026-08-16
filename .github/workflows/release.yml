@@ -220,14 +220,13 @@ jobs:
           # P0 gap 1 — tag prefix. The loom does not currently accept prefixed
           # tag names. Until P0 gap 1 ships, this step falls back to bare
           # `git tag -a` with the package-specific prefix.
-          TAG_NAME="${{ matrix.package == 'core/container' && format('v{0}', steps.bump.outputs.new_version) || format('core-{0}-v{1}', matrix.package == 'core/event-dispatcher' && 'event-dispatcher' || '', steps.bump.outputs.new_version) }}"
-          # Simpler: derive prefix from package path.
+          # Tag-naming convention (CORE-02.md §SemVer tag):
+          #   - core/container is GRANDFATHERED with unprefixed `v1.0.0`.
+          #     Future container releases MUST use `core-container-v<X.Y.Z>`.
+          #   - All other packages use `<tier>-<short>-v<X.Y.Z>`.
           SHORT=$(basename "${{ matrix.package }}")
           TIER=$(dirname "${{ matrix.package }}")
           if [ "$TIER/$SHORT" = "core/container" ]; then
-            # Grandfathered: container's inaugural tag is unprefixed.
-            # Future container releases MUST use core-container-v<X.Y.Z>.
-            # See CORE-02.md §SemVer tag for the convention note.
             TAG_NAME="v$NEW_VERSION"
           else
             TAG_NAME="${TIER}-${SHORT}-v$NEW_VERSION"
@@ -238,11 +237,13 @@ jobs:
           # PAT hygiene: use a one-shot token URL, never persist to git config.
           ORIGIN_URL=$(git remote get-url origin)
           TOKEN_URL=$(printf '%s\n' "$ORIGIN_URL" | sed -E "s#(https://github.com/)#${LOOM_RELEASE_PAT}@\\1#")
-          git tag -a "$TAG_NAME" -m "Release ${{ matrix.package }} $NEW_VERSION (${{ steps.bump.outputs.increment }} bump).
-
-  Computed by: loom version:bump
-  Commit analysis: ${{ steps.bump.outputs.increment }}
-  Triggered by: ${{ github.actor }} via ${{ github.event_name }}"
+          # NOTE: keep the tag message on a single line. A multi-line -m argument
+          # would require its continuation lines indented to the YAML block-scalar
+          # level (10 spaces here), which is fragile and easy to break. See the
+          # line-253 YAML syntax bug fixed in this same commit for the prior
+          # incident.
+          TAG_MESSAGE="Release ${{ matrix.package }} $NEW_VERSION (${{ steps.bump.outputs.increment }} bump). Computed by: loom version:bump. Commit analysis: ${{ steps.bump.outputs.increment }}. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
+          git tag -a "$TAG_NAME" -m "$TAG_MESSAGE"
           git push "$TOKEN_URL" "refs/tags/$TAG_NAME"
           git push "$TOKEN_URL" main
 
