@@ -32,6 +32,7 @@ if (!$autoloaded) {
 use SovereignStack\Orchestrator\CiGate;
 use SovereignStack\Orchestrator\CIMonitor;
 use SovereignStack\Orchestrator\DependencyGraph;
+use SovereignStack\Orchestrator\Manifest;
 use SovereignStack\Orchestrator\MonorepoPackage;
 use SovereignStack\Orchestrator\RepoManager;
 use SovereignStack\Orchestrator\VersionBumpEngine;
@@ -52,9 +53,11 @@ $command = $args[0];
 match ($command) {
     'ci:monitor' => handleCiMonitor(\array_slice($args, 1)),
     'version:bump' => handleVersionBump(\array_slice($args, 1)),
+    'version:release' => handleVersionRelease(\array_slice($args, 1)),
     'tag:create' => handleTagCreate(\array_slice($args, 1)),
     'tag:push' => handleTagPush(\array_slice($args, 1)),
     'package:list' => handlePackageList(\array_slice($args, 1)),
+    'repos:generate' => handleReposGenerate(\array_slice($args, 1)),
     'status:clean' => handleStatusClean(\array_slice($args, 1)),
     'status' => handleStatus(\array_slice($args, 1)),
     default => printUsage(),
@@ -92,43 +95,455 @@ function handleCiMonitor(array $subArgs): void
 function handleVersionBump(array $subArgs): void
 {
     if ($subArgs === []) {
-        \fwrite(\STDERR, "Usage: loom version:bump <package>\n");
+        \fwrite(\STDERR, "Usage: loom version:bump <package> [--format=json]\n");
         \fwrite(\STDERR, "       <package> is a monorepo package name (e.g. core/container) or a repos.json entry name.\n");
         exit(1);
     }
 
     $repoName = $subArgs[0];
-    $engine = new VersionBumpEngine();
+    $format = 'text';
+    for ($i = 1; $i < \count($subArgs); $i++) {
+        if ($subArgs[$i] === '--format' && isset($subArgs[$i + 1])) {
+            $format = $subArgs[$i + 1] === 'json' ? 'json' : 'text';
+            $i++;
+        } elseif ($subArgs[$i] === '--format=json') {
+            $format = 'json';
+        }
+    }
 
-    // Resolve the package: try monorepo first, fall back to legacy repos.json.
+    try {
+        $info = computeVersionBump($repoName);
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+
+    if ($format === 'json') {
+        echo \json_encode([
+            'package' => $info['package'],
+            'path' => $info['path'],
+            'tag_prefix' => $info['tag_prefix'],
+            'current_version' => $info['current_version'],
+            'new_version' => $info['new_version'],
+            'increment' => $info['increment'],
+            'reason' => $info['reason'],
+            'commits_analyzed' => $info['commits_analyzed'],
+        ], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE) . "\n";
+    } else {
+        echo "Package:          {$info['display_name']}\n";
+        echo "Current version: {$info['current_version']}\n";
+        echo "New version:     {$info['new_version']}\n";
+        echo "Increment:       {$info['increment']}\n";
+        echo "Reason:          {$info['reason']}\n";
+        echo "Commits analyzed: {$info['commits_analyzed']}\n";
+    }
+}
+
+/**
+ * Shared bump-computation helper.
+ *
+ * Used by `version:bump` (preview) and `version:release` (composite). Resolves
+ * the package, reads its current version, fetches path-scoped commits since
+ * the version's tag, and computes the next SemVer.
+ *
+ * @param string $repoName Package name (e.g. "core/container") or legacy repos.json entry.
+ * @return array{
+ *     package: string,
+ *     path: string,
+ *     tag_prefix: string|null,
+ *     display_name: string,
+ *     manager: RepoManager,
+ *     current_version: string,
+ *     new_version: string,
+ *     increment: string,
+ *     reason: string,
+ *     commits_analyzed: int
+ * }
+ * @throws \RuntimeException On git failure or invalid package name.
+ */
+function computeVersionBump(string $repoName): array
+{
+    $engine = new VersionBumpEngine();
     $repoRoot = \dirname(__DIR__);
     $package = MonorepoPackage::find($repoRoot, $repoName);
 
     if ($package !== null) {
         $manager = $package->createRepoManager($repoRoot);
         $displayName = $package->name . " (path: {$package->path}, prefix: {$package->tagPrefix})";
+        $pkgPath = $package->path;
+        $pkgPrefix = $package->tagPrefix;
     } else {
-        // Legacy mode — look up in repos.json
         $repoDir = getRepoDir($repoName);
         $manager = new RepoManager($repoDir);
         $displayName = $repoName;
+        $pkgPath = $repoDir;
+        $pkgPrefix = null;
+    }
+
+    $currentVersion = $manager->getCurrentVersion();
+    $log = $manager->getLogSince($currentVersion);
+    $analysis = $engine->analyze($log);
+    $newVersion = $engine->calculateNewVersion($currentVersion, $analysis['increment']);
+
+    return [
+        'package' => $repoName,
+        'path' => $pkgPath,
+        'tag_prefix' => $pkgPrefix,
+        'display_name' => $displayName,
+        'manager' => $manager,
+        'current_version' => $currentVersion,
+        'new_version' => $newVersion,
+        'increment' => $analysis['increment'],
+        'reason' => $analysis['reason'],
+        'commits_analyzed' => \count($log),
+    ];
+}
+
+/**
+ * P2 gap 8 — composite release command.
+ *
+ * Runs the full release sequence in one invocation:
+ *   1. Resolve the package + compute the next version (analyze + calculateNewVersion).
+ *   2. Compare against the package's composer.json "version" field; if equal, skip.
+ *   3. If --dry-run, print the plan and exit (no writes).
+ *   4. Assert clean working tree (--allow-untracked entries tolerated).
+ *   5. If --require-ci-green, gate via CiGate before any writes.
+ *   6. Bump the composer.json "version" field (Manifest::setVersion — P2 gap 10).
+ *   7. Commit the composer.json change (RepoManager::commitFile — P2 gap 10).
+ *   8. Create the annotated tag locally (RepoManager::tag).
+ *   9. If --remote is given, push the tag (RepoManager::pushTag).
+ *
+ * P2 gap 9 (--format=json) is supported on this command too.
+ *
+ * Failure semantics: if any step after the composer.json bump fails, the
+ * working tree may have an unpushed bump commit. The caller (workflow) is
+ * responsible for cleaning up or re-running with --no-push to recover.
+ */
+function handleVersionRelease(array $subArgs): void
+{
+    if ($subArgs === []) {
+        \fwrite(\STDERR, "Usage: loom version:release <package> [options]\n");
+        \fwrite(\STDERR, "       Computes the next version, bumps composer.json, commits, tags, and (optionally) pushes.\n");
+        \fwrite(\STDERR, "Options:\n");
+        \fwrite(\STDERR, "       --dry-run                  Compute the bump and print the plan; do not write anything.\n");
+        \fwrite(\STDERR, "       --format=json              Emit JSON instead of human-readable text.\n");
+        \fwrite(\STDERR, "       --message <msg>            Annotated-tag message (default: \"Release <version>\").\n");
+        \fwrite(\STDERR, "       --remote <url>             Push the tag to this URL (default: \$LOOM_REMOTE_URL or 'origin').\n");
+        \fwrite(\STDERR, "       --no-push                  Create the tag locally but do not push it.\n");
+        \fwrite(\STDERR, "       --require-ci-green         Refuse to release if --ci-workflow's latest run is not green.\n");
+        \fwrite(\STDERR, "       --ci-workflow <file>       Workflow file name (default: packages-ci.yml).\n");
+        \fwrite(\STDERR, "       --ci-branch <name>         Branch to check (default: \$GITHUB_REF_NAME or 'main').\n");
+        \fwrite(\STDERR, "       --ci-repo <owner/name>     GitHub repo (default: \$GITHUB_REPOSITORY).\n");
+        \fwrite(\STDERR, "       --ci-timeout <seconds>     Poll up to N seconds waiting for CI completion (default: 0).\n");
+        \fwrite(\STDERR, "       --allow-untracked <path>   Tolerate this untracked path during clean-tree check (repeatable).\n");
+        \fwrite(\STDERR, "       Auth token: \$LOOM_RELEASE_PAT or \$GITHUB_TOKEN.\n");
+        exit(1);
+    }
+
+    $repoName = $subArgs[0];
+    $dryRun = false;
+    $format = 'text';
+    $message = null;
+    $remote = null;
+    $noPush = false;
+    $requireCiGreen = false;
+    $ciWorkflow = 'packages-ci.yml';
+    $ciBranch = \getenv('GITHUB_REF_NAME') ?: 'main';
+    $ciRepo = null;
+    $ciTimeout = 0;
+    $allowUntracked = [];
+
+    for ($i = 1; $i < \count($subArgs); $i++) {
+        $arg = $subArgs[$i];
+        $next = $subArgs[$i + 1] ?? null;
+        if ($arg === '--dry-run') {
+            $dryRun = true;
+        } elseif ($arg === '--format=json') {
+            $format = 'json';
+        } elseif ($arg === '--format' && $next !== null) {
+            $format = $next === 'json' ? 'json' : 'text';
+            $i++;
+        } elseif ($arg === '--message' && $next !== null) {
+            $message = $next;
+            $i++;
+        } elseif ($arg === '--remote' && $next !== null) {
+            $remote = $next;
+            $i++;
+        } elseif ($arg === '--no-push') {
+            $noPush = true;
+        } elseif ($arg === '--require-ci-green') {
+            $requireCiGreen = true;
+        } elseif ($arg === '--ci-workflow' && $next !== null) {
+            $ciWorkflow = $next;
+            $i++;
+        } elseif ($arg === '--ci-branch' && $next !== null) {
+            $ciBranch = $next;
+            $i++;
+        } elseif ($arg === '--ci-repo' && $next !== null) {
+            $ciRepo = $next;
+            $i++;
+        } elseif ($arg === '--ci-timeout' && $next !== null) {
+            $ciTimeout = (int) $next;
+            $i++;
+        } elseif ($arg === '--allow-untracked' && $next !== null) {
+            $allowUntracked[] = $next;
+            $i++;
+        }
+    }
+
+    if ($message === null) {
+        $message = "Release {$repoName}";
     }
 
     try {
-        $currentVersion = $manager->getCurrentVersion();
-        $log = $manager->getLogSince($currentVersion);
-        $analysis = $engine->analyze($log);
-        $newVersion = $engine->calculateNewVersion($currentVersion, $analysis['increment']);
-
-        echo "Package:          {$displayName}\n";
-        echo "Current version: {$currentVersion}\n";
-        echo "New version:     {$newVersion}\n";
-        echo "Increment:       {$analysis['increment']}\n";
-        echo "Reason:          {$analysis['reason']}\n";
-        echo "Commits analyzed: " . \count($log) . "\n";
+        $info = computeVersionBump($repoName);
     } catch (\RuntimeException $e) {
         \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
         exit(1);
+    }
+
+    $manager = $info['manager'];
+    $currentVersion = $info['current_version'];
+    $newVersion = $info['new_version'];
+
+    // Determine the composer.json path for the version-field sync (P2 gap 10).
+    // For monorepo packages: <repoRoot>/<package.path>/composer.json.
+    // For legacy repos.json entries: <repoDir>/composer.json (may not exist).
+    $repoRoot = \dirname(__DIR__);
+    $composerPath = $repoRoot . '/' . $info['path'] . '/composer.json';
+    $composerCurrentVersion = '';
+    if (\is_file($composerPath)) {
+        try {
+            $composerCurrentVersion = Manifest::getVersion($composerPath);
+        } catch (\RuntimeException $e) {
+            \fwrite(\STDERR, "Error reading composer.json: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+    }
+
+    // Skip if composer.json already records the computed version (already released).
+    if ($composerCurrentVersion === $newVersion) {
+        $payload = [
+            'package' => $repoName,
+            'path' => $info['path'],
+            'tag_prefix' => $info['tag_prefix'],
+            'current_version' => $currentVersion,
+            'new_version' => $newVersion,
+            'increment' => $info['increment'],
+            'reason' => $info['reason'],
+            'commits_analyzed' => $info['commits_analyzed'],
+            'action' => 'skipped',
+            'tag_name' => null,
+            'tag_pushed' => false,
+            'composer_json_updated' => false,
+            'commit_sha' => null,
+        ];
+        if ($format === 'json') {
+            echo \json_encode($payload, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE) . "\n";
+        } else {
+            echo "Package:           {$info['display_name']}\n";
+            echo "Current version:   {$currentVersion}\n";
+            echo "Computed version:  {$newVersion}\n";
+            echo "Increment:         {$info['increment']}\n";
+            echo "Action: SKIPPED — composer.json already at {$newVersion}.\n";
+        }
+        return;
+    }
+
+    // Dry-run: print the plan and exit before any writes.
+    if ($dryRun) {
+        $payload = [
+            'package' => $repoName,
+            'path' => $info['path'],
+            'tag_prefix' => $info['tag_prefix'],
+            'current_version' => $currentVersion,
+            'new_version' => $newVersion,
+            'increment' => $info['increment'],
+            'reason' => $info['reason'],
+            'commits_analyzed' => $info['commits_analyzed'],
+            'action' => 'dry_run',
+            'tag_name' => null,
+            'tag_pushed' => false,
+            'composer_json_updated' => false,
+            'commit_sha' => null,
+        ];
+        if ($format === 'json') {
+            echo \json_encode($payload, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE) . "\n";
+        } else {
+            echo "Package:           {$info['display_name']}\n";
+            echo "Current version:   {$currentVersion}\n";
+            echo "New version:       {$newVersion}\n";
+            echo "Increment:         {$info['increment']}\n";
+            echo "Reason:            {$info['reason']}\n";
+            echo "Commits analyzed:  {$info['commits_analyzed']}\n";
+            echo "Action: DRY-RUN — no writes performed.\n";
+            echo "Would: bump composer.json → commit → tag → push.\n";
+        }
+        return;
+    }
+
+    // Real release: assert clean, gate CI, bump composer.json, commit, tag, push.
+    $events = []; // ordered log of actions taken, for human output
+
+    try {
+        // Assert clean tree (P1 gap 7 — closed).
+        $manager->assertClean($allowUntracked);
+        $events[] = "Working tree is clean.";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        \fwrite(\STDERR, "Refusing to release — working tree is dirty.\n");
+        exit(1);
+    }
+
+    // CI gate (P1 gap 6 — closed).
+    if ($requireCiGreen) {
+        $token = \getenv('LOOM_RELEASE_PAT') ?: (\getenv('GITHUB_TOKEN') ?: '');
+        $gateOwner = null;
+        $gateName = null;
+        if ($ciRepo !== null) {
+            $parts = \explode('/', $ciRepo);
+            $gateOwner = $parts[0] ?? null;
+            $gateName = $parts[1] ?? null;
+        }
+        $gate = new CiGate($gateOwner, $gateName);
+        $gate->setToken($token);
+        try {
+            $gate->assertGreen($ciWorkflow, $ciBranch, $ciTimeout);
+            $events[] = "CI gate passed: latest run of {$ciWorkflow} on {$ciBranch} is green.";
+        } catch (\RuntimeException $e) {
+            \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+            \fwrite(\STDERR, "Refusing to release — main is not green.\n");
+            exit(1);
+        }
+    }
+
+    // Bump composer.json version field (P2 gap 10).
+    if ($composerPath !== '' && \is_file($composerPath)) {
+        try {
+            Manifest::setVersion($composerPath, $newVersion);
+            $events[] = "Bumped composer.json version field to {$newVersion}.";
+        } catch (\RuntimeException $e) {
+            \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+    }
+    $composerUpdated = true;
+
+    // Commit the composer.json change (P2 gap 10).
+    $commitSha = null;
+    $commitMessage = "chore({$repoName}): bump version to {$newVersion}";
+    $relativePath = $info['path'] . '/composer.json';
+    try {
+        $commitSha = $manager->commitFile($relativePath, $commitMessage);
+        $events[] = "Committed bump: {$commitSha} ({$commitMessage})";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+
+    // Create the annotated tag locally.
+    try {
+        $manager->tag($newVersion, $message);
+        $prefix = $manager->getTagPrefix();
+        $tagName = $prefix !== null ? "{$prefix}-v{$newVersion}" : $newVersion;
+        $events[] = "Created tag '{$tagName}' locally.";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+
+    // Push the tag if a remote is configured and --no-push is not set.
+    $tagPushed = false;
+    $pushRemote = $noPush ? null : ($remote ?? \getenv('LOOM_REMOTE_URL') ?: 'origin');
+    if ($pushRemote !== null) {
+        try {
+            $manager->pushTag($newVersion, $pushRemote);
+            $tagPushed = true;
+            $events[] = "Pushed tag '{$tagName}' to '{$pushRemote}'.";
+        } catch (\RuntimeException $e) {
+            \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+    }
+
+    // Emit the result.
+    $payload = [
+        'package' => $repoName,
+        'path' => $info['path'],
+        'tag_prefix' => $info['tag_prefix'],
+        'current_version' => $currentVersion,
+        'new_version' => $newVersion,
+        'increment' => $info['increment'],
+        'reason' => $info['reason'],
+        'commits_analyzed' => $info['commits_analyzed'],
+        'action' => 'released',
+        'tag_name' => $tagName,
+        'tag_pushed' => $tagPushed,
+        'composer_json_updated' => $composerUpdated,
+        'commit_sha' => $commitSha,
+    ];
+    if ($format === 'json') {
+        echo \json_encode($payload, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE) . "\n";
+    } else {
+        echo "Package:           {$info['display_name']}\n";
+        echo "Current version:   {$currentVersion}\n";
+        echo "New version:       {$newVersion}\n";
+        echo "Increment:         {$info['increment']}\n";
+        echo "Reason:            {$info['reason']}\n";
+        echo "Commits analyzed:  {$info['commits_analyzed']}\n";
+        foreach ($events as $event) {
+            echo "→ {$event}\n";
+        }
+        echo "Released {$repoName} {$newVersion}.\n";
+    }
+}
+
+/**
+ * P2 gap 11 — generate orchestrator/repos.json from packages/*/*/composer.json.
+ *
+ * Replaces the inline PHP script in .github/workflows/release.yml. Scans the
+ * monorepo's packages directory, builds an array of package entries, and
+ * writes them to orchestrator/repos.json (or a caller-specified path).
+ */
+function handleReposGenerate(array $subArgs): void
+{
+    $output = \dirname(__DIR__) . '/repos.json';
+    for ($i = 0; $i < \count($subArgs); $i++) {
+        if ($subArgs[$i] === '--output' && isset($subArgs[$i + 1])) {
+            $output = $subArgs[$i + 1];
+            $i++;
+        }
+    }
+
+    $repoRoot = \dirname(__DIR__);
+    $packages = MonorepoPackage::discover($repoRoot);
+
+    $entries = [];
+    foreach ($packages as $package) {
+        $entries[] = [
+            'name' => $package->name,
+            'ci_url' => $repoRoot . '/' . $package->path,
+            'token' => '',
+            'tier' => \explode('/', $package->name)[0],
+            'tag_prefix' => $package->tagPrefix . '-v',
+            'depends_on' => [],
+        ];
+    }
+
+    $json = \json_encode(
+        $entries,
+        \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE
+    ) . "\n";
+
+    $written = \file_put_contents($output, $json);
+    if ($written === false) {
+        \fwrite(\STDERR, "Error: failed to write {$output}\n");
+        exit(1);
+    }
+
+    echo "Generated {$output} with " . \count($entries) . " package(s).\n";
+    foreach ($entries as $entry) {
+        echo "  - {$entry['name']} (prefix: {$entry['tag_prefix']})\n";
     }
 }
 
@@ -382,26 +797,47 @@ The Loom — CORE-01 Polyrepo Orchestrator
 Usage:
   loom ci:monitor --all          Run CI monitor against all registered repos
   loom ci:monitor <repo>         Run CI monitor against a specific repo
-  loom version:bump <package>    Analyze commits and suggest a version bump
+  loom version:bump <package> [--format=json]
+                                 Analyze commits and suggest a version bump
+  loom version:release <package> [options]
+                                 Composite release: bump composer.json → commit
+                                 → tag → push (P2 gaps 8, 9, 10)
   loom tag:create <package> <v> [options]
                                  Create a git tag locally (use tag:push to push)
   loom tag:push <package> <v> [remote-url]
                                  Push a previously-created tag to a remote
   loom package:list              List monorepo packages discovered under packages/*/
+  loom repos:generate [--output <path>]
+                                 Generate orchestrator/repos.json from
+                                 packages/*/*/composer.json (P2 gap 11)
   loom status:clean [--allow-untracked <path>]
                                  Exit 0 if working tree is clean, 1 otherwise
   loom status                    Show status of all registered repos
   loom                           Display this usage information
+
+version:release options:
+  --dry-run                  Compute the bump and print the plan; do not write.
+  --format=json              Emit JSON instead of human-readable text (P2 gap 9).
+  --message <msg>            Annotated-tag message (default: "Release <package>").
+  --remote <url>             Push the tag to this URL (default: \$LOOM_REMOTE_URL or 'origin').
+  --no-push                  Create the tag locally but do not push it.
+  --require-ci-green         Refuse to release if --ci-workflow's latest run is not green.
+  --ci-workflow <file>       Workflow file name (default: packages-ci.yml).
+  --ci-branch <name>         Branch to check (default: \$GITHUB_REF_NAME or 'main').
+  --ci-repo <owner/name>     GitHub repo (default: \$GITHUB_REPOSITORY).
+  --ci-timeout <seconds>     Poll up to N seconds waiting for CI completion (default: 0).
+  --allow-untracked <path>   Tolerate this untracked path during clean-tree check (repeatable).
+                             Auth token: \$LOOM_RELEASE_PAT or \$GITHUB_TOKEN.
 
 tag:create options:
   --message <msg>           Annotated-tag message (default: "Release <version>").
   --require-ci-green        Refuse to tag if the latest run of --ci-workflow
                             is not green (conclusion === 'success').
   --ci-workflow <file>      Workflow file name (default: packages-ci.yml).
-  --ci-branch <name>        Branch to check (default: $GITHUB_REF_NAME or 'main').
-  --ci-repo <owner/name>    GitHub repo (default: $GITHUB_REPOSITORY).
+  --ci-branch <name>        Branch to check (default: \$GITHUB_REF_NAME or 'main').
+  --ci-repo <owner/name>    GitHub repo (default: \$GITHUB_REPOSITORY).
   --ci-timeout <seconds>    Poll up to N seconds waiting for completion (default: 0).
-                            Auth token is read from $LOOM_RELEASE_PAT or $GITHUB_TOKEN.
+                            Auth token is read from \$LOOM_RELEASE_PAT or \$GITHUB_TOKEN.
 
 <package> is a monorepo package name (e.g. core/container) — discovered
 automatically from packages/*/*/composer.json. Falls back to repos.json

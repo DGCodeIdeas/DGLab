@@ -500,6 +500,80 @@ final class RepoManagerTest extends TestCase
         $manager2->assertClean(['repos.json']);
     }
 
+    // ─── P2 gap 10: commitFile ───────────────────────────────────────────────
+
+    public function testCommitFileCreatesCommitAndReturnsSha(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        // Create a file to commit.
+        \file_put_contents($cloneDir . '/composer.json', '{"name": "test/pkg"}');
+        // git requires committer identity to be set.
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git config user.email "test@example.com" && git config user.name "Test" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir);
+        $sha = $manager2->commitFile('composer.json', 'chore: bump version to 1.0.0');
+
+        // SHA is 40-char lowercase hex.
+        self::assertMatchesRegularExpression('/^[0-9a-f]{40}$/', $sha);
+
+        // The commit message landed on HEAD.
+        $headMessage = \trim((string) \shell_exec('cd ' . \escapeshellarg($cloneDir) . ' && git log -1 --format=%s') ?? '');
+        self::assertSame('chore: bump version to 1.0.0', $headMessage);
+
+        // The HEAD SHA matches what commitFile returned.
+        $headSha = \trim((string) \shell_exec('cd ' . \escapeshellarg($cloneDir) . ' && git rev-parse HEAD') ?? '');
+        self::assertSame($headSha, $sha);
+    }
+
+    public function testCommitFileStagesOnlyTheGivenPath(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git config user.email "test@example.com" && git config user.name "Test" 2>&1');
+
+        // Create two files; only commit one.
+        \file_put_contents($cloneDir . '/tracked.txt', 'a');
+        \file_put_contents($cloneDir . '/untouched.txt', 'b');
+
+        $manager2 = new RepoManager($cloneDir);
+        $manager2->commitFile('tracked.txt', 'add tracked only');
+
+        // The untouched file must NOT be in HEAD's tree.
+        $files = \trim((string) \shell_exec('cd ' . \escapeshellarg($cloneDir) . ' && git ls-tree --name-only HEAD') ?? '');
+        $fileList = \explode("\n", $files);
+        self::assertContains('tracked.txt', $fileList);
+        self::assertNotContains('untouched.txt', $fileList);
+
+        // The untouched file should still be untracked in the working tree.
+        $status = (string) \shell_exec('cd ' . \escapeshellarg($cloneDir) . ' && git status --porcelain') ?? '';
+        self::assertStringContainsString('untouched.txt', $status);
+    }
+
+    public function testCommitFileThrowsOnInvalidPath(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git config user.email "test@example.com" && git config user.name "Test" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir);
+
+        // Path does not exist — git add will succeed (no-op) but git commit
+        // will fail because there's nothing staged.
+        $this->expectException(\RuntimeException::class);
+        $manager2->commitFile('does-not-exist.txt', 'nothing to commit');
+    }
+
     /**
      * Recursively remove a directory.
      */
