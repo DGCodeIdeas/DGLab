@@ -35,6 +35,10 @@ final class Manifest
             throw new \RuntimeException("Invalid SemVer version: {$version}");
         }
 
+        if (!\is_file($composerJsonPath) || !\is_readable($composerJsonPath)) {
+            throw new \RuntimeException("Failed to read composer.json at {$composerJsonPath}");
+        }
+
         $contents = \file_get_contents($composerJsonPath);
         if ($contents === false) {
             throw new \RuntimeException("Failed to read composer.json at {$composerJsonPath}");
@@ -79,6 +83,10 @@ final class Manifest
      */
     public static function getVersion(string $composerJsonPath): string
     {
+        if (!\is_file($composerJsonPath) || !\is_readable($composerJsonPath)) {
+            throw new \RuntimeException("Failed to read composer.json at {$composerJsonPath}");
+        }
+
         $contents = \file_get_contents($composerJsonPath);
         if ($contents === false) {
             throw new \RuntimeException("Failed to read composer.json at {$composerJsonPath}");
