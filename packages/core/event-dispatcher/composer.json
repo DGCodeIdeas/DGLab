@@ -1,8 +1,9 @@
 {
     "name": "sovereign-stack/core-event-dispatcher",
-    "description": "CORE-05: Production-ready PSR-14 Event Dispatcher with prioritized, haltable listener pipeline and lazy resolution",
+    "description": "CORE-03: Production-ready PSR-14 Event Dispatcher with prioritized, haltable listener pipeline and lazy resolution",
     "type": "library",
     "license": "MIT",
+    "version": "1.0.0",
     "require": {
         "php": "^8.3",
         "psr/event-dispatcher": "^1.0"
