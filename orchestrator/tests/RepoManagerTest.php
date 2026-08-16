@@ -163,6 +163,256 @@ final class RepoManagerTest extends TestCase
         self::assertSame($default, $manager->getWorkingDir());
     }
 
+    // ─── P0 gap 1: tag-prefix support ───────────────────────────────────────
+
+    public function testGetCurrentVersionWithPrefixedTag(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        // Bare tags must be IGNORED when a prefix is configured.
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag 0.5.0 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag some-other-pkg-v0.9.0 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "feat: second" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag my-pkg-v1.2.0 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+        $version = $manager2->getCurrentVersion();
+
+        self::assertSame('1.2.0', $version);
+    }
+
+    public function testGetCurrentVersionWithLegacyPattern(): void
+    {
+        // core/container scenario: prefix is "core-container", but the
+        // grandfathered v1.0.0 tag (no prefix) must also be readable.
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag v1.0.0 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'core-container');
+        $manager2->setAdditionalTagPatterns(['/^v(\d+\.\d+\.\d+)$/']);
+        $version = $manager2->getCurrentVersion();
+
+        self::assertSame('1.0.0', $version);
+    }
+
+    public function testGetCurrentVersionWithLegacyPatternPrefersPrefixedTag(): void
+    {
+        // After a prefixed release lands (1.1.0), it must outrank the
+        // grandfathered v1.0.0.
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag v1.0.0 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "feat: new" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag core-container-v1.1.0 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'core-container');
+        $manager2->setAdditionalTagPatterns(['/^v(\d+\.\d+\.\d+)$/']);
+        $version = $manager2->getCurrentVersion();
+
+        self::assertSame('1.1.0', $version);
+    }
+
+    public function testTagWithPrefix(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+        $result = $manager2->tag('1.2.0', 'Release 1.2.0');
+        self::assertTrue($result);
+
+        // Verify the tag name was written with the prefix.
+        $tags = \explode("\n", \trim((string) \shell_exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag --list') ?? ''));
+        self::assertContains('my-pkg-v1.2.0', $tags);
+    }
+
+    public function testTagWithPrefixDoesNotOverwrite(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+        $manager2->tag('1.0.0', 'First release');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("'my-pkg-v1.0.0' already exists");
+        $manager2->tag('1.0.0', 'Duplicate');
+    }
+
+    public function testTagWithPrefixRejectsBareTags(): void
+    {
+        // When a prefix is configured, tag() must NOT silently accept a
+        // version that already includes the prefix.
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid SemVer');
+        $manager2->tag('my-pkg-v1.0.0');
+    }
+
+    public function testGetTagPrefixAndPathScope(): void
+    {
+        $manager = new RepoManager($this->testDir, 'my-pkg', 'packages/core/my-pkg');
+        self::assertSame('my-pkg', $manager->getTagPrefix());
+        self::assertSame('packages/core/my-pkg', $manager->getPathScope());
+
+        $legacy = new RepoManager($this->testDir);
+        self::assertNull($legacy->getTagPrefix());
+        self::assertNull($legacy->getPathScope());
+    }
+
+    // ─── P0 gap 3: path-scoped commit analysis ──────────────────────────────
+
+    public function testGetLogSinceWithPathScope(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag 0.1.0 2>&1');
+
+        // Create a subdirectory structure mimicking a monorepo.
+        \mkdir($cloneDir . '/packages/core/container', 0777, true);
+        \mkdir($cloneDir . '/packages/core/event-dispatcher', 0777, true);
+
+        // Commit touching only container
+        \file_put_contents($cloneDir . '/packages/core/container/file.txt', 'a');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add -A && git commit -m "feat(container): add file" 2>&1');
+
+        // Commit touching only event-dispatcher
+        \file_put_contents($cloneDir . '/packages/core/event-dispatcher/file.txt', 'b');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add -A && git commit -m "feat(event-dispatcher): add file" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, null, 'packages/core/container');
+        $log = $manager2->getLogSince('0.1.0');
+
+        // Must include ONLY the container commit — not the event-dispatcher one.
+        self::assertCount(1, $log);
+        self::assertStringContainsString('container', $log[0] ?? '');
+        self::assertStringNotContainsString('event-dispatcher', $log[0] ?? '');
+    }
+
+    public function testGetLogSinceWithPathScopeOverride(): void
+    {
+        // Caller can override the constructor's pathScope at call time.
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag 0.1.0 2>&1');
+
+        \mkdir($cloneDir . '/packages/core/a', 0777, true);
+        \mkdir($cloneDir . '/packages/core/b', 0777, true);
+        \file_put_contents($cloneDir . '/packages/core/a/file.txt', 'a');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add -A && git commit -m "feat(a): add" 2>&1');
+        \file_put_contents($cloneDir . '/packages/core/b/file.txt', 'b');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add -A && git commit -m "feat(b): add" 2>&1');
+
+        // No constructor scope; pass scope at call time.
+        $manager2 = new RepoManager($cloneDir);
+        $logA = $manager2->getLogSince('0.1.0', 'packages/core/a');
+        $logB = $manager2->getLogSince('0.1.0', 'packages/core/b');
+
+        self::assertCount(1, $logA);
+        self::assertCount(1, $logB);
+        self::assertStringContainsString('(a)', $logA[0] ?? '');
+        self::assertStringContainsString('(b)', $logB[0] ?? '');
+    }
+
+    public function testGetLogSinceWithPrefixAndPathScope(): void
+    {
+        // Full monorepo scenario: prefixed tag + path scope.
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git tag my-pkg-v1.0.0 2>&1');
+
+        \mkdir($cloneDir . '/packages/core/my-pkg', 0777, true);
+        \file_put_contents($cloneDir . '/packages/core/my-pkg/file.txt', 'a');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add -A && git commit -m "feat: new feature" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, 'my-pkg', 'packages/core/my-pkg');
+        $log = $manager2->getLogSince('1.0.0');
+
+        self::assertCount(1, $log);
+        self::assertStringContainsString('new feature', $log[0] ?? '');
+    }
+
+    // ─── P0 gap 4: tag push ─────────────────────────────────────────────────
+
+    public function testPushTag(): void
+    {
+        // Set up a working repo + a bare remote.
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "initial" 2>&1');
+
+        // Create a tag locally.
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+        $manager2->tag('1.0.0', 'Release 1.0.0');
+
+        // Push it to the bare remote using a file:// URL.
+        $result = $manager2->pushTag('1.0.0', $this->remoteDir);
+        self::assertTrue($result);
+
+        // Verify the tag landed on the remote.
+        $remoteTags = \trim((string) \shell_exec('cd ' . \escapeshellarg($this->remoteDir) . ' && git tag --list') ?? '');
+        self::assertContains('my-pkg-v1.0.0', \explode("\n", $remoteTags));
+    }
+
+    public function testPushTagRejectsInvalidVersion(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid SemVer');
+        $manager2->pushTag('not-a-version', $this->remoteDir);
+    }
+
+    public function testPushTagFailsWhenTagDoesNotExist(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        $manager2 = new RepoManager($cloneDir, 'my-pkg');
+
+        $this->expectException(\RuntimeException::class);
+        $manager2->pushTag('1.0.0', $this->remoteDir);
+    }
+
     /**
      * Recursively remove a directory.
      */

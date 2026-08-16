@@ -31,6 +31,7 @@ if (!$autoloaded) {
 
 use SovereignStack\Orchestrator\CIMonitor;
 use SovereignStack\Orchestrator\DependencyGraph;
+use SovereignStack\Orchestrator\MonorepoPackage;
 use SovereignStack\Orchestrator\RepoManager;
 use SovereignStack\Orchestrator\VersionBumpEngine;
 
@@ -51,6 +52,8 @@ match ($command) {
     'ci:monitor' => handleCiMonitor(\array_slice($args, 1)),
     'version:bump' => handleVersionBump(\array_slice($args, 1)),
     'tag:create' => handleTagCreate(\array_slice($args, 1)),
+    'tag:push' => handleTagPush(\array_slice($args, 1)),
+    'package:list' => handlePackageList(\array_slice($args, 1)),
     'status' => handleStatus(\array_slice($args, 1)),
     default => printUsage(),
 };
@@ -87,22 +90,27 @@ function handleCiMonitor(array $subArgs): void
 function handleVersionBump(array $subArgs): void
 {
     if ($subArgs === []) {
-        \fwrite(\STDERR, "Usage: loom version:bump <repo>\n");
+        \fwrite(\STDERR, "Usage: loom version:bump <package>\n");
+        \fwrite(\STDERR, "       <package> is a monorepo package name (e.g. core/container) or a repos.json entry name.\n");
         exit(1);
     }
 
     $repoName = $subArgs[0];
-    $repoDir = getRepoDir($repoName);
     $engine = new VersionBumpEngine();
 
-    try {
-        $manager = new RepoManager();
-        $manager->clone($repoDir, $repoName);
-    } catch (\RuntimeException) {
-        // Repo may already be cloned; use the directory directly
-    }
+    // Resolve the package: try monorepo first, fall back to legacy repos.json.
+    $repoRoot = \dirname(__DIR__);
+    $package = MonorepoPackage::find($repoRoot, $repoName);
 
-    $manager = new RepoManager($repoDir);
+    if ($package !== null) {
+        $manager = $package->createRepoManager($repoRoot);
+        $displayName = $package->name . " (path: {$package->path}, prefix: {$package->tagPrefix})";
+    } else {
+        // Legacy mode — look up in repos.json
+        $repoDir = getRepoDir($repoName);
+        $manager = new RepoManager($repoDir);
+        $displayName = $repoName;
+    }
 
     try {
         $currentVersion = $manager->getCurrentVersion();
@@ -110,11 +118,12 @@ function handleVersionBump(array $subArgs): void
         $analysis = $engine->analyze($log);
         $newVersion = $engine->calculateNewVersion($currentVersion, $analysis['increment']);
 
-        echo "Repository: {$repoName}\n";
+        echo "Package:          {$displayName}\n";
         echo "Current version: {$currentVersion}\n";
         echo "New version:     {$newVersion}\n";
         echo "Increment:       {$analysis['increment']}\n";
         echo "Reason:          {$analysis['reason']}\n";
+        echo "Commits analyzed: " . \count($log) . "\n";
     } catch (\RuntimeException $e) {
         \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
         exit(1);
@@ -124,22 +133,90 @@ function handleVersionBump(array $subArgs): void
 function handleTagCreate(array $subArgs): void
 {
     if (\count($subArgs) < 2) {
-        \fwrite(\STDERR, "Usage: loom tag:create <repo> <version>\n");
+        \fwrite(\STDERR, "Usage: loom tag:create <package> <version>\n");
+        \fwrite(\STDERR, "       <version> is bare SemVer (e.g. 1.1.0) — the tag prefix is added automatically.\n");
         exit(1);
     }
 
     $repoName = $subArgs[0];
     $version = $subArgs[1];
-    $repoDir = getRepoDir($repoName);
 
-    $manager = new RepoManager($repoDir);
+    $repoRoot = \dirname(__DIR__);
+    $package = MonorepoPackage::find($repoRoot, $repoName);
+
+    if ($package !== null) {
+        $manager = $package->createRepoManager($repoRoot);
+    } else {
+        $repoDir = getRepoDir($repoName);
+        $manager = new RepoManager($repoDir);
+    }
 
     try {
         $manager->tag($version, "Release {$version}");
-        echo "Tag '{$version}' created successfully for '{$repoName}'.\n";
+        // Compute the actual tag name for display
+        $prefix = $manager->getTagPrefix();
+        $tagName = $prefix !== null ? "{$prefix}-v{$version}" : $version;
+        echo "Tag '{$tagName}' created successfully for '{$repoName}'.\n";
+        echo "Note: tag was created locally. Use `loom tag:push {$repoName} {$version}` to push it.\n";
     } catch (\RuntimeException $e) {
         \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
         exit(1);
+    }
+}
+
+function handleTagPush(array $subArgs): void
+{
+    if (\count($subArgs) < 2) {
+        \fwrite(\STDERR, "Usage: loom tag:push <package> <version> [remote-url]\n");
+        \fwrite(\STDERR, "       If remote-url is omitted, uses \$LOOM_REMOTE_URL or 'origin'.\n");
+        \fwrite(\STDERR, "       For HTTPS remotes, embed the PAT in the URL (one-shot, never persisted).\n");
+        exit(1);
+    }
+
+    $repoName = $subArgs[0];
+    $version = $subArgs[1];
+    $remoteUrl = $subArgs[2] ?? \getenv('LOOM_REMOTE_URL') ?: 'origin';
+
+    $repoRoot = \dirname(__DIR__);
+    $package = MonorepoPackage::find($repoRoot, $repoName);
+
+    if ($package !== null) {
+        $manager = $package->createRepoManager($repoRoot);
+    } else {
+        $repoDir = getRepoDir($repoName);
+        $manager = new RepoManager($repoDir);
+    }
+
+    try {
+        $manager->pushTag($version, $remoteUrl);
+        $prefix = $manager->getTagPrefix();
+        $tagName = $prefix !== null ? "{$prefix}-v{$version}" : $version;
+        echo "Tag '{$tagName}' pushed to '{$remoteUrl}'.\n";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+}
+
+function handlePackageList(array $subArgs): void
+{
+    $repoRoot = \dirname(__DIR__);
+    $packages = MonorepoPackage::discover($repoRoot);
+
+    if ($packages === []) {
+        echo "No monorepo library packages found under {$repoRoot}/packages/*/*/composer.json\n";
+        return;
+    }
+
+    echo "Monorepo library packages ({$repoRoot}):\n\n";
+    echo \str_pad('  Name', 30) . \str_pad('Path', 35) . \str_pad('Prefix', 30) . "Legacy\n";
+    echo '  ' . \str_repeat('-', 100) . "\n";
+    foreach ($packages as $package) {
+        $legacy = $package->legacyTagPattern ?? '-';
+        echo \str_pad("  {$package->name}", 30)
+            . \str_pad($package->path, 35)
+            . \str_pad($package->tagPrefix, 30)
+            . $legacy . "\n";
     }
 }
 
@@ -213,10 +290,21 @@ The Loom — CORE-01 Polyrepo Orchestrator
 Usage:
   loom ci:monitor --all          Run CI monitor against all registered repos
   loom ci:monitor <repo>         Run CI monitor against a specific repo
-  loom version:bump <repo>       Analyze commits and suggest a version bump
-  loom tag:create <repo> <ver>   Create a git tag for the specified version
+  loom version:bump <package>    Analyze commits and suggest a version bump
+  loom tag:create <package> <v>  Create a git tag locally (use tag:push to push)
+  loom tag:push <package> <v> [remote-url]
+                                 Push a previously-created tag to a remote
+  loom package:list              List monorepo packages discovered under packages/*/
   loom status                    Show status of all registered repos
   loom                           Display this usage information
+
+<package> is a monorepo package name (e.g. core/container) — discovered
+automatically from packages/*/*/composer.json. Falls back to repos.json
+lookup for non-monorepo repositories.
+
+For tag:push with HTTPS remotes, embed the PAT in the URL:
+  loom tag:push core/container 1.1.0 https://x-access-token:\$PAT@github.com/owner/repo.git
+or set \$LOOM_REMOTE_URL with the token-embedded URL.
 
 USAGE;
 }

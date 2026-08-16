@@ -289,17 +289,19 @@ class VersionBumpEngine
 
 ### Shipped Implementation Divergence
 
-The on-disk `orchestrator/bin/loom` (8,723 bytes, +x, modified 2026-08-10) implements a **different, cleaner command surface** than the spec block below. The spec block is retained as historical reference for the blueprint's original proposal; the on-disk binary is authoritative.
+The on-disk `orchestrator/bin/loom` implements a **different, cleaner command surface** than the spec block below. The spec block is retained as historical reference for the blueprint's original proposal; the on-disk binary is authoritative.
 
 | Spec (below) | Shipped (on disk) | Behaviour |
 |---|---|---|
 | `bin/loom resolve-order` | `bin/loom status` | Prints tier breakdown + resolution order + registered repos |
 | `bin/loom check <repo>` | `bin/loom ci:monitor <repo>` | Polls CI status for one repo |
 | `bin/loom check-all` | `bin/loom ci:monitor --all` | Polls CI status for all registered repos |
-| `bin/loom analyze <repo> <since>` | `bin/loom version:bump <repo>` | Conventional-Commits analysis → next-version preview (does NOT create tag) |
-| `bin/loom tag <repo> <ver>` | `bin/loom tag:create <repo> <ver>` | Creates annotated tag locally (does NOT push) |
+| `bin/loom analyze <repo> <since>` | `bin/loom version:bump <package>` | Conventional-Commits analysis → next-version preview (does NOT create tag). Accepts monorepo package names (e.g. `core/container`) since the P0 PR; falls back to legacy `repos.json` lookup for non-monorepo repos. |
+| `bin/loom tag <repo> <ver>` | `bin/loom tag:create <package> <ver>` | Creates annotated tag locally with the package's prefix (e.g. `core-container-v1.1.0`). Does NOT push — use `tag:push` for that. |
+| (none) | `bin/loom tag:push <package> <ver> [remote-url]` | Pushes a previously-created tag to a remote. Caller embeds the PAT in the URL for HTTPS remotes (one-shot, never persisted). |
+| (none) | `bin/loom package:list` | Lists all monorepo library packages discovered under `packages/*/*/composer.json`. |
 
-The shipped binary also adds a `repos.json` config loader (`loadConfig()` in `bin/loom`) and a `getRepoDir()` resolver that maps repo names to local paths. When `orchestrator/repos.json` is absent, `loadConfig()` falls back to a default containing only the orchestrator itself — meaning **the loom cannot currently operate on monorepo packages** like `packages/core/container` without first writing a `repos.json` entry that points `ci_url` at the package subdirectory. See §SemVer Automation Plan below for the gap analysis.
+The shipped binary also adds a `repos.json` config loader (`loadConfig()` in `bin/loom`) and a `getRepoDir()` resolver that maps repo names to local paths. As of the P0 PR, monorepo packages are discovered automatically from `packages/*/*/composer.json` via `MonorepoPackage::discover()` — `repos.json` is now only needed for non-monorepo repositories.
 
 **`bin/loom` — the missing entry point (Finding 21, historical spec):**
 
@@ -529,13 +531,13 @@ The current loom implementation cannot drive this workflow as-is. The blocking g
 
 **P0 — blocking, must close before enabling `release.yml`:**
 
-1. **Tag-name prefix is not supported.** `RepoManager::getCurrentVersion()` filters tags by `/^\d+\.\d+\.\d+$/` and `RepoManager::tag()` validates the same regex. Both will reject `core-event-dispatcher-v1.0.0`. The loom cannot read or write prefixed tags. Fix: extend the regex to `/^[a-z0-9-]+-v?(\d+\.\d+\.\d+)$/` and capture the prefix as a per-package property of `RepoManager` (constructed with `$tagPrefix`).
+1. ~~**Tag-name prefix is not supported.** `RepoManager::getCurrentVersion()` filters tags by `/^\d+\.\d+\.\d+$/` and `RepoManager::tag()` validates the same regex. Both will reject `core-event-dispatcher-v1.0.0`. The loom cannot read or write prefixed tags. Fix: extend the regex to `/^[a-z0-9-]+-v?(\d+\.\d+\.\d+)$/` and capture the prefix as a per-package property of `RepoManager` (constructed with `$tagPrefix`).~~ **RESOLVED 2026-08-16 (P0 PR)** — `RepoManager::__construct()` now accepts `?string $tagPrefix`. `getCurrentVersion()` filters by `{prefix}-v(\d+\.\d+\.\d+)`. `tag()` constructs the full tag name `{prefix}-v{version}`. `setAdditionalTagPatterns()` supports grandfathered tag-name forms (used for `core/container`'s unprefixed `v1.0.0`).
 
-2. **No monorepo path awareness.** `getRepoDir()` returns `dirname(__DIR__) . '/repos/' . $repoName`, which doesn't exist. The loom has no concept of "the package at `packages/core/container` within the current repo." Fix: add a `MonorepoPackage` value object that carries `(name, path, tagPrefix)`, and teach `RepoManager` to operate on a subdirectory of the current repo rather than a separate clone.
+2. ~~**No monorepo path awareness.** `getRepoDir()` returns `dirname(__DIR__) . '/repos/' . $repoName`, which doesn't exist. The loom has no concept of "the package at `packages/core/container` within the current repo." Fix: add a `MonorepoPackage` value object that carries `(name, path, tagPrefix)`, and teach `RepoManager` to operate on a subdirectory of the current repo rather than a separate clone.~~ **RESOLVED 2026-08-16 (P0 PR)** — New `MonorepoPackage` value object (`src/MonorepoPackage.php`) with `discover(string $repoRoot): array<self>` that scans `packages/*/*/composer.json`, skips `type:project` entries, and returns each package with its `(name, path, tagPrefix, legacyTagPattern)`. `MonorepoPackage::find($repoRoot, $name)` looks up by logical name. `MonorepoPackage::createRepoManager($repoRoot)` constructs a fully-configured `RepoManager`. The loom's `version:bump`, `tag:create`, and new `tag:push` commands try `MonorepoPackage::find()` first, falling back to legacy `repos.json` for non-monorepo repos.
 
-3. **No path-scoped commit analysis.** `RepoManager::getLogSince($tag)` runs `git log {$tag}..HEAD --format=%s` — all commits since `$tag`, regardless of which paths they touched. In a monorepo, a commit touching only `packages/core/event-dispatcher/` would incorrectly bump `packages/core/container`. Fix: pass `-- packages/<name>/` to `git log`, or expose a `getLogSince($tag, $pathScope = null)` parameter.
+3. ~~**No path-scoped commit analysis.** `RepoManager::getLogSince($tag)` runs `git log {$tag}..HEAD --format=%s` — all commits since `$tag`, regardless of which paths they touched. In a monorepo, a commit touching only `packages/core/event-dispatcher/` would incorrectly bump `packages/core/container`. Fix: pass `-- packages/<name>/` to `git log`, or expose a `getLogSince($tag, $pathScope = null)` parameter.~~ **RESOLVED 2026-08-16 (P0 PR)** — `RepoManager::__construct()` now accepts `?string $pathScope`. `getLogSince($version, ?string $pathScope = null)` passes `-- <scope>` to `git log`. The scope is taken from the call-time argument if provided, else from the constructor's `$pathScope`. `MonorepoPackage::createRepoManager()` sets the pathScope automatically from the package's directory.
 
-4. **No tag push.** `RepoManager::tag()` calls `$repo->createTag()` locally; the tag never reaches `origin`. Fix: add `RepoManager::pushTag($version)` that runs `git push origin refs/tags/<tag>`, with the same PAT-embedded-URL hygiene pattern used in the existing PR-merge scripts (capture original remote URL, push via one-shot token URL, never persist to git config).
+4. ~~**No tag push.** `RepoManager::tag()` calls `$repo->createTag()` locally; the tag never reaches `origin`. Fix: add `RepoManager::pushTag($version)` that runs `git push origin refs/tags/<tag>`, with the same PAT-embedded-URL hygiene pattern used in the existing PR-merge scripts (capture original remote URL, push via one-shot token URL, never persist to git config).~~ **RESOLVED 2026-08-16 (P0 PR)** — New `RepoManager::pushTag(string $version, string $remoteUrl): bool` runs `git push <remoteUrl> refs/tags/<tag>`. The caller passes the remote URL (which may be a one-shot token-embedded HTTPS URL for GitHub, or a local file:// path for tests). RepoManager NEVER mutates git config — token hygiene is the caller's responsibility, mirroring the existing PR-merge scripts. New `bin/loom tag:push <package> <version> [remote-url]` command exposes this; the remote URL can be supplied via `$LOOM_REMOTE_URL` env var or the third positional argument.
 
 **P1 — required for correctness, not strictly blocking:**
 
@@ -576,12 +578,12 @@ Documented here as the canonical rule for future packages:
 
 ### Path forward
 
-1. Close P0 gaps 1–4 in a single PR extending `RepoManager` + `bin/loom`. Add `MonorepoPackage`, `getLogSince($tag, $pathScope)`, `pushTag($version)`, and the prefix-aware regex.
+1. ~~Close P0 gaps 1–4 in a single PR extending `RepoManager` + `bin/loom`. Add `MonorepoPackage`, `getLogSince($tag, $pathScope)`, `pushTag($version)`, and the prefix-aware regex.~~ **DONE 2026-08-16** — `MonorepoPackage` + `RepoManager` extensions + `bin/loom tag:push` + `bin/loom package:list` + 11 new tests covering prefix lookup, legacy-pattern lookup, path-scoped commit analysis, and tag push. CI matrix extended to include `orchestrator/` so PHPUnit + PHPStan run on every PR.
 2. Close P1 gaps 5–7 in a follow-up PR: enforce Conventional-Commit PR titles (branch protection + commitlint action), add `--require-ci-green` to `tag:create`, add `RepoManager::assertClean()`.
 3. Close P2 gaps 8–11 in a third PR: add `version:release` composite command, `--format=json`, `composer.json` field sync, generate `repos.json` from `packages/*/composer.json`.
 4. Flip `LOOM_RELEASE_ENABLED=1` in the repository variables. The workflow takes over from there.
 
-Until step 4, releases remain manual: operator reads the package's blueprint, computes the bump by hand, runs the existing PR + `git tag -a` flow (as done for PRs #107 and #108). This is acceptable for a 2-package estate; it becomes load-bearing as the package count grows.
+Until step 4, releases remain manual: operator reads the package's blueprint, computes the bump by hand, runs the existing PR + `loom tag:create` + `loom tag:push` flow (replacing the previous PR + `git tag -a` pattern). The loom now handles the prefix-aware tag naming and PAT-hygiene push automatically; the operator no longer needs to construct the full tag name or embed the PAT in a shell command.
 
 ## SemVer Impact
 

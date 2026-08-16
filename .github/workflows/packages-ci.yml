@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'packages/**'
+      - 'orchestrator/**'
       - '.github/workflows/packages-ci.yml'
   pull_request:
     paths:
       - 'packages/**'
+      - 'orchestrator/**'
       - '.github/workflows/packages-ci.yml'
   workflow_dispatch: {}
 
@@ -18,12 +20,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package:
-          - core/container
-          - core/event-dispatcher
+        include:
+          - package: core/container
+            working-dir: packages/core/container
+          - package: core/event-dispatcher
+            working-dir: packages/core/event-dispatcher
+          - package: orchestrator
+            working-dir: orchestrator
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history — required for git-tag-based version tests
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -33,23 +41,40 @@ jobs:
           extensions: mbstring, xml, dom
           tools: composer:v2
 
+      - name: Configure Git identity (for tests that create commits)
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+
       - name: Validate composer.json
-        working-directory: packages/${{ matrix.package }}
-        run: composer validate --strict --no-check-publish
+        working-directory: ${{ matrix.working-dir }}
+        run: composer validate --strict --no-check-publish --no-check-version
 
       - name: Install dependencies
-        working-directory: packages/${{ matrix.package }}
+        working-directory: ${{ matrix.working-dir }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: PHPStan (level max)
-        working-directory: packages/${{ matrix.package }}
+        working-directory: ${{ matrix.working-dir }}
         run: vendor/bin/phpstan analyse --error-format=github
 
       - name: PHPUnit (full suite, testdox)
-        working-directory: packages/${{ matrix.package }}
-        run: vendor/bin/phpunit --testdox --colors=never
+        working-directory: ${{ matrix.working-dir }}
+        run: vendor/bin/phpunit --testdox --colors=never --no-coverage
 
       - name: PHPUnit (PSR-11 conformance, named)
         if: matrix.package == 'core/container'
-        working-directory: packages/${{ matrix.package }}
-        run: vendor/bin/phpunit --filter Psr11Conformance --testdox --colors=never
+        working-directory: ${{ matrix.working-dir }}
+        run: vendor/bin/phpunit --filter Psr11Conformance --testdox --colors=never --no-coverage
+
+      - name: Verify bin/loom is executable (Finding 21 guard)
+        if: matrix.package == 'orchestrator'
+        working-directory: ${{ matrix.working-dir }}
+        run: |
+          set -x
+          ls -la bin/loom
+          test -x bin/loom
+          which php
+          php -v
+          php bin/loom || echo "loom exited with $?"
+          set +x
