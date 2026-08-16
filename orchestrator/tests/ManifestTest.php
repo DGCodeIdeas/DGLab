@@ -12,7 +12,7 @@ use SovereignStack\Orchestrator\Manifest;
  *
  * Verifies that setVersion() writes the version atomically, preserves other
  * fields, and rejects malformed input. The tests use temp files so they don't
- * touch the real packages/*/composer.json files.
+ * touch the real packages/{tier}/{name}/composer.json files.
  */
 final class ManifestTest extends TestCase
 {

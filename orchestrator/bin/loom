@@ -499,7 +499,7 @@ function handleVersionRelease(array $subArgs): void
 }
 
 /**
- * P2 gap 11 — generate orchestrator/repos.json from packages/*/*/composer.json.
+ * P2 gap 11 — generate orchestrator/repos.json from packages/{tier}/{name}/composer.json.
  *
  * Replaces the inline PHP script in .github/workflows/release.yml. Scans the
  * monorepo's packages directory, builds an array of package entries, and
