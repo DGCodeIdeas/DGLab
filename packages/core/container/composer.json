@@ -3,6 +3,7 @@
     "description": "CORE-02: PSR-11 compliant Dependency Injection Container with autowiring, compiler passes, and circular dependency detection",
     "type": "library",
     "license": "MIT",
+    "version": "1.0.0",
     "require": {
         "php": "^8.3",
         "psr/container": "^2.0"
