@@ -19,10 +19,16 @@ The component exists to decouple producers of state transitions (request receive
 
 What this component is **not**: it is not an async job queue (use HUB-11 Queue for that), not a cross-process message bus (use the Bridge tier for that), and not a replacement for direct method calls between tightly-coupled collaborators. It is also not dependent on `thephpleague/event` — the prior blueprint's reference to that library was incorrect; the only runtime dependency is `psr/event-dispatcher:^1.0`, with `psr/container:^2.0` and `psr/log:^3.0` as optional suggests.
 
-The implementation is complete: 7 production classes, a 13-case PHPUnit suite (`tests/EventDispatcherTest.php`, 8,836 bytes), a `composer.json` declaring strict PSR-4 autoloading, and full PSR-14 interface compliance. The package name is `sovereign-stack/core-event-dispatcher` (note: the `composer.json` `description` field still says "CORE-05:" — a leftover from the renumbering in Finding 2; this is a documentation defect in the package metadata, not a code defect, and is tracked separately).
+The implementation is complete: 7 production classes, a 13-case PHPUnit suite (`tests/EventDispatcherTest.php`, 8,836 bytes), a `composer.json` declaring strict PSR-4 autoloading, and full PSR-14 interface compliance. The package name is `sovereign-stack/core-event-dispatcher` (the `composer.json` `description` field was corrected from `"CORE-05:"` to `"CORE-03:"` in the 2026-08-16 SemVer-tag patch — the prior leftover from the renumbering in Finding 2 is now resolved).
 
 ## Build Status
 ✅ Implemented + tested. The `packages/core/event-dispatcher/` directory contains all 7 production classes, a 13-case PHPUnit test suite (verified 2026-08-04), and a complete `composer.json`. No blocking dependencies.
+
+**SemVer tag (2026-08-16):**
+- `core-event-dispatcher-v1.0.0` annotated Git tag created on the post-merge main commit. Locks the inaugural contract: `EventDispatcherInterface`, `ListenerProviderInterface`, `Event`, `EventDispatchException`, `ListenerRegistrationException`, plus the `final` reference implementations `EventDispatcher` and `ListenerProvider`.
+- `"version": "1.0.0"` added to `packages/core/event-dispatcher/composer.json` for explicit version discovery.
+- **Metadata defect closed**: the `description` field previously read `"CORE-05: ..."` (leftover from the renumbering documented in Finding 2). Corrected to `"CORE-03: ..."` in the same patch. The blueprint's prior "Known metadata defect" note (formerly at this section's tail) is now resolved.
+- Future changes to any interface contract require a SemVer major bump (`core-event-dispatcher-v2.0.0`); private internals of the `final` reference classes may change in minor releases per the SemVer Impact section below.
 
 ## Dependency Status
 - **Upward:** CORE-09 (PSR-3 Logging Service) — optional, injected as `Psr\Log\LoggerInterface` for listener failure recording. CORE-02 (DI Container) — optional, injected as `Psr\Container\ContainerInterface` for lazy listener resolution.
@@ -433,7 +439,7 @@ Specific corrections from the prior blueprint:
 
 **Rollback procedure.** If the production deployment needs to revert to the prior approved blueprint for any reason, the file is preserved at `docs/blueprints/Core/CORE-03.md` (untouched). No code changes are required to roll back — only documentation reverts. The implementation itself has no breaking changes between the prior blueprint's intent and the current code; the divergence was purely descriptive.
 
-**Known metadata defect (tracked separately, not blocking):** The `composer.json` `description` field in `packages/core/event-dispatcher/composer.json` reads `"CORE-05: Production-ready PSR-14 Event Dispatcher..."` — a leftover from the renumbering documented in Finding 2. The correct ID is CORE-03. This is a string in a metadata file, not a code defect, and does not affect runtime behaviour. A separate patch should correct it to `"CORE-03: Production-ready PSR-14 Event Dispatcher..."` to prevent confusion when consumers inspect `composer show`.
+**Known metadata defect (RESOLVED 2026-08-16):** The `composer.json` `description` field previously read `"CORE-05: Production-ready PSR-14 Event Dispatcher..."` — a leftover from the renumbering documented in Finding 2. Corrected to `"CORE-03: Production-ready PSR-14 Event Dispatcher..."` in the same patch that added the `"version": "1.0.0"` field and tagged `core-event-dispatcher-v1.0.0`. Consumers running `composer show sovereign-stack/core-event-dispatcher` now see the correct blueprint ID.
 
 ## SemVer Impact
 
