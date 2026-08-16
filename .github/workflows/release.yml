@@ -5,12 +5,12 @@
 # `LOOM_RELEASE_ENABLED=1` (default off) and will not run until that flag is
 # flipped. P0 gaps (tag-prefix, path-scoped commits, tag push, monorepo
 # awareness) were closed in PR #110. P1 gap 7 (assertClean) was closed in
-# PR #112. The remaining open gaps are P1/P2:
+# PR #112. P1 gap 6 (--require-ci-green) was closed in PR #113. The remaining
+# open gaps are P1/P2:
 #
 #   - `loom version:bump --format=json`        (P2 gap 9 — JSON output)
 #   - `loom version:release <package>`         (P2 gap 8 — composite command)
 #   - Conventional-Commit PR title enforcement  (P1 gap 5 — branch protection)
-#   - `--require-ci-green` on tag:create       (P1 gap 6 — CI gate in loom)
 #   - composer.json version field auto-sync     (P2 gap 10 — done inline below)
 #   - repos.json generation as loom command     (P2 gap 11 — done inline below)
 #
@@ -37,8 +37,10 @@ on:
         required: false
         default: 'true'
 
-# Do not run concurrently with packages-ci.yml — let CI finish first so the
-# CI-green gate below is meaningful.
+# Do not run concurrently with packages-ci.yml — the loom's
+# --require-ci-green flag polls for up to 60 seconds waiting for packages-ci.yml
+# to complete; if both jobs ran in parallel and packages-ci.yml was cancelled
+# by a later push, the gate would block forever.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -102,24 +104,6 @@ jobs:
 
       - name: Verify bin/loom is present and executable (Finding 21 guard)
         run: test -x orchestrator/bin/loom && orchestrator/bin/loom status
-
-      - name: Gate — require CI green on main
-        # P1 gap 6 — until `tag:create --require-ci-green` exists inline, gate
-        # at the workflow level by querying the GitHub Checks API for the
-        # triggering commit. Fail the job if any required check is not green.
-        env:
-          GH_TOKEN: ${{ secrets.LOOM_RELEASE_PAT }}
-        run: |
-          set -e
-          # Wait briefly for packages-ci.yml to finish if it's still pending.
-          sleep 15
-          RUN_ID=$(gh run list --workflow=packages-ci.yml --branch=main --limit=1 --json databaseId --jq '.[0].databaseId')
-          CONCLUSION=$(gh run view "$RUN_ID" --json conclusion --jq '.conclusion')
-          if [ "$CONCLUSION" != "success" ]; then
-            echo "::error::packages-ci.yml conclusion was '$CONCLUSION' — refusing to tag a red main."
-            exit 1
-          fi
-          echo "packages-ci.yml is green; proceeding."
 
       - name: Gate — require clean working tree
         # Uses `loom status:clean` (P1 gap 7 — closed). The repos.json file
@@ -208,8 +192,19 @@ jobs:
           #   - core/container → core-container-v<X.Y.Z>
           #     (with legacyTagPattern matching the grandfathered v1.0.0)
           #   - core/event-dispatcher → core-event-dispatcher-v<X.Y.Z>
+          # P1 gap 6 is CLOSED — --require-ci-green queries the GitHub Actions
+          # API for the latest run of packages-ci.yml on main and refuses to
+          # tag if the conclusion is not 'success'. --ci-timeout 60 polls up
+          # to 60 seconds for an in-progress run to complete (the release job
+          # and packages-ci.yml run concurrently after a push to main).
           TAG_MESSAGE="Release ${{ matrix.package }} $NEW_VERSION (${{ steps.bump.outputs.increment }} bump). Computed by: loom version:bump. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
-          orchestrator/bin/loom tag:create "${{ matrix.package }}" "$NEW_VERSION" --message "$TAG_MESSAGE"
+          orchestrator/bin/loom tag:create "${{ matrix.package }}" "$NEW_VERSION" \
+            --message "$TAG_MESSAGE" \
+            --require-ci-green \
+            --ci-workflow packages-ci.yml \
+            --ci-branch main \
+            --ci-repo ${{ github.repository }} \
+            --ci-timeout 60
 
           # Push the tag to the remote via loom.
           orchestrator/bin/loom tag:push "${{ matrix.package }}" "$NEW_VERSION" "$TOKEN_URL"

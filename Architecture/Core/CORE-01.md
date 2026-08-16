@@ -543,7 +543,7 @@ The current loom implementation cannot drive this workflow as-is. The blocking g
 
 5. **Squash-merge collapses commit history.** The project uses squash-merges (PRs #106, #107, #108). A squash-merge produces one commit whose subject is the PR title; the original feature-branch commits are not on `main`'s history. If PR titles are not Conventional-Commit-formatted, `VersionBumpEngine::analyze()` sees one "unknown" commit and defaults to `patch`. Fix: either (a) enforce Conventional-Commit PR titles via a GitHub branch-protection rule + a `commitlint`-style action, or (b) extend `analyze()` to walk the squash-merge commit body (which GitHub fills with the original commit list when "merge queue" is enabled) and parse each line.
 
-6. **No CI gate on tag creation.** `tag:create` does not consult `ci:monitor`. A red `main` can be tagged. Fix: in the release workflow, run `loom ci:monitor --all` before `tag:create` and fail the job on non-`pass` status; OR add a `--require-ci-green` flag to `tag:create` that performs the check inline.
+6. ~~**No CI gate on tag creation.** `tag:create` does not consult `ci:monitor`. A red `main` can be tagged. Fix: in the release workflow, run `loom ci:monitor --all` before `tag:create` and fail the job on non-`pass` status; OR add a `--require-ci-green` flag to `tag:create` that performs the check inline.~~ **RESOLVED 2026-08-16 (P1 PR)** — New `SovereignStack\Orchestrator\CiGate` class queries the GitHub Actions REST API (`GET /repos/{owner}/{repo}/actions/workflows/{file}/runs?branch={branch}&per_page=1`) for the latest run of a given workflow file on a given branch. `assertGreen($workflow, $branch, $timeout)` throws `RuntimeException` unless `status==='completed' && conclusion==='success'`. Optional `$timeout` (seconds) polls every 5 seconds for an in-progress run. New `bin/loom tag:create --require-ci-green [--ci-workflow <file>] [--ci-branch <name>] [--ci-repo <owner/name>] [--ci-timeout <seconds>]` flag enforces the gate before `tag()` is called. Auth token is read from `$LOOM_RELEASE_PAT` or `$GITHUB_TOKEN`; repository owner/name defaults to the `GITHUB_REPOSITORY` env var. The release workflow passes `--require-ci-green --ci-workflow packages-ci.yml --ci-branch main --ci-repo ${{ github.repository }} --ci-timeout 60`; the previous inline `gh run list` gate has been removed. 20 new tests in `CiGateTest` cover the success, failure, cancelled, in-progress, no-runs, no-client, non-200, malformed-JSON, missing-config, env-var-parsing, and token-set branches using PHPUnit-stubbed PSR-18/PSR-17 interfaces.
 
 7. ~~**No working-tree cleanliness check.** `tag:create` will tag a dirty tree. Fix: add `RepoManager::assertClean()` that throws if `git status --porcelain` is non-empty, and call it at the top of `tag()`.~~ **RESOLVED 2026-08-16 (P1 PR)** — New `RepoManager::assertClean(array $allowUntracked = []): void` checks `git status --porcelain`, throws on modified tracked files, and throws on untracked files not in the `$allowUntracked` allowlist. New `bin/loom status:clean [--allow-untracked <path>]` command exposes this; exits 0 on clean, 1 on dirty. The release workflow uses `loom status:clean --allow-untracked orchestrator/repos.json` instead of the previous inline bash check.
 
@@ -563,14 +563,13 @@ The file `.github/workflows/release.yml` demonstrates the target state. It is **
 
 - Triggers on push to `main` (after the existing `packages-ci.yml` passes).
 - Iterates the library packages (`core/container`, `core/event-dispatcher`).
-- Gates on CI green (inline `gh run list` check — P1 gap 6 still open).
 - Gates on clean working tree via `loom status:clean --allow-untracked orchestrator/repos.json` (P1 gap 7 closed).
 - For each package, runs `loom version:bump <package>` to compute the next version (P0 gaps 1, 3 closed — prefix and path scope handled by `MonorepoPackage`).
 - Compares against the package's current `composer.json` `version` field; if equal, skips (no changes).
-- If different, bumps `composer.json`, commits, then runs `loom tag:create <package> <version> --message <msg>` + `loom tag:push <package> <version> <token-url>` (P0 gaps 1, 4 closed — loom handles prefix derivation and PAT-hygiene push natively).
+- If different, bumps `composer.json`, commits, then runs `loom tag:create <package> <version> --message <msg> --require-ci-green --ci-workflow packages-ci.yml --ci-branch main --ci-repo ${{ github.repository }} --ci-timeout 60` + `loom tag:push <package> <version> <token-url>` (P0 gaps 1, 4 closed — loom handles prefix derivation and PAT-hygiene push natively; P1 gap 6 closed — loom's `--require-ci-green` queries the GitHub Actions API inline and refuses to tag a red main).
 - Creates a GitHub Release with auto-generated notes.
 
-The remaining inline workarounds (CI gate, composer.json field bump, repos.json generation) correspond to P1 gap 6 and P2 gaps 8, 9, 10, 11.
+The remaining inline workarounds (composer.json field bump, repos.json generation) correspond to P2 gaps 8, 9, 10, 11.
 
 ### Tag-naming convention
 
@@ -584,7 +583,7 @@ Documented here as the canonical rule for future packages:
 
 1. ~~Close P0 gaps 1–4 in a single PR extending `RepoManager` + `bin/loom`. Add `MonorepoPackage`, `getLogSince($tag, $pathScope)`, `pushTag($version)`, and the prefix-aware regex.~~ **DONE 2026-08-16** — `MonorepoPackage` + `RepoManager` extensions + `bin/loom tag:push` + `bin/loom package:list` + 11 new tests covering prefix lookup, legacy-pattern lookup, path-scoped commit analysis, and tag push. CI matrix extended to include `orchestrator/` so PHPUnit + PHPStan run on every PR.
 2. ~~Close P1 gap 7 (assertClean) + update release.yml to use the new loom commands.~~ **DONE 2026-08-16 (P1 PR)** — `RepoManager::assertClean(array $allowUntracked = [])` + `bin/loom status:clean` + `--message` flag on `tag:create` + 5 new tests. Release workflow updated to call `loom status:clean`, `loom tag:create --message`, `loom tag:push` instead of inline bash. Stale P0 gap comments removed.
-3. Close P1 gaps 5–6 in a follow-up PR: enforce Conventional-Commit PR titles (branch protection + commitlint action), add `--require-ci-green` to `tag:create`.
+3. ~~Close P1 gaps 5–6 in a follow-up PR: enforce Conventional-Commit PR titles (branch protection + commitlint action), add `--require-ci-green` to `tag:create`.~~ **P1 gap 6 DONE 2026-08-16 (P1 PR)** — New `CiGate` class + `--require-ci-green` flag on `loom tag:create`. **P1 gap 5 still open** — Conventional-Commit PR title enforcement requires GitHub branch protection + a commitlint action (not loom code). Configure on the repo Settings → Branches page.
 4. Close P2 gaps 8–11 in a fourth PR: add `version:release` composite command, `--format=json`, `composer.json` field sync, generate `repos.json` from `packages/*/composer.json`.
 5. Flip `LOOM_RELEASE_ENABLED=1` in the repository variables. The workflow takes over from there.
 

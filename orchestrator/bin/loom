@@ -29,6 +29,7 @@ if (!$autoloaded) {
     exit(1);
 }
 
+use SovereignStack\Orchestrator\CiGate;
 use SovereignStack\Orchestrator\CIMonitor;
 use SovereignStack\Orchestrator\DependencyGraph;
 use SovereignStack\Orchestrator\MonorepoPackage;
@@ -134,20 +135,49 @@ function handleVersionBump(array $subArgs): void
 function handleTagCreate(array $subArgs): void
 {
     if (\count($subArgs) < 2) {
-        \fwrite(\STDERR, "Usage: loom tag:create <package> <version> [--message <msg>]\n");
+        \fwrite(\STDERR, "Usage: loom tag:create <package> <version> [options]\n");
         \fwrite(\STDERR, "       <version> is bare SemVer (e.g. 1.1.0) — the tag prefix is added automatically.\n");
-        \fwrite(\STDERR, "       --message  Optional annotated-tag message (default: \"Release <version>\").\n");
+        \fwrite(\STDERR, "Options:\n");
+        \fwrite(\STDERR, "       --message <msg>           Annotated-tag message (default: \"Release <version>\").\n");
+        \fwrite(\STDERR, "       --require-ci-green        Refuse to tag if the latest run of --ci-workflow is not green.\n");
+        \fwrite(\STDERR, "       --ci-workflow <file>      Workflow file name (default: packages-ci.yml).\n");
+        \fwrite(\STDERR, "       --ci-branch <name>        Branch to check (default: \$GITHUB_REF_NAME or 'main').\n");
+        \fwrite(\STDERR, "       --ci-repo <owner/name>    GitHub repo (default: \$GITHUB_REPOSITORY).\n");
+        \fwrite(\STDERR, "       --ci-timeout <seconds>    Poll up to N seconds waiting for completion (default: 0).\n");
+        \fwrite(\STDERR, "       Auth token is read from \$LOOM_RELEASE_PAT or \$GITHUB_TOKEN.\n");
         exit(1);
     }
 
     $repoName = $subArgs[0];
     $version = $subArgs[1];
 
-    // Parse optional --message flag.
+    // Parse optional flags.
     $message = "Release {$version}";
+    $requireCiGreen = false;
+    $ciWorkflow = 'packages-ci.yml';
+    $ciBranch = \getenv('GITHUB_REF_NAME') ?: 'main';
+    $ciRepo = null;  // null = derive from GITHUB_REPOSITORY env var in CiGate
+    $ciTimeout = 0;
+
     for ($i = 2; $i < \count($subArgs); $i++) {
-        if ($subArgs[$i] === '--message' && isset($subArgs[$i + 1])) {
-            $message = $subArgs[$i + 1];
+        $arg = $subArgs[$i];
+        $next = $subArgs[$i + 1] ?? null;
+        if ($arg === '--message' && $next !== null) {
+            $message = $next;
+            $i++;
+        } elseif ($arg === '--require-ci-green') {
+            $requireCiGreen = true;
+        } elseif ($arg === '--ci-workflow' && $next !== null) {
+            $ciWorkflow = $next;
+            $i++;
+        } elseif ($arg === '--ci-branch' && $next !== null) {
+            $ciBranch = $next;
+            $i++;
+        } elseif ($arg === '--ci-repo' && $next !== null) {
+            $ciRepo = $next;
+            $i++;
+        } elseif ($arg === '--ci-timeout' && $next !== null) {
+            $ciTimeout = (int) $next;
             $i++;
         }
     }
@@ -160,6 +190,33 @@ function handleTagCreate(array $subArgs): void
     } else {
         $repoDir = getRepoDir($repoName);
         $manager = new RepoManager($repoDir);
+    }
+
+    // P1 gap 6: --require-ci-green checks the latest GitHub Actions workflow
+    // run on the configured branch BEFORE creating the tag. Refuses to tag a
+    // red main. Token is read from $LOOM_RELEASE_PAT or $GITHUB_TOKEN.
+    if ($requireCiGreen) {
+        $token = \getenv('LOOM_RELEASE_PAT') ?: (\getenv('GITHUB_TOKEN') ?: '');
+
+        $gateOwner = null;
+        $gateName = null;
+        if ($ciRepo !== null) {
+            $parts = \explode('/', $ciRepo);
+            $gateOwner = $parts[0] ?? null;
+            $gateName = $parts[1] ?? null;
+        }
+
+        $gate = new CiGate($gateOwner, $gateName);
+        $gate->setToken($token);
+
+        try {
+            $gate->assertGreen($ciWorkflow, $ciBranch, $ciTimeout);
+            echo "CI gate passed: latest run of {$ciWorkflow} on {$ciBranch} is green.\n";
+        } catch (\RuntimeException $e) {
+            \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+            \fwrite(\STDERR, "Refusing to create tag — main is not green.\n");
+            exit(1);
+        }
     }
 
     try {
@@ -326,7 +383,7 @@ Usage:
   loom ci:monitor --all          Run CI monitor against all registered repos
   loom ci:monitor <repo>         Run CI monitor against a specific repo
   loom version:bump <package>    Analyze commits and suggest a version bump
-  loom tag:create <package> <v> [--message <msg>]
+  loom tag:create <package> <v> [options]
                                  Create a git tag locally (use tag:push to push)
   loom tag:push <package> <v> [remote-url]
                                  Push a previously-created tag to a remote
@@ -335,6 +392,16 @@ Usage:
                                  Exit 0 if working tree is clean, 1 otherwise
   loom status                    Show status of all registered repos
   loom                           Display this usage information
+
+tag:create options:
+  --message <msg>           Annotated-tag message (default: "Release <version>").
+  --require-ci-green        Refuse to tag if the latest run of --ci-workflow
+                            is not green (conclusion === 'success').
+  --ci-workflow <file>      Workflow file name (default: packages-ci.yml).
+  --ci-branch <name>        Branch to check (default: $GITHUB_REF_NAME or 'main').
+  --ci-repo <owner/name>    GitHub repo (default: $GITHUB_REPOSITORY).
+  --ci-timeout <seconds>    Poll up to N seconds waiting for completion (default: 0).
+                            Auth token is read from $LOOM_RELEASE_PAT or $GITHUB_TOKEN.
 
 <package> is a monorepo package name (e.g. core/container) — discovered
 automatically from packages/*/*/composer.json. Falls back to repos.json
