@@ -545,7 +545,7 @@ The current loom implementation cannot drive this workflow as-is. The blocking g
 
 6. **No CI gate on tag creation.** `tag:create` does not consult `ci:monitor`. A red `main` can be tagged. Fix: in the release workflow, run `loom ci:monitor --all` before `tag:create` and fail the job on non-`pass` status; OR add a `--require-ci-green` flag to `tag:create` that performs the check inline.
 
-7. **No working-tree cleanliness check.** `tag:create` will tag a dirty tree. Fix: add `RepoManager::assertClean()` that throws if `git status --porcelain` is non-empty, and call it at the top of `tag()`.
+7. ~~**No working-tree cleanliness check.** `tag:create` will tag a dirty tree. Fix: add `RepoManager::assertClean()` that throws if `git status --porcelain` is non-empty, and call it at the top of `tag()`.~~ **RESOLVED 2026-08-16 (P1 PR)** — New `RepoManager::assertClean(array $allowUntracked = []): void` checks `git status --porcelain`, throws on modified tracked files, and throws on untracked files not in the `$allowUntracked` allowlist. New `bin/loom status:clean [--allow-untracked <path>]` command exposes this; exits 0 on clean, 1 on dirty. The release workflow uses `loom status:clean --allow-untracked orchestrator/repos.json` instead of the previous inline bash check.
 
 **P2 — polish, not blocking:**
 
@@ -559,14 +559,18 @@ The current loom implementation cannot drive this workflow as-is. The blocking g
 
 ### Reference workflow
 
-The file `.github/workflows/release.yml` (added in this PR) demonstrates the target state. It is **gated on `LOOM_RELEASE_ENABLED=1`** (default off) so it can land in `main` without taking action until the P0 gaps are closed. The workflow:
+The file `.github/workflows/release.yml` demonstrates the target state. It is **gated on `LOOM_RELEASE_ENABLED=1`** (default off) so it can land in `main` without taking action until the remaining gaps are closed. The workflow:
 
 - Triggers on push to `main` (after the existing `packages-ci.yml` passes).
 - Iterates the library packages (`core/container`, `core/event-dispatcher`).
-- For each, runs `loom version:bump --format=json` to compute the next version.
+- Gates on CI green (inline `gh run list` check — P1 gap 6 still open).
+- Gates on clean working tree via `loom status:clean --allow-untracked orchestrator/repos.json` (P1 gap 7 closed).
+- For each package, runs `loom version:bump <package>` to compute the next version (P0 gaps 1, 3 closed — prefix and path scope handled by `MonorepoPackage`).
 - Compares against the package's current `composer.json` `version` field; if equal, skips (no changes).
-- If different, runs `loom version:release <package>` (once that command exists; until then, the step is `continue-on-error: false` and will fail loudly, which is the intended signal that the gap is not yet closed).
-- Pushes the resulting tag and creates a GitHub Release with auto-generated notes.
+- If different, bumps `composer.json`, commits, then runs `loom tag:create <package> <version> --message <msg>` + `loom tag:push <package> <version> <token-url>` (P0 gaps 1, 4 closed — loom handles prefix derivation and PAT-hygiene push natively).
+- Creates a GitHub Release with auto-generated notes.
+
+The remaining inline workarounds (CI gate, composer.json field bump, repos.json generation) correspond to P1 gap 6 and P2 gaps 8, 9, 10, 11.
 
 ### Tag-naming convention
 
@@ -579,9 +583,10 @@ Documented here as the canonical rule for future packages:
 ### Path forward
 
 1. ~~Close P0 gaps 1–4 in a single PR extending `RepoManager` + `bin/loom`. Add `MonorepoPackage`, `getLogSince($tag, $pathScope)`, `pushTag($version)`, and the prefix-aware regex.~~ **DONE 2026-08-16** — `MonorepoPackage` + `RepoManager` extensions + `bin/loom tag:push` + `bin/loom package:list` + 11 new tests covering prefix lookup, legacy-pattern lookup, path-scoped commit analysis, and tag push. CI matrix extended to include `orchestrator/` so PHPUnit + PHPStan run on every PR.
-2. Close P1 gaps 5–7 in a follow-up PR: enforce Conventional-Commit PR titles (branch protection + commitlint action), add `--require-ci-green` to `tag:create`, add `RepoManager::assertClean()`.
-3. Close P2 gaps 8–11 in a third PR: add `version:release` composite command, `--format=json`, `composer.json` field sync, generate `repos.json` from `packages/*/composer.json`.
-4. Flip `LOOM_RELEASE_ENABLED=1` in the repository variables. The workflow takes over from there.
+2. ~~Close P1 gap 7 (assertClean) + update release.yml to use the new loom commands.~~ **DONE 2026-08-16 (P1 PR)** — `RepoManager::assertClean(array $allowUntracked = [])` + `bin/loom status:clean` + `--message` flag on `tag:create` + 5 new tests. Release workflow updated to call `loom status:clean`, `loom tag:create --message`, `loom tag:push` instead of inline bash. Stale P0 gap comments removed.
+3. Close P1 gaps 5–6 in a follow-up PR: enforce Conventional-Commit PR titles (branch protection + commitlint action), add `--require-ci-green` to `tag:create`.
+4. Close P2 gaps 8–11 in a fourth PR: add `version:release` composite command, `--format=json`, `composer.json` field sync, generate `repos.json` from `packages/*/composer.json`.
+5. Flip `LOOM_RELEASE_ENABLED=1` in the repository variables. The workflow takes over from there.
 
 Until step 4, releases remain manual: operator reads the package's blueprint, computes the bump by hand, runs the existing PR + `loom tag:create` + `loom tag:push` flow (replacing the previous PR + `git tag -a` pattern). The loom now handles the prefix-aware tag naming and PAT-hygiene push automatically; the operator no longer needs to construct the full tag name or embed the PAT in a shell command.
 

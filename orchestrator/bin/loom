@@ -54,6 +54,7 @@ match ($command) {
     'tag:create' => handleTagCreate(\array_slice($args, 1)),
     'tag:push' => handleTagPush(\array_slice($args, 1)),
     'package:list' => handlePackageList(\array_slice($args, 1)),
+    'status:clean' => handleStatusClean(\array_slice($args, 1)),
     'status' => handleStatus(\array_slice($args, 1)),
     default => printUsage(),
 };
@@ -133,13 +134,23 @@ function handleVersionBump(array $subArgs): void
 function handleTagCreate(array $subArgs): void
 {
     if (\count($subArgs) < 2) {
-        \fwrite(\STDERR, "Usage: loom tag:create <package> <version>\n");
+        \fwrite(\STDERR, "Usage: loom tag:create <package> <version> [--message <msg>]\n");
         \fwrite(\STDERR, "       <version> is bare SemVer (e.g. 1.1.0) — the tag prefix is added automatically.\n");
+        \fwrite(\STDERR, "       --message  Optional annotated-tag message (default: \"Release <version>\").\n");
         exit(1);
     }
 
     $repoName = $subArgs[0];
     $version = $subArgs[1];
+
+    // Parse optional --message flag.
+    $message = "Release {$version}";
+    for ($i = 2; $i < \count($subArgs); $i++) {
+        if ($subArgs[$i] === '--message' && isset($subArgs[$i + 1])) {
+            $message = $subArgs[$i + 1];
+            $i++;
+        }
+    }
 
     $repoRoot = \dirname(__DIR__);
     $package = MonorepoPackage::find($repoRoot, $repoName);
@@ -152,7 +163,7 @@ function handleTagCreate(array $subArgs): void
     }
 
     try {
-        $manager->tag($version, "Release {$version}");
+        $manager->tag($version, $message);
         // Compute the actual tag name for display
         $prefix = $manager->getTagPrefix();
         $tagName = $prefix !== null ? "{$prefix}-v{$version}" : $version;
@@ -217,6 +228,30 @@ function handlePackageList(array $subArgs): void
             . \str_pad($package->path, 35)
             . \str_pad($package->tagPrefix, 30)
             . $legacy . "\n";
+    }
+}
+
+function handleStatusClean(array $subArgs): void
+{
+    // Parse --allow-untracked flag (can be repeated).
+    $allowUntracked = [];
+    for ($i = 0; $i < \count($subArgs); $i++) {
+        if ($subArgs[$i] === '--allow-untracked' && isset($subArgs[$i + 1])) {
+            $allowUntracked[] = $subArgs[$i + 1];
+            $i++;
+        }
+    }
+
+    // Use the repo root as the working dir (monorepo context).
+    $repoRoot = \dirname(__DIR__);
+    $manager = new RepoManager($repoRoot);
+
+    try {
+        $manager->assertClean($allowUntracked);
+        echo "Working tree is clean.\n";
+    } catch (\RuntimeException $e) {
+        \fwrite(\STDERR, "Error: " . $e->getMessage() . "\n");
+        exit(1);
     }
 }
 
@@ -291,10 +326,13 @@ Usage:
   loom ci:monitor --all          Run CI monitor against all registered repos
   loom ci:monitor <repo>         Run CI monitor against a specific repo
   loom version:bump <package>    Analyze commits and suggest a version bump
-  loom tag:create <package> <v>  Create a git tag locally (use tag:push to push)
+  loom tag:create <package> <v> [--message <msg>]
+                                 Create a git tag locally (use tag:push to push)
   loom tag:push <package> <v> [remote-url]
                                  Push a previously-created tag to a remote
   loom package:list              List monorepo packages discovered under packages/*/
+  loom status:clean [--allow-untracked <path>]
+                                 Exit 0 if working tree is clean, 1 otherwise
   loom status                    Show status of all registered repos
   loom                           Display this usage information
 

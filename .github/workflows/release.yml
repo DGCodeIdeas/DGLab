@@ -3,18 +3,19 @@
 #
 # Status: ASPIRATIONAL. This workflow is gated on the repo variable
 # `LOOM_RELEASE_ENABLED=1` (default off) and will not run until that flag is
-# flipped. It depends on loom capabilities that do NOT yet exist on disk:
+# flipped. P0 gaps (tag-prefix, path-scoped commits, tag push, monorepo
+# awareness) were closed in PR #110. P1 gap 7 (assertClean) was closed in
+# PR #112. The remaining open gaps are P1/P2:
 #
 #   - `loom version:bump --format=json`        (P2 gap 9 — JSON output)
 #   - `loom version:release <package>`         (P2 gap 8 — composite command)
-#   - tag-prefix awareness in RepoManager      (P0 gap 1)
-#   - monorepo path-scoped getLogSince         (P0 gap 3)
-#   - RepoManager::pushTag()                   (P0 gap 4)
+#   - Conventional-Commit PR title enforcement  (P1 gap 5 — branch protection)
+#   - `--require-ci-green` on tag:create       (P1 gap 6 — CI gate in loom)
+#   - composer.json version field auto-sync     (P2 gap 10 — done inline below)
+#   - repos.json generation as loom command     (P2 gap 11 — done inline below)
 #
 # See Architecture/Core/CORE-01.md §SemVer Automation Plan for the full gap
-# analysis and the path to close each item. Until the P0 gaps are closed, this
-# file documents the target state and serves as the contract for the loom
-# extension work.
+# analysis and the path to close each item.
 # =============================================================================
 
 name: Release
@@ -121,46 +122,24 @@ jobs:
           echo "packages-ci.yml is green; proceeding."
 
       - name: Gate — require clean working tree
-        # P1 gap 7 — until `RepoManager::assertClean()` exists, gate at the
-        # workflow level. The repos.json file generated above IS a new file
-        # under orchestrator/, so we expect exactly one untracked path; bail
-        # on anything else.
+        # Uses `loom status:clean` (P1 gap 7 — closed). The repos.json file
+        # generated above is an expected untracked file under orchestrator/,
+        # so we pass it via --allow-untracked.
         run: |
-          STATUS=$(git status --porcelain)
-          UNTRACKED_COUNT=$(printf '%s\n' "$STATUS" | grep -c '^??' || true)
-          MODIFIED_COUNT=$(printf '%s\n' "$STATUS" | grep -c '^ M' || true)
-          if [ "$MODIFIED_COUNT" -ne 0 ]; then
-            echo "::error::Working tree has modified tracked files:"
-            printf '%s\n' "$STATUS"
-            exit 1
-          fi
-          if [ "$UNTRACKED_COUNT" -gt 1 ]; then
-            echo "::error::Working tree has unexpected untracked files:"
-            printf '%s\n' "$STATUS"
-            exit 1
-          fi
-          echo "Working tree is clean (modulo generated orchestrator/repos.json)."
+          orchestrator/bin/loom status:clean --allow-untracked orchestrator/repos.json
 
       - name: Compute next version for ${{ matrix.package }}
         id: bump
         # P2 gap 9 — until `--format=json` ships, this step will print a human
         # table. We parse it with sed; once JSON ships, swap to `--from-json`.
-        # P0 gap 3 — until `getLogSince($tag, $pathScope)` exists, the loom
-        # will see ALL commits since the package's last tag, not just those
-        # touching this package's path. The bump level may be too aggressive
-        # (a feature commit on package B could bump package A). The
-        # `compare-with-current` step below catches the common case where the
-        # computed version equals the current composer.json version (i.e.,
-        # nothing actually changed for this package since the last tag).
+        # P0 gaps 1 and 3 are CLOSED — the loom now uses MonorepoPackage to
+        # derive the tag prefix and path scope automatically, so version:bump
+        # correctly reads prefixed tags (e.g. core-event-dispatcher-v1.0.0)
+        # and filters commits to the package's subdirectory.
         run: |
           set -e
-          # P0 gap 1 — until tag-prefix awareness ships, loom version:bump
-          # cannot find prefixed tags like `core-event-dispatcher-v1.0.0`.
-          # It will compute the bump relative to `0.0.1` (the default), which
-          # is wrong. This step is expected to fail for `core/event-dispatcher`
-          # until P0 gap 1 is closed.
           OUTPUT=$(orchestrator/bin/loom version:bump "${{ matrix.package }}" 2>&1) || {
-            echo "::warning::loom version:bump failed — likely a P0 gap (tag prefix or monorepo path). Output:"
+            echo "::warning::loom version:bump failed. Output:"
             echo "$OUTPUT"
             echo "has_bump=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -199,8 +178,10 @@ jobs:
         if: steps.compare.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
         # P2 gap 8 — until `loom version:release <package>` exists, this step
         # does the two-step manually: bump composer.json version field, commit,
-        # then call loom tag:create. Once version:release ships, replace this
-        # block with `orchestrator/bin/loom version:release "${{ matrix.package }}"`.
+        # then call loom tag:create + loom tag:push. Once version:release ships,
+        # replace this block with `orchestrator/bin/loom version:release "${{ matrix.package }}"`.
+        # P0 gaps 1 and 4 are CLOSED — the loom now handles tag-prefix derivation
+        # (via MonorepoPackage) and tag push (via RepoManager::pushTag) natively.
         env:
           LOOM_RELEASE_PAT: ${{ secrets.LOOM_RELEASE_PAT }}
         run: |
@@ -217,39 +198,28 @@ jobs:
           git add "$PKG_PATH/composer.json"
           git commit -m "chore(${{ matrix.package }}): bump version to $NEW_VERSION"
 
-          # P0 gap 1 — tag prefix. The loom does not currently accept prefixed
-          # tag names. Until P0 gap 1 ships, this step falls back to bare
-          # `git tag -a` with the package-specific prefix.
-          # Tag-naming convention (CORE-02.md §SemVer tag):
-          #   - core/container is GRANDFATHERED with unprefixed `v1.0.0`.
-          #     Future container releases MUST use `core-container-v<X.Y.Z>`.
-          #   - All other packages use `<tier>-<short>-v<X.Y.Z>`.
-          SHORT=$(basename "${{ matrix.package }}")
-          TIER=$(dirname "${{ matrix.package }}")
-          if [ "$TIER/$SHORT" = "core/container" ]; then
-            TAG_NAME="v$NEW_VERSION"
-          else
-            TAG_NAME="${TIER}-${SHORT}-v$NEW_VERSION"
-          fi
-          echo "Tag name: $TAG_NAME"
-
-          # P0 gap 4 — until RepoManager::pushTag() ships, push directly.
           # PAT hygiene: use a one-shot token URL, never persist to git config.
+          # The loom's tag:push accepts a URL in place of a named remote.
           ORIGIN_URL=$(git remote get-url origin)
           TOKEN_URL=$(printf '%s\n' "$ORIGIN_URL" | sed -E "s#(https://github.com/)#${LOOM_RELEASE_PAT}@\\1#")
-          # NOTE: keep the tag message on a single line. A multi-line -m argument
-          # would require its continuation lines indented to the YAML block-scalar
-          # level (10 spaces here), which is fragile and easy to break. See the
-          # line-253 YAML syntax bug fixed in this same commit for the prior
-          # incident.
-          TAG_MESSAGE="Release ${{ matrix.package }} $NEW_VERSION (${{ steps.bump.outputs.increment }} bump). Computed by: loom version:bump. Commit analysis: ${{ steps.bump.outputs.increment }}. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
-          git tag -a "$TAG_NAME" -m "$TAG_MESSAGE"
-          git push "$TOKEN_URL" "refs/tags/$TAG_NAME"
+
+          # Create the tag locally via loom. The tag PREFIX is derived
+          # automatically from the package name by MonorepoPackage:
+          #   - core/container → core-container-v<X.Y.Z>
+          #     (with legacyTagPattern matching the grandfathered v1.0.0)
+          #   - core/event-dispatcher → core-event-dispatcher-v<X.Y.Z>
+          TAG_MESSAGE="Release ${{ matrix.package }} $NEW_VERSION (${{ steps.bump.outputs.increment }} bump). Computed by: loom version:bump. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
+          orchestrator/bin/loom tag:create "${{ matrix.package }}" "$NEW_VERSION" --message "$TAG_MESSAGE"
+
+          # Push the tag to the remote via loom.
+          orchestrator/bin/loom tag:push "${{ matrix.package }}" "$NEW_VERSION" "$TOKEN_URL"
+
+          # Push the composer.json bump commit to main.
           git push "$TOKEN_URL" main
 
           # Restore the original remote URL (token hygiene).
           git remote set-url origin "$ORIGIN_URL"
-          echo "::notice::Tagged $TAG_NAME"
+          echo "::notice::Tagged ${{ matrix.package }} at $NEW_VERSION"
 
       - name: Create GitHub Release
         if: steps.compare.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
