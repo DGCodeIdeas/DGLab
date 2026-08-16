@@ -8,7 +8,7 @@ Core (Foundational Infrastructure)
 
 - **Finding 2** — Evaluation layer mislabels CORE-01 as "Bootstrapper & Kernel"; canonical mapping in `01_MASTER_INDEX.md` §2 establishes it as the **Polyrepo Orchestrator**. This blueprint implements that canonical identity.
 - **Finding 10** — The stale `< 2 seconds` performance target had no harness, baseline, or load model. §Benchmark & Verification Methodology replaces it with a named PHPUnit `--group performance` spec on GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, marked "provisional, unverified."
-- **Finding 21** — `bin/loom` is declared in `composer.json` but does not exist on disk. §Reference Implementation specifies the missing entry-point file with full source, and §CI Verification Criteria enforces its presence and the executable bit.
+- **Finding 21** — `bin/loom` was declared in `composer.json` but did not exist on disk. **RESOLVED 2026-08-10** — the file now exists at `orchestrator/bin/loom` (8,723 bytes, executable bit set). The shipped implementation diverges from the §Reference Implementation spec block below: it uses a kebab-case command surface (`ci:monitor`, `version:bump`, `tag:create`, `status`) instead of the spec's snake-case surface (`resolve-order`, `check`, `check-all`, `analyze`, `tag`). The spec block is retained as historical reference; the on-disk binary is authoritative. See §Shipped Implementation Divergence below.
 
 ## Component Name
 
@@ -24,7 +24,7 @@ Loom is **not** a build server, a container registry, or a deployment orchestrat
 
 ## Build Status
 
-✅ **Implemented + tested.** Source: `orchestrator/src/{RepoManager,CIMonitor,DependencyGraph,VersionBumpEngine}.php`. Tests: `orchestrator/tests/{DependencyGraphTest,CIMonitorTest}.php` against `orchestrator/phpunit.xml.dist` (PHPUnit 11). Static analysis: `orchestrator/phpstan.neon` at `level: max` over `src/`. The single open gap is the missing `bin/loom` executable (Finding 21); this blueprint ships its source as part of §Reference Implementation and adds a CI check for it.
+✅ **Implemented + tested.** Source: `orchestrator/src/{RepoManager,CIMonitor,DependencyGraph,VersionBumpEngine}.php`. Tests: `orchestrator/tests/{DependencyGraphTest,CIMonitorTest}.php` against `orchestrator/phpunit.xml.dist` (PHPUnit 11). Static analysis: `orchestrator/phpstan.neon` at `level: max` over `src/`. The `bin/loom` executable (Finding 21) is present on disk and executable; the CI guard enforcing its presence is documented in §CI Verification Criteria item 4.
 
 ## Dependency Status
 
@@ -287,7 +287,21 @@ class VersionBumpEngine
 }
 ```
 
-**`bin/loom` — the missing entry point (Finding 21):**
+### Shipped Implementation Divergence
+
+The on-disk `orchestrator/bin/loom` (8,723 bytes, +x, modified 2026-08-10) implements a **different, cleaner command surface** than the spec block below. The spec block is retained as historical reference for the blueprint's original proposal; the on-disk binary is authoritative.
+
+| Spec (below) | Shipped (on disk) | Behaviour |
+|---|---|---|
+| `bin/loom resolve-order` | `bin/loom status` | Prints tier breakdown + resolution order + registered repos |
+| `bin/loom check <repo>` | `bin/loom ci:monitor <repo>` | Polls CI status for one repo |
+| `bin/loom check-all` | `bin/loom ci:monitor --all` | Polls CI status for all registered repos |
+| `bin/loom analyze <repo> <since>` | `bin/loom version:bump <repo>` | Conventional-Commits analysis → next-version preview (does NOT create tag) |
+| `bin/loom tag <repo> <ver>` | `bin/loom tag:create <repo> <ver>` | Creates annotated tag locally (does NOT push) |
+
+The shipped binary also adds a `repos.json` config loader (`loadConfig()` in `bin/loom`) and a `getRepoDir()` resolver that maps repo names to local paths. When `orchestrator/repos.json` is absent, `loadConfig()` falls back to a default containing only the orchestrator itself — meaning **the loom cannot currently operate on monorepo packages** like `packages/core/container` without first writing a `repos.json` entry that points `ci_url` at the package subdirectory. See §SemVer Automation Plan below for the gap analysis.
+
+**`bin/loom` — the missing entry point (Finding 21, historical spec):**
 
 ```php
 #!/usr/bin/env php
@@ -493,6 +507,81 @@ The orchestrator enforces the following invariants. Each is backed by an automat
 **Rollback.** Because Loom is a CLI invoked by CI runners and not a long-running service, rollback is "stop invoking it." Removing the Loom step from a CI workflow returns the repo to manual tagging — no state to drain, no in-flight requests. Tags already written by Loom are ordinary Git tags and are not affected by removing the tool. The performance-test group (`--group performance`) is informational by default; removing it requires only deleting the test file.
 
 **Downstream impact.** DEPLOY-04 currently treats Loom's tag output as authoritative; if Loom is rolled back, DEPLOY-04 must fall back to manual SemVer bumping (documented in the DEPLOY-04 blueprint). No other component consumes Loom at runtime.
+
+## SemVer Automation Plan
+
+This section documents the path from the current manual-tagging workflow (PRs #107 and #108 — operator computes the bump by reading the blueprint, runs `git tag -a` by hand) to a fully automated release pipeline driven by the loom. The plan is **aspirational**: the gaps below must be closed before the reference workflow at `.github/workflows/release.yml` can be enabled.
+
+### Target state
+
+A merge to `main` triggers a GitHub Actions workflow that, for each library package under `packages/`:
+
+1. Determines if any path-scoped commits landed since the package's last tag.
+2. If yes, computes the SemVer bump level from those commits' Conventional-Commit subjects.
+3. Validates that CI is green on `main` and the working tree is clean.
+4. Computes the new version, creates an annotated tag with the package's tag prefix, pushes the tag, and emits a GitHub Release.
+
+No human touches `git tag` directly. The loom is the single write path.
+
+### Gap analysis (11 items)
+
+The current loom implementation cannot drive this workflow as-is. The blocking gaps, ordered by severity:
+
+**P0 — blocking, must close before enabling `release.yml`:**
+
+1. **Tag-name prefix is not supported.** `RepoManager::getCurrentVersion()` filters tags by `/^\d+\.\d+\.\d+$/` and `RepoManager::tag()` validates the same regex. Both will reject `core-event-dispatcher-v1.0.0`. The loom cannot read or write prefixed tags. Fix: extend the regex to `/^[a-z0-9-]+-v?(\d+\.\d+\.\d+)$/` and capture the prefix as a per-package property of `RepoManager` (constructed with `$tagPrefix`).
+
+2. **No monorepo path awareness.** `getRepoDir()` returns `dirname(__DIR__) . '/repos/' . $repoName`, which doesn't exist. The loom has no concept of "the package at `packages/core/container` within the current repo." Fix: add a `MonorepoPackage` value object that carries `(name, path, tagPrefix)`, and teach `RepoManager` to operate on a subdirectory of the current repo rather than a separate clone.
+
+3. **No path-scoped commit analysis.** `RepoManager::getLogSince($tag)` runs `git log {$tag}..HEAD --format=%s` — all commits since `$tag`, regardless of which paths they touched. In a monorepo, a commit touching only `packages/core/event-dispatcher/` would incorrectly bump `packages/core/container`. Fix: pass `-- packages/<name>/` to `git log`, or expose a `getLogSince($tag, $pathScope = null)` parameter.
+
+4. **No tag push.** `RepoManager::tag()` calls `$repo->createTag()` locally; the tag never reaches `origin`. Fix: add `RepoManager::pushTag($version)` that runs `git push origin refs/tags/<tag>`, with the same PAT-embedded-URL hygiene pattern used in the existing PR-merge scripts (capture original remote URL, push via one-shot token URL, never persist to git config).
+
+**P1 — required for correctness, not strictly blocking:**
+
+5. **Squash-merge collapses commit history.** The project uses squash-merges (PRs #106, #107, #108). A squash-merge produces one commit whose subject is the PR title; the original feature-branch commits are not on `main`'s history. If PR titles are not Conventional-Commit-formatted, `VersionBumpEngine::analyze()` sees one "unknown" commit and defaults to `patch`. Fix: either (a) enforce Conventional-Commit PR titles via a GitHub branch-protection rule + a `commitlint`-style action, or (b) extend `analyze()` to walk the squash-merge commit body (which GitHub fills with the original commit list when "merge queue" is enabled) and parse each line.
+
+6. **No CI gate on tag creation.** `tag:create` does not consult `ci:monitor`. A red `main` can be tagged. Fix: in the release workflow, run `loom ci:monitor --all` before `tag:create` and fail the job on non-`pass` status; OR add a `--require-ci-green` flag to `tag:create` that performs the check inline.
+
+7. **No working-tree cleanliness check.** `tag:create` will tag a dirty tree. Fix: add `RepoManager::assertClean()` that throws if `git status --porcelain` is non-empty, and call it at the top of `tag()`.
+
+**P2 — polish, not blocking:**
+
+8. **No `version:release` composite command.** The operator must run `version:bump` (preview), read the output, then run `tag:create <repo> <computed-version>`. Automation wants one command that does both atomically. Fix: add `loom version:release <repo>` that calls `analyze()` → `calculateNewVersion()` → `tag()` → `pushTag()` in sequence, with a `--dry-run` flag for previews.
+
+9. **No JSON output.** `version:bump` prints a human-readable table. The release workflow has to grep the output. Fix: add `--format=json` to `version:bump` and `version:release`.
+
+10. **`composer.json` `version` field drift.** After `tag:create`, the package's `composer.json` `"version"` field is stale. Fix: `version:release` should bump the field in the same commit (open file → JSON-decode → bump → JSON-encode → write → `git commit packages/<name>/composer.json -m "chore(<name>): bump version to X.Y.Z"` → then tag the bump commit). Alternatively, document that the tag is canonical and the field is informational-only (current policy, but not stated in any blueprint).
+
+11. **`repos.json` does not exist.** `loadConfig()` falls back to a default containing only `orchestrator`. The release workflow cannot iterate packages without a config. Fix: generate `orchestrator/repos.json` from `packages/*/composer.json` at workflow start (a 10-line PHP script), OR replace the file-based config with directory scanning.
+
+### Reference workflow
+
+The file `.github/workflows/release.yml` (added in this PR) demonstrates the target state. It is **gated on `LOOM_RELEASE_ENABLED=1`** (default off) so it can land in `main` without taking action until the P0 gaps are closed. The workflow:
+
+- Triggers on push to `main` (after the existing `packages-ci.yml` passes).
+- Iterates the library packages (`core/container`, `core/event-dispatcher`).
+- For each, runs `loom version:bump --format=json` to compute the next version.
+- Compares against the package's current `composer.json` `version` field; if equal, skips (no changes).
+- If different, runs `loom version:release <package>` (once that command exists; until then, the step is `continue-on-error: false` and will fail loudly, which is the intended signal that the gap is not yet closed).
+- Pushes the resulting tag and creates a GitHub Release with auto-generated notes.
+
+### Tag-naming convention
+
+Documented here as the canonical rule for future packages:
+
+- **Per-package prefixed tags** are the convention: `core-<package>-v<X.Y.Z>`. Examples: `core-container-v1.0.0`, `core-event-dispatcher-v1.1.0`, `core-event-dispatcher-v2.0.0`.
+- **Grandfathered exception**: the inaugural tag for `core/container` is `v1.0.0` (unprefixed), created in PR #107 before the convention was clear. Renaming it to `core-container-v1.0.0` would require deleting a pushed tag — a destructive operation that breaks any external reference. It is retained as-is; future container releases (`v1.1.0`, `v2.0.0`) MUST use the prefixed form.
+- **`type: project` packages** (e.g. `orchestrator`) do not get tags via the loom; they are not `require`d by anything and follow their own release cadence.
+
+### Path forward
+
+1. Close P0 gaps 1–4 in a single PR extending `RepoManager` + `bin/loom`. Add `MonorepoPackage`, `getLogSince($tag, $pathScope)`, `pushTag($version)`, and the prefix-aware regex.
+2. Close P1 gaps 5–7 in a follow-up PR: enforce Conventional-Commit PR titles (branch protection + commitlint action), add `--require-ci-green` to `tag:create`, add `RepoManager::assertClean()`.
+3. Close P2 gaps 8–11 in a third PR: add `version:release` composite command, `--format=json`, `composer.json` field sync, generate `repos.json` from `packages/*/composer.json`.
+4. Flip `LOOM_RELEASE_ENABLED=1` in the repository variables. The workflow takes over from there.
+
+Until step 4, releases remain manual: operator reads the package's blueprint, computes the bump by hand, runs the existing PR + `git tag -a` flow (as done for PRs #107 and #108). This is acceptable for a 2-package estate; it becomes load-bearing as the package count grows.
 
 ## SemVer Impact
 

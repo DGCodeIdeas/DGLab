@@ -52,6 +52,7 @@ The container is **not** a service locator. Code that holds a reference to `Cont
 - `v1.0.0` annotated Git tag created on the post-conformance-pass merge commit. Locks the inaugural contract: `ContainerInterface`, `ContainerBuilderInterface`, `CompilerPassInterface`, `ServiceDefinition`, `NotFoundException`, `CircularDependencyException`.
 - `"version": "1.0.0"` added to `packages/core/container/composer.json` for explicit version discovery (also resolvable from the git tag per Composer's VCS resolution).
 - Future changes to any interface contract require a SemVer major bump (`v2.0.0`); private `Container` internals may change in minor releases per the SemVer section below.
+- **Tag-naming convention**: this inaugural tag is unprefixed (`v1.0.0`), grandfathered from before the per-package prefixed-tag convention was adopted. Future container releases (`v1.1.0`, `v2.0.0`) MUST use the prefixed form `core-container-v<X.Y.Z>` per the canonical rule documented in `Architecture/Core/CORE-01.md` §SemVer Automation Plan → Tag-naming convention.
 
 🟢 **Blocked on:** nothing (this is the root).
 🟢 **Unblocks:** HUB-01, HUB-02, CORE-17, CORE-18, CORE-10, and entire Hub tier.
