@@ -167,6 +167,51 @@ class RepoManager
     }
 
     /**
+     * Stage a single path and commit it.
+     *
+     * Used by `loom version:release` to commit the composer.json version bump
+     * (P2 gap 10) before tagging. The commit is created with whatever git
+     * identity the caller has configured (the release workflow sets
+     * `user.name=loom-release-bot` / `user.email=loom-release-bot@...`
+     * before invoking the loom; tests set their own identity).
+     *
+     * @param string $path    Repo-relative path to stage (e.g.
+     *                        "packages/core/container/composer.json").
+     * @param string $message Commit message.
+     * @return string The new HEAD commit SHA (40-char lowercase hex).
+     * @throws \RuntimeException If git add, git commit, or rev-parse fails.
+     */
+    public function commitFile(string $path, string $message): string
+    {
+        $repo = $this->getRepository();
+
+        try {
+            $repo->execute('add', $path);
+        } catch (GitException $e) {
+            throw new \RuntimeException('git add failed: ' . $e->getMessage(), 0, $e);
+        }
+
+        try {
+            $repo->execute('commit', '-m', $message);
+        } catch (GitException $e) {
+            throw new \RuntimeException('git commit failed: ' . $e->getMessage(), 0, $e);
+        }
+
+        try {
+            /** @var array<int, string> $output */
+            $output = $repo->execute('rev-parse', 'HEAD');
+        } catch (GitException $e) {
+            throw new \RuntimeException('git rev-parse failed: ' . $e->getMessage(), 0, $e);
+        }
+
+        $sha = \trim((string) ($output[0] ?? ''));
+        if (!\preg_match('/^[0-9a-f]{40}$/', $sha)) {
+            throw new \RuntimeException("Unexpected HEAD SHA after commit: {$sha}");
+        }
+        return $sha;
+    }
+
+    /**
      * Assert that the working tree is clean — no modified tracked files and no
      * unexpected untracked files.
      *
