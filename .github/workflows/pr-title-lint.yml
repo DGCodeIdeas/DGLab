@@ -1,0 +1,69 @@
+name: PR Title Lint
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  validate-title:
+    name: pr-title-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title against Conventional-Commit spec
+        run: |
+          set -euo pipefail
+          TITLE="${{ github.event.pull_request.title }}"
+          # Conventional-Commit regex per CORE-01.md §SemVer Automation Plan P1 gap 5.
+          # Allowed types: feat|fix|chore|docs|refactor|test|perf|build|ci|style|revert
+          # Optional scope: (anything)
+          # Optional breaking-change marker: !
+          # Required: colon, space, then non-empty subject.
+          REGEX='^(feat|fix|chore|docs|refactor|test|perf|build|ci|style|revert)(\(.+\))?!?: .+'
+          if [[ ! "$TITLE" =~ $REGEX ]]; then
+            echo "ERROR: PR title does not match Conventional-Commit format."
+            echo ""
+            echo "Got: $TITLE"
+            echo ""
+            echo "Required format: <type>(<optional scope>)!: <subject>"
+            echo "  <type>     one of: feat, fix, chore, docs, refactor, test, perf, build, ci, style, revert"
+            echo "  <scope>    optional, parenthesized"
+            echo "  !          optional, marks breaking change"
+            echo "  <subject>  required, non-empty after the colon+space"
+            echo ""
+            echo "Examples:"
+            echo "  feat(loom): add version:release composite command"
+            echo "  fix(http): reject header values containing CR or LF"
+            echo "  chore(worklog): add retroactive Task 15"
+            echo "  refactor(container)!: rename get() to make() (breaking)"
+            exit 1
+          fi
+          echo "OK: PR title '$TITLE' matches Conventional-Commit format."
+      - name: Set status check via GitHub API
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          # Map job outcome to GitHub state: success/failure/pending/error
+          case "$OUTCOME" in
+            success) STATE="success" ;;
+            *)       STATE="failure" ;;
+          esac
+          # Post the status check named "pr-title-lint" on the PR head SHA
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d "{\"state\":\"$STATE\",\"target_url\":\"https://github.com/$REPO/actions/runs/$RUN_ID\",\"description\":\"Conventional-Commit title check\",\"context\":\"pr-title-lint\"}" \
+            "https://api.github.com/repos/$REPO/statuses/$PR_HEAD"
+          echo "Posted pr-title-lint=$STATE to $PR_HEAD"
