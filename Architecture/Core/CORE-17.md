@@ -490,7 +490,7 @@ sequenceDiagram
     participant Provider as ServiceProvider #1..N
 
     Kernel->>Registry: addScanDirectory(packages/hub/)
-    Kernel->>Registry: addScanDirectory(packages/spoke/)
+    Kernel->>Registry: addScanDirectory(app/Spokes/)
     Kernel->>Registry: discover()
     Registry->>Scan: walk directories, tokenise *.php
     Scan-->>Registry: list of class FQCNs
@@ -562,7 +562,7 @@ Provider instances themselves transition `Discovered → Registered → Booted �
    ```php
    $registry = new ProviderRegistry($config, $logger);
    $registry->addScanDirectory(__DIR__ . '/../../../packages/hub');
-   $registry->addScanDirectory(__DIR__ . '/../../../packages/spoke');
+   $registry->addScanDirectory(__DIR__ . '/../../../app/Spokes');
    $registry->discover();
    $registry->registerAll($container);
    $registry->bootAll($container);
