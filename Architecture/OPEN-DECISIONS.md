@@ -11,7 +11,22 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 
 ## Open
 
-*All open decisions resolved on 2026-08-12. See Resolved section below.*
+### OD-07 — Runtime model: Fiber-based cooperative scheduler vs. multi-process worker pool
+- **Fork:** DGLab's OS primitives (Pulse as process, Kernel as scheduler) require a concurrency model. Two options exist.
+- **Option A — Fibers (in-process cooperative):** Each Pulse is a PHP Fiber. The Kernel owns the run queue and scheduler loop. OS metaphor fidelity is maximal — DGLab *is* the scheduler. Requires PHP 8.1+ and an async I/O library (ReactPHP, Amp, or Swoole).
+- **Option B — Workers (multi-process):** Each Pulse runs in a separate FrankenPHP/RoadRunner worker process. The host OS provides scheduling and isolation. Simpler but OS metaphor purity is lower — the host OS is the scheduler, not DGLab.
+- **Options (addition):** A deferred sub-decision: which async I/O library (ReactPHP vs Amp vs Swoole). This is gated behind OD-07.
+- **Owner:** Architecture lead (DGCI)
+- **Decision route:** Architecture discussion with Z.ai (2026-08-22). Director's stated intent: "I want to make DGLab feel like an OS written in PHP" — points to Option A.
+- **Provisional direction:** Option A (Fiber-based). See `DGLAB-AS-OS-RUNTIME.md` for full analysis. Not yet ratified as an ADR.
+
+### OD-08 — Async I/O library choice (ReactPHP vs Amp vs Swoole)
+- **Fork:** The Fiber-based runtime (OD-07) requires an event loop / async I/O library as its "hardware abstraction layer." Three candidates.
+- **Option A — ReactPHP:** Mature, largest ecosystem, PSR-7/15/17 native. Blocking-implicit model (promise chains). Largest community.
+- **Option B — Amp:** Fiber-native design, cleaner API, smaller ecosystem. Better alignment with PHP 8.1+ Fiber semantics.
+- **Option C — Swoole:** Runtime replacement (not a library), highest performance, but locks DGLab to Swoole's runtime model. Incompatible with FrankenPHP.
+- **Owner:** Architecture lead (DGCI)
+- **Decision route:** Deferred until OD-07 is ratified. Interfaces in `DGLAB-AS-OS-RUNTIME.md` are library-agnostic via `EventLoopInterface`.
 
 ## Resolved
 

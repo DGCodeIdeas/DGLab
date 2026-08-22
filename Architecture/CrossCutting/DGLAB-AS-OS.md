@@ -337,6 +337,7 @@ An OS provides `strace`, `dtrace`, `bpftrace`, `sar`, `vmstat`. DGLab provides t
 
 ## Related Documents
 
+- `DGLAB-AS-OS-RUNTIME.md` — **Implementation roadmap** — the runtime primitives, scheduler design, boot sequence, and phased build plan that make the OS metaphor real in code. Companion to this conceptual document.
 - `STRUCTURE-01-Wheel.md` — The 6-ring architecture
 - `PULSE-MODEL.md` — The 6-tuple formalism
 - `CORE-18.md` — Kernel blueprint
@@ -350,3 +351,5 @@ An OS provides `strace`, `dtrace`, `bpftrace`, `sar`, `vmstat`. DGLab provides t
 ### Provenance
 
 Drafted in response to architecture lead question: "Apart from the app being a visual wheel, it also needs to mimic the operations of an OS but in what way? How?" Consolidates analysis from Claude (namespace conflict review) and Z.ai (Milestone 0 task brief) into a canonical conceptual document.
+
+**Update (2026-08-22):** Implementation companion `DGLAB-AS-OS-RUNTIME.md` added following architecture lead direction: "I want to make DGLab feel like an OS written in PHP." The runtime document records the Fiber-based cooperative scheduler decision (OD-07), the three foundational primitives (PulseDescriptor, PulseTable, PulseTracer), the Kernel scheduler design, and the four-phase implementation roadmap. See `OPEN-DECISIONS.md` OD-07 and OD-08.
