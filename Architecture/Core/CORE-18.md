@@ -333,7 +333,7 @@ use SovereignStack\Core\Config\ConfigInterface;
 use SovereignStack\Core\Container\ContainerInterface;
 use SovereignStack\Core\Error\ErrorHandlerInterface;
 use SovereignStack\Core\EventDispatcher\Event;
-use SovereignStack\Core\Http\MiddlewarePipelineInterface;
+use SovereignStack\Core\Middleware\MiddlewarePipelineInterface;
 use SovereignStack\Core\Kernel\Event\BootEvent;
 use SovereignStack\Core\Kernel\Event\RequestReceivedEvent;
 use SovereignStack\Core\Kernel\Event\ResponseReadyEvent;
