@@ -9,7 +9,7 @@ Core (Foundational Infrastructure)
 - **Finding 10** — The approved file asserts "Middleware stack overhead (10 layers) must be < 1ms" with no harness, baseline, or load model. This blueprint replaces that bare millisecond target with a PHPUnit `--group performance` methodology against a named baseline, with all absolute throughput numbers marked **"provisional, unverified"** until measured.
 
 ## Component Name
-PSR-15 Middleware & Request Handler — `SovereignStack\Core\Http` (PSR-4: `packages/core/middleware/src/`).
+PSR-15 Middleware & Request Handler — `SovereignStack\Core\Middleware` (PSR-4: `packages/core/middleware/src/`).
 
 ## Description
 
@@ -51,7 +51,7 @@ PSR-15's `MiddlewareInterface` and `RequestHandlerInterface` are FIG-defined in 
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Http;
+namespace SovereignStack\Core\Middleware;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -138,7 +138,7 @@ The complete `MiddlewarePipeline` class. It compiles against PHP 8.3 with only t
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Http;
+namespace SovereignStack\Core\Middleware;
 
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -448,7 +448,7 @@ This component is **new** — there is no prior implementation to migrate from. 
     },
     "autoload": {
         "psr-4": {
-            "SovereignStack\\Core\\Http\\": "src/"
+            "SovereignStack\\Core\\Middleware\\": "src/"
         }
     }
 }
