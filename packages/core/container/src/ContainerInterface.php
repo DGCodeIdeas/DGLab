@@ -39,8 +39,28 @@ interface ContainerInterface extends PsrContainerInterface
 
     /**
      * Convenience wrapper for {@see bind()} with $singleton = true.
+     *
+     * **Scope:** worker-lifetime (shared across all Pulses in this worker process).
+     * For per-Pulse instances, use {@see pulse()}.
      */
     public function singleton(string $id, mixed $concrete = null): void;
+
+    /**
+     * Register a Pulse-scoped binding — one instance per Fiber (per Pulse).
+     *
+     * When a Pulse resolves this service, it receives a fresh instance that is
+     * cached for the duration of that Pulse only. A different Pulse (even in the
+     * same worker, even concurrently) receives its own independent instance.
+     *
+     * This is the correct scope for tenant-scoped services (repositories, unit-
+     * of-work, request context) under the Fiber-based cooperative runtime (OD-07).
+     *
+     * @param string $id       The service identifier.
+     * @param mixed  $concrete The concrete resolver (same types as {@see bind()}).
+     *
+     * @throws \LogicException If the container has already been compiled.
+     */
+    public function pulse(string $id, mixed $concrete = null): void;
 
     /**
      * Register a pre-built object instance as a shared binding.
@@ -95,7 +115,7 @@ interface ContainerInterface extends PsrContainerInterface
      *
      * Runs all registered compiler passes in registration order, then
      * sets the `$compiled` flag. After this returns, any call to
-     * {@see bind()}, {@see singleton()}, {@see instance()}, or
+     * {@see bind()}, {@see singleton()}, {@see pulse()}, {@see instance()}, or
      * {@see addCompilerPass()} throws {@see \LogicException}.
      *
      * Idempotent: calling compile() on an already-compiled container

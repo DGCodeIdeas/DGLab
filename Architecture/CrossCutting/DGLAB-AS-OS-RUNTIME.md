@@ -786,14 +786,17 @@ event dispatcher, connection pools (which are thread-safe by design).
 ### 8.0.2 Implementation Approach
 
 `pulse()` is implemented as a Fiber-keyed instance cache layered on top of the existing
-resolution logic. Pseudocode:
+resolution logic. The `ServiceDefinition` readonly class gains a `bool $pulseScoped` property;
+`Container::make()` checks it and uses a separate `$pulseInstances` cache keyed by
+`id . ':pulse:' . spl_object_id($fiber)`. Pseudocode:
 
 ```php
 // Inside Container::make()
 if ($definition->pulseScoped) {
-    $fiberId = \Fiber::getCurrent()->id ?? 'main';
+    $fiber = \Fiber::getCurrent();
+    $fiberId = $fiber !== null ? spl_object_id($fiber) : 'main';
     $key = $id . ':pulse:' . $fiberId;
-    return $this->instances[$key] ??= $this->build($concrete, $parameters);
+    return $this->pulseInstances[$key] ??= $this->build($concrete, $parameters);
 }
 ```
 
@@ -814,13 +817,18 @@ When OD-07 is ratified, a one-time audit of all existing `singleton()` bindings 
 
 ### 8.0.4 Relationship to CORE-02.md
 
-This section amends the `singleton()` contract documented in `CORE-02.md`. When OD-07 is
-ratified, `CORE-02.md` must be updated with:
-- The two-scope model (worker-scoped vs. pulse-scoped).
-- The new `pulse()` method on `ContainerInterface`.
-- Updated docblocks on `singleton()` stating its scope is *worker-lifetime*, not *request-lifetime*.
-- A SemVer consideration: adding `pulse()` to `ContainerInterface` is a minor bump (new method).
-   Changing `singleton()`'s documented scope is documentation-only (no signature change).
+This section amended the `singleton()` contract documented in `CORE-02.md`. The following
+changes have been applied to `CORE-02.md` and the source files:
+- `ServiceDefinition` now has a `bool $pulseScoped` property (mutually exclusive with `$shared`).
+- `ContainerInterface` now has a `pulse()` method with OD-7-scoped docblock.
+- `singleton()` docblock updated: scope is *worker-lifetime*, not *request-lifetime*.
+- `Container::make()` has pulse-scoped cache logic (steps 1b and 8b) using `spl_object_id($fiber)`.
+- `Container::pulse()` implementation creates `ServiceDefinition(shared: false, pulseScoped: true)`.
+- `compile()` docblock updated to list `pulse()` among the guarded methods.
+
+**SemVer:** Adding `pulse()` to `ContainerInterface` is a minor bump (new method).
+Changing `singleton()`'s documented scope is documentation-only (no signature change).
+Adding `pulseScoped` to `ServiceDefinition` is a minor bump (new property with default `false`).
 
 ---
 
@@ -897,3 +905,9 @@ across all concurrent Pulses" under Fiber workers). Resolution: new `pulse()` sc
 Pulse-scoped instances, with audit requirement for existing `singleton()` bindings. Also records
 FrankenPHP as accepted runtime (OD-07 consequence: Fibers require long-lived workers, ruling out
 PHP-FPM).
+
+**Update (2026-08-24):** Synced §8.0.2 pseudocode and §8.0.4 to reflect actual implementation:
+- `ServiceDefinition` in CORE-02.md now has `pulseScoped` property.
+- `ContainerInterface.php` and `Container.php` source files now include `pulse()` method with
+  Fiber-keyed cache (`$pulseInstances` using `spl_object_id($fiber)`).
+- §8.0.4 changed from forward-looking requirements to applied-changes record.

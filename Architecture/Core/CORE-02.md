@@ -293,17 +293,22 @@ namespace SovereignStack\Core\Container;
 final readonly class ServiceDefinition
 {
     /**
-     * @param string       $abstract The service identifier (the id passed to bind()).
-     * @param mixed        $concrete A class-string, a Closure receiving
-     *                               ($container, $parameters), or a pre-built
-     *                               object instance.
-     * @param bool         $shared   True for singletons (cached after first resolution).
-     * @param list<string> $tags     Optional tags for tagged-iterator passes.
+     * @param string       $abstract     The service identifier (the id passed to bind()).
+     * @param mixed        $concrete     A class-string, a Closure receiving
+     *                                   ($container, $parameters), or a pre-built
+     *                                   object instance.
+     * @param bool         $shared       True for singletons (cached after first resolution).
+     * @param bool         $pulseScoped  True for Pulse-scoped bindings (one instance per
+     *                                   Fiber). Mutually exclusive with $shared — a
+     *                                   definition with both true is a LogicException.
+     *                                   See OD-07 / DGLAB-AS-OS-RUNTIME.md §8.0.
+     * @param list<string> $tags         Optional tags for tagged-iterator passes.
      */
     public function __construct(
         public string $abstract,
         public mixed $concrete,
         public bool $shared = false,
+        public bool $pulseScoped = false,
         public array $tags = [],
     ) {
     }

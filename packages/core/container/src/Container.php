@@ -38,8 +38,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /** @var array<string, ServiceDefinition> */
     private array $definitions = [];
 
-    /** @var array<string, mixed> */
+    /** @var array<string, mixed> Worker-scoped instance cache (singleton + instance). */
     private array $instances = [];
+
+    /** @var array<string, mixed> Pulse-scoped instance cache, keyed by "id:pulse:fiberId". */
+    private array $pulseInstances = [];
 
     /** @var array<string, true> Keys are concrete class-strings currently being built. */
     private array $resolving = [];
@@ -71,6 +74,21 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         $this->bind($id, $concrete, true);
     }
 
+    public function pulse(string $id, mixed $concrete = null): void
+    {
+        $this->assertNotCompiled();
+
+        $concrete ??= $id;
+
+        $this->definitions[$id] = new ServiceDefinition(
+            abstract: $id,
+            concrete: $concrete,
+            shared: false,
+            pulseScoped: true,
+            tags: [],
+        );
+    }
+
     public function instance(string $id, object $instance): void
     {
         $this->assertNotCompiled();
@@ -86,15 +104,25 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
     public function make(string $id, array $parameters = []): mixed
     {
-        // 1. Resolved-instance cache.
+        // 1. Resolved-instance cache (worker-scoped).
         if (array_key_exists($id, $this->instances)) {
             return $this->instances[$id];
         }
 
+        // 1b. Pulse-scoped cache (one instance per Fiber/Pulse).
+        $definition = $this->definitions[$id] ?? null;
+        if ($definition !== null && $definition->pulseScoped) {
+            $fiber = \Fiber::getCurrent();
+            $fiberId = $fiber !== null ? spl_object_id($fiber) : 'main';
+            $pulseKey = $id . ':pulse:' . $fiberId;
+            if (array_key_exists($pulseKey, $this->pulseInstances)) {
+                return $this->pulseInstances[$pulseKey];
+            }
+        }
+
         // 2. Resolve the concrete binding (fall back to $id when unbound, supporting
         //    make(SomeClass::class) without an explicit bind() — see blueprint).
-        $definition = $this->definitions[$id] ?? null;
-        $concrete = $definition->concrete ?? $id;
+        $concrete = $definition?->concrete ?? $id;
 
         // 3. Reject unresolvable ids before pushing onto the stack. If there is no
         //    explicit definition AND $id is not a class-string, the caller asked for
@@ -155,9 +183,16 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             array_pop($this->resolvingChain);
         }
 
-        // 8. Cache shared singletons.
+        // 8. Cache shared singletons (worker-scoped).
         if ($definition !== null && $definition->shared) {
             $this->instances[$id] = $object;
+        }
+
+        // 8b. Cache pulse-scoped instances (per-Fiber).
+        if ($definition !== null && $definition->pulseScoped) {
+            $fiber = \Fiber::getCurrent();
+            $fiberId = $fiber !== null ? spl_object_id($fiber) : 'main';
+            $this->pulseInstances[$id . ':pulse:' . $fiberId] = $object;
         }
 
         return $object;
