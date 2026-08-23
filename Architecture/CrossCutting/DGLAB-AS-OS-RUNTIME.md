@@ -739,9 +739,94 @@ DGLab Kernel v1.0.0 — uptime: 4d 12:33:07 — Pulses: 142 active, 3 blocked, 0
 
 ---
 
-## 8. Honest Constraints
+## 8. Singleton Semantics Under Cooperative Scheduling
 
-### 8.1 No Preemptive Multitasking
+### 8.0 The Problem
+
+CORE-02's `singleton()` method documents its contract as:
+
+> "When true, the first resolved instance is cached and returned on subsequent
+> `make()` / `get()` calls." (CORE-02.md, `ContainerInterface` docblock)
+
+Under PHP-FPM, this is harmless: each request is its own process, so "cached" means
+"one instance per request" — functionally identical to `bind()` for most services.
+Singletons under FPM are an optimization (avoid repeated construction), not a sharing
+decision.
+
+Under the Fiber-based cooperative runtime, the semantics **silently change**. A long-lived
+FrankenPHP worker runs Pulses from multiple tenants concurrently within a single process.
+`singleton()` now means "one instance shared across every concurrently-running Pulse in this
+worker for the entire worker lifetime" — including multiple tenants at once.
+
+This is not a memory-safety bug (the §9.2 tenant isolation concern is separate). It is a
+documented API contract (`singleton() = cached after first resolution`) that quietly means
+something fundamentally different in the new runtime model, with nothing telling a developer
+building against the existing, already-shipped Container that the ground shifted.
+
+### 8.0.1 Resolution: Two Binding Scopes
+
+Introduce a new binding scope distinct from `singleton()`:
+
+| Method | Scope | Lifetime | Use for |
+|---|---|---|---|
+| `bind()` (shared=false) | Transient | Per-resolution | Request-scoped DTOs, form objects, value objects |
+| `pulse()` *(new)* | Pulse-scoped | Per-Pulse (one per Fiber) | Repositories, unit-of-work, request context, tenant-scoped services |
+| `singleton()` | Worker-scoped | Per-worker (process lifetime) | Config, connection pools, event dispatcher, container itself |
+| `instance()` | Worker-scoped | Per-worker (pre-built) | Same as singleton but pre-constructed |
+
+The key addition is `pulse()`: it returns one instance per Pulse (per Fiber). When Pulse A
+resolves a `pulse()`-bound service, it gets instance X. When Pulse B (same worker, different
+tenant) resolves the same service, it gets instance Y. Neither sees the other's instance.
+
+**Default recommendation:** Most services currently bound via `singleton()` in Hub and Spoke
+providers should become `pulse()` under the Fiber runtime. True `singleton()` should be
+reserved for things that are genuinely process-wide: config, the container itself, the
+event dispatcher, connection pools (which are thread-safe by design).
+
+### 8.0.2 Implementation Approach
+
+`pulse()` is implemented as a Fiber-keyed instance cache layered on top of the existing
+resolution logic. Pseudocode:
+
+```php
+// Inside Container::make()
+if ($definition->pulseScoped) {
+    $fiberId = \Fiber::getCurrent()->id ?? 'main';
+    $key = $id . ':pulse:' . $fiberId;
+    return $this->instances[$key] ??= $this->build($concrete, $parameters);
+}
+```
+
+This is a non-breaking addition to `ContainerInterface`. Existing `bind()` / `singleton()`
+behavior is unchanged. The `pulse()` method is a new method that maps to a new
+`ServiceDefinition` flag.
+
+### 8.0.3 Audit Requirement
+
+When OD-07 is ratified, a one-time audit of all existing `singleton()` bindings is required:
+
+1. Enumerate every `singleton()` call across all provider `register()` methods.
+2. Classify each as **worker-scoped** (genuinely shared) or **pulse-scoped** (should be
+   per-Pulse, per-tenant).
+3. Migrate the pulse-scoped ones to `pulse()`.
+4. This is cheap to do now (nothing depends on CORE-02's singleton semantics beyond the
+   existing unit tests). It becomes expensive later.
+
+### 8.0.4 Relationship to CORE-02.md
+
+This section amends the `singleton()` contract documented in `CORE-02.md`. When OD-07 is
+ratified, `CORE-02.md` must be updated with:
+- The two-scope model (worker-scoped vs. pulse-scoped).
+- The new `pulse()` method on `ContainerInterface`.
+- Updated docblocks on `singleton()` stating its scope is *worker-lifetime*, not *request-lifetime*.
+- A SemVer consideration: adding `pulse()` to `ContainerInterface` is a minor bump (new method).
+   Changing `singleton()`'s documented scope is documentation-only (no signature change).
+
+---
+
+## 9. Honest Constraints
+
+### 9.1 No Preemptive Multitasking
 
 A Pulse with an infinite loop blocks the scheduler. PHP's Fiber model is cooperative —
 a Fiber must explicitly `Fiber::suspend()` to yield control.
@@ -754,7 +839,7 @@ not mid-execution) but prevents indefinite blocking.
 **Documented contract:** "Cooperative scheduling with quantum enforcement. Yield your Fiber
 or be preempted at the next tick boundary."
 
-### 8.2 No Real Memory Isolation
+### 9.2 No Real Memory Isolation
 
 Tenant A and Tenant B share the same PHP process memory. A pointer leak in Tenant A's
 ISPOKE can theoretically read Tenant B's data. DGLab provides **logical** isolation
@@ -771,7 +856,7 @@ This is how Docker works: Linux namespaces/cgroups provide memory barriers; Dock
 provides the *abstraction* of containers. DGLab is the Docker layer; FrankenPHP/Linux
 is the kernel layer.
 
-### 8.3 No Hardware Drivers
+### 9.3 No Hardware Drivers
 
 The "hardware" is FrankenPHP/RoadRunner (runtime), MySQL (storage), Redis (cache),
 RabbitMQ (messaging). These are external dependencies, not things to reimplement.
@@ -783,7 +868,7 @@ handles the failure gracefully.
 
 ---
 
-## 9. Relationship to Existing Structure Documents
+## 10. Relationship to Existing Structure Documents
 
 | Document | Relationship |
 |---|---|
@@ -793,7 +878,7 @@ handles the failure gracefully.
 | `STRUCTURE-06-Boot.md` | The provider-driven boot sequence. This document maps it to the OS boot metaphor and adds the `KernelState` machine. |
 | `STRUCTURE-09-Performance.md` | Performance targets. The scheduler's quantum and the tracer's buffer size must satisfy those targets. |
 | `CORE-18.md` | Kernel blueprint. This document specifies what `CORE-18` must actually implement. |
-| `CORE-02.md` | Container blueprint. Section 5.1 specifies the runtime additions. |
+| `CORE-02.md` | Container blueprint. Section 5.1 specifies the runtime additions. **Section 8.0 specifies the singleton() semantics change under the Fiber runtime — must be synced to CORE-02.md when OD-07 is ratified.** |
 | `CORE-03.md` | EventDispatcher blueprint. Section 5.2 specifies the interrupt controller additions. |
 
 ---
@@ -805,3 +890,10 @@ Derived from architecture discussion (2026-08-22) between DGCI and Z.ai on the q
 cooperative runtime), the three foundational primitives (PulseDescriptor, PulseTable,
 PulseTracer), the Kernel scheduler design, the boot sequence mapped to Linux boot, and the
 four-phase implementation roadmap.
+
+**Update (2026-08-22):** Section 8.0 added to address Claude's review: `singleton()` silently
+changes meaning under cooperative scheduling ("one per request" under FPM becomes "one shared
+across all concurrent Pulses" under Fiber workers). Resolution: new `pulse()` scope for
+Pulse-scoped instances, with audit requirement for existing `singleton()` bindings. Also records
+FrankenPHP as accepted runtime (OD-07 consequence: Fibers require long-lived workers, ruling out
+PHP-FPM).

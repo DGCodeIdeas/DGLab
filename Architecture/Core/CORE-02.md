@@ -108,20 +108,49 @@ interface ContainerInterface extends PsrContainerInterface
      *
      * @param string $id        The service identifier (typically an interface FQCN).
      * @param mixed  $concrete  The concrete resolver. Accepts: a class-string,
-     *                          a {@see \Closure} receiving ($container, $parameters),
+     *                          a {\@see \Closure} receiving ($container, $parameters),
      *                          a pre-built object instance, or null (in which case
      *                          $id is used as the concrete class-string).
      * @param bool   $singleton When true, the first resolved instance is cached
-     *                          and returned on subsequent {@see make()} / {@see get()} calls.
+     *                          for the **worker lifetime** and returned on all subsequent
+     *                          {\@see make()} / {\@see get()} calls from any Fiber/Pulse.
+     *
+     *                          **Fiber runtime warning (OD-07):** Under a long-lived
+     *                          FrankenPHP worker, `singleton()` means "one instance
+     *                          shared across ALL concurrent Pulses in this worker" —
+     *                          including multiple tenants. If you need per-Pulse
+     *                          instances (the common case for repositories, request
+     *                          context, tenant-scoped services), use {\@see pulse()}
+     *                          instead. See `DGLAB-AS-OS-RUNTIME.md` §8.0.
      *
      * @throws \LogicException If the container has already been compiled.
      */
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void;
 
     /**
-     * Convenience wrapper for {@see bind()} with $singleton = true.
+     * Convenience wrapper for {\@see bind()} with $singleton = true.
+     *
+     * **Scope:** worker-lifetime (shared across all Pulses in this worker process).
+     * For per-Pulse instances, use {\@see pulse()}.
      */
     public function singleton(string $id, mixed $concrete = null): void;
+
+    /**
+     * Register a Pulse-scoped binding — one instance per Fiber (per Pulse).
+     *
+     * When a Pulse resolves this service, it receives a fresh instance that is
+     * cached for the duration of that Pulse only. A different Pulse (even in the
+     * same worker, even concurrently) receives its own independent instance.
+     *
+     * This is the correct scope for tenant-scoped services (repositories, unit-
+     * of-work, request context) under the Fiber-based cooperative runtime (OD-07).
+     *
+     * @param string $id       The service identifier.
+     * @param mixed  $concrete The concrete resolver (same types as {\@see bind()}).
+     *
+     * @throws \LogicException If the container has already been compiled.
+     */
+    public function pulse(string $id, mixed $concrete = null): void;
 
     /**
      * Register a pre-built object instance as a shared binding.
@@ -786,7 +815,9 @@ stateDiagram-v2
 ## Security Properties
 
 1. **Circular dependency always throws `CircularDependencyException`, never stack-overflows.** The `$resolving` stack is checked before recursion; a second entry for the same id short-circuits to an exception. The chain is preserved on the exception for diagnostics. There is no code path in `make()` that can recurse without first pushing onto the stack.
-2. **`compile()` is idempotent-safe — further mutation throws `\LogicException`.** `assertNotCompiled()` is the first line of `bind()`, `singleton()`, `instance()`, and `addCompilerPass()`. After `compile()` returns, the container is structurally immutable for the remainder of its lifetime.
+2. **`compile()` is idempotent-safe — further mutation throws `\LogicException`.** `assertNotCompiled()` is the first line of `bind()`, `singleton()`, `pulse()`, `instance()`, and `addCompilerPass()`. After `compile()` returns, the container is structurally immutable for the remainder of its lifetime.
+
+   **Fiber runtime note (OD-07):** `singleton()` and `pulse()` have different scope semantics under the cooperative scheduler. `singleton()` is **worker-lifetime** (shared across all concurrent Pulses in the worker process). `pulse()` is **Pulse-lifetime** (one instance per Fiber, per tenant). See `DGLAB-AS-OS-RUNTIME.md` §8.0 for the full analysis and audit requirement.
 3. **The resolution stack is always cleaned up via `finally`.** Even if `build()` throws (cycle, missing class, unresolvable primitive, Closure exception), the `finally` block at the end of `make()` pops the current id off `$resolving`. A failed resolution cannot leak state into the next resolution.
 4. **PSR-11 `get()` never silently returns null.** Unknown ids throw `NotFoundException` (implements `\Psr\Container\NotFoundExceptionInterface`). This matches the PSR-11 contract that `get()` must throw rather than return null.
 5. **No arbitrary code execution from external input.** The container only invokes Closures and constructors that were explicitly bound by trusted code (service providers in the kernel boot sequence). It does not deserialize, does not `eval`, does not include files. The `instance()` method accepts only `object` (not `mixed`), preventing string-coercion-based injection.

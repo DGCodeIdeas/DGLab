@@ -15,10 +15,17 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 - **Fork:** DGLab's OS primitives (Pulse as process, Kernel as scheduler) require a concurrency model. Two options exist.
 - **Option A — Fibers (in-process cooperative):** Each Pulse is a PHP Fiber. The Kernel owns the run queue and scheduler loop. OS metaphor fidelity is maximal — DGLab *is* the scheduler. Requires PHP 8.1+ and an async I/O library (ReactPHP, Amp, or Swoole).
 - **Option B — Workers (multi-process):** Each Pulse runs in a separate FrankenPHP/RoadRunner worker process. The host OS provides scheduling and isolation. Simpler but OS metaphor purity is lower — the host OS is the scheduler, not DGLab.
-- **Options (addition):** A deferred sub-decision: which async I/O library (ReactPHP vs Amp vs Swoole). This is gated behind OD-07.
 - **Owner:** Architecture lead (DGCI)
 - **Decision route:** Architecture discussion with Z.ai (2026-08-22). Director's stated intent: "I want to make DGLab feel like an OS written in PHP" — points to Option A.
 - **Provisional direction:** Option A (Fiber-based). See `DGLAB-AS-OS-RUNTIME.md` for full analysis. Not yet ratified as an ADR.
+
+**Stated consequences (to be confirmed at ratification):**
+1. **FrankenPHP is the accepted PHP runtime.** Fiber-based cooperative scheduling requires a long-lived worker process that persists across requests. PHP-FPM (one process per request, terminated after response) cannot support this model. This implicitly resolves the PHP-FPM-vs-FrankenPHP choice that `DEPLOY-01` left as "decision deferred to an ADR." RoadRunner remains theoretically compatible but is untested; FrankenPHP is the primary target.
+2. **`singleton()` semantics change.** Under PHP-FPM, `singleton()` means "one instance per request" (each request is its own process). Under a long-lived Fiber worker, `singleton()` means "one instance shared across every concurrently-running Pulse in that worker for the worker's lifetime" — including multiple tenants. Resolution: introduce a `pulse()` binding scope (one instance per Fiber) and audit existing `singleton()` bindings. See `DGLAB-AS-OS-RUNTIME.md` §8.0.
+
+**Sub-decisions gated on OD-07:**
+- OD-08 (async I/O library choice) — deferred until OD-07 is ratified.
+- Singleton audit — one-time classification of all existing `singleton()` bindings as worker-scoped vs. pulse-scoped. Cheap now, expensive later.
 
 ### OD-08 — Async I/O library choice (ReactPHP vs Amp vs Swoole)
 - **Fork:** The Fiber-based runtime (OD-07) requires an event loop / async I/O library as its "hardware abstraction layer." Three candidates.
