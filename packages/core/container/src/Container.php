@@ -10,6 +10,7 @@ namespace SovereignStack\Core\Container;
  * State:
  *   - $definitions       : id -> ServiceDefinition (the binding table)
  *   - $instances         : id -> resolved object (shared-instance cache)
+ *   - $pulseInstances    : WeakMap<Fiber, array<string, mixed>> (auto-evicts on Fiber GC)
  *   - $resolving         : concrete-key -> true (cycle detection set; presence == on stack)
  *   - $resolvingChain    : ordered list of [id, concrete] tuples for diagnostics
  *   - $compilerPasses    : list of passes to run during compile()
@@ -41,8 +42,20 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /** @var array<string, mixed> Worker-scoped instance cache (singleton + instance). */
     private array $instances = [];
 
-    /** @var array<string, mixed> Pulse-scoped instance cache, keyed by "id:pulse:fiberId". */
-    private array $pulseInstances = [];
+    /**
+     * Pulse-scoped instance cache, keyed on the Fiber object itself.
+     *
+     * WeakMap<Fiber, array<string, mixed>> — when a Fiber is garbage-collected
+     * (Pulse completes), PHP automatically evicts the entire inner array for
+     * that Fiber. No manual cleanup, no scheduler coupling, no memory leak
+     * over a long-running FrankenPHP worker lifetime.
+     *
+     * Outside any Fiber context (main context), pulse-scoped bindings behave
+     * as transient — each make() call returns a fresh instance with no caching.
+     * This is intentional: pulse() is defined as per-Pulse, and the main context
+     * is not a Pulse.
+     */
+    private \WeakMap $pulseInstances;
 
     /** @var array<string, true> Keys are concrete class-strings currently being built. */
     private array $resolving = [];
@@ -54,6 +67,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     private array $compilerPasses = [];
 
     private bool $compiled = false;
+
+    public function __construct()
+    {
+        $this->pulseInstances = new \WeakMap();
+    }
 
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
     {
@@ -110,13 +128,13 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
 
         // 1b. Pulse-scoped cache (one instance per Fiber/Pulse).
+        //     Uses WeakMap keyed on the Fiber object — auto-evicts on Fiber GC.
+        //     Outside any Fiber, pulse-scoped bindings are transient (no cache).
         $definition = $this->definitions[$id] ?? null;
         if ($definition !== null && $definition->pulseScoped) {
             $fiber = \Fiber::getCurrent();
-            $fiberId = $fiber !== null ? spl_object_id($fiber) : 'main';
-            $pulseKey = $id . ':pulse:' . $fiberId;
-            if (array_key_exists($pulseKey, $this->pulseInstances)) {
-                return $this->pulseInstances[$pulseKey];
+            if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
+                return $this->pulseInstances[$fiber][$id];
             }
         }
 
@@ -188,11 +206,12 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             $this->instances[$id] = $object;
         }
 
-        // 8b. Cache pulse-scoped instances (per-Fiber).
+        // 8b. Cache pulse-scoped instances (per-Fiber, via WeakMap).
         if ($definition !== null && $definition->pulseScoped) {
             $fiber = \Fiber::getCurrent();
-            $fiberId = $fiber !== null ? spl_object_id($fiber) : 'main';
-            $this->pulseInstances[$id . ':pulse:' . $fiberId] = $object;
+            if ($fiber !== null) {
+                $this->pulseInstances[$fiber][$id] = $object;
+            }
         }
 
         return $object;

@@ -785,18 +785,28 @@ event dispatcher, connection pools (which are thread-safe by design).
 
 ### 8.0.2 Implementation Approach
 
-`pulse()` is implemented as a Fiber-keyed instance cache layered on top of the existing
+`pulse()` is implemented as a WeakMap-keyed instance cache layered on top of the existing
 resolution logic. The `ServiceDefinition` readonly class gains a `bool $pulseScoped` property;
-`Container::make()` checks it and uses a separate `$pulseInstances` cache keyed by
-`id . ':pulse:' . spl_object_id($fiber)`. Pseudocode:
+`Container::make()` checks it and uses a `\WeakMap` keyed on the `\Fiber` object itself.
+When PHP garbage-collects a completed Fiber, the WeakMap entry for that Fiber is
+automatically evicted — no manual cleanup, no scheduler coupling, no memory leak
+over a long-running FrankenPHP worker lifetime.
+
+Outside any Fiber context (main context), pulse-scoped bindings behave as transient —
+each `make()` returns a fresh instance with no caching. This is intentional: `pulse()` is
+defined as per-Pulse, and the main context is not a Pulse.
 
 ```php
 // Inside Container::make()
 if ($definition->pulseScoped) {
     $fiber = \Fiber::getCurrent();
-    $fiberId = $fiber !== null ? spl_object_id($fiber) : 'main';
-    $key = $id . ':pulse:' . $fiberId;
-    return $this->pulseInstances[$key] ??= $this->build($concrete, $parameters);
+    if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
+        return $this->pulseInstances[$fiber][$id];
+    }
+}
+// ... after build() ...
+if ($definition->pulseScoped && ($fiber = \Fiber::getCurrent()) !== null) {
+    $this->pulseInstances[$fiber][$id] = $object;
 }
 ```
 
@@ -911,3 +921,12 @@ PHP-FPM).
 - `ContainerInterface.php` and `Container.php` source files now include `pulse()` method with
   Fiber-keyed cache (`$pulseInstances` using `spl_object_id($fiber)`).
 - §8.0.4 changed from forward-looking requirements to applied-changes record.
+
+**Update (2026-08-24, 2):** Replaced plain keyed-array `$pulseInstances` with
+`\WeakMap<Fiber, array<string, mixed>>` to prevent memory leaks. A plain array
+caches entries keyed by `spl_object_id($fiber)` but never evicts them when a
+completed Fiber is GC'd — over a long-running FrankenPHP worker this is a slow
+leak. WeakMap keys on the Fiber object itself; PHP auto-evicts the entire inner
+array when the Fiber is collected. No scheduler coupling, no manual cleanup.
+Outside Fiber context (main), pulse-scoped bindings now correctly behave as
+transient.

@@ -407,19 +407,22 @@ namespace SovereignStack\Core\Container;
  * {@see ContainerBuilderInterface}.
  *
  * State:
- *   - $definitions   : id -> ServiceDefinition (the binding table)
- *   - $instances     : id -> resolved object (shared-instance cache)
- *   - $resolving     : id -> true (the resolution stack; presence == on stack)
- *   - $compilerPasses: list of passes to run during compile()
- *   - $compiled      : freeze flag; mutation methods assert false before running
+ *   - $definitions    : id -> ServiceDefinition (the binding table)
+ *   - $instances      : id -> resolved object (shared-instance cache)
+ *   - $pulseInstances : WeakMap<Fiber, array<string, mixed>> (auto-evicts on Fiber GC)
+ *   - $resolving      : id -> true (the resolution stack; presence == on stack)
+ *   - $compilerPasses : list of passes to run during compile()
+ *   - $compiled       : freeze flag; mutation methods assert false before running
  *
  * Resolution flow (see also the sequence diagram in this blueprint):
  *   make(A) ->
  *     1. if A in $instances -> return cached object
+ *     1b. if A is pulse-scoped && current Fiber -> check WeakMap[Fiber][A]
  *     2. if A in $resolving -> throw CircularDependencyException(chain)
  *     3. push A onto $resolving
  *     4. try { build(concrete) } finally { pop A from $resolving }
  *     5. if shared -> cache in $instances
+ *     5b. if pulse-scoped && current Fiber -> cache in WeakMap[Fiber][A]
  *     6. return object
  *
  * Cycle detection is resolution-time, not graph-time. This is deliberate:
@@ -433,8 +436,15 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /** @var array<string, ServiceDefinition> */
     private array $definitions = [];
 
-    /** @var array<string, mixed> */
+    /** @var array<string, mixed> Worker-scoped instance cache (singleton + instance). */
     private array $instances = [];
+
+    /**
+     * Pulse-scoped instance cache, keyed on the Fiber object itself.
+     * WeakMap<Fiber, array<string, mixed>> — auto-evicts when Fiber is GC'd.
+     * Outside any Fiber context, pulse-scoped bindings behave as transient.
+     */
+    private \WeakMap $pulseInstances;
 
     /** @var array<string, true> */
     private array $resolving = [];
@@ -443,6 +453,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     private array $compilerPasses = [];
 
     private bool $compiled = false;
+
+    public function __construct()
+    {
+        $this->pulseInstances = new \WeakMap();
+    }
 
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
     {
@@ -463,6 +478,21 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         $this->bind($id, $concrete, true);
     }
 
+    public function pulse(string $id, mixed $concrete = null): void
+    {
+        $this->assertNotCompiled();
+
+        $concrete ??= $id;
+
+        $this->definitions[$id] = new ServiceDefinition(
+            abstract: $id,
+            concrete: $concrete,
+            shared: false,
+            pulseScoped: true,
+            tags: [],
+        );
+    }
+
     public function instance(string $id, object $instance): void
     {
         $this->assertNotCompiled();
@@ -478,9 +508,18 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
     public function make(string $id, array $parameters = []): mixed
     {
-        // 1. Resolved-instance cache.
+        // 1. Resolved-instance cache (worker-scoped).
         if (array_key_exists($id, $this->instances)) {
             return $this->instances[$id];
+        }
+
+        // 1b. Pulse-scoped cache (WeakMap — auto-evicts on Fiber GC).
+        $definition = $this->definitions[$id] ?? null;
+        if ($definition !== null && $definition->pulseScoped) {
+            $fiber = \Fiber::getCurrent();
+            if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
+                return $this->pulseInstances[$fiber][$id];
+            }
         }
 
         // 2. Cycle detection — resolution-time, never stack-overflows.
@@ -494,7 +533,6 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         $this->resolving[$id] = true;
 
         try {
-            $definition = $this->definitions[$id] ?? null;
             $concrete = $definition?->concrete ?? $id;
 
             // 4. Build by concrete type.
@@ -504,9 +542,17 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             unset($this->resolving[$id]);
         }
 
-        // 6. Cache shared singletons.
+        // 6. Cache shared singletons (worker-scoped).
         if ($definition !== null && $definition->shared) {
             $this->instances[$id] = $object;
+        }
+
+        // 6b. Cache pulse-scoped instances (per-Fiber, via WeakMap).
+        if ($definition !== null && $definition->pulseScoped) {
+            $fiber = \Fiber::getCurrent();
+            if ($fiber !== null) {
+                $this->pulseInstances[$fiber][$id] = $object;
+            }
         }
 
         return $object;
