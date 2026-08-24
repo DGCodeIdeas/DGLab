@@ -1,6 +1,6 @@
 # DGLab as Operating System: Runtime Implementation Roadmap
 
-**Status:** Proposed (implementation roadmap)
+**Status:** Accepted (implementation roadmap) — gate decision ratified by ADR-017
 **Date:** 2026-08-22
 **Author:** DGCI (architecture lead), with analysis by Z.ai
 **Supersedes:** None (companion to `DGLAB-AS-OS.md`)
@@ -908,6 +908,8 @@ Derived from architecture discussion (2026-08-22) between DGCI and Z.ai on the q
 cooperative runtime), the three foundational primitives (PulseDescriptor, PulseTable,
 PulseTracer), the Kernel scheduler design, the boot sequence mapped to Linux boot, and the
 four-phase implementation roadmap.
+
+**Update (2026-08-24):** Gate decision ratified as ADR-017. Status promoted from Proposed to Accepted.
 
 **Update (2026-08-22):** Section 8.0 added to address Claude's review: `singleton()` silently
 changes meaning under cooperative scheduling ("one per request" under FPM becomes "one shared
