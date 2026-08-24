@@ -133,21 +133,23 @@ Non-negotiable. If a task prompt conflicts with these, the rules win — surface
 
 ## 7. Current state snapshot
 
-**Last updated:** 2026-08-13. (Only this section is updated regularly; when it changes, update the date too. A
+**Last updated:** 2026-08-24. (Only this section is updated regularly; when it changes, update the date too. A
 stale snapshot is worse than none — agents will trust it.)
 
 - **Methodology version:** SDLC-AGRD v3.4(3) Spiral Deepening (companion `PROMPTS.md`).
-- **Cooldown 0:** not yet started.
+- **Cooldown 0:** **COMPLETE** (2026-08-13). Three frozen contract artifacts delivered:
+  `ESPOKE-05-wireframe.md`, `HUB-26-theme-tokens.md`, `HUB-13-string-keys.md`.
 - **Milestone 0:** not yet started.
 - **Lap count:** 0. **Throughput:** unknown (`W` not measured).
 - **Matrix snapshot:** empty — first admissions happen in Milestone 0.
-- **Real implementation status (verify against repo):** only `CORE-01` (Loom) and `CORE-03` (event dispatcher)
-  have real, tested code. `CORE-02` (DI Container) is the critical-path blocker — a stub (`.gitkeep` only). Do
-  not assume any other component is built without checking.
+- **Real implementation status (verify against repo):** `CORE-01` (Loom), `CORE-02` (DI Container), and
+  `CORE-03` (Event Dispatcher) all have real, tested code. `CORE-02` shipped v1.0.0 on 2026-08-16 with PSR-11
+  conformance suite, 97.2% coverage, and PHPStan level:max clean. It is **no longer a blocker**.
 
 ## 8. Open decisions
 
-**All 6 ODs resolved on 2026-08-12–13.** See `Architecture/OPEN-DECISIONS.md` for full resolution records.
+**OD-01 through OD-06 resolved on 2026-08-12–13.** OD-07 and OD-08 opened on 2026-08-22. See
+`Architecture/OPEN-DECISIONS.md` for full resolution records.
 
 | OD | Topic | Decision | Status |
 |---|---|---|---|
@@ -158,7 +160,9 @@ stale snapshot is worse than none — agents will trust it.)
 | OD-05 | ISPOKE naming + Forge collision | Keep ID-only filenames. Resolve collision: ISPOKE-02→A1 Atlas, ISPOKE-11→B1 Penumbra, ESPOKE-12→C1 Pulsar. | **Resolved** 2026-08-12 |
 | OD-06 | Opcache baseline provisional | Keep provisional, gated behind `CORE-02`. Already flagged in `STRUCTURE-09`. | **Resolved** 2026-08-12 |
 
-**No ODs remain open.** New decision points must be filed as fresh ODs with new IDs (OD-07+).
+**OD-07 and OD-08 are open** (see `Architecture/OPEN-DECISIONS.md`). OD-07 (Fiber-based cooperative
+  runtime) is provisionally directed to Option A; OD-08 (async I/O library) is deferred until OD-07
+  ratification. New decision points beyond these must use OD-09+.
 
 ## 9. Known failure modes & hazards
 
