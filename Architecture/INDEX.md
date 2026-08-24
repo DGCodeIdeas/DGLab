@@ -69,7 +69,7 @@ copied from them into `Architecture/` without re-verifying it against this index
 | ID | Component | Namespace | Real implementation | Build status |
 |---|---|---|---|---|
 | CORE-01 | Polyrepo Orchestrator ("Loom") | `SovereignStack\Orchestrator` | `orchestrator/` | ✅ Implemented + tested |
-| CORE-02 | Dependency Injection Container | `SovereignStack\Core\Container` | `packages/core/container/` | ❌ **Stub only (`.gitkeep`) — blocking** |
+| CORE-02 | Dependency Injection Container | `SovereignStack\Core\Container` | `packages/core/container/` | ✅ **Implemented + tested, v1.0.0, 97.2% coverage, PSR-11 conformance** |
 | CORE-03 | PSR-14 Event Dispatcher | `SovereignStack\Core\EventDispatcher` | `packages/core/event-dispatcher/` | ✅ Implemented + tested |
 | CORE-04 | PSR-7 HTTP Message & Factory | `SovereignStack\Core\Http` | — | 📝 Not started |
 | CORE-05 | PSR-15 Middleware & Request Handler | `SovereignStack\Core\Http` | — | 📝 Not started |
@@ -192,12 +192,12 @@ mismatch.
 | Tier | Documented | Placeholder-only | **Total files** |
 |---|---|---|---|
 | Core | 20 | 0 | **20** |
-| Hub | 31 | 0 | **30** |
+| Hub | 31 | 0 | **31** |
 | Internal Spoke | 27 | 0 | **27** |
 | External Spoke | 18 | 0 | **18** |
 | Bridge | 1 | 0 | **1** |
 | Deploy | 5 | 0 | **5** |
-| **Total** | **102** | **0** | **101** |
+| **Total** | **102** | **0** | **102** |
 
 **HUB-31 is accepted** per `ADR-011` (2026-08-13). Hub tier: 31 blueprints. Total canonical: **102**.
 The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) *are* counted — they were promoted
@@ -211,8 +211,8 @@ listing 5, and totalled 31 against 30 rows):
 |---|---|---|
 | Critical | 10 | HUB-01, 02, 04, 05, 08, 09, 10, 19, 20, 21 |
 | High | 15 | HUB-03, 06, 07, 11, 12, 14, 15, 17, 22, 24, 25, 26, 27, 29, 30 |
-| Medium | 5 | HUB-13, 16, 18, 23, 28 |
-| **Total** | **30** | |
+| Medium | 6 | HUB-13, 16, 18, 23, 28, 31 |
+| **Total** | **31** | |
 
 **Timeline impact.** Every "32-week total timeline" claim in the archived evaluation layer assumed 15
 Internal Spokes. With 27 (25 + 2 hospitality), Phase 3 re-estimates at roughly 1.7×, or is split into Phase 3a (the 15
