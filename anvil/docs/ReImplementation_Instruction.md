@@ -1,25 +1,26 @@
 # Anvil Reimplementation Instruction
 
 **Status:** Proposed (architecture lead review required)
-**Date:** 2026-08-26
+**Date:** 2026-08-26 (v3)
 **Author:** DGCI (architecture lead), analysis by Z.ai
-**Supersedes:** `anvil/docs/ReImplementation_Instruction.md` v1 (2026-08-24)
+**Supersedes:** v2 (2026-08-26, Tengine + FrankenPHP two-layer) and v1 (2026-08-24)
 **Gate decisions:** OD-07 (Fiber-based cooperative runtime → FrankenPHP mandatory)
 
 ---
 
 ## 0. Executive Summary
 
-This document specifies how to reimplement Anvil across **three deployment tiers** — developer laptops, staging VMs, and production servers or edge nodes — combining **Tengine 3.x** (reverse proxy / TLS / DSO) with **FrankenPHP** (long-lived PHP workers). It supersedes the v1 instruction (2026-08-24) which covered only the serving-layer swap for local + EC2.
+This document specifies how to reimplement Anvil's serving layer as a **three-component proxy architecture** — **Caddy** (edge), **Tengine** (internal load balancer), **FrankenPHP** (PHP application server) — deployed across **three tiers** that activate only the layers each tier needs.
 
-The reimplementation has four workstreams:
+The reimplementation has five workstreams:
 
 | # | Workstream | Scope |
 |---|---|---|
-| W1 | **Serving layer** (Tengine + FrankenPHP) | Replace nginx:1.27-alpine + php:8.3-fpm in both compose files |
-| W2 | **Installer multi-distro** | Extend `install.sh` beyond Debian/Ubuntu (add Fedora/RHEL, Arch) |
-| W3 | **Bug fixes** | Fix the absolute-path cert leak, the hardcoded SSH user, and the placeholder repo URL |
-| W4 | **Edge tier** | Add a lightweight deployment mode for resource-constrained edge nodes |
+| W1 | **Three-layer serving stack** | Caddy (edge) → Tengine (internal LB) → FrankenPHP (app) |
+| W2 | **Installer multi-distro** | Extend `install.sh` beyond Debian/Ubuntu (Fedora, Arch, Amazon Linux) |
+| W3 | **Bug fixes** | Absolute-path cert leak, hardcoded SSH user, placeholder repo URL |
+| W4 | **Edge/native tier** | Systemd-native deployment (no Docker) for production and edge nodes |
+| W5 | **Mercure hub** | Real-time pub/sub at the edge via Caddy's Mercure module |
 
 ---
 
@@ -27,82 +28,402 @@ The reimplementation has four workstreams:
 
 Anvil's current serving layer (nginx 1.27 + PHP-FPM 8.3) is incompatible with OD-07. The OS-metaphor runtime requires PHP Fibers, which need a long-lived worker process — FrankenPHP in worker mode. PHP-FPM terminates the process after every request, making Fiber-scoped state impossible.
 
-The v1 instruction (2026-08-24) addressed the serving-layer swap for two targets (local dev + EC2). This v2 extends that work to cover:
+The v1 instruction (2026-08-24) addressed the serving-layer swap for two targets (local + EC2) using Tengine + FrankenPHP. The v2 (2026-08-26) added multi-distro support and a native edge tier. This v3 introduces **Caddy as the edge layer**, creating a three-component architecture where each component has a distinct, non-overlapping role.
 
-- **Developer laptops** (major Linux distros — Ubuntu, Fedora, Arch, Pop!_OS)
-- **Staging VMs** (cloud VMs for pre-production validation)
-- **Production servers / edge nodes** (lighter footprint, no Docker optional, systemd-native)
+### Why Three Components
 
-It also incorporates bug fixes discovered during the full codebase audit and adds an edge-node deployment tier that the original Anvil design did not anticipate.
+| Component | Role | Why it exists in this architecture |
+|---|---|---|
+| **Caddy** | Edge proxy | Automatic HTTPS (no certbot), HTTP/3 (QUIC), Mercure hub for real-time SSE/WebSocket, clean Caddyfile config, on-the-fly TLS certificate management |
+| **Tengine** | Internal load balancer | Built-in upstream health checks, DSO (hot-loadable modules = loadable kernel modules in the OS metaphor), dynamic upstream management, embedded Lua for routing, Prometheus metrics module |
+| **FrankenPHP** | PHP application server | Long-lived worker processes for Fiber support (OD-07), hot OpCache, cooperative scheduling, `pulse()` scope via WeakMap |
+
+### The "Two Caddies" Question
+
+FrankenPHP *embeds Caddy* as its internal HTTP server. This is not redundancy — the two Caddy instances serve completely different purposes:
+
+- **Standalone Caddy (edge):** Public-facing. Handles TLS termination, HTTP/3, Mercure hub, rate limiting, and static file caching. Listens on :443/:80. Configured via Caddyfile.
+- **FrankenPHP's embedded Caddy (internal):** Internal-only. Receives HTTP requests from Tengine and routes them to PHP workers. Never exposed to the internet. Configured by FrankenPHP's worker-mode command.
+
+They share the Caddy codebase but operate in different network namespaces with different configurations and different responsibilities. The standalone Caddy could be replaced by Cloudflare, an ALB, or any other edge proxy without touching FrankenPHP's internal operation.
 
 ---
 
-## 2. Tier Model
+## 2. Tier Model — Layer Activation
+
+The three components are not all active in every tier. Each tier activates only the layers it needs:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     TIER 1: LAPTOP                             │
-│  Full stack: Tengine + FrankenPHP + MySQL + Redis + phpMyAdmin │
-│  mkcert TLS, dnsmasq *.test, Web UI, TUI, inotify watcher      │
-│  OS: Ubuntu, Fedora, Arch, Pop!_OS                             │
-│  Purpose: daily development, per-project *.test domains         │
-├─────────────────────────────────────────────────────────────────┤
-│                     TIER 2: STAGING VM                         │
-│  Full stack: Tengine + FrankenPHP + RDS + Redis                │
-│  Let's Encrypt TLS, no Web UI exposed, SSH tunnel for mgmt     │
-│  OS: Ubuntu 24.04 LTS / Amazon Linux 2023                     │
-│  Purpose: pre-production validation, integration testing       │
-├─────────────────────────────────────────────────────────────────┤
-│                     TIER 3: PRODUCTION / EDGE                  │
-│  Lean stack: Tengine + FrankenPHP (no Docker, systemd-native)  │
-│  Let's Encrypt TLS, health checks, DSO observability           │
-│  OS: Ubuntu 24.04 LTS (minimal), Debian 12                    │
-│  Purpose: production serving, edge deployment, CDN-origin      │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                     TIER 1: LAPTOP (DEV)                             │
+│                                                                      │
+│  ┌─────────────────────────────────────────────────┐                 │
+│  │  FrankenPHP (worker mode, 1–2 workers)           │                 │
+│  │  Internal Caddy handles TLS via Caddyfile         │                 │
+│  │  *.test wildcard domains, mkcert or self-signed  │                 │
+│  │  Mercure: opt-in via Caddyfile directive          │                 │
+│  └─────────────────────────────────────────────────┘                 │
+│       Caddy: SKIP (FrankenPHP's internal Caddy suffices)              │
+│       Tengine: SKIP (single instance, no LB needed)                  │
+│  Plus: MySQL 8.0, Redis, phpMyAdmin, Web UI, TUI, inotify            │
+│  OS: Ubuntu, Fedora, Arch, Pop!_OS                                   │
+└───────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────┐
+│                     TIER 2: STAGING VM                                │
+│                                                                      │
+│  Client ─────▶ Caddy (edge) ──────────────────────┐                  │
+│  :443/:80       Automatic HTTPS, HTTP/3             │                  │
+│                 Mercure hub, static files           │                  │
+│                 Rate limiting (basic)                │                  │
+│                 vhost: real domain                   │                  │
+│                       │                             │                  │
+│                       │ proxy_pass                  │                  │
+│                       ▼                             │                  │
+│  ┌─────────────────────────────────────────────────┐ │                  │
+│  │  FrankenPHP (worker mode, 2–4 workers)           │ │                  │
+│  │  Internal Caddy on :8080                         │ │                  │
+│  └─────────────────────────────────────────────────┘ │                  │
+│       Tengine: SKIP (single FrankenPHP instance)      │                  │
+│  Plus: RDS MySQL, Redis, Let's Encrypt (auto)        │                  │
+│  OS: Ubuntu 24.04 LTS / Amazon Linux 2023            │                  │
+└───────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────┐
+│                     TIER 3: PRODUCTION / EDGE                         │
+│                                                                      │
+│  Client ──▶ Caddy (edge) ──▶ Tengine (LB) ──┬──▶ FrankenPHP #1      │
+│  :443/:80   TLS, HTTP/3       Health check   ├──▶ FrankenPHP #2      │
+│             Mercure hub        DSO modules   └──▶ FrankenPHP #N      │
+│             Rate limiting      Lua routing                         │
+│             Static cache       Prometheus                            │
+│                           Tengine (internal LB)                      │
+│  Plus: RDS MySQL, ElastiCache Redis, external monitoring             │
+│  OS: Ubuntu 24.04 LTS minimal, Debian 12 (systemd-native)            │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Tier Differences at a Glance
 
-| Dimension | Tier 1 (Laptop) | Tier 2 (Staging VM) | Tier 3 (Prod/Edge) |
+| Dimension | Tier 1 (Laptop) | Tier 2 (Staging) | Tier 3 (Production) |
 |---|---|---|---|
-| PHP runtime | FrankenPHP (Docker) | FrankenPHP (Docker) | FrankenPHP (native/systemd) |
-| Reverse proxy | Tengine (Docker) | Tengine (Docker) | Tengine (native/systemd) |
-| Database | MySQL 8.0 (Docker) | RDS MySQL (AWS) | External (RDS / managed) |
-| Redis | Yes (Docker) | Yes (Docker) | Optional (external) |
-| TLS | mkcert (trusted local CA) | Let's Encrypt (certbot) | Let's Encrypt (certbot + auto-renew) |
-| DNS | dnsmasq *.test → 127.0.0.1 | Real DNS (Route 53) | Real DNS (any provider) |
-| Web UI | Yes (127.0.0.1:9999) | Via SSH tunnel only | No (use monitoring instead) |
-| TUI | Yes (dialog/whiptail) | No | No |
-| Wildcard vhosts | Yes (*.test) | No (explicit domains) | No (explicit domains) |
-| phpMyAdmin | Yes (127.0.0.1:8080) | Via SSH tunnel only | No |
-| inotify watcher | Yes | No | No |
-| DSO modules | Dev (optional) | Staging (optional) | Production (prometheus, security) |
-| Containerization | Docker Compose | Docker Compose | None (native systemd services) |
+| **Caddy** (standalone) | No (FrankenPHP's internal) | Yes (edge) | Yes (edge) |
+| **Tengine** | No | No | Yes (internal LB) |
+| **FrankenPHP** | Yes (1–2 workers) | Yes (2–4 workers) | Yes (N workers, N instances) |
+| **TLS** | mkcert / self-signed | Let's Encrypt (auto by Caddy) | Let's Encrypt (auto by Caddy) |
+| **HTTP/3** | Yes (FrankenPHP's Caddy) | Yes (standalone Caddy) | Yes (standalone Caddy) |
+| **Mercure** | Opt-in (dev only) | Yes (staging SSE) | Yes (production real-time) |
+| **DNS** | dnsmasq *.test → 127.0.0.1 | Real DNS (Route 53) | Real DNS (any provider) |
+| **Database** | MySQL 8.0 (Docker) | RDS MySQL | RDS / managed MySQL |
+| **Redis** | Docker | Docker | ElastiCache / external |
+| **Containerization** | Docker Compose | Docker Compose | Systemd-native (no Docker) |
+| **Web UI** | Yes (127.0.0.1:9999) | SSH tunnel only | No (use monitoring) |
+| **TUI** | Yes | No | No |
+| **inotify watcher** | Yes | No | No |
+| **DSO modules** | No | No | Yes (Prometheus, security) |
+| **Health checks** | No | Caddy only | Tengine upstream checks |
+| **Load balancing** | No | No | Yes (Tengine, N FrankenPHP instances) |
 
 ---
 
-## 3. Why Tengine + FrankenPHP (Recap)
+## 3. Component Deep Dives
 
-### 3.1 Tengine Over Plain nginx
+### 3.1 Caddy — The Edge
 
-Tengine is Alibaba's nginx fork. For DGLab's OS-metaphor runtime, three features justify the divergence:
+Caddy is the public-facing entry point in Tier 2 and Tier 3. It handles everything that should happen *before* the request reaches internal infrastructure.
 
-| Feature | nginx 1.27 | Tengine 3.x | DGLab Relevance |
-|---|---|---|---|
-| **DSO (Dynamic Shared Objects)** | No | Yes | Hot-load/unload modules without recompiling — maps to loadable kernel modules in the OS metaphor |
-| **Dynamic server/location/upstream** | No | Yes | Add/remove vhosts without reload — aligns with Anvil's inotify vhost watcher |
-| **Upstream health checks** | 3rd-party module | Built-in | Auto-remove dead FrankenPHP workers from the pool |
-| **Built-in ngx_lua** | OpenResty only | Yes | Complex routing, auth, rate-limiting in the proxy layer |
-| **nginx config compat** | N/A | 100% | Drop-in replacement — existing vhost.conf.tpl works unchanged |
-| **Base nginx version** | 1.27.x | 1.31.x | Newer upstream, later security patches |
+**Why Caddy at the edge (not Tengine):**
 
-**Risk:** Tengine's CVE patch cadence is slower than nginx mainline. Tengine 3.1.0 carried unpatched CVEs until 3.2.0 (July 2026).
+| Capability | Caddy | Tengine |
+|---|---|---|
+| Automatic HTTPS (zero-config Let's Encrypt) | **Built-in** | No (needs certbot) |
+| HTTP/3 (QUIC) | **Built-in** | No |
+| Mercure hub (SSE/WebSocket pub/sub) | **Built-in module** | No |
+| Caddyfile syntax | **Declarative, minimal** | nginx-conf (verbose) |
+| On-the-fly cert renewal | **Automatic** | External (certbot cron) |
+| Reverse proxy | Yes | Yes |
+| Rate limiting | Via plugin | Via Lua or 3rd-party |
+| Load balancing (upstream health) | Basic | **Built-in (ngx_upstream_check)** |
+| DSO (hot-loadable modules) | No | **Yes** |
+| Embedded Lua scripting | No | **Yes** |
 
-**Mitigation:** Pin `TENGINE_VERSION` in `anvil.conf`. Subscribe to [Tengine GitHub advisories](https://github.com/alibaba/tengine/security/advisories). Maintain a tested nginx fallback compose file for emergency rollback.
+The decision is clear: Caddy owns the edge because of automatic HTTPS and HTTP/3 — capabilities Tengine lacks entirely. Tengine owns the internal layer because of health checks, DSO, and Lua — capabilities Caddy lacks or provides only via plugins.
 
-### 3.2 FrankenPHP Over PHP-FPM
+#### 3.1.1 Caddyfile for Tier 2 (Staging)
 
-This is a stated consequence of OD-07, not a choice:
+```caddyfile
+# anvil/config/Caddyfile.staging
+{
+    # Email for Let's Encrypt certificate issuance.
+    email ops@example.com
+
+    # Mercure hub configuration.
+    mercure {
+        publisher_jwt_key "${MERCURE_PUBLISHER_JWT_KEY}"
+        subscriber_jwt_key "${MERCURE_SUBSCRIBER_JWT_KEY}"
+        cors_origins "*"
+        publish_origins "*"
+        transport_url "bolt:///var/lib/mercure/mercure.db"
+    }
+}
+
+staging.example.com {
+    # Automatic HTTPS via Let's Encrypt — no certbot needed.
+    # HTTP/3 is enabled by default when Caddy can bind UDP :443.
+
+    # Static file cache.
+    root * /var/www/staging/public
+    file_server
+
+    # PHP requests → FrankenPHP.
+    php_server {
+        # When using a SEPARATE FrankenPHP instance (not embedded),
+        # we proxy instead of using Caddy's php_server directive.
+        # See the reverse_proxy block below.
+    }
+
+    # Actually, for Tier 2 with a separate FrankenPHP container,
+    # we use reverse_proxy, NOT Caddy's php_server.
+    # php_server is only for when Caddy directly embeds PHP.
+    # Tier 2 uses this:
+
+    reverse_proxy frankenphp:8080 {
+        # Stream uploads directly (no buffering at edge).
+        flush_interval -1
+
+        # Health check: if FrankenPHP is down, return 503.
+        health_uri /health
+        health_interval 10s
+        health_timeout 5s
+    }
+
+    # Mercure endpoint.
+    handle /.well-known/mercure {
+        mercure
+    }
+
+    # Logging.
+    log {
+        output file /var/log/caddy/access.log
+        format console
+    }
+}
+```
+
+#### 3.1.2 Caddyfile for Tier 3 (Production)
+
+```caddyfile
+# anvil/config/Caddyfile.production
+{
+    email ops@example.com
+
+    # Production Mercure — larger transport, JWT-only auth.
+    mercure {
+        publisher_jwt_key "${MERCURE_PUBLISHER_JWT_KEY}"
+        subscriber_jwt_key "${MERCURE_SUBSCRIBER_JWT_KEY}"
+        cors_origins "https://app.example.com"
+        publish_origins "https://app.example.com"
+        transport_url "redis://${REDIS_HOST}:6379"
+        transport_options {
+            topic_groups "tenant:{topic_group}"
+        }
+    }
+}
+
+app.example.com, www.app.example.com {
+    root * /var/www/app/public
+    file_server
+
+    # Edge → Tengine (internal LB) → FrankenPHP
+    # In Tier 3, Caddy proxies to Tengine, not directly to FrankenPHP.
+    reverse_proxy tengine:80 {
+        flush_interval -1
+        health_uri /health-tengine
+        health_interval 5s
+        health_timeout 3s
+    }
+
+    # Rate limiting (basic, via Caddy's built-in or a plugin).
+    # For advanced rate limiting, use Tengine's Lua instead.
+    rate_limit {
+        zone dynamic {
+            key {remote_host}
+            events 100
+            window 1m
+        }
+    }
+
+    handle /.well-known/mercure {
+        mercure
+    }
+
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+```
+
+#### 3.1.3 Tier 1 (Laptop) — FrankenPHP's Internal Caddy
+
+On laptops, there is no standalone Caddy. FrankenPHP's embedded Caddy handles TLS and serves the `*.test` wildcard domains directly. This is configured via a Caddyfile that FrankenPHP reads:
+
+```caddyfile
+# anvil/config/Caddyfile.laptop
+# FrankenPHP reads this file in worker mode.
+# mkcert root CA is in the system trust store, so
+# Caddy trusts it for the *.test TLD.
+
+{
+    # Disable automatic HTTPS for .test TLD (use mkcert instead).
+    auto_https off
+}
+
+:443 {
+    tls /etc/certs/local/rootCA.pem /etc/certs/local/rootCA-key.pem
+
+    # FrankenPHP's Caddy routes PHP to its own workers.
+    php_server {
+        root /app/public
+    }
+
+    # Mercure for local dev (opt-in).
+    handle /.well-known/mercure {
+        mercure {
+            # Insecure for local dev — no JWT keys.
+            anonymous
+            allow_anonymous
+            cors_origins "*"
+        }
+    }
+}
+```
+
+Each project gets its own FrankenPHP instance (or the same instance with Server-SNI routing). For simplicity in v1 of the reimplementation, each `anvilctl new <project>` creates a separate Caddyfile snippet and FrankenPHP starts with `import /path/to/snippets/*` to load all project configs.
+
+### 3.2 Tengine — The Internal Load Balancer
+
+Tengine exists **only in Tier 3** (production with multiple FrankenPHP instances). It is never needed on a laptop (single instance) or staging VM (single instance). Its role is the "internal kernel" — health-checking FrankenPHP workers, load-balancing across them, and providing DSO-loaded observability.
+
+**Why Tengine (not Caddy, not HAProxy, not nginx) for the internal LB:**
+
+| Need | Tengine | Caddy | HAProxy | nginx |
+|---|---|---|---|---|
+| Built-in health checks | **Yes** | Plugin | Yes | 3rd-party |
+| DSO (hot-load modules) | **Yes** | No | No | No |
+| Embedded Lua | **Yes** | No | No | OpenResty |
+| nginx config compat | **100%** | N/A | N/A | N/A |
+| Dynamic upstream | **Yes** | Plugin | Yes | No |
+
+DSO is the deciding factor. In the OS metaphor, DSO modules are loadable kernel modules. Tengine can load a Prometheus metrics exporter or a security WAF module at runtime without a restart — this is architecturally meaningful for DGLab.
+
+#### 3.2.1 Tengine Config for Tier 3
+
+```nginx
+# /etc/tengine/tengine.conf — Tier 3 production internal LB.
+worker_processes auto;
+error_log /var/log/tengine/error.log warn;
+pid /var/run/tengine.pid;
+
+events {
+    worker_connections 2048;
+    # Tengine: use epoll (Linux) or kqueue (BSD).
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    keepalive_timeout 65;
+
+    # Upstream: FrankenPHP workers with built-in health checks.
+    upstream frankenphp_pool {
+        # FrankenPHP instances — add/remove without Tengine restart
+        # via Tengine's dynamic upstream API (Phase 2 future).
+        server 127.0.0.1:8081;
+        server 127.0.0.1:8082;
+        server 127.0.0.1:8083;
+
+        # Built-in health check (ngx_upstream_check_module).
+        # Tengine removes unhealthy instances from the pool automatically.
+        check interval=3000 rise=2 fall=3 timeout=1000 type=http;
+        check_http_send "GET /health HTTP/1.0\r\n\r\n";
+        check_http_expect_alive http_2xx http_3xx;
+    }
+
+    # DSO: load Prometheus metrics module at runtime (no restart).
+    # dso {
+    #     load /usr/lib/tengine/modules/ngx_http_prometheus_module.so;
+    # }
+
+    server {
+        listen 80;
+        server_name _;
+
+        # Health endpoint for Caddy to probe.
+        location = /health-tengine {
+            return 200 "ok";
+            add_header Content-Type text/plain;
+        }
+
+        # Proxy all requests to the FrankenPHP pool.
+        location / {
+            proxy_pass http://frankenphp_pool;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Stream uploads directly (no buffering at LB layer).
+            proxy_request_buffering off;
+            proxy_buffering off;
+
+            # Timeouts tuned for long-running Pulse execution.
+            # The cooperative scheduler's 50ms quantum means a Pulse
+            # that doesn't yield blocks its worker for up to 50ms.
+            # The proxy timeout must exceed the worst-case wall time.
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+        }
+
+        # DSO Prometheus metrics — loopback only.
+        # location = /metrics {
+        #     prometheus;
+        #     allow 127.0.0.1;
+        #     deny all;
+        # }
+    }
+}
+```
+
+#### 3.2.2 Lua Routing Examples (Tier 3 Future)
+
+Tengine's embedded Lua enables complex internal routing without touching PHP:
+
+```nginx
+# Example: Route /api/v1/ and /api/v2/ to different FrankenPHP pools
+# (canary deployment of a new API version).
+location /api/v2/ {
+    access_by_lua_block {
+        -- 10% traffic to canary pool, 90% to stable.
+        if math.random() < 0.10 then
+            ngx.var.upstream = "frankenphp_canary"
+        else
+            ngx.var.upstream = "frankenphp_pool"
+        end
+    }
+    proxy_pass http://$upstream;
+}
+```
+
+### 3.3 FrankenPHP — The Application Server
+
+FrankenPHP is the PHP execution layer in all three tiers. It is the only component that runs PHP code.
+
+**Why FrankenPHP (not PHP-FPM, not Swoole, not RoadRunner):**
+
+This is a stated consequence of OD-07, not a choice. The Fiber-based cooperative scheduler requires a long-lived worker process. PHP-FPM terminates after every request. Swoole is incompatible with FrankenPHP (it replaces the runtime). RoadRunner is theoretically compatible but untested.
 
 | | PHP-FPM (current) | FrankenPHP Worker Mode |
 |---|---|---|
@@ -110,133 +431,157 @@ This is a stated consequence of OD-07, not a choice:
 | Fiber support | N/A (process dies) | Full — Fibers live across worker lifetime |
 | `pulse()` scope (CORE-02) | N/A | Required — WeakMap-keyed per-Fiber cache |
 | OpCache | Cold on new process spawn | Always warm (worker preloads once) |
-| Protocol | FastCGI (`fastcgi_pass`) | HTTP (`proxy_pass`) |
-| Performance | Process spawn + teardown per request | No spawn overhead; request = function call |
+| Protocol | FastCGI | HTTP (proxy_pass, not fastcgi_pass) |
+| Embedded Caddy | No | Yes (internal HTTP server) |
+| Mercure | No | Yes (built-in, opt-in) |
+| HTTP/3 | No | Yes (via embedded Caddy) |
+| Worker restart | N/A (process IS the request) | `--max-requests N` (configurable) |
+
+#### 3.3.1 FrankenPHP Worker Configuration
+
+```bash
+# In anvil.conf:
+
+# FrankenPHP version pin.
+: "${FRANKENPHP_VERSION:=latest}"
+
+# Worker count: one per vCPU for cooperative scheduling.
+: "${FRANKENPHP_WORKERS:=2}"
+
+# FrankenPHP internal HTTP port (where Tengine/Caddy connects).
+: "${FRANKENPHP_LISTEN_PORT:=8080}"
+
+# Max requests before worker restart (memory leak defense).
+# 0 = unlimited (dev). Production: 10000.
+: "${FRANKENPHP_MAX_REQUESTS:=0}"
+```
+
+**Worker count by tier:**
+
+| Tier | Typical vCPU | Workers | Rationale |
+|---|---|---|---|
+| Laptop | 4–8 | 2 | Leave headroom for IDE, browser, Docker |
+| Staging VM | 2–4 | 2–4 | Match vCPU; test prod-like concurrency |
+| Production | 2–8+ | Match vCPU per instance | Cooperative scheduling within; scale instances for throughput |
+
+**Worker restart policy:**
+
+```bash
+# Dev: no restart (faster iteration).
+FRANKENPHP_MAX_REQUESTS=0
+
+# Staging: restart after 1000 (catches leaks early).
+FRANKENPHP_MAX_REQUESTS=1000
+
+# Production: restart after 10000.
+FRANKENPHP_MAX_REQUESTS=10000
+```
+
+Combined with CORE-02's `pulse()` scope using `WeakMap` (auto-evicts on Fiber GC), this provides defense-in-depth against memory leaks in long-lived workers.
+
+#### 3.3.2 OpCache Configuration
+
+```ini
+; anvil/docker/php/php.ini
+[opcache]
+opcache.enable=1
+opcache.memory_consumption=256
+opcache.max_accelerated_files=20000
+
+; Dev: check for file changes. Prod: 0 (immutable deploy).
+opcache.validate_timestamps=1
+opcache.revalidate_freq=0
+opcache.fast_shutdown=1
+
+; PHP 8.3+ JIT — worker mode benefits significantly because
+; the worker process is long-lived and JIT compilation amortizes.
+opcache.jit=tracing
+opcache.jit_buffer_size=64M
+```
+
+#### 3.3.3 Fiber Runtime Boot Integration
+
+When DGLab's Kernel boots inside a FrankenPHP worker:
+
+1. Detect FrankenPHP worker context (`\Fiber::getCurrent()` or `APP_ENV`).
+2. Initialize the `KernelScheduler` with the worker's event loop.
+3. Each incoming HTTP request becomes one Fiber → one `PulseDescriptor`.
+4. The `pulse()` scope in CORE-02's Container uses `WeakMap<Fiber, array>` — works automatically because each request runs inside a Fiber in FrankenPHP worker mode.
 
 ---
 
-## 4. Workstream W1: Serving Layer (Tengine + FrankenPHP)
+## 4. Workstream W1: Three-Layer Serving Stack
 
-### 4.1 Target Architecture (Tiers 1 and 2)
+### 4.1 File Changes
 
-```
-                         ┌──────────────────────────────┐
-   Internet/Local  ───────▶│  Tengine 3.x (TLS + Proxy)   │
-      :443 / :80            │  - TLS termination           │
-                            │  - HTTP/2 (+ HTTP/3 future)   │
-                            │  - Vhost multiplexing        │
-                            │  - Static file serving       │
-                            │  - DSO module loading        │
-                            │  - Upstream health checks    │
-                            └──────────┬───────────────────┘
-                                       │ proxy_pass http://frankenphp:80
-                                       ▼
-                            ┌──────────────────────────────┐
-                            │  FrankenPHP (Worker Mode)     │
-                            │  - Long-lived PHP workers     │
-                            │  - Fiber scheduler (OD-07)    │
-                            │  - Mercure (built-in, opt-in) │
-                            │  - HTTP on :80                │
-                            └──────────┬───────────────────┘
-                                       │
-                         ┌─────────────┼────────────────┐
-                         ▼             ▼                ▼
-                    ┌────────┐  ┌────────┐      ┌───────────┐
-                    │ MySQL  │  │ Redis  │      │ RDS (EC2) │
-                    │(local) │  │        │      │           │
-                    └────────┘  └────────┘      └───────────┘
-```
+#### 4.1.1 `anvil/config/anvil.conf`
 
-### 4.2 File Changes
-
-#### 4.2.1 `anvil/config/anvil.conf`
-
-Add after the existing EC2 block:
+Add the three-component configuration block:
 
 ```bash
-# ── Tengine ──────────────────────────────────────────────
-# Version pin — change this to upgrade. Check https://github.com/alibaba/tengine/releases
+# ── Caddy (Edge) ─────────────────────────────────────
+: "${CADDY_VERSION:=2.8.4}"
+
+# Caddy listens on these ports (host-level).
+: "${CADDY_HTTP_PORT:=80}"
+: "${CADDY_HTTPS_PORT:=443}"
+
+# Mercure configuration.
+: "${MERCURE_ENABLED:=false}"
+: "${MERCURE_PUBLISHER_JWT_KEY:=}"
+: "${MERCURE_SUBSCRIBER_JWT_KEY:=}"
+
+# ── Tengine (Internal LB) ──────────────────────────
 : "${TENGINE_VERSION:=3.2.0}"
+: "${TENGINE_ENABLED:=false}"  # true only in Tier 3
 
-# ── FrankenPHP ───────────────────────────────────────────
+# ── FrankenPHP (App Server) ─────────────────────────
 : "${FRANKENPHP_VERSION:=latest}"
-
-# Worker count: one per vCPU is the baseline for cooperative scheduling.
-# The KernelScheduler's 50ms quantum ensures fairness within a worker.
-# Laptop: 2-4 workers. Staging VM: match vCPU. Production: match vCPU.
 : "${FRANKENPHP_WORKERS:=2}"
-
-# FrankenPHP internal HTTP port (inside the container or on the host).
-: "${FRANKENPHP_LISTEN_PORT:=80}"
-
-# Max requests before a worker restarts (memory leak defense).
-# 0 = unlimited (for dev). Production: 10000.
+: "${FRANKENPHP_LISTEN_PORT:=8080}"
 : "${FRANKENPHP_MAX_REQUESTS:=0}"
 
-# ── Tier detection ───────────────────────────────────────
-# ANVIL_TIER is set by the installer or systemd environment file.
+# ── Tier detection ───────────────────────────────────
+# ANVIL_TIER is set by the installer or systemd env file.
 # Values: laptop | staging | production
 : "${ANVIL_TIER:=laptop}"
-```
 
-Rename the nginx-related path variables to be proxy-agnostic. Keep the old names as deprecated aliases for backward compatibility:
-
-```bash
-# ── Proxy config directories ─────────────────────────────
-# The directory on disk is still called nginx/ for git history.
-# The variable names are proxy-agnostic for forward compatibility.
+# ── Proxy config directories ─────────────────────────
+# The directory on disk keeps the name 'nginx' for git history.
 : "${PROXY_CONFD_DIR:=${ANVIL_ROOT}/docker/nginx/conf.d}"
 : "${PROXY_CERTS_DIR:=${ANVIL_ROOT}/docker/nginx/certs}"
 : "${PROXY_TEMPLATES_DIR:=${ANVIL_ROOT}/docker/nginx/templates}"
 
-# Deprecated aliases (kept for scripts that still reference NGINX_*).
+# Deprecated aliases (backward compatibility for existing scripts).
 NGINX_CONFD_DIR="${PROXY_CONFD_DIR}"
 CERTS_DIR="${PROXY_CERTS_DIR}"
 NGINX_TEMPLATES_DIR="${PROXY_TEMPLATES_DIR}"
 ```
 
-#### 4.2.2 `anvil/docker/docker-compose.local.yml`
+#### 4.1.2 `anvil/docker/docker-compose.local.yml`
 
-Replace the `nginx` and `php` services:
+**Tier 1: Laptop.** No standalone Caddy, no Tengine. FrankenPHP handles everything.
 
 ```yaml
 services:
-  # ── Tengine: TLS termination + HTTP reverse proxy ──────
-  tengine:
-    build:
-      context: ./tengine
-      dockerfile: Dockerfile
-      args:
-        TENGINE_VERSION: "${TENGINE_VERSION:-3.2.0}"
-    container_name: anvil_tengine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/tengine/conf.d:ro
-      # W3 FIX: use relative path instead of absolute host path.
-      # The cert volume is bind-mounted at the SAME path inside the
-      # container so the rendered ${SSL_CERT}/${SSL_KEY} paths resolve.
-      - ./nginx/certs:/etc/tengine/certs:ro
-      - ./nginx/templates:/etc/tengine/templates:ro
-      - ./www:/var/www:rw
-    depends_on:
-      frankenphp:
-        condition: service_started
-    networks:
-      - anvil_net
-    restart: unless-stopped
-
-  # ── FrankenPHP: PHP application server (worker mode) ────
+  # ── FrankenPHP: edge + app (laptop dev) ─────────────
   frankenphp:
     image: dunglas/frankenphp:${FRANKENPHP_VERSION:-latest}
     container_name: anvil_frankenphp
     command: >-
       frankenphp run
+      --config /etc/caddy/Caddyfile
       --workers=${FRANKENPHP_WORKERS:-2}
-      --listen=${FRANKENPHP_LISTEN_PORT:-80}
+      --listen=${FRANKENPHP_LISTEN_PORT:-8080}
+    ports:
+      - "80:80"
+      - "443:443"
+      # UDP :443 for HTTP/3 (QUIC).
+      - "443:443/udp"
     volumes:
       - ./www:/app/public
+      - ./config/Caddyfile.laptop:/etc/caddy/Caddyfile:ro
+      - ./nginx/certs:/etc/certs/local:ro
       - ./php/php.ini:/usr/local/etc/php/conf.d/anvil.ini:ro
     environment:
       APP_ENV: development
@@ -245,28 +590,100 @@ services:
       - anvil_net
     restart: unless-stopped
 
-  # mysql, phpmyadmin, redis — UNCHANGED from current compose
-  # (service names, container names, and configuration stay the same)
+  # mysql, phpmyadmin, redis — UNCHANGED
 ```
 
-**Key differences from current:**
-- `nginx` service → `tengine` service. Container `anvil_tengine`.
-- `php` service → `frankenphp` service. Container `anvil_frankenphp`.
-- `fastcgi_pass php:9000` → `proxy_pass http://frankenphp:80` (in vhost template).
-- **W3 FIX:** Cert volume no longer uses an absolute host path (`/home/dgi/...`). Instead it mounts `./nginx/certs` at `/etc/tengine/certs` inside the container. The vhost template must render cert paths as `/etc/tengine/certs/<project>/*.pem` instead of the host-specific path.
+**What changed:** The `nginx` and `php` services are replaced by a single `frankenphp` service that handles TLS, vhosts, and PHP execution. FrankenPHP's embedded Caddy reads `Caddyfile.laptop` which configures the `*.test` wildcard with mkcert certificates.
 
-#### 4.2.3 `anvil/docker/docker-compose.ec2.yml`
+**Vhost generation change:** `lib/vhost.sh` no longer renders nginx vhost configs and reloads nginx. Instead, it renders Caddyfile snippets (one per project) into a directory that FrankenPHP's Caddyfile imports. FrankenPHP supports on-the-fly config reload via SIGUSR1 (zero-downtime, no dropped connections).
 
-Same structural changes as local, plus the SSM entrypoint:
+#### 4.1.3 `anvil/docker/docker-compose.staging.yml` (NEW)
+
+**Tier 2: Staging VM.** Caddy (edge) + FrankenPHP (app). No Tengine.
 
 ```yaml
+services:
+  # ── Caddy: edge proxy ───────────────────────────────
+  caddy:
+    image: caddy:${CADDY_VERSION:-2.8.4}
+    container_name: anvil_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./config/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - ./www:/var/www:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frankenphp:
+        condition: service_started
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # ── FrankenPHP: app server ──────────────────────────
   frankenphp:
     image: dunglas/frankenphp:${FRANKENPHP_VERSION:-latest}
     container_name: anvil_frankenphp
     command: >-
       frankenphp run
       --workers=${FRANKENPHP_WORKERS:-2}
-      --listen=80
+      --listen=${FRANKENPHP_LISTEN_PORT:-8080}
+    volumes:
+      - ./www:/app/public
+      - ./php/php.ini:/usr/local/etc/php/conf.d/anvil.ini:ro
+    environment:
+      APP_ENV: staging
+      FRANKENPHP_MAX_REQUESTS: "${FRANKENPHP_MAX_REQUESTS:-1000}"
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  # redis — same as local
+  # phpmyadmin — same as local, bound to 127.0.0.1:8080
+  # NO mysql service — staging uses RDS
+
+volumes:
+  caddy_data:
+  caddy_config:
+```
+
+**Key difference from Tier 1:** Caddy is a separate container that handles TLS and proxies to FrankenPHP. Caddy's automatic HTTPS issues Let's Encrypt certificates — no certbot needed. Caddy's data volume persists certificates and the Mercure transport database across container restarts.
+
+#### 4.1.4 `anvil/docker/docker-compose.ec2.yml`
+
+**Updated to match the three-layer model.** For EC2 with a single instance, this is effectively Tier 2 (Caddy + FrankenPHP). If the EC2 instance runs multiple FrankenPHP containers (unlikely on a t3.micro, possible on t3.medium+), add Tengine.
+
+```yaml
+services:
+  caddy:
+    image: caddy:${CADDY_VERSION:-2.8.4}
+    container_name: anvil_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./config/Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - ./www:/var/www:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frankenphp:
+        condition: service_started
+    networks:
+      - anvil_net
+    restart: unless-stopped
+
+  frankenphp:
+    image: dunglas/frankenphp:${FRANKENPHP_VERSION:-latest}
+    container_name: anvil_frankenphp
+    command: >-
+      frankenphp run
+      --workers=${FRANKENPHP_WORKERS:-2}
+      --listen=${FRANKENPHP_LISTEN_PORT:-8080}
     entrypoint: ["/usr/local/bin/entrypoint-ssm.sh"]
     environment:
       ANVIL_SSM_HOST: "/anvil/rds/host"
@@ -289,16 +706,19 @@ Same structural changes as local, plus the SSM entrypoint:
     networks:
       - anvil_net
     restart: unless-stopped
+
+  # phpmyadmin, redis — same as current ec2 compose
+
+volumes:
+  caddy_data:
+  caddy_config:
 ```
 
-FrankenPHP respects `ENTRYPOINT` + `CMD` separation — the entrypoint resolves RDS credentials via SSM, then `exec "$@"` hands off to the `frankenphp run` command.
-
-#### 4.2.4 `anvil/docker/tengine/Dockerfile` (NEW)
+#### 4.1.5 `anvil/docker/tengine/Dockerfile` (NEW — Tier 3 only)
 
 ```dockerfile
-# Anvil — Tengine 3.x image.
-# DSO support enabled for hot-loadable modules.
-# Multi-stage: build from source, ship minimal runtime.
+# Tengine 3.x — internal load balancer (Tier 3 production only).
+# Not used in Tier 1 (laptop) or Tier 2 (staging).
 
 ARG TENGINE_VERSION=3.2.0
 
@@ -347,178 +767,87 @@ COPY --from=builder /etc/tengine /etc/tengine
 COPY --from=builder /usr/sbin/tengine /usr/sbin/tengine
 COPY --from=builder /usr/lib/tengine/modules /usr/lib/tengine/modules
 
-RUN mkdir -p /etc/tengine/conf.d \
-    /var/log/tengine /var/www /var/run
+RUN mkdir -p /etc/tengine/conf.d /var/log/tengine /var/www /var/run
 
-EXPOSE 80 443
+EXPOSE 80
 CMD ["tengine", "-g", "daemon off;"]
 ```
 
-**Build notes:**
-- `--with-dso`: Dynamic module loading (Tengine's key differentiator).
-- `--with-http_upstream_check_module`: Built-in health checks for FrankenPHP workers.
-- `--with-http_lua_module`: Embedded Lua for routing, auth, rate-limiting.
-- Image is ~40MB (Alpine + compiled Tengine), comparable to `nginx:1.27-alpine` (~30MB).
+#### 4.1.6 `anvil/lib/vhost.sh` — Major Rework
 
-#### 4.2.5 `anvil/docker/nginx/templates/vhost.conf.tpl`
+The vhost generation logic changes fundamentally. Instead of rendering nginx configs and reloading nginx, it now renders **Caddyfile snippets** and signals FrankenPHP (or manages Caddy's config in Tier 2/3).
 
-The template requires one change: the PHP location block switches from FastCGI to HTTP proxy. Everything else (TLS, HTTP/2, static files, redirect) stays the same.
+**Tier 1 (Laptop) — Caddyfile snippets imported by FrankenPHP:**
 
-**Replace the `location ~ \.php$` block:**
+```bash
+anvil_vhost_generate() {
+    local project="$1"
+    local domain="${project}.${DOMAIN_TLD}"
+    local conf_dir="${PROXY_CONFD_DIR}"
+    local certs_dir="${PROXY_CERTS_DIR}/${project}"
 
-```nginx
-# FrankenPHP worker mode (HTTP reverse proxy).
-location ~ \.php$ {
-    proxy_pass http://frankenphp:80;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+    # Generate Caddyfile snippet for this project.
+    cat > "${conf_dir}/${project}.caddy" <<SNIPPET
+${domain} {
+    tls ${certs_dir}/${project}.pem ${certs_dir}/${project}-key.pem
+    root * /app/public/${project}
+    php_server
+    file_server
+}
+SNIPPET
 
-    # Stream large uploads directly to FrankenPHP.
-    # In the Fiber runtime, a Pulse may accept a large body and
-    # process it incrementally via async I/O. Buffering the entire
-    # body at the proxy layer defeats this.
-    proxy_request_buffering off;
-    proxy_buffering off;
-
-    # Timeouts tuned for long-running Pulse execution.
-    # The cooperative scheduler's 50ms quantum means a Pulse that
-    # doesn't yield blocks its worker for up to 50ms. The proxy
-    # timeout must exceed the worst-case Pulse wall-clock time.
-    proxy_connect_timeout 5s;
-    proxy_read_timeout 300s;
-    proxy_send_timeout 300s;
+    # Signal FrankenPHP to reload its Caddy config.
+    # SIGUSR1 triggers a graceful config reload (zero-downtime).
+    local container
+    container=$(docker compose -f "$ANVIL_COMPOSE_FILE" ps -q frankenphp 2>/dev/null)
+    if [ -n "$container" ]; then
+        docker kill -s USR1 "$container"
+    fi
 }
 ```
 
-**Why 300s timeouts:** Some Pulses (batch processing, report generation) may legitimately run for tens of seconds. 300s (5 minutes) is generous; tune down in production via `anvil.conf` (add `PROXY_READ_TIMEOUT` / `PROXY_SEND_TIMEOUT` variables and reference them in the template).
+**Tier 2/3 (Staging/Production) — Caddy manages vhosts via its own config:**
 
-#### 4.2.6 `anvil/lib/vhost.sh`
+For Tier 2/3, vhosts are managed in the Caddyfile (not per-project snippets). The `anvilctl` vhost commands are not used in these tiers — domains are configured in the Caddyfile before deployment.
 
-Two changes:
+#### 4.1.7 `anvil/lib/docker.sh`
 
-1. Replace the reload target from `nginx` to `tengine`:
+Update the `anvil_docker_up()` function to select the correct compose file based on `ANVIL_TIER`:
+
 ```bash
-# Before:
-docker compose -f "$ANVIL_COMPOSE_FILE" exec -T nginx nginx -s reload
-# After:
-docker compose -f "$ANVIL_COMPOSE_FILE" exec -T tengine tengine -s reload
+anvil_docker_up() {
+    case "$ANVIL_TIER" in
+        laptop)
+            COMPOSE_FILE="$ANVIL_COMPOSE_FILE" ;;  # docker-compose.local.yml
+        staging)
+            COMPOSE_FILE="${ANVIL_ROOT}/docker/docker-compose.staging.yml" ;;
+        production)
+            COMPOSE_FILE="${ANVIL_ROOT}/docker/docker-compose.ec2.yml" ;;
+    esac
+    docker compose -f "$COMPOSE_FILE" up -d
+}
 ```
 
-2. Replace the health-check target:
-```bash
-# Before:
-docker compose -f "$ANVIL_COMPOSE_FILE" ps -q nginx
-# After:
-docker compose -f "$ANVIL_COMPOSE_FILE" ps -q tengine
-```
+#### 4.1.8 `anvil/provisioning/certbot-setup.sh`
 
-3. Update the error message: `"tengine container not running"`.
+**Largely obsolete.** Caddy handles Let's Encrypt automatically. This file is archived as `certbot-setup.sh.legacy` for reference. The EC2 provisioning flow no longer needs a separate certbot step — Caddy issues certificates on first request.
 
-4. Update the cert path rendering to use `/etc/tengine/certs/` (matching the new volume mount in the compose file).
+If there is a specific need for DNS-01 challenge certificates (wildcard certs), Caddy supports this via the `dns` directive in the Caddyfile with a plugin like `caddy-dns-route53`.
 
-**Future optimization (Phase 3):** With Tengine's dynamic server/location API, the `tengine -s reload` can be eliminated entirely for vhost-only changes. For now, the reload approach is preserved for safety.
+#### 4.1.9 `anvil/docker/php/entrypoint-ssm.sh`
 
-#### 4.2.7 `anvil/lib/docker.sh`
-
-- Update any comment referencing `nginx` as a log-following example.
-- No functional changes needed (it delegates to the compose file abstraction).
-
-#### 4.2.8 `anvil/lib/ec2.sh`
-
-- Update comments mentioning "php container" → "FrankenPHP worker" (lines 338, 581).
-- **W3 FIX (line 693):** Replace hardcoded `"ec2-user@${ec2_host}"` with `"${ANVIL_EC2_SSH_USER}@${ec2_host}"`.
-
-#### 4.2.9 `anvil/provisioning/certbot-setup.sh`
-
-Four changes:
-
-1. Inline vhost template (line 143): `fastcgi_pass php:9000` → `proxy_pass http://frankenphp:80` with the same proxy headers and timeouts as 4.2.5.
-2. Container name checks (lines 167–168): `anvil_nginx` → `anvil_tengine`, `nginx -s reload` → `tengine -s reload`.
-3. Inline template: replace `include fastcgi_params` / `fastcgi_param` directives with `proxy_set_header` directives.
-4. Update error messages referencing `anvil_nginx`.
-
-#### 4.2.10 `anvil/docker/php/entrypoint-ssm.sh`
-
-**W1 change:** Replace `exec php-fpm` (line 65) with `exec "$@"`. The entrypoint becomes runtime-agnostic:
+Replace `exec php-fpm` with `exec "$@"` (runtime-agnostic handoff):
 
 ```bash
-# Before:
-exec php-fpm
+# Line 65 — Before:
+# exec php-fpm
 # After:
 exec "$@"
 ```
 
-This way the same entrypoint works whether the CMD is `php-fpm` (old), `frankenphp run ...` (new), or any future runtime. The `exec` ensures PID 1 handoff and signal forwarding.
+#### 4.1.10 `anvil/docker/php/Dockerfile`
 
-#### 4.2.11 `anvil/docker/php/Dockerfile`
-
-**Archived but retained.** This file is no longer the PHP execution runtime (FrankenPHP replaces it). Keep it in the repo for reference and as a base for custom extension builds. Rename to `Dockerfile.fpm-legacy` to signal its status.
-
-The official `dunglas/frankenphp` image already includes: `pdo_mysql`, `mysqli`, `gd`, `intl`, `zip`, `opcache`, `redis`, `openssl`. If DGLab needs additional extensions (`protobuf`, `grpc`), build a custom FrankenPHP image that extends the official one — but this is not needed for the initial reimplementation.
-
-#### 4.2.12 `anvil/docker/php/php.ini` (retained, minor update)
-
-```ini
-[opcache]
-opcache.enable=1
-opcache.memory_consumption=256
-opcache.max_accelerated_files=20000
-
-; Dev: check for file changes on every request.
-; Prod: set to 0 and redeploy the FrankenPHP container on code change.
-opcache.validate_timestamps=1
-opcache.revalidate_freq=0
-opcache.fast_shutdown=1
-
-; PHP 8.3+ JIT — worker mode benefits significantly because
-; the worker process is long-lived and JIT compilation amortizes.
-opcache.jit=tracing
-opcache.jit_buffer_size=64M
-
-; Fiber stack size (bytes). Default 128K is fine for most Pulses.
-; Increase if deep call stacks within a Fiber cause stack overflows.
-; opcache.fiber_stack_size=262144
-```
-
-### 4.3 FrankenPHP Worker Configuration
-
-#### 4.3.1 Worker Count by Tier
-
-| Tier | Typical vCPU | FRANKENPHP_WORKERS | Rationale |
-|---|---|---|---|
-| Laptop (dev) | 4–8 | 2 | Leave headroom for IDE, browser, Docker overhead |
-| Staging VM | 2–4 | 2–4 | Match vCPU; test production-like concurrency |
-| Production / Edge | 2–8 | Match vCPU | One worker per vCPU; cooperative scheduling within |
-
-Rule: one worker per vCPU. Each worker runs one Pulse at a time (cooperative, not preemptive). The KernelScheduler's 50ms quantum ensures fairness within a worker.
-
-#### 4.3.2 Worker Restart Policy (Memory Leak Defense)
-
-Long-lived processes accumulate memory. FrankenPHP supports `--max-requests N` to restart a worker after N requests:
-
-```bash
-# Dev (laptop): no restart — faster iteration.
-FRANKENPHP_MAX_REQUESTS=0
-
-# Staging: restart after 1000 requests (catches leaks early).
-FRANKENPHP_MAX_REQUESTS=1000
-
-# Production: restart after 10000 requests.
-FRANKENPHP_MAX_REQUESTS=10000
-```
-
-Combined with the CORE-02 `pulse()` scope using `WeakMap` (auto-evicts on Fiber GC), this provides defense-in-depth against memory leaks.
-
-#### 4.3.3 Fiber Runtime Boot Integration
-
-When DGLab's Kernel boots inside a FrankenPHP worker:
-
-1. Detect FrankenPHP worker context (`\Fiber::getCurrent()` or `APP_ENV`).
-2. Initialize the `KernelScheduler` with the worker's event loop.
-3. Each incoming HTTP request becomes one Fiber → one `PulseDescriptor`.
-4. The `pulse()` scope in CORE-02's Container uses `WeakMap<Fiber, array>` — this works automatically because each request runs inside a Fiber in FrankenPHP worker mode.
+Renamed to `Dockerfile.fpm-legacy` (archived, no longer used). The official `dunglas/frankenphp` image includes all needed extensions.
 
 ---
 
@@ -526,20 +855,13 @@ When DGLab's Kernel boots inside a FrankenPHP worker:
 
 ### 5.1 Problem
 
-`install.sh` is entirely Debian/Ubuntu-specific: it uses `apt-get`, `dpkg --print-architecture`, Docker's Ubuntu apt repo URL, and `systemd-resolved` manipulation. It cannot run on:
-
-- **Fedora / RHEL** (dnf, different Docker repo, no systemd-resolved stub)
-- **Arch Linux** (pacman, AUR, different DNS resolver)
-- **Amazon Linux 2023** (dnf, already used on EC2 — cloud-init handles this separately)
+`install.sh` is entirely Debian/Ubuntu-specific (`apt-get`, `dpkg`, Docker's Ubuntu apt repo, `systemd-resolved`). It cannot run on Fedora, RHEL, Arch, or Amazon Linux.
 
 ### 5.2 Architecture: Distro Detection + Abstracted Package Functions
 
 ```bash
-# At the top of install.sh, after argument parsing:
-
 _anvil_detect_distro() {
     if [ -f /etc/os-release ]; then
-        # shellcheck disable=SC1091
         . /etc/os-release
         ANVIL_DISTRO_ID="${ID}"
         ANVIL_DISTRO_VERSION="${VERSION_ID}"
@@ -550,110 +872,80 @@ _anvil_detect_distro() {
     fi
 }
 
-# Abstracted package manager:
 _anvil_pkg_install() {
     case "$ANVIL_DISTRO_ID" in
         ubuntu|debian|pop-os|linuxmint)
-            sudo apt-get update -qq && sudo apt-get install -y "$@"
-            ;;
+            sudo apt-get update -qq && sudo apt-get install -y "$@" ;;
         fedora|rhel|centos|rocky|alma)
-            sudo dnf install -y "$@"
-            ;;
+            sudo dnf install -y "$@" ;;
         arch|manjaro|endeavouros)
-            sudo pacman -Syu --noconfirm "$@"
-            ;;
+            sudo pacman -Syu --noconfirm "$@" ;;
         amzn)
-            sudo dnf install -y "$@"
-            ;;
+            sudo dnf install -y "$@" ;;
         *)
-            echo "ERROR: Unsupported distro: $ANVIL_DISTRO_ID"
-            exit 1
-            ;;
+            echo "ERROR: Unsupported distro: $ANVIL_DISTRO_ID"; exit 1 ;;
     esac
 }
 
 _anvil_pkg_is_installed() {
     case "$ANVIL_DISTRO_ID" in
-        ubuntu|debian|pop-os|linuxmint)
-            dpkg -s "$1" &>/dev/null
-            ;;
-        fedora|rhel|centos|rocky|alma|amzn)
-            rpm -q "$1" &>/dev/null
-            ;;
-        arch|manjaro|endeavouros)
-            pacman -Q "$1" &>/dev/null
-            ;;
+        ubuntu|debian|pop-os|linuxmint) dpkg -s "$1" &>/dev/null ;;
+        fedora|rhel|centos|rocky|alma|amzn) rpm -q "$1" &>/dev/null ;;
+        arch|manjaro|endeavouros) pacman -Q "$1" &>/dev/null ;;
     esac
 }
 ```
 
-### 5.3 Distro-Specific Install Functions
-
-#### 5.3.1 Docker
+### 5.3 Distro-Specific Docker Install
 
 ```bash
 _anvil_install_docker() {
     case "$ANVIL_DISTRO_ID" in
         ubuntu|debian|pop-os|linuxmint)
-            # Existing logic: Docker's official apt repo
-            _anvil_install_docker_apt
+            # Docker official apt repo (existing logic).
+            sudo apt-get update -qq
+            sudo install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/${ID}/gpg | \
+                sudo gpg --dearmor -o /etc/apt/keyrings/docker.asc
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+https://download.docker.com/linux/${ID} $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+                sudo tee /etc/apt/sources.list.d/docker.list
+            sudo apt-get update -qq
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
             ;;
         fedora|rhel|centos|rocky|alma)
-            # Docker's official dnf repo
             sudo dnf install -y dnf-plugins-core
             sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
             sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-            sudo systemctl enable --now docker
-            sudo usermod -aG docker "$(whoami)"
             ;;
         arch|manjaro|endeavouros)
-            # Arch has docker in official repos
             sudo pacman -Syu --noconfirm docker docker-compose-plugin
-            sudo systemctl enable --now docker
-            sudo usermod -aG docker "$(whoami)"
             ;;
         amzn)
-            # Amazon Linux 2023: Docker is in their repos
             sudo dnf install -y docker
-            sudo systemctl enable --now docker
-            sudo usermod -aG docker ec2-user
             ;;
     esac
+    sudo systemctl enable --now docker
+    sudo usermod -aG docker "$(whoami)"
 }
 ```
 
-#### 5.3.2 DNS (dnsmasq)
+### 5.4 DNS Setup (dnsmasq — Tier 1 Only)
 
-DNS setup is the most distro-sensitive part. The core logic (write `address=/.test/127.0.0.1` to dnsmasq config, point `resolv.conf` at `127.0.0.1`) is the same, but the resolver conflict varies:
-
-| Distro | Default resolver | Conflict resolution |
-|---|---|---|
-| Ubuntu 22.04+ | systemd-resolved (stub on :53) | Disable stub listener, restart resolved |
-| Fedora | systemd-resolved (stub on :53) | Same as Ubuntu |
-| Arch | systemd-resolved (if enabled) | Same; or use NetworkManager's dnsmasq plugin |
-| Pop!_OS | systemd-resolved | Same as Ubuntu |
-
-The existing `install_dns()` logic (disable systemd-resolved stub, write dnsmasq config, point resolv.conf) works on all of these because they all use systemd-resolved. The key is to detect whether systemd-resolved is the active resolver:
+The DNS setup is distro-sensitive but the core logic is the same across all distros that use systemd-resolved (which is most of them):
 
 ```bash
 _anvil_install_dns() {
     _anvil_pkg_install dnsmasq
-
-    # Write the wildcard DNS config.
     echo "address=/.test/127.0.0.1" | sudo tee "$ANVIL_DNSMASQ_CONF"
     sudo systemctl enable --now dnsmasq
 
-    # Handle systemd-resolved stub listener conflict (port 53).
     if systemctl is-active --quiet systemd-resolved 2>/dev/null; then
-        # Disable the stub listener so dnsmasq can bind :53.
         sudo mkdir -p "$(dirname "$ANVIL_RESOLVED_CONF")"
         echo -e "[Resolve]\nDNSStubListener=no" | sudo tee "$ANVIL_RESOLVED_CONF"
         sudo systemctl restart systemd-resolved
     fi
 
-    # Point resolv.conf at localhost.
-    # On systemd-resolved systems, the stub-resolv.conf is regenerated
-    # after restart, so we link to the resolved version.
     if [ -f /run/systemd/resolve/resolv.conf ]; then
         sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     else
@@ -662,33 +954,15 @@ _anvil_install_dns() {
 }
 ```
 
-#### 5.3.3 Binary Downloads (mkcert, dart-sass, inotify-tools)
-
-These are already distro-agnostic (download from GitHub releases, extract to `/usr/local/bin`). The only distro-sensitive part is `inotify-tools`:
+### 5.5 Non-Interactive Flags
 
 ```bash
-# inotify-tools is in all major distro repos:
-case "$ANVIL_DISTRO_ID" in
-    ubuntu|debian|pop-os|linuxmint) _anvil_pkg_install inotify-tools ;;
-    fedora|rhel|centos|rocky|alma|amzn) _anvil_pkg_install inotify-tools ;;
-    arch|manjaro|endeavouros) _anvil_pkg_install inotify-tools ;;
-esac
-```
+# --yes: skip all prompts, install everything
+# --tier <laptop|staging|production>: set ANVIL_TIER
+# --skip-dns: skip dnsmasq (for staging/production)
+# --skip-mkcert: skip local CA (for staging/production)
 
-### 5.4 Non-Interactive Mode Enhancement
-
-The existing `--yes` flag already supports unattended installation. For CI/CD and automated staging VM provisioning, add:
-
-```bash
-# --tier <laptop|staging|production> sets ANVIL_TIER
-# --skip-dns skips dnsmasq setup (for staging/production where
-#   real DNS is used instead of *.test wildcard)
-# --skip-mkcert skips local CA install (for staging/production)
-```
-
-This way, staging VM bootstrap becomes:
-
-```bash
+# Example: staging VM bootstrap
 sudo ./install.sh --yes --tier staging --skip-dns --skip-mkcert
 ```
 
@@ -700,46 +974,26 @@ sudo ./install.sh --yes --tier staging --skip-dns --skip-mkcert
 
 **File:** `docker-compose.local.yml` line 36
 **Current:** `./nginx/certs:/home/dgi/www/DGLab/anvil/docker/nginx/certs:ro`
-**Problem:** Hardcoded to one developer's machine. Breaks on any other host.
-**Fix:** Mount at a container-internal path and update the vhost template to render cert paths accordingly:
+**Fix:** Mount at a container-internal path:
 
 ```yaml
-# docker-compose.local.yml
-volumes:
-  - ./nginx/certs:/etc/tengine/certs:ro
+# Before (machine-specific):
+- ./nginx/certs:/home/dgi/www/DGLab/anvil/docker/nginx/certs:ro
+# After (portable):
+- ./nginx/certs:/etc/certs/local:ro
 ```
 
-The vhost template's `SSL_CERT` and `SSL_KEY` variables (set by `lib/vhost.sh`) must resolve to `/etc/tengine/certs/<project>/demo.pem` instead of the host-specific path. Update `lib/vhost.sh`'s `anvil_vhost_generate()`:
+Update `lib/vhost.sh` to render cert paths as `/etc/certs/local/<project>/*.pem` (matching the container mount).
 
-```bash
-# Before (host-specific):
-export SSL_CERT="${CERTS_DIR}/${project}/${project}.pem"
-export SSL_KEY="${CERTS_DIR}/${project}/${project}-key.pem"
-
-# After (container-internal):
-export SSL_CERT="/etc/tengine/certs/${project}/${project}.pem"
-export SSL_KEY="/etc/tengine/certs/${project}/${project}-key.pem"
-```
-
-### W3-2: Hardcoded SSH User in EC2 Tunnel
+### W3-2: Hardcoded SSH User
 
 **File:** `lib/ec2.sh` line 693
-**Current:** `"ec2-user@${ec2_host}"`
-**Problem:** Doesn't use the configurable `$ANVIL_EC2_SSH_USER` from `anvil.conf`.
-**Fix:**
-
-```bash
-# Before:
-ssh -N -L 8080:127.0.0.1:8080 -L 9999:127.0.0.1:9999 -i "$key_path" "ec2-user@${ec2_host}"
-# After:
-ssh -N -L 8080:127.0.0.1:8080 -L 9999:127.0.0.1:9999 -i "$key_path" "${ANVIL_EC2_SSH_USER}@${ec2_host}"
-```
+**Fix:** Replace `"ec2-user@${ec2_host}"` with `"${ANVIL_EC2_SSH_USER}@${ec2_host}"`.
 
 ### W3-3: Placeholder Repo URL
 
-**File:** `anvil.conf` line 142, `provisioning/cloud-init.yaml`
-**Current:** `https://github.com/example/anvil.git`
-**Fix:** Replace with the real repository URL before any EC2 provisioning. This is a configuration change, not a code change — but it must be done before the first production deployment.
+**File:** `anvil.conf` line 142
+**Fix:** Replace `https://github.com/example/anvil.git` with the real repository URL before any EC2 deployment.
 
 ---
 
@@ -749,96 +1003,64 @@ ssh -N -L 8080:127.0.0.1:8080 -L 9999:127.0.0.1:9999 -i "$key_path" "${ANVIL_EC2
 
 Docker adds overhead: the container daemon, image layers, bridge networking, and volume management consume memory and CPU. On an edge node (e.g., a 2 vCPU / 4 GB RAM VM at a CDN PoP), this overhead is significant.
 
-Tier 3 installs Tengine and FrankenPHP as native systemd services — no Docker, no compose. The database and Redis are external (managed RDS, ElastiCache, or separate hosts).
+Tier 3 installs Caddy, Tengine, and FrankenPHP as native systemd services — no Docker, no compose. The database and Redis are external (managed RDS, ElastiCache, or separate hosts).
 
-### 7.2 Tier 3 Architecture
+### 7.2 Tier 3 Architecture (Full Three-Layer)
 
 ```
+Client
+  │
+  │  :443 (HTTPS + HTTP/3)
+  ▼
 ┌──────────────────────────────────────────────┐
-│  Tengine (native, systemd: tengine.service)   │
-│  /etc/tengine/tengine.conf                    │
-│  /etc/tengine/conf.d/*.conf                   │
-│  DSO: prometheus exporter, geoip, lua         │
-│  TLS: Let's Encrypt (/etc/letsencrypt/live/)  │
+│  Caddy (native, systemd: caddy.service)       │
+│  /etc/caddy/Caddyfile                         │
+│  Automatic HTTPS, HTTP/3, Mercure hub         │
+│  Static file cache, rate limiting             │
 └──────────────────┬───────────────────────────┘
-                   │ proxy_pass http://127.0.0.1:8080
+                   │ proxy_pass http://127.0.0.1:80
                    ▼
 ┌──────────────────────────────────────────────┐
-│  FrankenPHP (native, systemd: frankenphp.service) │
-│  /opt/anvil/app/ (document root)              │
-│  Workers: match vCPU                          │
-│  /opt/anvil/etc/php.ini                       │
+│  Tengine (native, systemd: tengine.service)    │
+│  /etc/tengine/tengine.conf                    │
+│  Upstream health checks, DSO, Lua             │
+│  Prometheus metrics (loopback :9113)          │
 └──────────────────┬───────────────────────────┘
-                   │
-         ┌─────────┼─────────┐
-         ▼         ▼         ▼
-      RDS/MySQL  Redis    External APIs
+                   │ proxy_pass http://frankenphp_pool
+           ┌───────┼───────┐
+           ▼       ▼       ▼
+     ┌──────────┐ ┌──────────┐
+     │FPHP #1   │ │FPHP #2   │  ... N instances
+     │:8081     │ │:8082     │
+     │systemd:   │ │systemd:   │
+     │frankenphp@1│ │frankenphp@2│
+     └──────────┘ └──────────┘
 ```
 
-### 7.3 Tier 3 Install Script: `anvil/install-edge.sh` (NEW)
+### 7.3 Tier 3 Systemd Units
 
-This is a separate installer for Tier 3. It does not install Docker, dnsmasq, mkcert, or inotify-tools — those are Tier 1 only.
-
-```bash
-#!/usr/bin/env bash
-# install-edge.sh — Tier 3 (production/edge) native installer.
-# Usage: sudo ./install-edge.sh [--tier production]
-set -euo pipefail
-
-ANVIL_TIER="${1:---tier=production}"
-# ... distro detection (reuse W2 functions) ...
-
-# 1. Install Tengine from source (same Dockerfile logic, but directly on host).
-_anvil_install_tengine_native() {
-    _anvil_pkg_install build-base gcc libc-dev linux-headers make \
-        openssl-dev pcre-dev zlib-dev gd-dev geoip-dev \
-        libxml2-dev lua-dev git
-    
-    local build_dir; build_dir="$(mktemp -d)"
-    cd "$build_dir"
-    git clone --depth 1 --branch "${TENGINE_VERSION:-3.2.0}" \
-        https://github.com/alibaba/tengine.git
-    cd tengine
-    # Same ./configure flags as the Dockerfile.
-    ./configure --prefix=/etc/tengine \
-        --sbin-path=/usr/sbin/tengine \
-        --modules-path=/usr/lib/tengine/modules \
-        --conf-path=/etc/tengine/tengine.conf \
-        --with-http_ssl_module --with-http_v2_module \
-        --with-http_upstream_check_module --with-dso \
-        --with-http_lua_module \
-        # ... (same flags as Dockerfile) ...
-    make -j"$(nproc)" && sudo make install
-    cd -
-    rm -rf "$build_dir"
-}
-
-# 2. Install FrankenPHP binary.
-_anvil_install_frankenphp() {
-    # Download the static FrankenPHP binary from GitHub releases.
-    local arch="$(uname -m)"
-    case "$arch" in
-        x86_64) arch="amd64" ;;
-        aarch64) arch="arm64" ;;
-    esac
-    curl -sL "https://github.com/dunglas/frankenphp/releases/latest/download/"\
-"frankenphp-linux-${arch}.tar.gz" \
-        | sudo tar xz -C /usr/local/bin frankenphp
-}
-
-# 3. Install certbot for Let's Encrypt.
-_anvil_install_certbot() {
-    _anvil_pkg_install certbot python3-certbot-nginx 2>/dev/null || \
-        sudo snap install --classic certbot 2>/dev/null || \
-        pip3 install certbot certbot-nginx 2>/dev/null
-}
-
-# 4. Create systemd units.
-_anvil_create_systemd_units() {
-    # tengine.service
-    sudo tee /etc/systemd/system/tengine.service <<'UNIT'
+```ini
+# /etc/systemd/system/caddy.service
 [Unit]
-Description=Tengine HTTP Server
+Description=Caddy Edge Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```ini
+# /etc/systemd/system/tengine.service
+[Unit]
+Description=Tengine Internal Load Balancer
 After=network.target
 
 [Service]
@@ -852,12 +1074,13 @@ LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
-UNIT
+```
 
-    # frankenphp.service
-    sudo tee /etc/systemd/system/frankenphp.service <<UNIT
+```ini
+# /etc/systemd/system/frankenphp@.service  (template unit)
+# Instantiate: systemctl enable --now frankenphp@1 frankenphp@2
 [Unit]
-Description=FrankenPHP Application Server
+Description=FrankenPHP Worker Instance %i
 After=network.target
 
 [Service]
@@ -865,7 +1088,7 @@ Type=simple
 WorkingDirectory=/opt/anvil/app
 ExecStart=/usr/local/bin/frankenphp run \
     --workers=${FRANKENPHP_WORKERS:-2} \
-    --listen=127.0.0.1:8080
+    --listen=127.0.0.1:808%i
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65536
@@ -874,71 +1097,47 @@ Environment=FRANKENPHP_MAX_REQUESTS=${FRANKENPHP_MAX_REQUESTS:-10000}
 
 [Install]
 WantedBy=multi-user.target
-UNIT
-
-    sudo systemctl daemon-reload
-}
 ```
 
-### 7.4 Tier 3 Tengine Config
+The template unit (`frankenphp@.service`) allows running multiple FrankenPHP instances on different ports (8081, 8082, ...) via systemd instantiation. Tengine's upstream pool lists these ports and health-checks them.
 
-`/etc/tengine/tengine.conf` — the main config includes the conf.d directory and sets upstream health checks:
+### 7.4 Tier 3 Install Script: `anvil/install-edge.sh` (NEW)
 
-```nginx
-worker_processes auto;
-error_log /var/log/tengine/error.log warn;
-pid /var/run/tengine.pid;
+```bash
+#!/usr/bin/env bash
+# install-edge.sh — Tier 3 (production/edge) native installer.
+# Installs Caddy + Tengine + FrankenPHP as systemd services.
+set -euo pipefail
 
-events {
-    worker_connections 1024;
+# ... distro detection (reuse W2 functions) ...
+
+# 1. Install Caddy (official binary).
+_anvil_install_caddy() {
+    local arch="$(uname -m)"
+    case "$arch" in x86_64) arch="amd64" ;; aarch64) arch="arm64" ;; esac
+    curl -sL "https://caddyserver.com/api/download?os=linux&arch=${arch}" \
+        -o /usr/local/bin/caddy
+    chmod +x /usr/local/bin/caddy
 }
 
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-    sendfile      on;
-    keepalive_timeout 65;
-
-    # Upstream: FrankenPHP workers with built-in health checks.
-    upstream frankenphp {
-        server 127.0.0.1:8080;
-        check interval=3000 rise=2 fall=3 timeout=1000;
-    }
-
-    # Include per-domain vhost configs.
-    include /etc/tengine/conf.d/*.conf;
+# 2. Install Tengine from source (same Dockerfile logic).
+_anvil_install_tengine() {
+    # ... (same ./configure && make as the Dockerfile, but on host) ...
 }
-```
 
-The per-domain vhost configs go in `/etc/tengine/conf.d/` and use the same `proxy_pass http://frankenphp` pattern as the Docker tier, but with `upstream://frankenphp` instead of a direct container hostname:
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name app.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/app.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
-
-    root /opt/anvil/app/public;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        proxy_pass http://frankenphp;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_request_buffering off;
-        proxy_buffering off;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-    }
+# 3. Install FrankenPHP binary.
+_anvil_install_frankenphp() {
+    local arch="$(uname -m)"
+    case "$arch" in x86_64) arch="amd64" ;; aarch64) arch="arm64" ;; esac
+    curl -sL "https://github.com/dunglas/frankenphp/releases/latest/download/"\
+"frankenphp-linux-${arch}.tar.gz" \
+        | sudo tar xz -C /usr/local/bin frankenphp
 }
+
+# 4. Create systemd units (see §7.3).
+# 5. Configure Tengine upstream pool.
+# 6. Configure Caddyfile.
+# 7. Enable services.
 ```
 
 ### 7.5 Tier 3 Deployment Flow
@@ -948,127 +1147,196 @@ server {
 sudo ./install-edge.sh
 
 # 2. Deploy application code to /opt/anvil/app/.
-#    (git clone, rsync, or your CI/CD pipeline)
 
-# 3. Issue TLS certificate.
-sudo certbot --nginx -d app.example.com -d www.example.com
+# 3. Configure /etc/caddy/Caddyfile (real domain, Mercure keys).
 
-# 4. Enable and start services.
-sudo systemctl enable --now tengine frankenphp
+# 4. Configure /etc/tengine/tengine.conf (upstream pool).
 
-# 5. Verify.
+# 5. Enable and start services (order matters).
+sudo systemctl daemon-reload
+sudo systemctl enable --now tengine
+sudo systemctl enable --now frankenphp@1 frankenphp@2
+sudo systemctl enable --now caddy
+
+# 6. Verify.
 curl -sI https://app.example.com
-systemctl status tengine frankenphp
+systemctl status caddy tengine frankenphp@1
+
+# Caddy auto-issues Let's Encrypt cert on first request.
 ```
 
-### 7.6 Tier 3 DSO Modules for Production
+### 7.6 Scaling FrankenPHP Instances
 
-Tengine's DSO support enables loading modules without recompiling. For production/edge:
+```bash
+# Add a third FrankenPHP instance:
+sudo systemctl enable --now frankenphp@3
 
-```nginx
-# In /etc/tengine/tengine.conf:
+# Add its port to Tengine's upstream pool (no restart needed
+# if using Tengine's dynamic upstream API — future Phase 2).
+# For now, edit tengine.conf and reload:
+# (add 'server 127.0.0.1:8083;' to upstream block)
+sudo systemctl reload tengine
 
-# Prometheus metrics exporter (loaded at runtime, no rebuild).
-dso {
-    load /usr/lib/tengine/modules/ngx_http_prometheus_module.so;
+# Remove an instance:
+sudo systemctl stop frankenphp@3
+sudo systemctl disable frankenphp@3
+```
+
+---
+
+## 8. Workstream W5: Mercure Hub
+
+### 8.1 What Mercure Provides
+
+Mercure is a real-time pub/sub protocol built on top of SSE (Server-Sent Events). In DGLab's architecture, it serves:
+
+- **HUB-31** (Real-Time Analytics): Live BI dashboard updates pushed to browser clients.
+- **ISPOKE-12** (Impact Monitor): Feature-flag rollout impact displayed in real time.
+- **ISPOKE-13** (Revenue Dashboard): Live MRR/churn/LTV metrics.
+- **Future Spokes**: Any spoke that needs server-push to clients (notifications, collaboration, etc.).
+
+### 8.2 Where Mercure Lives
+
+Mercure runs in the **standalone Caddy** at the edge (Tier 2 and Tier 3). Not inside FrankenPHP. Reasons:
+
+1. **Decoupled from PHP worker lifecycle.** Mercure stays available during FrankenPHP deployments and restarts. Clients don't lose their SSE connections.
+2. **Lower latency.** SSE connections terminate at the edge, not inside the PHP app server. One fewer network hop for pushed events.
+3. **PHP workers publish via HTTP.** A PHP worker publishes an event by sending a POST to `https://internal/mercure`. This is a simple HTTP call, not an in-process API — and it works across multiple FrankenPHP instances.
+4. **Transport flexibility.** In production, Mercure uses Redis as its transport backend (via Caddy's `transport_url`). This means Mercure events are distributed across multiple Caddy instances if needed.
+
+### 8.3 Caddyfile Mercure Configuration
+
+```caddyfile
+{
+    mercure {
+        # JWT keys for authentication.
+        # Publishers: PHP workers (internal, can use a strong key).
+        # Subscribers: browser clients (public key with restricted claims).
+        publisher_jwt_key "${MERCURE_PUBLISHER_JWT_KEY}"
+        subscriber_jwt_key "${MERCURE_SUBSCRIBER_JWT_KEY}"
+
+        # CORS: restrict to your application origins.
+        cors_origins "https://app.example.com"
+        publish_origins "https://app.example.com"
+
+        # Transport: BoltDB for staging, Redis for production.
+        # Staging:
+        # transport_url "bolt:///var/lib/mercure/mercure.db"
+        # Production:
+        transport_url "redis://${REDIS_HOST}:6379"
+    }
 }
 
-http {
-    # Expose metrics on a loopback-only endpoint.
-    server {
-        listen 127.0.0.1:9113;
-        location /metrics {
-            prometheus;
-        }
+domain.com {
+    # ... reverse_proxy to FrankenPHP ...
+
+    # Mercure endpoint.
+    handle /.well-known/mercure {
+        mercure
     }
 }
 ```
 
-This aligns with the OS metaphor: DSO modules are loadable kernel modules. Prometheus scrapes `127.0.0.1:9113/metrics` and never needs to touch the public interface.
+### 8.4 PHP Worker Publishing
 
-### 7.7 Tier 3 Auto-Update Strategy
+```php
+// Inside a FrankenPHP worker — publish a Mercure event.
+// The worker POSTs to the internal Mercure endpoint.
+use GuzzleHttp\Client;
 
-For edge nodes that are hard to reach:
+$client = new Client();
+$client->post('https://127.0.0.1/.well-known/mercure', [
+    'headers' => [
+        'Authorization' => 'Bearer ' . $publisherJwt,
+        'Content-Type'  => 'application/x-www-form-urlencoded',
+    ],
+    'body' => http_build_query([
+        'topic' => 'https://example.com/metrics/hub31',
+        'data'  => json_encode(['metric' => 'mrr', 'value' => 45000]),
+    ]),
+]);
+```
 
-1. **Tengine:** Binary update requires recompile. Use the same Dockerfile logic in a build pipeline, produce a `.tar.gz`, and distribute via your artifact store. The systemd unit's `Restart=on-failure` provides basic self-healing.
-2. **FrankenPHP:** Replace the binary at `/usr/local/bin/frankenphp` and `systemctl restart frankenphp`. The worker restart is instant (FrankenPHP respawns workers on SIGUSR2 for zero-downtime binary upgrades).
-3. **Application code:** `git pull` + `systemctl reload tengine` (to pick up any config changes). FrankenPHP workers pick up new PHP files on the next request (with `opcache.validate_timestamps=1` for staged rollouts, or `0` + container restart for immutable deployments).
+On Tier 1 (laptop), the Mercure endpoint is at `https://<project>.test/.well-known/mercure` (FrankenPHP's internal Caddy). On Tier 2/3, it's at the edge Caddy's domain.
 
 ---
 
-## 8. Staging VM Tier Details
+## 9. Staging VM Tier Details
 
-### 8.1 Purpose
+### 9.1 Purpose
 
-Staging VMs validate the production configuration before it reaches production. They run the same Docker Compose stack as production (Tier 2) but with:
+Staging VMs validate the production configuration before it reaches production. They run Caddy (edge) + FrankenPHP (app), with real DNS and Let's Encrypt — but no Tengine (single FrankenPHP instance).
 
-- A real domain (not `*.test`) pointed at the VM via DNS.
-- Let's Encrypt TLS (same as production).
-- RDS MySQL (same as production, but a separate instance).
-- The same `docker-compose.ec2.yml` (minus the EC2-specific IAM/SSM — those are for AWS deployment, not the staging VM itself).
-
-### 8.2 Staging Provisioning Flow
+### 9.2 Staging Provisioning Flow
 
 ```bash
-# 1. Provision a staging VM (any cloud provider, or local KVM/VMware).
-#    Minimum: 2 vCPU, 4 GB RAM, 20 GB disk.
+# 1. Provision a staging VM (2 vCPU, 4 GB RAM minimum).
 
-# 2. SSH in and run the installer (skip DNS and mkcert — not needed).
+# 2. SSH in and install.
 sudo ./install.sh --yes --tier staging --skip-dns --skip-mkcert
 
-# 3. Clone the repo and start the stack.
-git clone <repo-url> /opt/anvil
-cd /opt/anvil/anvil
-COMPOSE_FILE=docker/docker-compose.ec2.yml anvilctl start
+# 3. Clone the repo.
+git clone <repo-url> /opt/anvil && cd /opt/anvil/anvil
 
-# 4. Point a real domain at the VM's public IP via DNS.
+# 4. Configure the staging Caddyfile with the real domain.
+cp config/Caddyfile.staging config/Caddyfile
+# Edit config/Caddyfile: replace staging.example.com with the real domain.
 
-# 5. Issue Let's Encrypt certificate.
-sudo ./provisioning/certbot-setup.sh \
-    --domain staging.example.com \
-    --email ops@example.com
+# 5. Set the Mercure JWT keys (generate with openssl).
+export MERCURE_PUBLISHER_JWT_KEY="$(openssl rand -base64 32)"
+export MERCURE_SUBSCRIBER_JWT_KEY="$(openssl rand -base64 32)"
 
-# 6. Verify.
+# 6. Start the stack.
+anvilctl start
+
+# 7. Point real DNS at the VM's public IP.
+
+# 8. Caddy auto-issues Let's Encrypt on the first HTTPS request.
 curl -sI https://staging.example.com
+
+# 9. Verify Mercure.
+curl -N https://staging.example.com/.well-known/mercure
 ```
 
-### 8.3 Staging vs Production Differences
+### 9.3 Staging vs Production
 
 | Dimension | Staging | Production |
 |---|---|---|
-| Workers | 2 | Match vCPU |
+| Layers | Caddy + FrankenPHP | Caddy + Tengine + FrankenPHP |
+| Workers | 2–4 | Match vCPU per instance |
 | FRANKENPHP_MAX_REQUESTS | 1000 (catch leaks) | 10000 |
 | OpCache validate_timestamps | 1 (dev convenience) | 0 (immutable deploy) |
-| Database | RDS db.t3.micro | RDS db.t3.micro or larger |
-| Backup retention | 7 days | 30 days |
-| Monitoring | Basic logs | Prometheus + CloudWatch |
+| Mercure transport | BoltDB (file) | Redis |
+| Database | RDS db.t3.micro | RDS db.t3.micro+ |
+| Monitoring | Logs only | Prometheus + CloudWatch |
+| Tengine DSO | N/A | Prometheus exporter |
 
 ---
 
-## 9. Migration Path
+## 10. Migration Path
 
-### Phase 1: W1 + W3 (Serving Layer + Bug Fixes) — Local Dev
+### Phase 1: W1 + W3 (Laptop) — FrankenPHP Only
 
-1. Create `anvil/docker/tengine/Dockerfile`.
-2. Update `docker-compose.local.yml` (replace nginx + php with tengine + frankenphp).
-3. Update `vhost.conf.tpl` (fastcgi_pass → proxy_pass, cert paths).
-4. Update `lib/vhost.sh` and `lib/docker.sh` container name references.
-5. Apply W3 bug fixes (cert path, SSH user, deprecated aliases in anvil.conf).
-6. Add Tengine/FrankenPHP/tier variables to `anvil.conf`.
-7. Rename `docker/php/Dockerfile` → `docker/php/Dockerfile.fpm-legacy`.
-8. Update `entrypoint-ssm.sh` to use `exec "$@"` instead of `exec php-fpm`.
-9. **Test:** `anvilctl start` → verify `https://demo.test` serves PHP via FrankenPHP.
-10. **Test:** `anvilctl new testproject` → verify vhost, SSL, proxy.
-11. **Test:** `anvilctl watch` → verify inotify-driven vhost creation.
-12. **Test:** Rollback — `git checkout` the old compose + template, verify PHP-FPM stack restores.
+1. Create `config/Caddyfile.laptop`.
+2. Update `docker-compose.local.yml` (replace nginx + php with single FrankenPHP).
+3. Rewrite `lib/vhost.sh` (nginx vhost → Caddyfile snippets + SIGUSR1).
+4. Apply W3 bug fixes (cert path, SSH user, deprecated aliases in anvil.conf).
+5. Add all new variables to `anvil.conf`.
+6. Archive `docker/php/Dockerfile` → `Dockerfile.fpm-legacy`.
+7. Update `entrypoint-ssm.sh` to `exec "$@"`.
+8. **Test:** `anvilctl start` → `https://demo.test` serves PHP via FrankenPHP's embedded Caddy.
+9. **Test:** `anvilctl new testproject` → generates Caddyfile snippet, SIGUSR1 reload.
+10. **Test:** `anvilctl watch` → inotify creates Caddyfile snippet, reloads.
+11. **Test:** Rollback — `git checkout` old compose, verify PHP-FPM stack restores.
 
-### Phase 2: W1 (Serving Layer) — EC2 / Staging
+### Phase 2: W1 (Staging) — Caddy + FrankenPHP
 
-1. Update `docker-compose.ec2.yml` (same structural changes as Phase 1).
-2. Update `provisioning/certbot-setup.sh` (container names, proxy_pass).
-3. Update `provisioning/cloud-init.yaml` (no change needed — it runs the compose file).
-4. **Test:** Full EC2 provision → RDS → certbot → verify HTTPS.
-5. **Test:** Staging VM provision → verify same stack works without EC2-specific IAM.
+1. Create `config/Caddyfile.staging`.
+2. Create `docker-compose.staging.yml` (Caddy + FrankenPHP + Redis).
+3. Update `lib/docker.sh` to select compose file by `ANVIL_TIER`.
+4. **Test:** Deploy staging VM → Caddy issues Let's Encrypt → HTTPS works.
+5. **Test:** Mercure SSE endpoint responds at `/.well-known/mercure`.
+6. Archive `provisioning/certbot-setup.sh` (Caddy replaces it).
 
 ### Phase 3: W2 (Multi-Distro Installer)
 
@@ -1079,175 +1347,193 @@ curl -sI https://staging.example.com
 5. **Test:** `sudo ./install.sh --yes --tier laptop` on Arch Linux.
 6. **Test:** `sudo ./install.sh --yes` on Ubuntu 24.04 (regression).
 
-### Phase 4: W4 (Edge / Native Tier)
+### Phase 4: W4 + W1 (Production/Edge) — Full Three-Layer
 
-1. Create `install-edge.sh` (Tengine from source + FrankenPHP binary + systemd).
-2. Create Tengine main config template for Tier 3.
-3. Create per-domain vhost template for Tier 3.
-4. Add DSO module loading for Prometheus exporter.
-5. **Test:** `install-edge.sh` on a fresh Ubuntu 24.04 minimal VM.
-6. **Test:** Deploy a real domain, issue certbot cert, verify serving.
-7. **Test:** Verify DSO module load/unload without restart.
-8. **Test:** Verify FrankenPHP worker restart on `systemctl restart frankenphp`.
+1. Create `docker/tengine/Dockerfile`.
+2. Create `install-edge.sh` (Caddy + Tengine + FrankenPHP from binaries/source).
+3. Create systemd unit files (caddy, tengine, frankenphp@.service).
+4. Create Tengine config template for Tier 3.
+5. **Test:** Native install on fresh Ubuntu 24.04 minimal VM.
+6. **Test:** Deploy real domain, Caddy auto-issues cert, HTTPS works.
+7. **Test:** Tengine health-checks remove dead FrankenPHP instances.
+8. **Test:** DSO Prometheus module loads and exposes `/metrics` on loopback.
+9. **Test:** Scale FrankenPHP: `systemctl enable --now frankenphp@3`.
 
-### Phase 5: Tengine Dynamic Config (Future)
+### Phase 5: W5 (Mercure Hub)
 
-- Replace `tengine -s reload` with Tengine's dynamic server API for vhost-only changes.
-- Enable upstream health checks to auto-detect dead FrankenPHP workers.
-- DSO-load observability modules in production without image rebuilds.
+1. Generate JWT keys for Mercure publisher/subscriber.
+2. Add Mercure config to Caddyfiles (staging: BoltDB, production: Redis).
+3. Add Mercure publishing helper to DGLab's PHP codebase.
+4. **Test:** PHP worker publishes event → browser subscriber receives it.
 
-### Phase 6: FrankenPHP-Specific Features (Future)
+### Phase 6: Future Optimizations
 
-- **Mercure:** Built-in real-time hub (HUB-28, HUB-31).
-- **Early Hints:** Faster perceived page loads.
-- **Worker preloading:** `frankenphp run --preload` for DGLab Kernel pre-boot.
+- **Tengine dynamic upstream API:** Add/remove FrankenPHP instances without Tengine reload.
+- **Tengine Lua routing:** Canary deployments, A/B testing at the LB layer.
+- **DSO observability:** Hot-load Prometheus, OpenTelemetry, or security modules.
+- **FrankenPHP worker preloading:** `--preload` for DGLab Kernel pre-boot.
+- **HTTP/3 measurement:** Benchmark QUIC vs TCP for DGLab's workload.
 
 ---
 
-## 10. Rollback Strategy
+## 11. Rollback Strategy
 
 ### Tier 1 (Laptop)
 
 ```bash
-git checkout HEAD -- anvil/docker/docker-compose.local.yml anvil/docker/nginx/templates/vhost.conf.tpl
+git checkout HEAD -- anvil/docker/docker-compose.local.yml anvil/lib/vhost.sh
 anvilctl stop && anvilctl start
 ```
 
-Single git revert on the compose file + template. No data migration. The `www/` volume is identical between stacks.
-
 ### Tier 2 (Staging VM)
 
-Same as Tier 1 but the compose file is `docker-compose.ec2.yml`. If the VM is stateless (code deployed from git), a `git revert` + `anvilctl stop && anvilctl start` restores the old stack.
+```bash
+# Switch back to old compose + nginx + PHP-FPM.
+COMPOSE_FILE=docker/docker-compose.ec2.yml.bak anvilctl stop
+# Restore old compose file from git.
+git checkout HEAD -- docker-compose.staging.yml
+```
 
 ### Tier 3 (Production/Edge)
 
-Systemd services can be rolled back by:
-
 ```bash
-# Stop FrankenPHP, restore old binary, restart.
-sudo systemctl stop frankenphp
+# Restore backed-up binaries.
+sudo systemctl stop frankphp@1
 sudo cp /usr/local/bin/frankenphp.bak /usr/local/bin/frankenphp
-sudo systemctl start frankenphp
-
-# Same for Tengine (if the binary was replaced).
-sudo systemctl stop tengine
-sudo cp /usr/local/sbin/tengine.bak /usr/local/sbin/tengine
-sudo systemctl start tengine
+sudo systemctl start frankenphp@1
+# Same for Caddy and Tengine.
 ```
 
-Always keep `.bak` copies of the binaries before upgrading. Add this to the Tier 3 deployment runbook.
+Always keep `.bak` copies of binaries before upgrading. Add this to the Tier 3 deployment runbook.
 
 ---
 
-## 11. Risk Register
+## 12. Risk Register
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| **Tengine CVE lag** (patches slower than nginx) | Medium | High | Pin `TENGINE_VERSION`; subscribe to Tengine GitHub advisories; maintain nginx fallback compose file |
-| **FrankenPHP worker memory leak** (long-lived process) | Low | High | `pulse()` uses WeakMap (auto-evicts); `FRANKENPHP_MAX_REQUESTS` restarts workers; monitor with DSO Prometheus module |
-| **proxy_pass overhead vs fastcgi_pass** | Low | Low | ~0.1ms per request; negligible vs PHP execution. Tengine's unbuffered proxy minimizes further |
+| **Tengine CVE lag** | Medium | High | Pin `TENGINE_VERSION`; subscribe to Tengine GitHub advisories; maintain nginx/Tengine fallback config |
+| **FrankenPHP worker memory leak** | Low | High | `pulse()` WeakMap auto-evicts; `FRANKENPHP_MAX_REQUESTS` restarts workers; monitor via DSO Prometheus |
+| **Caddy automatic HTTPS renewal failure** | Low | High | Caddy retries automatically; monitor certificate expiry; backup: manual certbot as fallback |
+| **Three-layer latency** | Low | Low | ~0.2ms total (Caddy→Tengine→FrankenPHP); negligible vs PHP execution |
 | **DSO module incompatibility** | Low | Medium | Pin module versions; test in staging before production |
-| **FrankenPHP container size** | Low | Low | Official image ~150MB (vs ~80MB for php:8.3-fpm). Acceptable for 2-container architecture |
-| **Tier 3 native install complexity** | Medium | Medium | `install-edge.sh` automates it; tested on Ubuntu 24.04 minimal first |
-| **Multi-distro installer regressions** | Medium | Medium | Test matrix: Ubuntu 24.04, Fedora 42, Arch. Keep existing Ubuntu path as default |
-| **Cert path breakage during migration** | Low | High | W3-1 fix makes paths container-internal; verify with `anvilctl ssl demo` after migration |
+| **Mercure JWT key compromise** | Low | High | Use strong RSA/ES256 keys; rotate via CI/CD; store in secrets manager |
+| **Tier 3 native install complexity** | Medium | Medium | `install-edge.sh` automates it; test on Ubuntu 24.04 minimal first |
+| **Multi-distro installer regression** | Medium | Medium | Test matrix: Ubuntu 24.04, Fedora 42, Arch; keep Ubuntu path as default |
+| **FrankenPHP embedded Caddy config conflicts** | Low | Medium | Tier 1 uses a separate Caddyfile from Tier 2/3; test independently |
+| **Caddy HTTP/3 UDP :443 conflict with system** | Low | Medium | Caddy gracefully falls back to HTTP/2 if UDP :443 is unavailable; no hard failure |
 
 ---
 
-## 12. Validation Checklist
+## 13. Validation Checklist
 
 ### Tier 1 (Laptop)
 
-- [ ] `docker compose build tengine` succeeds
-- [ ] `docker compose up -d` starts tengine + frankenphp + mysql + redis + phpmyadmin
-- [ ] `https://demo.test` serves a PHP page (browser / curl)
-- [ ] `anvilctl new testproj` generates vhost, issues cert, proxy works
+- [ ] `docker compose up -d` starts FrankenPHP container
+- [ ] `https://demo.test` serves a PHP page (FrankenPHP's embedded Caddy + TLS)
+- [ ] `anvilctl new testproj` generates Caddyfile snippet, SIGUSR1 reloads
 - [ ] `anvilctl ssl testproj` issues mkcert cert, TLS trusted
-- [ ] `anvilctl vhost_remove testproj` cleans up
-- [ ] `anvilctl watch` auto-creates vhost on new `www/` directory
+- [ ] `anvilctl watch` auto-creates Caddyfile snippet on new `www/` directory
 - [ ] `phpinfo()` shows `frankenphp` in SERVER_SOFTWARE
 - [ ] OpCache enabled and warm (`opcache_get_status()`)
+- [ ] HTTP/3 works: `curl --http3 https://demo.test` returns 200
+- [ ] Mercure SSE endpoint responds at `/.well-known/mercure` (if enabled)
 - [ ] Rollback: `git checkout` restores PHP-FPM stack
 
 ### Tier 2 (Staging VM)
 
-- [ ] `install.sh --yes --tier staging --skip-dns --skip-mkcert` succeeds on target distro
-- [ ] `anvilctl start` with `COMPOSE_FILE=docker-compose.ec2.yml` brings up stack
-- [ ] `certbot-setup.sh` issues Let's Encrypt cert
+- [ ] `install.sh --yes --tier staging --skip-dns --skip-mkcert` succeeds
+- [ ] `docker compose up` starts Caddy + FrankenPHP containers
+- [ ] Caddy auto-issues Let's Encrypt certificate (check Caddy logs)
 - [ ] HTTPS serves PHP via FrankenPHP
-- [ ] RDS connection works (if RDS is configured)
+- [ ] HTTP/3 works: `curl --http3 https://staging.example.com`
+- [ ] Mercure SSE endpoint responds with JWT-authenticated topics
+- [ ] RDS connection works (if configured)
 
 ### Tier 3 (Production/Edge)
 
 - [ ] `install-edge.sh` completes on fresh Ubuntu 24.04 minimal
-- [ ] `systemctl status tengine` → active
-- [ ] `systemctl status frankenphp` → active
-- [ ] Real domain serves HTTPS with Let's Encrypt cert
-- [ ] DSO Prometheus module loads and exposes `/metrics` on loopback
-- [ ] `systemctl restart frankenphp` → zero-downtime (workers respawn)
-- [ ] Worker restart respects `FRANKENPHP_MAX_REQUESTS`
+- [ ] `systemctl status caddy tengine frankenphp@1` → all active
+- [ ] Real domain serves HTTPS (Caddy auto-issued Let's Encrypt)
+- [ ] HTTP/3 works
+- [ ] Tengine health-checks detect dead FrankenPHP instance and remove it from pool
+- [ ] DSO Prometheus module loads, `/metrics` on loopback
+- [ ] `systemctl restart frankenphp@1` → zero-downtime (Caddy retries)
+- [ ] `systemctl enable --now frankenphp@3` → Tengine routes to 3 instances
+- [ ] Mercure hub delivers events from PHP publisher to browser subscriber
 
 ---
 
-## 13. Relationship to Architecture Documents
+## 14. Relationship to Architecture Documents
 
 | Document | Relationship |
 |---|---|
 | `DGLAB-AS-OS-RUNTIME.md` | Specifies the Fiber-based cooperative scheduler that mandates FrankenPHP (OD-07). This doc implements the deployment consequence. |
-| `OPEN-DECISIONS.md` OD-07 | Records FrankenPHP as accepted runtime. This doc is the implementation of that decision. |
-| `OPEN-DECISIONS.md` OD-08 | Async I/O library choice (ReactPHP/Amp) — library-agnostic in this doc; the proxy layer doesn't care which event loop FrankenPHP uses internally. |
+| `OPEN-DECISIONS.md` OD-07 | Records FrankenPHP as accepted runtime. This doc implements that decision. |
+| `OPEN-DECISIONS.md` OD-08 | Async I/O library choice (ReactPHP/Amp) — library-agnostic here; the proxy layers don't care which event loop FrankenPHP uses. |
 | `CORE-02.md` | The `pulse()` scope and `WeakMap` assume a Fiber-capable runtime. FrankenPHP provides this. |
-| `DEPLOY-01.md` | Specifies OCI base image (PHP-FPM + Nginx + Supervisor). This doc supersedes the PHP-FPM and Nginx components. DEPLOY-01 must be updated to reference Tengine + FrankenPHP. |
-| `STRUCTURE-06-Boot.md` | Boot sequence maps to Linux boot. FrankenPHP worker startup = "kernel init" phase. |
-| `anvil/README.md` | Must be updated to reference Tengine + FrankenPHP, three-tier model, and multi-distro support after landing. |
-| `RUNBOOK-ANVIL-DNS.md` | Remains valid — the DNS conflict resolution applies to all tiers that use dnsmasq (Tier 1 only). |
+| `DEPLOY-01.md` | Specifies OCI base image (PHP-FPM + Nginx + Supervisor). This doc supersedes the PHP-FPM and Nginx components. DEPLOY-01 must be updated. |
+| `HUB-31.md` | Real-time analytics needs server-push to browsers. Mercure (via Caddy) provides this as the SSE/WebSocket transport. |
+| `STRUCTURE-06-Boot.md` | Boot sequence maps to Linux boot. FrankenPHP worker startup = "kernel init". |
+| `anvil/README.md` | Must be updated to reference Caddy + Tengine + FrankenPHP, three-tier model, and Mercure. |
+| `RUNBOOK-ANVIL-DNS.md` | Remains valid — DNS conflict resolution applies to Tier 1 (dnsmasq) only. |
 
 ---
 
-## 14. Files Changed Per Workstream
+## 15. Files Changed Per Workstream
 
-### W1 (Serving Layer)
+### W1 (Three-Layer Serving Stack)
 
 | File | Action | What Changes |
 |---|---|---|
-| `config/anvil.conf` | Modify | Add TENGINE_VERSION, FRANKENPHP_*, ANVIL_TIER vars; add PROXY_* path aliases |
-| `docker/docker-compose.local.yml` | Modify | Replace nginx+php services with tengine+frankenphp; fix cert mount (W3-1) |
-| `docker/docker-compose.ec2.yml` | Modify | Same structural replacement; FrankenPHP SSM entrypoint |
-| `docker/tengine/Dockerfile` | **Create** | Multi-stage Tengine build from source |
-| `docker/nginx/templates/vhost.conf.tpl` | Modify | `fastcgi_pass php:9000` → `proxy_pass http://frankenphp:80` with headers/timeouts |
-| `lib/vhost.sh` | Modify | `nginx` → `tengine` in docker exec/ps commands; cert paths to container-internal |
-| `lib/docker.sh` | Modify | Comment update only (nginx → tengine example) |
-| `lib/ec2.sh` | Modify | Comment updates ("php container" → "FrankenPHP worker"); W3-2 SSH user fix |
-| `provisioning/certbot-setup.sh` | Modify | Container name `anvil_nginx` → `anvil_tengine`; inline template to proxy_pass |
-| `docker/php/entrypoint-ssm.sh` | Modify | `exec php-fpm` → `exec "$@"` (runtime-agnostic) |
-| `docker/php/Dockerfile` | Rename | → `Dockerfile.fpm-legacy` (archived, no longer used) |
-| `docker/php/php.ini` | Modify | Add JIT config; add comment about validate_timestamps per tier |
+| `config/anvil.conf` | Modify | Add CADDY_*, TENGINE_*, FRANKENPHP_*, MERCURE_*, ANVIL_TIER vars; proxy-agnostic path aliases |
+| `config/Caddyfile.laptop` | **Create** | FrankenPHP's Caddyfile for *.test dev domains |
+| `config/Caddyfile.staging` | **Create** | Caddy edge config for staging (real domain, Mercure, BoltDB) |
+| `config/Caddyfile.production` | **Create** | Caddy edge config for production (Mercure, Redis transport, rate limit) |
+| `docker/docker-compose.local.yml` | Modify | Replace nginx+php with single FrankenPHP (embedded Caddy, TLS, HTTP/3) |
+| `docker/docker-compose.staging.yml` | **Create** | Caddy (edge) + FrankenPHP (app) + Redis |
+| `docker/docker-compose.ec2.yml` | Modify | Replace nginx+php with Caddy+FrankenPHP; add Caddy volumes |
+| `docker/tengine/Dockerfile` | **Create** | Tengine build from source (Tier 3 only) |
+| `lib/vhost.sh` | **Major rewrite** | nginx vhost → Caddyfile snippets; reload via SIGUSR1 instead of `nginx -s reload` |
+| `lib/docker.sh` | Modify | Select compose file by ANVIL_TIER |
+| `lib/ec2.sh` | Modify | Comment updates; W3-2 SSH user fix |
+| `provisioning/certbot-setup.sh` | **Archive** | Renamed to `.legacy` — Caddy replaces certbot |
+| `docker/php/entrypoint-ssm.sh` | Modify | `exec php-fpm` → `exec "$@"` |
+| `docker/php/Dockerfile` | Rename | → `Dockerfile.fpm-legacy` |
+| `docker/php/php.ini` | Modify | Add JIT config; validate_timestamps comment per tier |
+| `docker/nginx/templates/vhost.conf.tpl` | **Archive** | No longer used (Caddyfile replaces nginx vhost) |
 
 ### W2 (Multi-Distro Installer)
 
 | File | Action | What Changes |
 |---|---|---|
-| `install.sh` | Modify | Add distro detection; abstract package manager; add --tier/--skip-dns/--skip-mkcert flags |
+| `install.sh` | Modify | Distro detection; abstracted package manager; --tier/--skip-dns/--skip-mkcert |
 
 ### W3 (Bug Fixes)
 
 | File | Action | What Changes |
 |---|---|---|
-| `docker/docker-compose.local.yml` | Modify | Fix cert volume mount (W3-1) — overlaps with W1 |
-| `lib/vhost.sh` | Modify | Fix cert path rendering (W3-1) — overlaps with W1 |
-| `lib/ec2.sh` | Modify | Fix hardcoded SSH user (W3-2) — overlaps with W1 |
-| `config/anvil.conf` | Modify | Fix placeholder repo URL (W3-3) — user must set real URL |
+| `docker/docker-compose.local.yml` | Modify | Fix cert volume mount path (W3-1) |
+| `lib/vhost.sh` | Modify | Fix cert path rendering (W3-1) |
+| `lib/ec2.sh` | Modify | Fix hardcoded SSH user (W3-2) |
+| `config/anvil.conf` | Modify | Fix placeholder repo URL (W3-3) |
 
-### W4 (Edge Tier)
+### W4 (Edge / Native Tier)
 
 | File | Action | What Changes |
 |---|---|---|
-| `install-edge.sh` | **Create** | Native Tier 3 installer (Tengine from source, FrankenPHP binary, systemd units) |
-| `config/tengine.conf.tpl` | **Create** | Tengine main config template for Tier 3 |
-| `config/vhost-edge.conf.tpl` | **Create** | Per-domain vhost template for Tier 3 (proxy_pass to upstream) |
-| `provisioning/tengine.service` | **Create** | systemd unit file for Tengine |
-| `provisioning/frankenphp.service` | **Create** | systemd unit file for FrankenPHP |
+| `install-edge.sh` | **Create** | Native Tier 3 installer (Caddy binary + Tengine source + FrankenPHP binary + systemd) |
+| `provisioning/caddy.service` | **Create** | systemd unit for Caddy |
+| `provisioning/tengine.service` | **Create** | systemd unit for Tengine |
+| `provisioning/frankenphp@.service` | **Create** | systemd template unit for FrankenPHP instances |
+
+### W5 (Mercure)
+
+| File | Action | What Changes |
+|---|---|---|
+| `config/Caddyfile.staging` | Includes | Mercure block with BoltDB transport |
+| `config/Caddyfile.production` | Includes | Mercure block with Redis transport |
 
 ---
 
-**Provenance:** Written 2026-08-26. Supersedes v1 (2026-08-24) which covered only the serving-layer swap for local + EC2. Triggered by architecture lead's request for a reimplementation instruction covering laptops, staging VMs, and production servers / edge nodes. Incorporates full codebase audit findings (15 nginx references, 8 php references, 3 bugs) and the three-tier deployment model.
+**Provenance:** Written 2026-08-26 (v3). Supersedes v2 (same date, Tengine+FrankenPHP two-layer) and v1 (2026-08-24, serving-layer swap only). Triggered by architecture lead's question about combining Caddy, Tengine, and FrankenPHP for production and development. Introduces the three-component proxy architecture with tiered layer activation, Mercure hub for real-time server-push, HTTP/3 via Caddy, and systemd-native edge deployment.
