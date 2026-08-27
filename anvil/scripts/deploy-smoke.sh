@@ -40,21 +40,29 @@ for h in 'strict-transport-security' 'x-content-type-options' 'x-frame-options';
 done
 ok "security headers present (HSTS, X-Content-Type-Options, X-Frame-Options)"
 
-# 3. XFF chain — only if the /debug/xff endpoint exists (staging+prod Hub).
-#    Best-effort: skip silently if 404.
-XFF_URL="${URL%/health}/../debug/xff"
-XFF_URL="${XFF_URL//\/\///}"   # collapse any double-slash from the ../ join
-if response="$(curl -fsS --max-time 5 "$XFF_URL" 2>/dev/null)"; then
-  # Response is JSON: {"client_ip":"...","scheme":"https"}
+# 3. XFF chain — try the future Hub endpoint (/debug/xff) first; fall back to
+#    the dev/staging fixture (/debug/xff.php). Both must satisfy the contract:
+#    JSON with scheme=https and a non-loopback client_ip (when tested externally).
+XFF_BASE="${URL%/health}"
+XFF_RESPONSE=""
+XFF_SOURCE=""
+for xff_path in "/debug/xff" "/debug/xff.php"; do
+  XFF_URL="${XFF_BASE}${xff_path}"
+  if XFF_RESPONSE="$(curl -fsS --max-time 5 "$XFF_URL" 2>/dev/null)"; then
+    XFF_SOURCE="$xff_path"
+    break
+  fi
+done
+if [[ -n "$XFF_SOURCE" ]]; then
   if command -v jq >/dev/null 2>&1; then
-    scheme="$(jq -r '.scheme // empty' <<< "$response")"
-    [[ "$scheme" == "https" ]] || fail "XFF endpoint reported scheme='${scheme}' (expected https)"
-    ok "XFF chain: scheme=https (client IP propagated correctly through Caddy→Tengine→FrankenPHP)"
+    scheme="$(jq -r '.scheme // empty' <<< "$XFF_RESPONSE")"
+    [[ "$scheme" == "https" ]] || fail "XFF endpoint ${XFF_SOURCE} reported scheme='${scheme}' (expected https)"
+    ok "XFF chain: scheme=https (client IP propagated through Caddy→Tengine→FrankenPHP) [${XFF_SOURCE}]"
   else
-    ok "XFF chain: endpoint reachable (jq missing — skipping scheme assertion)"
+    ok "XFF chain: ${XFF_SOURCE} reachable (jq missing — skipping scheme assertion)"
   fi
 else
-  ok "XFF chain: /debug/xff not found (Hub not deployed?) — skipping"
+  ok "XFF chain: no /debug/xff* endpoint found (Hub + fixture both absent) — skipping"
 fi
 
 # 4. HTTP/3 — Alt-Svc header advertisement (best-effort).

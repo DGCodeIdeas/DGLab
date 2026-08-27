@@ -129,12 +129,32 @@ _anvil_frankenphp_version() {
   frankenphp version 2>/dev/null | awk '{print $2; exit}'
 }
 
-# _anvil_frankenphp_embedded_caddy  — prints the Caddy lineage string from
-# `frankenphp version` output, e.g. "Caddy v2.11.4-lineage". Returns 1 if
-# frankenphp is missing or the lineage line is absent.
+# _anvil_frankenphp_embedded_caddy  — prints the Caddy lineage version string
+# from `frankenphp version` output, e.g. "v2.11.4". Returns 1 if frankenphp is
+# missing or the lineage string is absent.
+#
+# Parser note: `frankenphp version` prints all on ONE line in the form:
+#   FrankenPHP v1.12.7 PHP 8.5.9 Caddy v2.11.4 h1:...
+# The token we want is the one IMMEDIATELY AFTER the literal "Caddy" token —
+# NOT the first version-like token on the line (which would be FrankenPHP's
+# own version). The earlier parser was a real bug: it grabbed v1.12.7 instead
+# of v2.11.4 and the doctor mis-reported the embedded-Caddy floor as failed.
 _anvil_frankenphp_embedded_caddy() {
   command -v frankenphp >/dev/null 2>&1 || return 1
-  frankenphp version 2>/dev/null | awk '/[Cc]addy/ {for (i=1;i<=NF;i++) if ($i ~ /^v?[0-9]+\.[0-9]+\.[0-9]+/) {print $i; exit}}'
+  frankenphp version 2>/dev/null | awk '
+    /[Cc]addy/ {
+      for (i = 1; i <= NF; i++) {
+        if (tolower($i) == "caddy" && i < NF) {
+          v = $(i + 1)
+          # Strip any leading "v" and any "-lineage" suffix for semver compare.
+          sub(/^v/, "", v)
+          sub(/-.*$/, "", v)
+          if (v ~ /^[0-9]+\.[0-9]+\.[0-9]+$/) print "v" v
+          exit
+        }
+      }
+    }
+  '
 }
 
 # _anvil_tengine_version  — prints Tengine version (e.g. "Tengine/3.2.0").

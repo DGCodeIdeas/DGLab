@@ -79,6 +79,7 @@ final class Router
         $body = $this->readBody();
 
         switch ($endpoint) {
+            // v1 endpoints (kept)
             case 'status':
                 $data = $this->api->status();
                 break;
@@ -101,6 +102,32 @@ final class Router
                 break;
             case 'logs':
                 $data = $this->api->logs();
+                break;
+            // v3 endpoints
+            case 'doctor':
+                $data = $this->api->doctor();
+                break;
+            case 'stack':
+                // GET = read current mode; POST = set mode.
+                $mode = $this->param($body, 'mode') ?? ($_GET['mode'] ?? null);
+                if (is_string($mode) && $mode !== '') {
+                    $data = $this->api->setStack($mode);
+                } else {
+                    $data = $this->api->stack();
+                }
+                break;
+            case 'deploy':
+                $env     = $this->param($body, 'env')     ?? ($_GET['env']     ?? '');
+                $release = $this->param($body, 'release') ?? ($_GET['release'] ?? '');
+                $data = $this->api->deploy(is_string($env) ? $env : '', is_string($release) ? $release : '');
+                break;
+            case 'rollback':
+                $env = $this->param($body, 'env') ?? ($_GET['env'] ?? '');
+                $data = $this->api->rollback(is_string($env) ? $env : '');
+                break;
+            case 'verify':
+                $gate = $this->param($body, 'gate') ?? ($_GET['gate'] ?? 'all');
+                $data = $this->api->verify(is_string($gate) ? $gate : 'all');
                 break;
             default:
                 $this->serveJson(['ok' => false, 'data' => null, 'error' => 'Unknown endpoint.'], 404);
@@ -176,12 +203,12 @@ final class Router
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Anvil Control</title>
+  <title>Anvil v3 Control</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <header class="topbar">
-    <h1>Anvil Control</h1>
+    <h1>Anvil v3 Control</h1>
     <div class="toggles">
       <button id="btn-start" class="toggle" data-action="start">Start</button>
       <button id="btn-stop" class="toggle" data-action="stop">Stop</button>
@@ -189,9 +216,56 @@ final class Router
     </div>
   </header>
   <main>
+    <section class="stack-panel">
+      <h2>Stack Shape (dev)</h2>
+      <div class="stack-controls">
+        <span id="stack-info" class="stack-info">env=dev mode=slim</span>
+        <button id="btn-stack-slim" class="toggle" data-stack="slim">Slim</button>
+        <button id="btn-stack-full" class="toggle" data-stack="full">Full</button>
+      </div>
+    </section>
+    <section class="doctor-panel">
+      <h2>Doctor (CVE floors + port registry)</h2>
+      <div class="doctor-controls">
+        <button id="btn-doctor" class="toggle">Run doctor</button>
+        <span id="doctor-verdict" class="verdict"></span>
+      </div>
+      <pre id="doctor-output" class="output-pane"></pre>
+    </section>
     <section class="projects">
-      <h2>Projects</h2>
+      <h2>Tenants</h2>
       <div id="project-list" class="cards"></div>
+    </section>
+    <section class="deploy-panel">
+      <h2>Deploy (blue/green)</h2>
+      <div class="deploy-controls">
+        <label>Env:
+          <select id="deploy-env">
+            <option value="staging">staging</option>
+            <option value="production">production</option>
+          </select>
+        </label>
+        <label>Release (digest, optional):
+          <input id="deploy-release" type="text" placeholder="auto-detect" size="14">
+        </label>
+        <button id="btn-deploy" class="toggle">Deploy</button>
+        <button id="btn-rollback" class="toggle">Rollback</button>
+      </div>
+      <pre id="deploy-output" class="output-pane"></pre>
+    </section>
+    <section class="verify-panel">
+      <h2>Verify (staging gates)</h2>
+      <div class="verify-controls">
+        <select id="verify-gate">
+          <option value="all">all</option>
+          <option value="boot">boot</option>
+          <option value="health">health</option>
+          <option value="headers">headers</option>
+          <option value="ports">ports</option>
+        </select>
+        <button id="btn-verify" class="toggle">Run gate</button>
+      </div>
+      <pre id="verify-output" class="output-pane"></pre>
     </section>
     <section class="logs">
       <h2>Logs</h2>

@@ -108,30 +108,38 @@ anvil_verify_headers() {
   done
 
   # XFF chain — the app's /debug/xff endpoint echoes the perceived client IP + scheme.
-  # Exists in staging+prod Hub builds; absent in dev.
-  local xff_url="${base}/debug/xff"
-  local response
-  if response="$(curl -fsS --max-time 5 "$xff_url" 2>/dev/null)"; then
+  # Tries the future Hub endpoint (/debug/xff) first; falls back to the dev/staging
+  # fixture (/debug/xff.php, see public/debug/xff.php) when the Hub isn't deployed.
+  local response xff_source=""
+  for xff_path in "/debug/xff" "/debug/xff.php"; do
+    local xff_url="${base}${xff_path}"
+    if response="$(curl -fsS --max-time 5 "$xff_url" 2>/dev/null)"; then
+      xff_source="$xff_path"
+      break
+    fi
+  done
+  if [[ -n "$xff_source" ]]; then
     if command -v jq >/dev/null 2>&1; then
       local scheme client_ip
       scheme="$(jq -r '.scheme // empty' <<< "$response")"
       client_ip="$(jq -r '.client_ip // empty' <<< "$response")"
       if [[ "$scheme" == "https" ]]; then
-        anvil_info "  OK   XFF chain: scheme=https (edge set X-Forwarded-Proto correctly)"
+        anvil_info "  OK   XFF chain: scheme=https (edge set X-Forwarded-Proto correctly) [${xff_source}]"
       else
-        anvil_error "  FAIL XFF chain: scheme='${scheme}' (expected https)"
+        anvil_error "  FAIL XFF chain: scheme='${scheme}' (expected https) [${xff_source}]"
         fail=1
       fi
       if [[ -n "$client_ip" && "$client_ip" != "127.0.0.1" ]]; then
-        anvil_info "  OK   XFF chain: client_ip=${client_ip} (real client IP propagated)"
+        anvil_info "  OK   XFF chain: client_ip=${client_ip} (real client IP propagated) [${xff_source}]"
       else
-        anvil_warn "  WARN XFF chain: client_ip='${client_ip}' — may be loopback if smoke-tested locally"
+        anvil_warn "  WARN XFF chain: client_ip='${client_ip}' — may be loopback if smoke-tested locally [${xff_source}]"
       fi
     else
-      anvil_warn "  WARN jq missing — skipping XFF chain assertion (install jq for full gate)"
+      anvil_warn "  WARN jq missing — skipping XFF chain assertion (install jq for full gate) [${xff_source}]"
     fi
   else
-    anvil_warn "  WARN /debug/xff endpoint absent (Hub not deployed?) — skipping XFF assertion"
+    anvil_warn "  WARN /debug/xff AND /debug/xff.php both absent — skipping XFF assertion"
+    anvil_warn "       (Hub not deployed AND dev fixture missing? check public/debug/xff.php)"
   fi
 
   return $fail
