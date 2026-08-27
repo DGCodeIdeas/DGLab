@@ -1,84 +1,150 @@
-# Anvil
+# Anvil v3
 
-> Local-development automation and EC2/RDS deployment tool for PHP projects.
+> Caddy edge + Tengine internal LB + FrankenPHP app — for development on Linux
+> laptops, staging VMs, and production servers / edge nodes.
 
-Anvil gives you wildcard `*.test` local domains with trusted TLS, an
-inotify-driven nginx vhost watcher, a MySQL database, a TUI and a Web UI — and
-reuses the exact same engine to provision a hardened EC2 + RDS MySQL stack in
-AWS with Let's Encrypt TLS and a loopback-only management UI reached through an
-SSH tunnel.
+Anvil v3 is the deployment stack for DGLab. It runs the three-tier proxy chain
+mandated by ADR-017 (Fiber-based cooperative runtime) and the v3
+ReImplementation_Instruction:
 
----
+| Layer | Responsibility | Technology | Exposure |
+|---|---|---|---|
+| **Edge** | Public TLS (ACME), HTTP/3, dynamic vhost certs, redirects, the only public listener | **Caddy** 2.11.x | Internet (80/443 TCP+UDP) |
+| **Internal LB** | Keepalive pools, response buffering (slow-client shielding), active health checks, blue/green upstream switching (`dyups`), rate limiting | **Tengine** 3.2.0 | Loopback only |
+| **App server** | PHP 8.5 execution, worker lifecycle, Fiber/Pulse scheduling (ADR-017), tenant isolation | **FrankenPHP** 1.12.x | Loopback only |
 
-## Table of contents
+**RULE T1 (Zero-Exposure Edge):** Caddy is the *only* process that may bind a
+public socket, in every environment. Tengine listens on loopback. FrankenPHP
+listens on loopback. This is the infrastructure-level expression of DEPLOY-03's
+Zero-Exposure Test, and it is the correct risk posture in 2026 because
+Tengine's release cadence is the weak link of the trio (CVE-2026-42945
+"NGINX Rift" was unfixed in Tengine 3.1.0 for ~3 months after nginx shipped
+the upstream fix — §2.2 of the v3 doc).
 
-- [Overview](#overview)
-- [Architecture: one shared bash engine, two thin skins](#architecture-one-shared-bash-engine-two-thin-skins)
-- [Layout](#layout)
-- [Install](#install)
-- [Local development usage](#local-development-usage)
-- [EC2 mode](#ec2-mode)
-- [⚠️ THE COST CORRECTION — account-date decision](#-the-cost-correction--account-date-decision)
-- [Billing alarm](#billing-alarm)
-- [Security notes](#security-notes)
-- [Known limitations / deferred](#known-limitations--deferred)
-
----
-
-## Overview
-
-Anvil is a single bash engine wrapped by three thin front-ends:
-
-- `anvilctl` — a CLI dispatcher (the thing you type in a terminal).
-- `anvil-tui.sh` — an interactive `dialog`/`whiptail` menu.
-- The **Web UI** (`web/`) — a PHP SPA + JSON API served by PHP's built-in
-  server on `127.0.0.1:9999`.
-
-All three call the **same** functions in [`anvil/lib/*.sh`](anvil/lib). There is
-no duplicated business logic: the TUI and Web UI are skins, and `anvilctl` only
-dispatches.
+The full design rationale, version floors, CVE ledger, port registry, and
+per-environment runbooks live in **[ReImplementation_Instruction.md](./ReImplementation_Instruction.md)**.
+This README is the operator's quick-start; the v3 doc is the source of truth.
 
 ---
 
-## Architecture: one shared bash engine, two thin skins
+## What's new in v3
 
+| | v1 (legacy) | v3 (this) |
+|---|---|---|
+| Runtime | PHP-FPM 8.3 (Docker) | FrankenPHP 1.12.x (worker mode) |
+| Edge | nginx (mkcert, rendered vhosts) | Caddy 2.11.x (ACME/on-demand, stock binary) |
+| Internal LB | — (nginx was both) | Tengine 3.2.0 (loopback-only, dyups/check/buffering) |
+| Local dev | compose + dnsmasq + mkcert + watcher | Single FrankenPHP process + v1's dnsmasq/mkcert |
+| TLS (prod) | certbot webroot + rendered vhosts | Caddy ACME; on-demand for tenants |
+| Deploys | none (manual) | dyups blue/green at the LB tier, health-gated, auto-rollback |
+
+The v1 principles that survive verbatim: one shared bash engine with thin
+skins (`anvilctl` / TUI / Web UI), idempotent installer, loopback-only Web UI
+(SSH tunnel on remote hosts), SSM-held RDS credentials, the t3.small cost gate,
+the billing alarm, injection-safe `db create`, and the honest-limitations
+register.
+
+---
+
+## Quick start — development on a Linux laptop
+
+Tested on Ubuntu 24.04 LTS / Debian 13 / Fedora 42-43 / Arch Linux, x86_64 and
+aarch64. See §5.1 of the v3 doc for the full distro matrix.
+
+```bash
+# 1. Install host prerequisites (Docker + dnsmasq + mkcert + dart-sass).
+#    v1 installer; idempotent.
+sudo ./install.sh --yes
+
+# 2. Install the v3 runtime (FrankenPHP only — collapsed dev mode).
+#    The install-trio.sh script is for staging/prod; in dev you only need
+#    the FrankenPHP binary on PATH at /usr/local/bin/frankenphp:
+curl -fsSL -o /usr/local/bin/frankenphp \
+  https://github.com/php/frankenphp/releases/download/v1.12.7/frankenphp-linux-x86_64
+sudo chmod +x /usr/local/bin/frankenphp
+
+# 3. Verify the install.
+anvilctl doctor
+# Expect:
+#   OK    frankenphp v1.12.7 (floor 1.12.7)
+#   OK    frankenphp embedded-caddy v2.11.4 (floor 2.11.1)
+
+# 4. Boot the dev stack (data tier via Docker + FrankenPHP collapsed mode).
+anvilctl start
+# → docker compose (MySQL 8.4 + Redis 7) up
+# → frankenphp run --config anvil/dev/Caddyfile.dev (foreground logs)
+# → https://dglab.test/  (mkcert wildcard cert, hot reload on file change)
+
+# 5. Stop everything.
+anvilctl stop
 ```
-                ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐
-   you  ──────▶ │  anvilctl   │   │ anvil-tui.sh │   │  Web UI (PHP)   │
-   (CLI)        │  (dispatch) │   │  (dialog UI) │   │  web/public/*    │
-                └──────┬───────┘   └──────┬───────┘   └────────┬─────────┘
-                       │                  │                    │ shells out
-                       │                  │                    │ via AnvilClient
-                       └──────────────────┼────────────────────┘
-                                          ▼
-                              ┌──────────────────────────┐
-                              │   anvil/lib/*.sh  (engine)│
-                              │  docker vhost ssl project │
-                              │  db  ec2  web             │
-                              └──────────────────────────┘
-                                          │
-                          ┌───────────────┼────────────────┐
-                          ▼               ▼                ▼
-                     docker compose    mkcert/        aws cli (ec2/rds/
-                     (local stack)     dnsmasq         ssm/cloudwatch)
+
+For full parity rehearsal on the laptop (Caddy + Tengine + FrankenPHP trio):
+
+```bash
+anvilctl stack full
+anvilctl start   # boots all three units; same configs as staging/prod
 ```
 
-- **`anvil/bin/anvilctl`** resolves the Anvil root, sources
-  [`anvil/config/anvil.conf`](anvil/config/anvil.conf) and every
-  [`anvil/lib/*.sh`](anvil/lib) file, then maps each subcommand to a lib
-  function. It contains **no business logic**.
-- **`anvil/tui/anvil-tui.sh`** sources the same lib and calls the same
-  functions directly from its menu actions.
-- **`anvil/web/`** is a PHP front controller ([`web/public/index.php`](anvil/web/public/index.php))
-  + router ([`web/src/Api/Router.php`](anvil/web/src/Api/Router.php)) that shells
-  out to `anvilctl` through [`web/src/Api/AnvilClient.php`](anvil/web/src/Api/AnvilClient.php)
-  and shapes the output as `{"ok":bool,"data":...,"error":...}` JSON
-  ([`web/src/Api/Api.php`](anvil/web/src/Api/Api.php)). The real work still
-  happens in the bash engine.
+---
 
-This is the **"one shared bash engine, two thin skins"** principle: the TUI and
-Web UI are interchangeable presentations over `lib/`, and `anvilctl` is just the
-CLI skin that dispatches.
+## Quick start — staging VM
+
+Staging runs the **exact production configs** with three knobs: Let's Encrypt
+staging CA, `num 4` workers, and the staging deploy pool. See §6 of the v3 doc.
+
+```bash
+# 1. Provision (Hetzner CX22 / AWS t3.medium / DO s-2vcpu-4gb).
+#    The cloud-init.yaml provisions the trio + systemd units + first-boot gate.
+anvilctl ec2 provision --env staging --tls staging --workers 4
+
+# 2. SSH in and verify the gates.
+ssh anvil@staging.dglab.example.com
+anvilctl verify all
+# Expect:
+#   verify/boot:    PASSED (all units active, doctor green)
+#   verify/health:  PASSED (/health 2xx within 5s, check_status rise>=2)
+#   verify/headers: PASSED (security headers + XFF chain https)
+#   verify/ports:   PASSED (no port-registry collisions)
+
+# 3. Deploy a release candidate.
+anvilctl deploy staging --release 3x4mpl3d1g3s7
+# → blue→green swap via dyups, health-gated, smoke-tested, auto-rollback on fail
+```
+
+---
+
+## Quick start — production / edge node
+
+Production adds on-demand TLS (per-tenant certificates via the `ask` endpoint)
+and the weekly CVE ritual. See §7 of the v3 doc for the full runbook.
+
+```bash
+# 1. Provision (cloud-init.yaml installs the trio + first-boot health gate).
+anvilctl ec2 provision --env production --confirm-t3-small
+
+# 2. First-boot health gate refused to mark provisioned if /health failed.
+#    Verify it is up:
+anvilctl status
+# caddy[edge]:     active (admin 127.0.0.1:2020)
+# tengine[lb]:     active (127.0.0.1:8081)
+# frankenphp[blue]: active (admin 127.0.0.1:2019, threads: total=8 busy=2 idle=6)
+
+# 3. Register tenants (presence IS registration — no vhost render step).
+anvilctl register acme-corp
+# → mkdir www/acme-corp/
+# → Caddy's on-demand TLS ask endpoint will now return 200 for acme-corp.dglab.example.com
+
+# 4. Deploy a release (blue/green via dyups, §7.7 of v3 doc).
+anvilctl deploy production --release $(git rev-parse --short HEAD)
+# Steps 0–7 run automatically; auto-rollback on any gate failure.
+
+# 5. Weekly CVE ritual (15 minutes, calendarized).
+anvilctl doctor
+# → compares installed binaries against config/versions.env floors
+# → on advisory: bump the floor, restart the affected unit (blue/green for
+#   frankenphp/caddy; HUP for tengine), verify with `anvilctl verify all`
+```
 
 ---
 
@@ -86,310 +152,130 @@ CLI skin that dispatches.
 
 ```
 anvil/
-├── README.md                     # this file
-├── install.sh                    # Phase 1 bootstrap (dialog/whiptail, idempotent)
+├── ReImplementation_Instruction.md   # v3 source of truth (1220 lines)
+├── README.md                         # this file (operator's quick-start)
+├── install.sh                        # v1 host prereqs (Docker + dnsmasq + mkcert)
+├── install-trio.sh                   # v3 trio installer (Caddy + Tengine + FrankenPHP)
 ├── bin/
-│   └── anvilctl                  # thin CLI dispatcher -> lib functions
+│   ├── anvilctl                      # CLI dispatcher (v3 surface)
+│   └── fetch-secrets.sh              # SSM → /etc/anvil/secrets.env
 ├── config/
-│   └── anvil.conf                # bash-sourcable config (INSTANCE_TYPE, paths, AWS)
-├── lib/                          # THE ENGINE (shared by all three skins)
-│   ├── docker.sh                 # docker compose up/down/ps/logs
-│   ├── vhost.sh                  # nginx vhost render (envsubst) + reload/remove
-│   ├── ssl.sh                    # mkcert CA install + per-project certs
-│   ├── project.sh                # register/scan/list projects + build assets
-│   ├── db.sh                     # MySQL database create (injection-safe)
-│   ├── ec2.sh                    # EC2 + RDS provision, tunnel, billing, alarm
-│   └── web.sh                    # Web UI PHP server up/down (loopback only)
-├── docker/
-│   ├── docker-compose.local.yml  # local stack: nginx/php/mysql/phpmyadmin/redis
-│   ├── docker-compose.ec2.yml    # EC2 stack: nginx/php/phpmyadmin/redis (RDS, no mysql)
-│   ├── nginx/
-│   │   ├── conf.d/               # rendered per-project vhosts (gitignored content)
-│   │   ├── certs/                # mkcert certs (gitignored content)
-│   │   └── templates/
-│   │       └── vhost.conf.tpl    # vhost template rendered by lib/vhost.sh
-│   └── php/
-│       ├── Dockerfile            # PHP 8.3 FPM image
-│       └── entrypoint-ssm.sh     # fetches RDS creds from SSM SecureString
+│   ├── anvil.conf                    # bash-sourcable engine config (v1 + v3 vars)
+│   └── versions.env                  # PINNED FLOORS — single source of truth
+├── lib/                              # THE ENGINE (one engine, three skins)
+│   ├── core.sh                       # logging, doctor, port-registry
+│   ├── caddy.sh                      # edge lifecycle, validate/reload, ACME
+│   ├── tengine.sh                    # LB lifecycle, dyups, check_status
+│   ├── frankenphp.sh                 # app lifecycle, blue/green, admin API
+│   ├── deploy.sh                     # §7.7 runbook as code (auto-rollback)
+│   ├── verify.sh                     # §6.3 staging gates as code
+│   ├── registry.sh                   # tenant registry (TLS-ask data source)
+│   ├── docker.sh, db.sh, ec2.sh      # v1 (carried forward)
+│   ├── ssl.sh, vhost.sh, project.sh  # v1 (kept for legacy escape hatch)
+│   └── web.sh                        # v1 (Web UI server control)
+├── dev/
+│   ├── Caddyfile.dev                 # §5.5 collapsed-mode dev config
+│   ├── compose.data.yml              # MySQL 8.4 + Redis 7 (loopback only)
+│   └── .env.example
+├── edge/Caddyfile                    # §7.3 edge template (staging+prod)
+├── lb/
+│   ├── tengine.conf                  # §7.4 internal LB template
+│   └── tengine.build.sh              # source build w/ dyups+check+concat
+├── app/
+│   ├── Caddyfile.blue                # §7.5 blue/green template
+│   └── php/preload.php               # ADR-010 opcache preload template
+├── systemd/                          # §7.6 hardened units
+│   ├── anvil-caddy.service
+│   ├── anvil-tengine.service
+│   ├── anvil-frankenphp@.service
+│   └── anvil-secrets.service
 ├── scripts/
-│   └── vhost-watcher.sh          # inotify loop: auto vhost + ssl on www/ changes
-├── tui/
-│   └── anvil-tui.sh              # dialog/whiptail menu skin
-├── web/                          # Web UI skin (PHP SPA + JSON API)
-│   ├── public/
-│   │   ├── index.php             # front controller
-│   │   ├── app.js                # SPA JS
-│   │   └── assets/               # compiled style.css (gitignored)
-│   ├── scss/
-│   │   └── app.scss              # SCSS source (compiled by build-assets)
-│   └── src/Api/
-│       ├── Router.php            # route ?route=api/* -> handlers
-│       ├── Api.php               # endpoint handlers
-│       ├── AnvilClient.php       # shells out to anvilctl
-│       └── AnvilResult.php       # result envelope
-├── provisioning/                 # EC2/RDS helpers (thin wrappers over lib/ec2.sh)
-│   ├── ec2-provision.sh          # -> anvil_ec2_provision
-│   ├── rds-tunnel.sh             # -> anvil_ec2_tunnel
-│   ├── certbot-setup.sh          # Let's Encrypt webroot + prod vhost render
-│   └── cloud-init.yaml           # EC2 user-data (installs docker/aws, clones repo)
-├── www/                          # per-project web roots (demo.test -> www/demo)
-└── docs/
-    └── VALIDATION.md             # manual end-to-end validation guide
+│   ├── vhost-watcher.sh              # inotify on WWW_DIR (rewired to registry)
+│   └── deploy-smoke.sh               # public-URL smoke suite (used by deploy.sh)
+├── tui/anvil-tui.sh                  # menu skin (v3 panels: stack, doctor, deploy, rollback)
+├── web/                              # Web UI skin (v1 structure; v3 panels TBD)
+├── provisioning/cloud-init.yaml      # v3 EC2 first-boot (trio + health gate)
+└── www/                              # tenant roots (presence = registration)
 ```
 
 ---
 
-## Install
-
-Run as root (the installer re-execs with `sudo` if invoked unprivileged):
+## `anvilctl` command surface (v3)
 
 ```bash
-sudo ./install.sh
+# Lifecycle
+anvilctl start [-d]        # dev: data tier + frankenphp (collapsed) | prod: three units
+anvilctl stop
+anvilctl status            # unit states, listener map, worker counts, tenant count
+anvilctl restart <svc>     # caddy | tengine | app@blue | app@green | data
+
+# Stack shape (dev)
+anvilctl stack slim|full   # §5.6 of v3 doc
+
+# Health & policy
+anvilctl doctor            # CVE floors vs installed binaries; port-registry collision check
+anvilctl verify boot|health|headers|ports|all   # §6.3 staging gates
+
+# Deploys
+anvilctl deploy <env> [--strategy blue-green] [--release DIGEST]   # §7.7 as code
+anvilctl rollback <env>    # dyups swap back to the previous pool
+
+# Tenant registry
+anvilctl projects|scan|register <slug>|unregister <slug>|watch
+
+# v1 surface (kept)
+anvilctl db create DB_NAME | logs [svc] | build-assets
+anvilctl ec2 provision|tunnel|billing|billing-alarm
+
+# Provisioning helpers
+anvilctl provision install-units     # (re)install systemd units + rendered configs
+anvilctl provision install-trio      # run install-trio.sh (root required)
 ```
 
-It presents a `dialog` (or `whiptail`) UI: welcome → component checklist →
-progress gauge → summary. Every step is **idempotent** and safe to re-run. It
-installs:
+---
 
-- **Docker Engine + Compose plugin** (official Docker apt repo, not snap).
-- **dnsmasq** for `*.test` → `127.0.0.1`, including handling the
-  **systemd-resolved** stub-listener conflict on port 53 (it writes
-  `DNSStubListener=no` to `/etc/systemd/resolved.conf.d/anvil.conf`, points
-  `/etc/resolv.conf` at `127.0.0.1`, and restarts the services).
-- **mkcert** binary + local CA (`mkcert -install`).
-- **dart-sass** (`sass`) binary for asset builds.
-- **inotify-tools** (`inotifywait`) for the vhost watcher.
+## Backward compatibility & migration (§8.5 of v3 doc)
 
-Binary downloads that fail are **reported, never a hard failure** (the summary
-lists warnings). Requires a Debian/Ubuntu host (the installer uses `apt-get`).
+- **Dev machines (v1):** `anvilctl stop` (old stack), `git pull`, `./install.sh`
+  (idempotent — adds binaries/users/units), `anvilctl start` → collapsed mode.
+  The `www/` projects and MySQL volumes carry over untouched; nginx vhost
+  renders and cert files become dead artifacts, removed by
+  `anvilctl migrate cleanup-legacy-nginx` (explicit, logged, reversible within
+  30 days via the git history).
+- **EC2 (v1):** rebuild the node via `anvil provision` (blue/green means
+  migration is a new node, not an in-place surgery — STRUCTURE-08's
+  immutable-swap applied to the host itself). RDS/SSM/alarm state is
+  name-keyed and survives.
+- **v2 draft artifacts:** none shipped to prod; the v2 doc is superseded by
+  the v3 doc (§1.3 records the corrections).
+- **Escape hatch:** `anvilctl stack legacy-nginx` preserves the v1
+  nginx+PHP-FPM path for emergency comparison during the migration window
+  only; it is removed at v3.1.
 
 ---
 
-## Local development usage
+## Honest limitations register
 
-Bring the stack and Web UI up:
+The following are NOT yet implemented (tracked in §8.4 of the v3 doc):
 
-```bash
-anvilctl start        # docker compose up -d + launch Web UI on 127.0.0.1:9999
-anvilctl stop         # stop Web UI + docker compose down
-anvilctl status       # container status + project list
-anvilctl projects     # TSV: name <TAB> url <TAB> ssl(yes|no)
-anvilctl scan         # register any unregistered folders in www/
-anvilctl new demo     # create www/demo, issue cert, render vhost, reload nginx
-anvilctl ssl demo     # install CA (once) + issue demo.test cert
-anvilctl db create myapp   # create MySQL database (idempotent, name-validated)
-anvilctl build-assets     # compile SCSS -> CSS (per project + Web UI)
-anvilctl watch [--once]   # inotify loop: auto vhost+ssl on www/ create|delete
-anvilctl logs             # tail the docker stack logs
-```
+- **Web UI panels for stack shape / doctor / deploy / rollback** — the TUI
+  has them; the Web UI skin still shows the v1 panels. Tracked as T11.
+- **`anvilctl migrate cleanup-legacy-nginx`** — the explicit dead-artifact
+  cleanup is documented but not yet a command. Until it lands, remove
+  `docker/nginx/conf.d/*.conf.anvil` and `docker/nginx/certs/*` manually
+  after migrating.
+- **Per-tenant worker pools (ADR-017 isolation level 2)** — the
+  `worker` block in Caddyfile.blue supports it, but `anvilctl` does not yet
+  render per-tenant variants. Tracked as a follow-up to T9.
+- **`/debug/xff` endpoint** — referenced by `verify headers` and
+  `deploy-smoke.sh`; must be implemented in the Hub (HUB-15 contract).
+  Until then both scripts degrade to a WARN, not a FAIL.
 
-Highlights:
-
-- **`*.test` wildcard via dnsmasq** — every project `<name>` is served at
-  `https://<name>.test`, resolved to `127.0.0.1` by dnsmasq.
-- **mkcert trusted certs** — `anvilctl new`/`ssl` issue a per-project certificate
-  from the local mkcert CA (already trusted by your browser/OS), so TLS is
-  trusted with no browser warnings.
-- **inotify vhost watcher** — `anvilctl watch` (or `scripts/vhost-watcher.sh`)
-  watches `www/` and, on a new/deleted project directory, runs
-  `anvil_project_register` / `anvil_vhost_remove` and reloads nginx.
-- **Web UI at `http://127.0.0.1:9999`** — a PHP SPA that calls the same engine.
-  It is bound strictly to loopback (never `0.0.0.0`); see
-  [Security notes](#security-notes).
-
-The local stack ([`docker-compose.local.yml`](anvil/docker/docker-compose.local.yml))
-runs `nginx` (TLS + PHP-FPM reverse proxy), `php` (PHP 8.3 FPM), `mysql` 8.0,
-`phpmyadmin` (bound to `127.0.0.1:8080` only), and `redis` (internal network
-only). nginx reaches PHP via `fastcgi_pass php:9000` on the `anvil_net` bridge.
+For the full limitations register and the 13-task implementation plan, see
+§8.4 of [ReImplementation_Instruction.md](./ReImplementation_Instruction.md).
 
 ---
 
-## EC2 mode
+## License & authorship
 
-Provision a production stack on AWS:
-
-```bash
-anvilctl ec2 provision [opts]   # VPC + SG + key + RDS + EC2 (idempotent by Name)
-anvilctl ec2 tunnel  --rds-endpoint E --host H --key K   # bastion SSH tunnel to RDS
-anvilctl ec2 billing            # this month's AWS cost (aws ce get-cost-and-usage)
-anvilctl ec2 billing-alarm [USD]# create a CloudWatch billing alarm (default $5)
-anvilctl ec2 help               # full option reference
-anvilctl billing                # alias for the cost check
-```
-
-Key points (all enforced in [`lib/ec2.sh`](anvil/lib/ec2.sh)):
-
-- **RDS via SSM Parameter Store SecureString** — credentials are written to
-  `/anvil/rds/{host,user,password,database}` as `SecureString` and read at
-  container start by [`docker/php/entrypoint-ssm.sh`](anvil/docker/php/entrypoint-ssm.sh)
-  using the EC2 instance role. (SSM, not Secrets Manager — see
-  [Security notes](#security-notes).)
-- **Developer bastion tunnel** — `anvilctl ec2 tunnel` (or
-  [`provisioning/rds-tunnel.sh`](anvil/provisioning/rds-tunnel.sh)) forwards a
-  local port to the **private** RDS instance through the EC2 host. RDS is never
-  public.
-- **Let's Encrypt via `certbot-setup.sh`** —
-  [`provisioning/certbot-setup.sh`](anvil/provisioning/certbot-setup.sh) obtains
-  certs with the webroot plugin and renders a production nginx vhost referencing
-  the live `/etc/letsencrypt` certs (bind-mounted into the EC2 compose).
-- **Web UI loopback-only on EC2** — the EC2 compose does **not** include the Web
-  UI; it runs on the host bound to `127.0.0.1:9999` and is reached only through
-  the SSH tunnel, e.g.:
-
-  ```bash
-  ssh -N -L 9999:127.0.0.1:9999 -i anvil-ec2-key.pem ec2-user@<public-ip>
-  # then open http://127.0.0.1:9999 on your laptop
-  ```
-
-  `cloud-init.yaml` brings the stack up on boot via `anvil.service`
-  (`COMPOSE_FILE=docker/docker-compose.ec2.yml anvilctl start`).
-
-> **Note:** `anvilctl ec2 provision` writes the RDS endpoint to
-> `/opt/anvil/docker/.env` on the host (best-effort over SSH) so phpMyAdmin can
-> resolve it. The EC2 stack uses `db.t3.micro` RDS and the configured
-> `INSTANCE_TYPE` for the EC2 instance.
-
----
-
-## ⚠️ THE COST CORRECTION — account-date decision
-
-This is the most important operational section. **`t3.micro` is the safe
-default** in [`config/anvil.conf`](anvil/config/anvil.conf) (`INSTANCE_TYPE`).
-Do not change it casually.
-
-AWS's free-tier / Free-plan eligibility for `t3.small` depends on **when your
-AWS account was created**:
-
-- **Accounts created BEFORE 2025-07-15** (legacy 12-month free tier):
-  - Only **`t2.micro` / `t3.micro`** qualify for the 12-month free tier.
-  - **`t3.small` is NOT free-tier eligible.** It adds roughly
-    **~$0.0208/hr (~$15/month)** of on-demand cost.
-- **Accounts created ON or AFTER 2025-07-15** (credit-based Free plan):
-  - `t3.small` is **console-marked eligible for 6 months**, but this is a
-    **credit-balance model** that **burns down faster than micro** — it is
-    **not unlimited free hours**. Once the credit is exhausted you pay on-demand.
-
-**Therefore `t3.small` is only allowed when you explicitly pass
-`--confirm-t3-small` to `anvilctl ec2 provision`**, and the engine prints a cost
-warning before proceeding:
-
-```bash
-anvilctl ec2 provision --confirm-t3-small
-# ERROR (without the flag, when INSTANCE_TYPE=t3.small):
-#   INSTANCE_TYPE=t3.small is NOT free-tier eligible on AWS accounts created
-#   before 2025-07-15. Estimated cost: ~$0.0208/hr (~$15/mo).
-#   Re-run with --confirm-t3-small ONLY if you are on the newer credit-based
-#   Free plan and accept the cost.
-```
-
-The guard lives in `anvil_ec2_provision` ([`lib/ec2.sh`](anvil/lib/ec2.sh)): if
-`INSTANCE_TYPE=t3.small` and `--confirm-t3-small` was not passed, provisioning
-aborts with the warning above. If the flag is passed, a `WARNING: t3.small
-confirmed by operator. Estimated cost: ~$0.0208/hr (~$15/mo).` line is printed.
-This gate is the project's defense against surprise AWS bills.
-
----
-
-## Billing alarm
-
-Two complementary ways to watch spend:
-
-1. **One-line cost check** (already present):
-
-   ```bash
-   anvilctl billing            # alias
-   anvilctl ec2 billing        # -> aws ce get-cost-and-usage (UnblendedCost, last month)
-   ```
-
-2. **CloudWatch billing alarm** (added in this final phase):
-
-   ```bash
-   anvilctl ec2 billing-alarm            # threshold 5 USD (default)
-   anvilctl ec2 billing-alarm 10         # threshold 10 USD
-   ANVIL_BILLING_ALARM_THRESHOLD=20 anvilctl ec2 billing-alarm
-   ```
-
-   This calls `anvil_ec2_billing_alarm` ([`lib/ec2.sh`](anvil/lib/ec2.sh)), which
-   runs:
-
-   ```bash
-   aws cloudwatch put-metric-alarm \
-     --alarm-name "anvil-billing-alarm" \
-     --namespace AWS/Billing \
-     --metric-name EstimatedCharges \
-     --dimensions Name=Currency,Value=USD \
-     --statistic Maximum --period 21600 \
-     --threshold 5 \
-     --comparison-operator GreaterThanThreshold \
-     --evaluation-periods 1 --region us-east-1
-   ```
-
-   Notes:
-   - The `AWS/Billing` metric namespace exists **only in `us-east-1`**, so the
-     alarm is always created there regardless of `AWS_REGION`.
-   - You must enable **"Receive Billing Alerts"** in the AWS Billing console
-     before the alarm can fire.
-   - The threshold (USD) is configurable via the first argument or
-     `ANVIL_BILLING_ALARM_THRESHOLD` (default `5`); the alarm name via
-     `ANVIL_BILLING_ALARM_NAME` (default `anvil-billing-alarm`).
-
----
-
-## Security notes
-
-Hard requirements enforced by the engine ([`lib/ec2.sh`](anvil/lib/ec2.sh) and
-the compose files):
-
-- **SSH (22)** is opened on the EC2 security group **from the caller's public IP
-  only** (`/32`, auto-detected via `checkip.amazonaws.com` or `--ssh-cidr`).
-  **Never `0.0.0.0/0`.**
-- **HTTP/HTTPS (80/443)** are public (`0.0.0.0/0`) — that is the intended web
-  surface.
-- **RDS (3306)** is opened **from the EC2 security group id ONLY** (the EC2 host
-  is the bastion). **Never `0.0.0.0/0`.** RDS is created with
-  `--no-publicly-accessible` and lives in a private subnet group.
-- **Web UI is never internet-facing** — it binds to `127.0.0.1` (loopback) on
-  both local and EC2. On EC2 it is reached only through the SSH tunnel.
-- **phpMyAdmin** is bound to `127.0.0.1:8080` in both stacks (local and EC2) —
-  never public.
-- **RDS credentials use SSM Parameter Store `SecureString`**, not Secrets
-  Manager. Rationale: Secrets Manager begins billing after 30 days; SSM
-  Parameter Store (Standard) is effectively free for this low-volume use. The
-  php container reads them via the EC2 instance role
-  (`anvil-ec2-role` / `anvil-ec2-profile`, minimal `ssm:GetParameter` on
-  `/anvil/rds/*`).
-
----
-
-## Known limitations / deferred
-
-These are honest gaps carried over from Phases 1–4. **The full stack was not
-executed against a live Docker or AWS environment in this build** — the code is
-written and reviewed, but not runtime-validated here.
-
-- **SSL cert bind-mount uses an absolute host path** in
-  [`docker-compose.local.yml`](anvil/docker/docker-compose.local.yml): the
-  `certs` volume is mounted at the literal
-  `/home/dgi/app/DGLab/anvil/docker/nginx/certs` on both host and container so
-  the `${SSL_CERT}`/`${SSL_KEY}` paths rendered by `lib/vhost.sh` resolve inside
-  nginx. This is environment-specific and would need adjusting on a different
-  machine.
-- **shellcheck / phpcs / sass were not tool-verified in the build environment.**
-  The bash edits in this final phase (`lib/ec2.sh`, `anvilctl`) are
-  `bash -n` clean and introduced no new shellcheck warnings; however
-  `lib/ec2.sh` carries two **pre-existing** shellcheck items that predate this
-  phase (SC2016 info at the availability-zone query; SC2086 warning at the route-
-  table query, line ~146) and were intentionally left untouched to avoid
-  modifying committed Phase 4 logic.
-- **`cloud-init.yaml` repo URL is a placeholder**
-  (`https://github.com/example/anvil.git`) — replace it with the real repository
-  (or bake the repo into a custom AMI and skip the clone).
-- **Web UI "stop" also stops its own server.** Because the Web UI is served by
-  the same process that handles the stop action, stopping the stack from the Web
-  UI terminates the server that is serving the request (expected, but worth
-  knowing).
-- **RDS provision waits ~20 minutes.** `anvil_ec2_provision` polls for the RDS
-  endpoint; a fresh `db.t3.micro` instance typically takes ~20 min to become
-  available. Plan accordingly.
-- **No automated end-to-end tests.** Validation is manual — see
-  [`docs/VALIDATION.md`](anvil/docs/VALIDATION.md).
+Same as the DGLab repo root. See `LICENSE` in the repository root.

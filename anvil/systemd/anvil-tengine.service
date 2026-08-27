@@ -1,0 +1,26 @@
+# /etc/systemd/system/anvil-tengine.service — Anvil v3 internal LB (Tengine)  §7.6.
+[Unit]
+Description=Anvil v3 internal LB (Tengine)
+After=network-online.target anvil-caddy.service
+
+[Service]
+Type=forking
+User=tengine
+Group=tengine
+PIDFile=/run/anvil/tengine.pid
+ExecStartPre=/usr/local/tengine/sbin/nginx -t -c /etc/anvil/lb/tengine.conf
+ExecStart=/usr/local/tengine/sbin/nginx -c /etc/anvil/lb/tengine.conf
+ExecReload=/usr/local/tengine/sbin/nginx -s reload -c /etc/anvil/lb/tengine.conf
+ExecStop=/usr/local/tengine/sbin/nginx -s quit -c /etc/anvil/lb/tengine.conf
+Restart=on-failure
+# No capabilities needed: loopback, unprivileged ports only.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/anvil /var/lib/anvil /run/anvil
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

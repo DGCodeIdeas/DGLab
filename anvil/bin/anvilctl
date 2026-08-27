@@ -2,10 +2,25 @@
 # shellcheck disable=SC1091
 # anvil/bin/anvilctl
 #
-# Anvil control dispatcher. This script is intentionally THIN: it resolves the
-# Anvil root, sources the config and the shared bash library, and delegates
-# every subcommand to a lib function. No business logic lives here — that is
-# the "one shared engine" principle (TUI + Web UI both call the same lib).
+# Anvil v3 control dispatcher. Intentionally THIN: resolves ANVIL_ROOT, sources
+# the config + the shared bash library, and delegates every subcommand to a lib
+# function. No business logic lives here — that is the "one shared engine"
+# principle (TUI + Web UI both call the same lib).
+#
+# v3 command surface (§8.3 of the v3 doc):
+#   Lifecycle:   start [-d] | stop | status | restart <svc>
+#   Stack shape:  stack slim|full
+#   Health:       doctor | verify headers|ports|health|all
+#   Deploys:      deploy <env> [--strategy blue-green] [--release DIGEST]
+#                 rollback <env>
+#   v1 surface:   projects|scan|watch|db|logs|build-assets
+#                 ec2 provision|tunnel|billing|billing-alarm
+#
+# v1 commands retained for backward compatibility (§8.5 of the v3 doc):
+#   * `anvilctl start` in dev boots collapsed mode (FrankenPHP embeds Caddy)
+#   * `anvilctl stack full` boots the full trio for parity rehearsal
+#   * `anvilctl ec2 *` provision/tunnel/billing are unchanged
+#   * `anvilctl projects|scan|watch` now operate on the tenant registry
 
 set -euo pipefail
 
@@ -15,12 +30,27 @@ export ANVIL_ROOT
 
 # shellcheck source=../config/anvil.conf
 source "${ANVIL_ROOT}/config/anvil.conf"
+# shellcheck source=../lib/core.sh
+source "${ANVIL_ROOT}/lib/core.sh"
+# shellcheck source=../lib/caddy.sh
+source "${ANVIL_ROOT}/lib/caddy.sh"
+# shellcheck source=../lib/tengine.sh
+source "${ANVIL_ROOT}/lib/tengine.sh"
+# shellcheck source=../lib/frankenphp.sh
+source "${ANVIL_ROOT}/lib/frankenphp.sh"
+# shellcheck source=../lib/deploy.sh
+source "${ANVIL_ROOT}/lib/deploy.sh"
+# shellcheck source=../lib/verify.sh
+source "${ANVIL_ROOT}/lib/verify.sh"
+# shellcheck source=../lib/registry.sh
+source "${ANVIL_ROOT}/lib/registry.sh"
+# v1 libs retained (docker, ssl, vhost, project, db, ec2, web).
 # shellcheck source=../lib/docker.sh
 source "${ANVIL_ROOT}/lib/docker.sh"
-# shellcheck source=../lib/vhost.sh
-source "${ANVIL_ROOT}/lib/vhost.sh"
 # shellcheck source=../lib/ssl.sh
 source "${ANVIL_ROOT}/lib/ssl.sh"
+# shellcheck source=../lib/vhost.sh
+source "${ANVIL_ROOT}/lib/vhost.sh"
 # shellcheck source=../lib/project.sh
 source "${ANVIL_ROOT}/lib/project.sh"
 # shellcheck source=../lib/db.sh
@@ -32,40 +62,50 @@ source "${ANVIL_ROOT}/lib/web.sh"
 
 usage() {
   cat <<'EOF'
-Anvil control — local dev automation & EC2 deployment tool.
+Anvil v3 control — Caddy edge + Tengine LB + FrankenPHP app.
 
 Usage:
-  anvilctl start                 Bring the local Docker stack + Web UI up
-  anvilctl stop                  Tear the local Docker stack + Web UI down
-  anvilctl status                Show stack + project status
-  anvilctl projects              List projects (name, url, ssl) as TSV
-  anvilctl scan                  Register any unregistered projects in www/
-  anvilctl new PROJECT_NAME      Register a new project (vhost + ssl)
-  anvilctl ssl PROJECT_NAME      Install CA (once) + issue project cert
-  anvilctl db create DB_NAME     Create a MySQL database (idempotent)
-  anvilctl logs                  Tail the Docker stack logs
-  anvilctl build-assets          Build frontend assets via dart-sass
-  anvilctl watch [--once]        Auto-sync vhosts on www/ create|delete (loop)
-  anvilctl ec2 provision [opts]  Provision EC2 + RDS (Phase 4)
-  anvilctl ec2 tunnel  [opts]    Open a bastion SSH tunnel to private RDS
-  anvilctl ec2 billing           Show this month's AWS cost (UnblendedCost)
-  anvilctl ec2 billing-alarm     Create a CloudWatch billing alarm (default $5)
-  anvilctl ec2 help              Show EC2 provisioning help
-  anvilctl billing               Alias for the AWS cost check
-  anvilctl help                  Show this help
+  anvilctl start [-d]                 Boot the active stack (env-aware)
+  anvilctl stop                       Stop the active stack
+  anvilctl status                     Versions, listener map, worker counts, tenant count
+  anvilctl restart <svc>              Restart one service: caddy|tengine|app@blue|app@green|data
 
-EC2 provision options (passed to anvilctl ec2 provision):
-  --dry-run              Show what would be created without making AWS calls
-  --env NAME             Environment tag (default: prod)
-  --ssh-cidr CIDR        SSH source CIDR (default: your public IP /32)
-  --skip-rds             Do not create RDS; use --rds-endpoint instead
-  --rds-endpoint HOST    Existing RDS host (with --skip-rds)
-  --rds-user/-password/-database  Credentials for --skip-rds (written to SSM)
-  --confirm-t3-small     Allow t3.small (cost warning printed)
-  --ami ID               Override the Amazon Linux 2023 AMI
-  --key-name NAME        EC2 key pair name (default: anvil-prod)
-  --key-path PATH        Where to write the private key (chmod 600)
-  --region REGION        AWS region (default: us-east-1)
+  anvilctl stack slim|full            Dev-only: collapsed single process | full trio parity
+
+  anvilctl doctor                     CVE-floor check (versions.env vs installed binaries)
+  anvilctl verify boot|health|headers|ports|all
+                                      Staging validation gates (§6.3 of v3 doc)
+
+  anvilctl deploy <env> [--strategy blue-green] [--release DIGEST]
+                                      Blue/green deploy with auto-rollback (§7.7)
+  anvilctl rollback <env>             Dyups swap back to the previous pool
+
+  anvilctl projects                   List tenants as TSV (slug, root, created)
+  anvilctl scan                       Re-scan WWW_DIR for tenants
+  anvilctl register <slug>            Register a new tenant (creates WWW_DIR/<slug>/)
+  anvilctl unregister <slug>          Unregister a tenant (removes WWW_DIR/<slug>/)
+  anvilctl watch [--once]             inotify on WWW_DIR (loop mode by default)
+
+  anvilctl db create DB_NAME          Injection-safe MySQL create (v1 heritage)
+  anvilctl logs [svc]                 Tail logs: caddy|tengine|app|data
+  anvilctl build-assets               Build frontend assets via dart-sass (v1)
+
+  anvilctl ec2 provision [opts]       Provision EC2 + RDS (v1)
+  anvilctl ec2 tunnel [opts]          Open a bastion SSH tunnel to private RDS (v1)
+  anvilctl ec2 billing                Show this month's AWS cost (v1)
+  anvilctl ec2 billing-alarm          Create a CloudWatch billing alarm (v1)
+  anvilctl ec2 help                   Show EC2 provisioning help (v1)
+
+  anvilctl provision install-units    (re)install systemd units + rendered configs
+  anvilctl provision install-trio     Run install-trio.sh (root required)
+
+  anvilctl help                       Show this help
+
+Environment variables (override anvil.conf defaults):
+  ANVIL_ENV           dev|staging|production (default: dev)
+  ANVIL_STACK_MODE    slim|full (dev only; default: slim)
+  ANVIL_WORKERS       override worker count for any env
+  ACME_CA             staging CA URL for rehearsals (empty = production)
 EOF
 }
 
@@ -73,37 +113,140 @@ cmd="${1:-}"
 shift 2>/dev/null || true
 
 case "$cmd" in
+  # ---- Lifecycle ---------------------------------------------------------
   start)
-    anvil_docker_up
-    anvil_web_up
+    detach=0
+    [[ "${1:-}" == "-d" ]] && { detach=1; shift; }
+    case "${ANVIL_ENV:-dev}" in
+      dev)
+        # Bring up the data tier first (Docker compose or host services).
+        if [[ "${DATA_SOURCE:-docker}" == "docker" ]]; then
+          docker compose -f "${ANVIL_ROOT}/dev/compose.data.yml" up -d || anvil_warn "data tier failed to start (is Docker running?)"
+        fi
+        if [[ "${ANVIL_STACK_MODE:-slim}" == "slim" ]]; then
+          anvil_info "starting dev (collapsed mode — single FrankenPHP process)"
+          if (( detach )); then
+            nohup "$ANVIL_FRANKENPHP_BIN" run --config "${ANVIL_ROOT}/dev/Caddyfile.dev" \
+              >"${ANVIL_LOG_DIR:-/tmp}/anvil-dev.log" 2>&1 &
+            anvil_info "dev started (pid $!); logs at ${ANVIL_LOG_DIR:-/tmp}/anvil-dev.log"
+          else
+            anvil_frankenphp_start dev
+          fi
+        else
+          anvil_info "starting dev (full parity mode — Caddy + Tengine + FrankenPHP)"
+          anvil_frankenphp_start blue
+          anvil_tengine_start
+          anvil_caddy_start
+        fi
+        ;;
+      staging|production)
+        anvil_caddy_start
+        anvil_tengine_start
+        anvil_frankenphp_start blue
+        ;;
+      *) anvil_die 2 "ANVIL_ENV must be dev|staging|production (got '${ANVIL_ENV}')" ;;
+    esac
     ;;
   stop)
-    anvil_web_down
-    anvil_docker_down
+    case "${ANVIL_ENV:-dev}" in
+      dev)
+        if [[ "${ANVIL_STACK_MODE:-slim}" == "slim" ]]; then
+          pkill -f "frankenphp run --config ${ANVIL_ROOT}/dev/Caddyfile.dev" 2>/dev/null || true
+          anvil_info "stopped dev frankenphp (collapsed mode)"
+        else
+          anvil_caddy_stop
+          anvil_tengine_stop
+          anvil_frankenphp_stop blue
+        fi
+        ;;
+      staging|production)
+        anvil_caddy_stop
+        anvil_tengine_stop
+        anvil_frankenphp_stop blue
+        ;;
+    esac
     ;;
   status)
-    anvil_docker_ps
-    echo "--- Projects ---"
-    anvil_project_list
+    echo "=== Anvil v3 status ==="
+    echo "env=${ANVIL_ENV:-dev} stack=${ANVIL_STACK_MODE:-slim} data=${DATA_SOURCE:-docker}"
+    echo
+    anvil_caddy_status
+    anvil_tengine_status
+    anvil_frankenphp_status "${ANVIL_ENV:-dev}" 2>/dev/null || anvil_frankenphp_status blue 2>/dev/null || true
+    echo
+    echo "=== Tenants ==="
+    anvil_registry_list
     ;;
+  restart)
+    svc="${1:?Usage: anvilctl restart caddy|tengine|app@blue|app@green|data}"
+    case "$svc" in
+      caddy)         anvil_caddy_start ;;
+      tengine)       anvil_tengine_start ;;
+      app@blue)      systemctl restart anvil-frankenphp@blue ;;
+      app@green)     systemctl restart anvil-frankenphp@green ;;
+      data)          docker compose -f "${ANVIL_ROOT}/dev/compose.data.yml" restart ;;
+      *) anvil_die 2 "restart: unknown service '$svc'" ;;
+    esac
+    ;;
+
+  # ---- Stack shape (dev) -------------------------------------------------
+  stack)
+    mode="${1:?Usage: anvilctl stack slim|full}"
+    case "$mode" in
+      slim) export ANVIL_STACK_MODE=slim; anvil_info "stack mode set: slim (collapsed dev)" ;;
+      full) export ANVIL_STACK_MODE=full; anvil_info "stack mode set: full (parity trio)" ;;
+      *) anvil_die 2 "stack: must be slim|full" ;;
+    esac
+    ;;
+
+  # ---- Health & policy ---------------------------------------------------
+  doctor)
+    anvil_doctor_versions || exit 1
+    anvil_caddy_doctor
+    anvil_tengine_doctor
+    anvil_frankenphp_doctor
+    anvil_info "doctor: port-registry collision check"
+    anvil_check_port_collisions || anvil_warn "doctor: port collisions detected — run 'anvilctl status'"
+    ;;
+  verify)
+    anvil_verify "${1:-all}" "${@:2}"
+    ;;
+
+  # ---- Deploys -----------------------------------------------------------
+  deploy)
+    anvil_deploy "$@"
+    ;;
+  rollback)
+    anvil_rollback "${1:?Usage: anvilctl rollback <env>}"
+    ;;
+
+  # ---- Tenant registry ---------------------------------------------------
   projects)
-    anvil_projects_status
-    ;;
-  logs)
-    anvil_docker_logs --tail=200
+    anvil_registry_list
     ;;
   scan)
-    anvil_project_scan
+    anvil_registry_scan
     ;;
+  register)
+    anvil_registry_register "${1:?Usage: anvilctl register <slug>}"
+    ;;
+  unregister)
+    anvil_registry_unregister "${1:?Usage: anvilctl unregister <slug>}"
+    ;;
+  watch)
+    exec "${ANVIL_ROOT}/scripts/vhost-watcher.sh" "$@"
+    ;;
+
+  # ---- v1 surface (kept) -------------------------------------------------
   new)
+    # v1 alias for register; preserves the v1 UX during the migration window.
     project="${1:?Usage: anvilctl new PROJECT_NAME}"
-    anvil_project_register "$project"
+    anvil_registry_register "$project"
     ;;
   ssl)
     project="${1:?Usage: anvilctl ssl PROJECT_NAME}"
     anvil_ssl_install
     anvil_ssl_project "$project"
-    anvil_vhost_generate "$project"
     ;;
   db)
     sub="${1:?Usage: anvilctl db create DB_NAME}"
@@ -112,20 +255,22 @@ case "$cmd" in
         db_name="${2:?Usage: anvilctl db create DB_NAME}"
         anvil_db_create "$db_name"
         ;;
-      *)
-        echo "Unknown db subcommand: $sub" >&2
-        usage
-        exit 1
-        ;;
+      *) anvil_die 2 "unknown db subcommand: $sub" ;;
     esac
     ;;
   build-assets)
     anvil_build_assets
     ;;
-  watch)
-    # Launch the auto-vhost watcher (loop mode by default; pass --once for a
-    # single sync pass). exec replaces the shell so signals reach the watcher.
-    exec "${ANVIL_ROOT}/scripts/vhost-watcher.sh" "$@"
+  logs)
+    svc="${1:-app}"
+    case "$svc" in
+      caddy)         journalctl -u anvil-caddy -f ;;
+      tengine)       journalctl -u anvil-tengine -f ;;
+      app|frankenphp) journalctl -u anvil-frankenphp@blue -f ;;
+      data)          docker compose -f "${ANVIL_ROOT}/dev/compose.data.yml" logs -f ;;
+      dev)           tail -f "${ANVIL_LOG_DIR:-/tmp}/anvil-dev.log" ;;
+      *) anvil_die 2 "logs: unknown service '$svc'" ;;
+    esac
     ;;
   ec2)
     sub="${1:-help}"
@@ -135,22 +280,40 @@ case "$cmd" in
       billing)   anvil_ec2_billing ;;
       billing-alarm) shift; anvil_ec2_billing_alarm "$@" ;;
       help|-h|--help) anvil_ec2_help ;;
-      *)
-        echo "Unknown ec2 subcommand: $sub" >&2
-        anvil_ec2_help
-        exit 1
-        ;;
+      *) anvil_die 2 "unknown ec2 subcommand: $sub" ;;
     esac
     ;;
   billing)
     anvil_ec2_billing
     ;;
-  help|--help|-h)
-    usage
+
+  # ---- Provisioning helpers ---------------------------------------------
+  provision)
+    sub="${1:?Usage: anvilctl provision install-units|install-trio}"
+    case "$sub" in
+      install-units)
+        [[ $EUID -eq 0 ]] || exec sudo -E "$0" provision install-units
+        anvil_caddy_install_config
+        anvil_tengine_install_config
+        anvil_frankenphp_install_configs
+        for unit in anvil-caddy.service anvil-tengine.service anvil-frankenphp@.service anvil-secrets.service; do
+          install -m 0644 "${ANVIL_ROOT}/systemd/${unit}" "/etc/systemd/system/${unit}"
+        done
+        install -d -m 0755 /opt/anvil/bin
+        install -m 0755 "${ANVIL_ROOT}/bin/fetch-secrets.sh" /opt/anvil/bin/fetch-secrets.sh
+        systemctl daemon-reload
+        anvil_info "units + configs installed; run 'anvilctl start' to boot"
+        ;;
+      install-trio)
+        exec "${ANVIL_ROOT}/install-trio.sh" "${@:2}"
+        ;;
+      *) anvil_die 2 "provision: unknown subcommand '$sub'" ;;
+    esac
     ;;
-  "")
+
+  help|--help|-h|"")
     usage
-    exit 1
+    [[ -z "$cmd" ]] && exit 1
     ;;
   *)
     echo "Unknown command: $cmd" >&2

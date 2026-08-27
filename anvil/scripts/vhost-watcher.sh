@@ -2,19 +2,27 @@
 # shellcheck disable=SC1091
 # anvil/scripts/vhost-watcher.sh
 #
-# Auto-vhost watcher for Anvil. Watches the Anvil www directory ($WWW_DIR) for
-# project directory create/delete events using inotifywait and keeps nginx
-# vhosts + SSL certificates in sync by reusing the Phase 1 lib functions:
+# Tenant watcher for Anvil v3. Watches $WWW_DIR for tenant directory
+# create/delete events using inotifywait and keeps the tenant registry in sync
+# (lib/registry.sh). Replaces the v1 vhost-render watcher entirely: in v3,
+# there are no nginx vhost files to render — Caddy's on-demand TLS asks the
+# registry live via /_anvil/tls-allowed, and tenant presence IS registration.
 #
-#   * anvil_project_register  -> registers + issues SSL + generates vhost
-#   * anvil_vhost_remove      -> purges vhost config + certs
-#   * anvil_vhost_reload      -> graceful nginx reload
+# v3 handlers:
+#   * anvil_registry_register    -> mkdir $WWW_DIR/<slug> (idempotent)
+#   * anvil_registry_unregister  -> rmdir $WWW_DIR/<slug> (idempotent)
+#   * anvil_registry_scan        -> log current tenant list
 #
 # Modes:
 #   (default) loop   : watch forever, reacting to create/delete events.
-#   --once           : process current project directories once, then exit.
+#   --once           : process current tenant directories once, then exit.
 #
 # Clean shutdown on SIGTERM/SIGINT. Requires inotify-tools (`inotifywait`).
+#
+# BACKWARD COMPAT: the v1 handlers (anvil_project_register, anvil_vhost_*
+# calls) are NOT invoked in v3. The v1 lib/vhost.sh + lib/project.sh files
+# remain in the tree for the legacy `anvilctl stack legacy-nginx` escape hatch
+# (§8.5 of the v3 doc) and are removed at v3.1.
 
 set -euo pipefail
 
@@ -25,18 +33,10 @@ export ANVIL_ROOT
 
 # shellcheck source=../config/anvil.conf
 source "${ANVIL_ROOT}/config/anvil.conf"
-# shellcheck source=../lib/docker.sh
-source "${ANVIL_ROOT}/lib/docker.sh"
-# shellcheck source=../lib/vhost.sh
-source "${ANVIL_ROOT}/lib/vhost.sh"
-# shellcheck source=../lib/ssl.sh
-source "${ANVIL_ROOT}/lib/ssl.sh"
-# shellcheck source=../lib/project.sh
-source "${ANVIL_ROOT}/lib/project.sh"
-# shellcheck source=../lib/db.sh
-source "${ANVIL_ROOT}/lib/db.sh"
-# shellcheck source=../lib/ec2.sh
-source "${ANVIL_ROOT}/lib/ec2.sh"
+# shellcheck source=../lib/core.sh
+source "${ANVIL_ROOT}/lib/core.sh"
+# shellcheck source=../lib/registry.sh
+source "${ANVIL_ROOT}/lib/registry.sh"
 
 # ---------------------------------------------------------------------------
 # Preconditions
@@ -53,39 +53,37 @@ mkdir -p "$WWW_DIR"
 # Handlers
 # ---------------------------------------------------------------------------
 
-# React to a newly created project directory.
+# React to a newly created tenant directory.
 handle_create() {
   local path="$1"
   # Only react to directories (inotify may report file creates too).
   [[ -d "$path" ]] || return 0
-  local project
-  project="$(basename "$path")"
-  echo "[watch] new project directory: ${project}"
-  # anvil_project_register is idempotent and internally triggers
-  # anvil_ssl_project + anvil_vhost_generate.
-  anvil_project_register "$project" || echo "WARN: failed to register ${project}" >&2
-  anvil_vhost_reload || true
+  local slug
+  slug="$(basename "$path")"
+  echo "[watch] new tenant directory: ${slug}"
+  # In v3, presence IS registration — no vhost render step. We just log it
+  # so Caddy's on-demand TLS ask endpoint will return 200 for this slug's
+  # hostnames from this point on. The scan call below surfaces the count.
+  anvil_registry_scan
 }
 
-# React to a removed project directory.
+# React to a removed tenant directory.
 handle_delete() {
   local path="$1"
-  local project
-  project="$(basename "$path")"
-  echo "[watch] project directory removed: ${project}"
-  anvil_vhost_remove "$project" || echo "WARN: failed to remove vhost for ${project}" >&2
-  anvil_vhost_reload || true
+  local slug
+  slug="$(basename "$path")"
+  echo "[watch] tenant directory removed: ${slug}"
+  # Presence-gone means the ask endpoint will now return non-200 for this
+  # slug's hostnames — Caddy will refuse to issue new certs for them. Existing
+  # certs remain in Caddy's cert store until they expire; that is by design
+  # (immediate revocation would require an OCSP stapling step not in v3 scope).
+  anvil_registry_scan
 }
 
-# Process all existing project directories once (used by --once and at the
-# start of loop mode so pre-existing folders are synced).
+# Process all existing tenant directories once (used by --once and at the
+# start of loop mode so pre-existing folders are surfaced in the log).
 sync_existing() {
-  local dir
-  shopt -s nullglob
-  for dir in "$WWW_DIR"/*/; do
-    handle_create "${dir%/}"
-  done
-  shopt -u nullglob
+  anvil_registry_scan
 }
 
 # ---------------------------------------------------------------------------

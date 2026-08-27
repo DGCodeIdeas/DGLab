@@ -1,0 +1,38 @@
+# /etc/systemd/system/anvil-caddy.service — Anvil v3 edge (Caddy)  §7.6 of v3 doc.
+[Unit]
+Description=Anvil v3 edge (Caddy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/local/bin/caddy run --environ --config /etc/anvil/edge/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/anvil/edge/Caddyfile
+TimeoutStopSec=10s
+Restart=on-failure
+RestartSec=2s
+# Cert storage is the only writable path:
+StateDirectory=caddy
+ReadWritePaths=/var/lib/caddy
+# Bind 80/443 without running as root:
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,61 @@
+# anvil/dev/Caddyfile.dev — collapsed-mode dev config.
+#
+# Run with:
+#   frankenphp run --config anvil/dev/Caddyfile.dev
+# or via anvilctl:
+#   anvilctl start          # collapsed single process
+#   anvilctl stack full     # parity mode (full trio) — uses staging templates
+#
+# In this mode FrankenPHP IS the whole stack: it embeds Caddy (so TLS + HTTP
+# + PHP all run in one process), serves the mkcert wildcard cert for *.test,
+# and watches the source tree for hot reload. No Tengine, no Docker (except
+# for the data tier — §5.3 of v3 doc). RAM footprint ~80–150 MB per worker.
+#
+# §5.5 of the v3 doc is the authoritative reference for this file.
+
+{
+    # Admin on the standard port in dev (nothing else claims it in collapsed mode).
+    admin 127.0.0.1:2019
+
+    # Dev conveniences: readable logs, no ACME (mkcert cert below).
+    log {
+        output stdout
+        format console
+        level DEBUG
+    }
+
+    frankenphp {
+        worker {
+            # DGLab front controller (ADR-016 layout: app/ + public/index.php).
+            # The path is relative to the repo root (anvil/..).
+            file ../public/index.php
+            num 2                       # 2 workers — laptop-friendly
+            env APP_ENV=dev
+            env APP_DEBUG=true
+            env DB_DSN="mysql:host=127.0.0.1;port=3306;dbname=dglab_dev"
+            env REDIS_URL="redis://127.0.0.1:6379"
+            # Hot reload: restart workers when sources change (dev only!).
+            # Defaults to watching **/*.{php,twig,yaml,yml,env}.
+            watch
+        }
+        # Recycle threads to bound leaks during long dev sessions (experimental).
+        max_requests 1000
+        php_ini "display_errors" "1"
+        php_ini "opcache.enable" "1"
+        php_ini "opcache.validate_timestamps" "1"   # dev: recompile on change
+        php_ini "opcache.revalidate_freq" "0"
+    }
+}
+
+https:// {
+    # Wildcard dev cert issued by mkcert (§5.4 of v3 doc):
+    tls tls/test.pem tls/test-key.pem
+
+    root * ../public/
+    encode zstd gzip
+
+    php_server {
+        try_files {path} {path}/index.php index.php
+    }
+    file_server
+}

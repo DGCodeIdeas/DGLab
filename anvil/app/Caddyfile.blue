@@ -1,0 +1,74 @@
+# anvil/app/Caddyfile.blue — FrankenPHP blue pool template.
+#
+# This is the CANONICAL TEMPLATE. anvil/lib/frankenphp.sh renders it to
+# /etc/anvil/app/Caddyfile.blue and /etc/anvil/app/Caddyfile.green with
+# port + admin substitutions. The green variant differs ONLY in:
+#   - __LISTEN_PORT__ (8090 → 8091)
+#   - __ADMIN_PORT__  (2019 → 2018)
+# All other substitutions are identical (single source of truth).
+#
+# Tokens (substituted by sed in lib/frankenphp.sh):
+#   __LISTEN_PORT__      — 8090 (blue) / 8091 (green)
+#   __ADMIN_PORT__       — 2019 (blue) / 2018 (green)
+#   __WORKERS__          — 2 (dev) / 4 (staging) / 2*vCPU (prod)
+#   __APP_ROOT__         — /opt/anvil/current (prod blue) / current-green (green) / repo root (dev)
+#   __TRUSTED_PROXIES__  — 127.0.0.1 (loopback; Tengine is the only peer)
+#   __APP_ENV__          — dev|staging|production
+
+{
+    # CVE-2026-27589 posture: loopback bind + origin enforcement, on top of
+    # the fixed embedded Caddy (verified >= 2.11.1 lineage by anvilctl doctor).
+    admin 127.0.0.1:__ADMIN_PORT__ {
+        origins http://127.0.0.1:__ADMIN_PORT__ http://localhost:__ADMIN_PORT__
+        enforce_origin
+    }
+
+    servers {
+        # Trust ONLY the direct peer — Tengine on this host (§3.3 of v3 doc).
+        trusted_proxies static __TRUSTED_PROXIES__
+        timeouts {
+            read_body 30s
+            write 90s
+            idle 3m
+        }
+    }
+
+    frankenphp {
+        worker {
+            # Immutable release front controller (ADR-016 layout: app/ + public/index.php).
+            file __APP_ROOT__/public/index.php
+            num __WORKERS__
+            name dglab
+            # Secrets NEVER live here — they arrive via the systemd unit's
+            # EnvironmentFile (SSM-sourced, §7.8 of v3 doc) and are inherited by workers.
+            env APP_ENV=__APP_ENV__
+            env APP_URL=https://__APP_ROOT__
+            env TRUSTED_PROXIES=__TRUSTED_PROXIES__
+            max_consecutive_failures 10     # auto-restart flapping workers
+        }
+
+        # Global thread recycling — bounds leaks in long-lived workers
+        # (experimental option; global level, NOT inside worker{}).
+        max_requests 500
+
+        php_ini "opcache.enable" "1"
+        php_ini "opcache.memory_consumption" "256"
+        php_ini "opcache.max_accelerated_files" "20000"
+        php_ini "opcache.validate_timestamps" "0"   # releases are immutable
+        php_ini "opcache.preload" "__APP_ROOT__/config/preload.php"  # ADR-010
+        php_ini "opcache.preload_user" "anvil"
+        php_ini "expose_php" "0"
+        php_ini "memory_limit" "256M"
+    }
+}
+
+:__LISTEN_PORT__ {
+    # Worker-mode app entry. Static files are primarily Tengine's job (§7.4);
+    # file_server stays as the correctness fallback for anything the LB's
+    # regex misses (e.g. dotfiles, unusual extensions).
+    root * __APP_ROOT__/public
+    php_server {
+        try_files {path} {path}/index.php index.php
+    }
+    file_server
+}

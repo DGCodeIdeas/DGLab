@@ -1,61 +1,74 @@
 #cloud-config
 #
-# Anvil EC2 user-data (Phase 4).
+# Anvil v3 EC2 user-data — Caddy edge + Tengine LB + FrankenPHP app trio.
 #
 # On first boot this:
-#   1. Installs Docker Engine + the Compose plugin, the AWS CLI v2, git,
-#      inotify-tools, and the PHP CLI (for the loopback Web UI).
+#   1. Installs build prerequisites (git, curl, inotify-tools, AWS CLI v2,
+#      build-essential + pcre2/openssl/zlib dev headers for Tengine source build).
 #   2. Clones the Anvil repo into /opt/anvil.
 #      >>> REPLACE the ANVIL_REPO_URL below with your real repository <<<
 #      (or bake the repo into a custom AMI and skip the clone).
-#   3. Enables a systemd unit that brings the EC2 stack up on every boot via
-#      `anvilctl start`, with COMPOSE_FILE pointed at docker-compose.ec2.yml.
+#   3. Runs anvil/install-trio.sh — installs pinned Caddy 2.11.4 + FrankenPHP 1.12.7
+#      + Tengine 3.2.0 (source build via lb/tengine.build.sh), creates system users,
+#      renders configs, installs systemd units, sets sysctl/limits, firewall baseline.
+#   4. Fetches secrets from SSM (anvil-secrets.service) and starts the trio:
+#         anvil-frankenphp@blue → anvil-tengine → anvil-caddy
+#   5. First-boot health gate: refuses to mark provisioned if /health does not
+#      return 2xx within 60s of the caddy unit going active.
 #
-# The Web UI is started by `anvilctl start` and binds to 127.0.0.1:9999
-# (WEB_UI_HOST in config) — it is NEVER internet-facing. Reach it only through
-# the SSH tunnel. Only nginx 80/443 are public.
+# RULE T1 enforcement (§7.2 of v3 doc): only ports 22/tcp + 80/tcp + 443/tcp +
+# 443/udp are opened. All internal listeners bind 127.0.0.1 explicitly.
 
 package_update: true
 packages:
   - git
-  - inotify-tools
-  - ca-certificates
   - curl
   - unzip
-  - php
-  - php-cli
+  - ca-certificates
+  - inotify-tools
+  - jq
+  - build-essential
+  - libpcre2-dev
+  - libssl-dev
+  - zlib1g-dev
+  - ufw
 
 write_files:
-  - path: /etc/systemd/system/anvil.service
+  - path: /etc/systemd/system/anvil-firstboot-health.service
     permissions: '0644'
     content: |
       [Unit]
-      Description=Anvil stack (EC2 production)
-      After=docker.service
-      Requires=docker.service
-
+      Description=Anvil v3 first-boot health gate
+      After=anvil-caddy.service
+      Requires=anvil-caddy.service
       [Service]
       Type=oneshot
+      ExecStart=/opt/anvil/scripts/firstboot-health.sh
       RemainAfterExit=yes
-      # Point anvilctl at the EC2 compose file (no local mysql; RDS instead).
-      Environment=COMPOSE_FILE=docker/docker-compose.ec2.yml
-      WorkingDirectory=/opt/anvil
-      ExecStart=/opt/anvil/bin/anvilctl start
-      ExecStop=/opt/anvil/bin/anvilctl stop
-      TimeoutStartSec=600
-
       [Install]
       WantedBy=multi-user.target
 
-runcmd:
-  # --- Docker Engine + Compose plugin ---
-  - curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
-  - sh /tmp/get-docker.sh
-  - yum install -y docker-compose-plugin || dnf install -y docker-compose-plugin || true
-  - usermod -aG docker ec2-user
-  - systemctl enable --now docker
+  - path: /opt/anvil/scripts/firstboot-health.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      # First-boot health gate: poll https://localhost/health for 60s.
+      set -euo pipefail
+      for i in $(seq 1 60); do
+        if curl -fskS --max-time 3 https://localhost/health >/dev/null 2>&1; then
+          echo "anvil-firstboot: /health OK after ${i}s"
+          systemctl is-active --quiet anvil-frankenphp@blue || exit 1
+          systemctl is-active --quiet anvil-tengine       || exit 1
+          systemctl is-active --quiet anvil-caddy         || exit 1
+          exit 0
+        fi
+        sleep 1
+      done
+      echo "anvil-firstboot: /health FAILED after 60s — provision marked failed" >&2
+      exit 1
 
-  # --- AWS CLI v2 ---
+runcmd:
+  # --- AWS CLI v2 (needed by anvil-secrets.service to fetch SSM params) ---
   - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
   - unzip -o /tmp/awscliv2.zip -d /tmp
   - /tmp/aws/install
@@ -63,10 +76,41 @@ runcmd:
 
   # --- Clone the Anvil repo (set ANVIL_REPO_URL to your real repo) ---
   - mkdir -p /opt
-  - git clone "https://github.com/example/anvil.git" /opt/anvil
+  - git clone "https://github.com/DGCodeIdeas/DGLab.git" /opt/anvil
+  - ln -sfn /opt/anvil/anvil /opt/anvil-current-anvil
 
-  # --- Enable the Anvil stack to start on boot ---
-  - systemctl daemon-reload
-  - systemctl enable --now anvil.service
+  # --- Anvil v3 trio install (Caddy + Tengine + FrankenPHP) ---
+  - ANVIL_ENV=production /opt/anvil/anvil/install-trio.sh --env production --noninteractive
 
-final_message: "Anvil EC2 bootstrap complete. Stack managed by systemd (anvil.service)."
+  # --- Tengine source build (the install-trio.sh script defers this on platforms
+  #     without prebuilt packages; on EC2 x86_64/Graviton we always build it) ---
+  - |
+    if ! /usr/local/tengine/sbin/nginx -v 2>&1 | grep -q '3.2.0'; then
+      /opt/anvil/anvil/lb/tengine.build.sh --version 3.2.0 --prefix /usr/local/tengine
+      # Re-render tengine.conf now that the binary exists.
+      /opt/anvil/anvil/bin/anvilctl provision install-units
+    fi
+
+  # --- Fetch secrets from SSM (instance role needs ssm:GetParameter on /anvil/rds/*) ---
+  - systemctl enable --now anvil-secrets.service
+
+  # --- Boot the trio in dependency order (blue → tengine → caddy) ---
+  - systemctl enable anvil-frankenphp@blue.service
+  - systemctl enable anvil-tengine.service
+  - systemctl enable anvil-caddy.service
+  - systemctl start anvil-frankenphp@blue.service
+  - systemctl start anvil-tengine.service
+  - systemctl start anvil-caddy.service
+
+  # --- First-boot health gate (refuses to mark provisioned if /health fails) ---
+  - systemctl enable --now anvil-firstboot-health.service
+
+  # --- Firewall baseline (RULE T1: only Caddy binds public) ---
+  - ufw --force reset
+  - ufw allow 22/tcp  comment 'ssh (RESTRICT to ops CIDR manually!)'
+  - ufw allow 80/tcp  comment 'caddy edge (http redirect)'
+  - ufw allow 443/tcp comment 'caddy edge (https/h2)'
+  - ufw allow 443/udp comment 'caddy edge (http/3)'
+  - ufw --force enable
+
+final_message: "Anvil v3 EC2 bootstrap complete. Trio managed by systemd (anvil-caddy + anvil-tengine + anvil-frankenphp@blue)."

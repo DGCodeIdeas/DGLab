@@ -1,0 +1,110 @@
+# anvil/edge/Caddyfile — Caddy edge tier (§7.3 of v3 doc).
+#
+# Stock caddy 2.11.4 binary, NO custom modules (deliberate: plugin-free
+# binaries keep the CVE floor auditable; rate limiting lives at the Tengine
+# tier where limit_req is built in).
+#
+# Tokens (substituted by lib/caddy.sh::anvil_caddy_install_config):
+#   __CADDY_ADMIN_PORT__    — 2020 (moved off 2019 to free it for FrankenPHP blue)
+#   __TENGINE_LISTEN_PORT__ — 8081
+#   __ACME_CA_LINE__        — empty (prod) or "acme_ca https://acme-staging-v02..." (staging)
+#   __ACME_EMAIL__          — ops@dglab.example by default
+#   __PRIMARY_FQDN__        — dglab.example.com
+
+{
+    # Admin moved OFF 2019 (reserved for FrankenPHP blue) and locked down:
+    # origins+enforce_origin harden the admin CSRF class (CVE-2026-27589)
+    # even on builds already carrying the 2.11.1 fix — defense in depth.
+    admin 127.0.0.1:__CADDY_ADMIN_PORT__ {
+        origins http://127.0.0.1:__CADDY_ADMIN_PORT__ http://localhost:__CADDY_ADMIN_PORT__
+        enforce_origin
+    }
+
+    email __ACME_EMAIL__
+
+    # Staging knob (§6.2 of v3 doc): swap the CA for rehearsals.
+    # In prod this line is empty (production Let's Encrypt).
+    __ACME_CA_LINE__
+
+    # On-Demand TLS for tenant vhosts: Caddy asks the app (via Tengine)
+    # whether a certificate may be issued for an incoming SNI name.
+    # Required in production to prevent ACME abuse; 200 => allow, else deny.
+    on_demand_tls {
+        ask http://127.0.0.1:__TENGINE_LISTEN_PORT__/_anvil/tls-allowed
+    }
+
+    servers {
+        protocols h1 h2 h3
+        timeouts {
+            read_body 30s
+            write 120s
+            idle 2m
+        }
+    }
+}
+
+# ---------- snippets ----------
+(security_headers) {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
+
+# ---------- primary platform site (fixed cert via normal ACME) ----------
+__PRIMARY_FQDN__ {
+    import security_headers
+    encode zstd gzip
+
+    # Structured access logs to journald (vector/promtail ship from there):
+    log {
+        output stdout
+        format json
+    }
+
+    # Everything to the internal LB. Caddy sets/overwrites
+    # X-Forwarded-For / X-Forwarded-Proto / Host automatically.
+    reverse_proxy 127.0.0.1:__TENGINE_LISTEN_PORT__ {
+        transport http {
+            keepalive 30s
+            keepalive_idle_conns 64
+            keepalive_idle_conns_per_host 64
+            response_header_timeout 90s
+            dial_timeout 5s
+        }
+        # Health-gated fail-fast if the whole middle tier dies:
+        health_uri /_anvil/ping
+        health_interval 10s
+        health_timeout 2s
+        health_status 200
+    }
+}
+
+# ---------- tenant / dynamic vhosts (on-demand certificates) ----------
+# The successor of Anvil v1's www/ + vhost-watcher: any host reaching this
+# catch-all gets a certificate issued iff the app's ask-endpoint approves
+# (tenant registered in anvil's project registry). No vhost files, no reload.
+https:// {
+    import security_headers
+    tls {
+        on_demand
+    }
+    log {
+        output stdout
+        format json
+    }
+    reverse_proxy 127.0.0.1:__TENGINE_LISTEN_PORT__ {
+        transport http {
+            keepalive 30s
+            keepalive_idle_conns 64
+        }
+    }
+}
+
+# HTTP/80 exists only to redirect (and to answer ACME HTTP-01 if ever needed).
+http:// {
+    redir https://{host}{uri} permanent
+}

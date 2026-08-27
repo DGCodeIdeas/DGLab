@@ -1,0 +1,33 @@
+# /etc/systemd/system/anvil-frankenphp@.service — Anvil v3 app server (FrankenPHP)
+# Template unit: %i = blue | green.  §7.6 of v3 doc.
+#
+# Only blue is enabled at boot; green is started at deploy time by lib/deploy.sh.
+# Boot order: anvil-secrets.service → anvil-frankenphp@blue → anvil-tengine → anvil-caddy
+[Unit]
+Description=Anvil v3 app server (FrankenPHP %i)
+After=network-online.target anvil-secrets.service
+Requires=anvil-secrets.service
+
+[Service]
+Type=notify
+User=anvil
+Group=anvil
+WorkingDirectory=/opt/anvil/current
+EnvironmentFile=/etc/anvil/secrets.env
+ExecStart=/usr/local/bin/frankenphp run --config /etc/anvil/app/Caddyfile.%i
+ExecReload=/usr/local/bin/frankenphp reload --config /etc/anvil/app/Caddyfile.%i
+TimeoutStopSec=30s          # let in-flight Fibers finish during deploys
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=2s
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/anvil/current/var   # app writes (var/cache, var/log)
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

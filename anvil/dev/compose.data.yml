@@ -1,0 +1,56 @@
+# anvil/dev/compose.data.yml
+#
+# Data-only compose stack for dev (§5.3 of v3 doc). MySQL 8.4 + Redis 7.
+# Nothing else runs in Docker in collapsed dev mode — FrankenPHP serves HTTP
+# directly (embedded Caddy) on the host.
+#
+# Bindings:
+#   mysql : 127.0.0.1:3306 (loopback only — never expose to the LAN)
+#   redis : 127.0.0.1:6379 (loopback only)
+#
+# Credentials: dev-safe defaults in .env (DO NOT use in production).
+# Override via the .env file at anvil/dev/.env, or via real env vars.
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: anvil-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dglab_dev}
+      MYSQL_USER: ${MYSQL_USER:-dglab}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dglab}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - anvil_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # Dev-only: keep buffer pool modest so the laptop stays responsive.
+    command: >
+      --innodb-buffer-pool-size=256M
+      --max-connections=50
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7
+    container_name: anvil-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - anvil_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  anvil_mysql:
+  anvil_redis:

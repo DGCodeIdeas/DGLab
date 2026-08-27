@@ -1,182 +1,251 @@
-# Anvil — End-to-End Validation Guide
+# Anvil v3 — Validation Procedures
 
-This guide describes the **manual** validation flow for Anvil's local-development
-path. It is provided because the stack **could not be executed against a live
-Docker environment in the build where these docs were written** — the steps below
-are the exact procedure a reviewer should follow on a real Kubuntu host to
-confirm the engine works end to end.
+This document is the operator-facing validation playbook for Anvil v3. Every
+procedure here is also automated by `anvilctl verify` (lib/verify.sh) — this
+file is the human-readable mirror, useful for audit, change-review, and
+incident review.
 
-> Scope: local dev only (`anvilctl start` → `new` → browse → `status`). The EC2
-> path is covered by [`../README.md`](../README.md#ec2-mode) and the
-> `anvilctl ec2` commands; it requires real AWS credentials and is out of scope
-> for a local validation run.
+The authoritative spec is §6.3 (staging gates) and §9 (troubleshooting) of
+[ReImplementation_Instruction.md](../ReImplementation_Instruction.md).
 
 ---
 
-## Prerequisites
+## 1. Boot gate — `anvilctl verify boot`
 
-A Debian/Ubuntu (Kubuntu) host with:
+**What it checks:** all three systemd units are `active (running)` AND
+`anvilctl doctor` returns green (version floors met).
 
-- **Docker Engine + Compose plugin** (`docker compose version` works).
-- **mkcert** (local CA installed via `mkcert -install`).
-- **dnsmasq** (configured for `*.test` → `127.0.0.1`; the `install.sh` installer
-  sets this up and resolves the systemd-resolved stub-listener conflict).
-- **inotify-tools** (`inotifywait` on PATH) for the vhost watcher.
-- **dart-sass** (`sass` on PATH) for `build-assets`.
-- **PHP 8.3 CLI** (`php -v`) for the Web UI skin.
-- `dialog` or `whiptail` (only needed for `install.sh` / the TUI skin).
-
-The fastest way to satisfy these is:
-
+**Manual equivalent:**
 
 ```bash
-sudo ./install.sh      # picks components via a checklist; idempotent
+systemctl is-active anvil-caddy
+systemctl is-active anvil-tengine
+systemctl is-active anvil-frankenphp@blue
+anvilctl doctor
 ```
 
-Verify the `*.test` wildcard resolves before continuing:
+**Pass criteria:**
+- All three `systemctl is-active` calls print `active`.
+- `anvilctl doctor` exits 0 with `OK` lines for caddy, frankenphp, frankenphp
+  embedded-caddy, and (in staging/prod) tengine.
+
+**Common failures:**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `caddy not active` | Bad edge Caddyfile (token left unrendered) | `anvilctl provision install-units` to re-render; then `systemctl start anvil-caddy` |
+| `tengine not active` | Config syntax error or missing `tengine` user | `anvil_tengine_validate`; check `getent passwd tengine` |
+| `frankenphp@blue not active` | `EnvironmentFile=/etc/anvil/secrets.env` missing or 0644 (should be 0640 root:anvil) | `systemctl start anvil-secrets`; check `ls -l /etc/anvil/secrets.env` |
+| `doctor: FAIL frankenphp embedded-caddy < floor` | FrankenPHP build vendors an old Caddy | Rebuild via official docker image or xcaddy recipe (frankenphp.dev/docs/config) |
+
+---
+
+## 2. Health gate — `anvilctl verify health`
+
+**What it checks:** `/health` returns 2xx within 5 s (HUB-15 contract); Tengine
+`check_status` shows the upstream as `up` with `rise >= 2`.
+
+**Manual equivalent:**
 
 ```bash
-dig +short demo.test @127.0.0.1     # expect: 127.0.0.1
+curl -fsS --max-time 5 https://dglab.example.com/health
+curl -s http://127.0.0.1:8081/_anvil/upstream | grep -i 'up'
+```
+
+**Pass criteria:**
+- Public `/health` returns 2xx within 5 s.
+- Tengine `/_anvil/upstream` dashboard HTML contains `Up` (case-insensitive)
+  for the `frankenphp` upstream.
+
+**Common failures:**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `/health` returns 502 | Tengine up but FrankenPHP blue down | `systemctl status anvil-frankenphp@blue`; check `/var/log/anvil/tengine-access.log` |
+| `/health` returns 504 | FrankenPHP alive but slow (>75s read_timeout) | Check `frankenphp_busy_threads` via admin API; raise `num` or fix slow code |
+| `/_anvil/upstream` shows `Down` | Active health checks failing (3 consecutive) | `curl http://127.0.0.1:8090/health` directly — if that 200s, the check_http_send format is wrong; if it 5xxs, fix the app |
+| `/health` times out | Caddy → Tengine path broken | `curl http://127.0.0.1:8081/_anvil/ping` — should 200 `ok\n` |
+
+---
+
+## 3. Headers gate — `anvilctl verify headers`
+
+**What it checks:** security headers (HSTS, X-Content-Type-Options,
+X-Frame-Options) are present; the X-Forwarded-For chain works end-to-end
+(the app's `/debug/xff` endpoint echoes `scheme=https` and the real client IP).
+
+**Manual equivalent:**
+
+```bash
+curl -fsSI https://dglab.example.com | grep -iE 'strict-transport|x-content-type|x-frame'
+curl -fsS https://dglab.example.com/debug/xff | jq .
+```
+
+**Pass criteria:**
+- `strict-transport-security: max-age=31536000; includeSubDomains; preload`
+- `x-content-type-options: nosniff`
+- `x-frame-options: DENY`
+- `/debug/xff` returns JSON with `"scheme":"https"` and a non-loopback
+  `client_ip` (when tested from a real external host).
+
+**Common failures:**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `x-frame-options: SAMEORIGIN` | FrankenPHP's `file_server` adding its own header | Remove the `php_server` extra header or override in Caddyfile.blue |
+| `scheme=http` from /debug/xff | Tengine's `proxy_set_header X-Forwarded-Proto https;` removed or commented | Restore the line in `lb/tengine.conf` template |
+| `/debug/xff` 404 | Hub not deployed (HUB-15 contract pending) | WARN, not FAIL — the gate degrades to a security-headers-only check |
+
+---
+
+## 4. Ports gate — `anvilctl verify ports`
+
+**What it checks:** no port-registry collisions (§3.4 of v3 doc). Every entry
+in the registry is held by the process the registry says should hold it.
+
+**Manual equivalent:**
+
+```bash
+anvilctl status | grep -A30 LIVE LISTENERS
+```
+
+**Pass criteria:**
+- `127.0.0.1:2020`  held by `caddy`
+- `127.0.0.1:8081`  held by `nginx` (Tengine) or `tengine`
+- `127.0.0.1:8090`  held by `frankenphp`
+- `127.0.0.1:8091`  held by `frankenphp` (only during deploys/rehearsals)
+- `127.0.0.1:2019`  held by `frankenphp`
+- `127.0.0.1:2018`  held by `frankenphp` (only during deploys/rehearsals)
+- `:80` and `:443`  held by `caddy`
+
+**Common failures:**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `127.0.0.1:8081 held by 'nginx' but registry owner is 'tengine'` | Tengine's binary is named `nginx` (it's an nginx fork) — the check accepts both `nginx` and `tengine` | None — false positive, verify with `nginx -v` showing `Tengine/3.2.0` |
+| `:80 held by 'nginx'` | Stale v1 nginx container still running | `docker stop anvil-nginx` (v1); `anvilctl migrate cleanup-legacy-nginx` (when it lands) |
+| `127.0.0.1:2019 held by 'caddy'` | FrankenPHP not started; Caddy edge has not been started; the admin port collision is the canary | Boot order is wrong — `systemctl start anvil-frankenphp@blue` BEFORE `anvil-caddy` |
+
+---
+
+## 5. Full suite — `anvilctl verify all`
+
+Runs gates 1–4 in order. Returns 0 only if ALL pass. This is the gate a
+release candidate must clear before promotion (§6.3 of v3 doc):
+
+> A release candidate that passes 1–5 is promoted by digest; one that fails
+> any gate is rejected on staging — never "fixed in prod" (STRUCTURE-08 §1:
+> rollback requires no human decision).
+
+The fifth gate (blue/green rehearsal under load) is not automated by
+`anvilctl verify all` because it requires a load generator. Run it manually:
+
+```bash
+# In one terminal: deploy a release candidate to staging.
+anvilctl deploy staging --release rc-$(date +%s)
+
+# In another: drive 50 rps for 30s during the swap.
+hey -z 30s -q 50 https://staging.dglab.example.com/
+
+# Acceptance: zero non-2xx responses during the 30s window.
+hey prints a status-code histogram; check `nongzip > 0` or any 5xx count > 0
+as a failure.
 ```
 
 ---
 
-## Unattended & cost-free validation
+## 6. Failure drills (quarterly)
 
-Anvil can be validated **without a TTY** and **without any AWS spend**:
+Per §6.3 of the v3 doc, run these once a quarter on staging:
 
-### Unattended local install
-
-```bash
-sudo ./install.sh --yes        # non-interactive; installs all missing components
-```
-
-`--yes` / `--noninteractive` skips the dialog checklist and the progress
-gauge, auto-selecting every missing component and printing a plain-text
-summary. This is the path to confirm the "completely automated" claim on a
-fresh Kubuntu host.
-
-### EC2 plan validation (no AWS calls)
+### 6.1 Kill the active worker pool
 
 ```bash
-anvilctl ec2 provision --dry-run --env prod
+# On staging, kill the blue FrankenPHP master.
+systemctl kill anvil-frankenphp@blue --signal=SIGKILL
+
+# Expect within 9s (fall 3 × interval 3000):
+#   - Tengine check_status marks the upstream 'Down'
+#   - Caddy serves a clean 502 page (never a hang)
+#   - No 5xx errors leak past the rate limiter
+
+# Restore:
+systemctl start anvil-frankenphp@blue
+# Within 6s (rise 2 × interval 3000), check_status shows 'Up' again.
 ```
 
-`--dry-run` prints the exact configuration, security-group rules, RDS settings,
-and EC2 tags that *would* be created, then exits **without making a single AWS
-API call**. It also enforces the `t3.micro` cost guard:
+### 6.2 Tengine unit crash
 
 ```bash
-INSTANCE_TYPE=t3.small anvilctl ec2 provision --dry-run   # exits 1; demands --confirm-t3-small
+systemctl kill anvil-tengine --signal=SIGKILL
+
+# Expect:
+#   - Caddy's health_uri /_anvil/ping fails; Caddy stops sending traffic
+#     (health-gated fail-fast, §7.3 of v3 doc)
+#   - Public requests return 502 within 10s (health_interval)
+
+# Restore:
+systemctl start anvil-tengine
 ```
 
-Use the dry-run output as the evidence that SSH (22) is locked to the caller
-IP only, 80/443 are public, 3306 is restricted to the EC2 SG, and RDS
-credentials land in SSM Parameter Store as `SecureString`.
+### 6.3 Caddy unit crash
+
+```bash
+systemctl kill anvil-caddy --signal=SIGKILL
+
+# Expect:
+#   - Public 80/443 listeners go dark (no connection accepted)
+#   - systemd Restart=on-failure brings Caddy back within 2s (RestartSec)
+
+# Restore (if Restart did not catch it):
+systemctl start anvil-caddy
+```
+
+### 6.4 Secrets-fetch failure
+
+```bash
+# Simulate an SSM outage.
+sudo systemctl stop anvil-secrets
+sudo rm /etc/anvil/secrets.env
+sudo systemctl restart anvil-frankenphp@blue
+
+# Expect:
+#   - anvil-frankenphp@blue fails to start (EnvironmentFile missing)
+#   - Tengine marks upstream Down within 9s
+#   - Caddy serves 502
+
+# Restore:
+sudo systemctl start anvil-secrets
+sudo systemctl restart anvil-frankenphp@blue
+```
 
 ---
 
-## Manual validation flow
+## 7. CVE ritual (weekly, 15 minutes)
 
-Run from the `anvil/` directory (or with `anvilctl` on PATH).
-
-### 1. Bring the stack + Web UI up
+Per §7.9 of the v3 doc. Calendarized; do not skip.
 
 ```bash
-anvilctl start
+# 1. Run the doctor — compares installed binaries against config/versions.env.
+anvilctl doctor
+
+# 2. Check the three upstream advisory feeds:
+#    - nginx security advisories (Tengine inherits its CVE surface):
+#      https://nginx.org/en/security_advisories.html
+#    - Caddy releases: https://github.com/caddyserver/caddy/releases
+#    - FrankenPHP releases: https://github.com/php/frankenphp/releases
+
+# 3. On any advisory touching a running component:
+#    a. Raise the floor in config/versions.env (commit with the advisory ID).
+#    b. Roll the binary:
+#       - Caddy/FrankenPHP bump → blue/green restart (§7.7 mechanics).
+#       - Tengine bump → tengine -t + HUP.
+#    c. Verify: anvilctl verify all
+
+# 4. Standing posture on the next Rift-class event:
+#    If the fixed Tengine release is not yet out, Option B (§3.5 of v3 doc):
+#      - Stop the Tengine unit.
+#      - Point Caddy's reverse_proxy directly at the FrankenPHP pools
+#        (regenerate Caddyfile with APP_TRANSPORT=tcp and no Tengine).
+#      - Schedule the restore.
 ```
-
-Expected:
-- `docker compose -f docker/docker-compose.local.yml up -d` starts
-  `nginx`, `php`, `mysql`, `phpmyadmin`, `redis`.
-- The Web UI PHP server launches in the background, bound to
-  `127.0.0.1:9999` (pid tracked in `.anvil-web.pid`).
-
-### 2. Register a new project
-
-```bash
-anvilctl new demo
-```
-
-Expected (this is the core integration test):
-- Creates the web root `www/demo` and writes `www/demo/.anvil-registered`.
-- Issues a mkcert certificate into `docker/nginx/certs/demo/`
-  (`demo.pem` + `demo-key.pem`) from the trusted local CA.
-- Renders `docker/nginx/conf.d/demo.conf` from
-  `docker/nginx/templates/vhost.conf.tpl` (via `envsubst`), with
-  `server_name demo.test`, the cert paths, and `fastcgi_pass php:9000`.
-- Reloads nginx so the new vhost is live.
-
-### 3. Browse the project
-
-Open a browser (on the same host) at:
-
-```
-https://demo.test
-```
-
-Expected:
-- `demo.test` resolves to `127.0.0.1` via dnsmasq.
-- TLS is **trusted** (mkcert CA is in the system/browser trust store) — no
-  certificate warning.
-- nginx terminates TLS and proxies PHP to `php:9000` (PHP-FPM). A project placed
-  in `www/demo` (e.g. an `index.php`) is served.
-- The HTTP→HTTPS redirect works (port 80 → 301 to `https://demo.test`).
-
-### 4. (Optional) exercise the Web UI
-
-Open `http://127.0.0.1:9999` — the SPA loads and its API calls
-(`?route=api/status`, `?route=api/projects`, `?route=api/new`, …) shell out to
-`anvilctl` and return JSON. The UI is loopback-only.
-
-### 5. Check status
-
-```bash
-anvilctl status
-```
-
-Expected:
-- `docker compose ps` shows the five containers `Up` (healthy where defined).
-- A `--- Projects ---` section lists `demo` as `[registered]`.
-
-### 6. (Optional) vhost watcher
-
-```bash
-anvilctl watch --once     # sync existing www/ dirs once
-anvilctl watch            # loop: reacts to new/removed project dirs
-```
-
-Expected: creating `www/another` triggers cert + vhost generation and an nginx
-reload; removing it purges the vhost + certs.
-
-### 7. Tear down
-
-```bash
-anvilctl stop
-```
-
-Expected: Web UI server stopped (pidfile removed) and `docker compose down`
-stops the stack.
-
----
-
-## Success criteria
-
-- [ ] `dig +short demo.test @127.0.0.1` → `127.0.0.1`.
-- [ ] `anvilctl new demo` creates `www/demo`, certs, and `conf.d/demo.conf`
-      without error.
-- [ ] `https://demo.test` loads with a **trusted** certificate and is served by
-      nginx → php-fpm:9000.
-- [ ] `anvilctl status` shows the stack `Up` and `demo` registered.
-- [ ] `anvilctl stop` cleanly stops the Web UI and the stack.
-
----
-
-## Not executed here
-
-This validation was **not run** in the documentation build environment. The
-procedures above are derived directly from the engine code
-([`lib/*.sh`](../../anvil/lib), [`bin/anvilctl`](../../anvil/bin/anvilctl),
-[`docker/docker-compose.local.yml`](../../anvil/docker/docker-compose.local.yml),
-[`docker/nginx/templates/vhost.conf.tpl`](../../anvil/docker/nginx/templates/vhost.conf.tpl))
-and are the authoritative manual test plan for a reviewer with a live host.
