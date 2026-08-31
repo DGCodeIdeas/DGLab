@@ -2,22 +2,32 @@
 # shellcheck disable=SC1091
 # anvil/install.sh
 #
-# Anvil unified installer — the ONLY user-facing installer.
-# All other install scripts are internal modules in lib/.
+# Anvil unified interactive entrypoint — the ONLY user-facing script.
+# All operations are accessible through a single menu (dialog/whiptail).
 #
-# Provides an interactive menu (dialog/whiptail) covering:
-#   1. Bootstrap     — Docker, dnsmasq, mkcert, dart-sass, inotify-tools
-#   2. Trio install  — Caddy + Tengine + FrankenPHP (pinned binaries, systemd, firewall)
-#   3. Build Tengine — Compile Tengine from source (when packages unavailable)
-#   4. Uninstall     — Remove old anvil + conflicting servers
-#   5. Doctor        — CVE-floor version check + port collision audit
+# Three entrypoints exist in the entire project:
+#   1. install.sh   — this file (interactive menu + CLI flags)
+#   2. bin/anvilctl  — CLI dispatcher for scripted/alias use
+#   3. uninstall.sh — clean removal of anvil + conflicting servers
 #
-# Non-interactive usage:
-#   sudo ./install.sh --bootstrap            Phase 1 only (Docker, DNS, mkcert, sass)
-#   sudo ./install.sh --trio [--env prod]   Trio only (Caddy + Tengine + FrankenPHP)
-#   sudo ./install.sh --full [--env prod]   Bootstrap + Trio (everything)
+# Everything else under lib/ is non-runnable library modules.
+#
+# Menu sections:
+#   Install:       Full, Bootstrap only, Trio only, Build Tengine
+#   Runtime:       Start, Stop, Restart service, Status, Stack mode
+#   Deploy:        Deploy, Rollback
+#   Tenants:       List, Register, Unregister, Scan, Watch
+#   EC2:           Provision, Tunnel, Billing
+#   Diagnostics:   Doctor, Verify, Logs
+#   Maintenance:   Uninstall, Reinstall units, Build assets
+#
+# Non-interactive usage (passes through to anvilctl):
+#   sudo ./install.sh --bootstrap            Phase 1 only
+#   sudo ./install.sh --trio [--env prod]   Trio only
+#   sudo ./install.sh --full [--env prod]   Bootstrap + Trio
 #   sudo ./install.sh --uninstall           Run the uninstaller
-#   sudo ./install.sh --doctor              Run health checks
+#   sudo ./install.sh --doctor              Health checks
+#   sudo ./install.sh <anvilctl command>    Any anvilctl subcommand
 #
 # Requires root; re-execs via sudo when invoked unprivileged.
 
@@ -30,7 +40,8 @@ ANVIL_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 export ANVIL_ROOT
 
 # ---------------------------------------------------------------------------
-# Parse arguments
+# Parse arguments — if any CLI flag is passed, check for install-specific
+# flags first, then fall through to anvilctl for everything else.
 # ---------------------------------------------------------------------------
 MODE="menu"  # default: interactive menu
 for arg in "$@"; do
@@ -40,23 +51,37 @@ for arg in "$@"; do
     --full)           MODE="full" ;;
     --uninstall)      MODE="uninstall" ;;
     --doctor)         MODE="doctor" ;;
+    --menu)           MODE="menu" ;;
     --yes|--noninteractive) NONINTERACTIVE=1 ;;
     --env)            ANVIL_INSTALL_ENV="${2:-production}"; shift 2 ;;
     -h|--help)
       cat <<'EOF'
-Anvil unified installer
+Anvil — unified interactive entrypoint
 
 Interactive:  sudo ./install.sh
 
-Non-interactive shortcuts:
+Install shortcuts:
   sudo ./install.sh --bootstrap            Docker, dnsmasq, mkcert, sass
   sudo ./install.sh --trio [--env prod]   Caddy + Tengine + FrankenPHP
   sudo ./install.sh --full [--env prod]   Bootstrap + Trio
-  sudo ./install.sh --uninstall           Remove old anvil + conflicts
+  sudo ./install.sh --uninstall           Remove anvil + conflicts
   sudo ./install.sh --doctor              Health checks
+
+Runtime (delegates to anvilctl):
+  sudo ./install.sh start [-d]            Start the active stack
+  sudo ./install.sh stop                  Stop the active stack
+  sudo ./install.sh status                Show stack status
+  sudo ./install.sh restart <svc>         Restart one service
+  sudo ./install.sh deploy <env>           Deploy to environment
+  sudo ./install.sh logs [svc]             Tail service logs
+  ... any anvilctl subcommand works
 EOF
       exit 0 ;;
-    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    *)
+      # Unknown flag or subcommand — delegate to anvilctl.
+      MODE="delegate"
+      break
+      ;;
   esac
 done
 
@@ -64,17 +89,43 @@ done
 # Privilege check
 # ---------------------------------------------------------------------------
 if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
-  echo "This installer must run as root. Re-executing with sudo..." >&2
+  echo "This requires root. Re-executing with sudo..." >&2
   exec sudo "${ANVIL_ROOT}/install.sh" "$@"
 fi
 
 # ---------------------------------------------------------------------------
-# Source config + shared libs
+# Source config + all shared libs
 # ---------------------------------------------------------------------------
 # shellcheck source=config/anvil.conf
 source "${ANVIL_ROOT}/config/anvil.conf"
 # shellcheck source=lib/core.sh
 source "${ANVIL_ROOT}/lib/core.sh"
+# shellcheck source=lib/caddy.sh
+source "${ANVIL_ROOT}/lib/caddy.sh"
+# shellcheck source=lib/tengine.sh
+source "${ANVIL_ROOT}/lib/tengine.sh"
+# shellcheck source=lib/frankenphp.sh
+source "${ANVIL_ROOT}/lib/frankenphp.sh"
+# shellcheck source=lib/deploy.sh
+source "${ANVIL_ROOT}/lib/deploy.sh"
+# shellcheck source=lib/verify.sh
+source "${ANVIL_ROOT}/lib/verify.sh"
+# shellcheck source=lib/registry.sh
+source "${ANVIL_ROOT}/lib/registry.sh"
+# shellcheck source=lib/docker.sh
+source "${ANVIL_ROOT}/lib/docker.sh"
+# shellcheck source=lib/ssl.sh
+source "${ANVIL_ROOT}/lib/ssl.sh"
+# shellcheck source=lib/vhost.sh
+source "${ANVIL_ROOT}/lib/vhost.sh"
+# shellcheck source=lib/project.sh
+source "${ANVIL_ROOT}/lib/project.sh"
+# shellcheck source=lib/db.sh
+source "${ANVIL_ROOT}/lib/db.sh"
+# shellcheck source=lib/ec2.sh
+source "${ANVIL_ROOT}/lib/ec2.sh"
+# shellcheck source=lib/web.sh
+source "${ANVIL_ROOT}/lib/web.sh"
 
 # Installer-specific paths.
 : "${ANVIL_SYSTEMD_RESOLV_CONF:=/run/systemd/resolve/resolv.conf}"
@@ -248,8 +299,6 @@ run_trio() {
 run_build_tengine() {
   local version="${1:-}"
   if [[ -z "$version" ]]; then
-    # shellcheck source=lib/core.sh
-    source "${ANVIL_ROOT}/lib/core.sh"
     local -A FLOORS
     while IFS='=' read -r k v; do FLOORS["$k"]="$v"; done < <(_anvil_parse_versions_env)
     version="${FLOORS[TENGINE]:-3.2.0}"
@@ -262,13 +311,6 @@ run_build_tengine() {
 # Doctor
 # =========================================================================
 run_doctor() {
-  # shellcheck source=lib/caddy.sh
-  source "${ANVIL_ROOT}/lib/caddy.sh"
-  # shellcheck source=lib/tengine.sh
-  source "${ANVIL_ROOT}/lib/tengine.sh"
-  # shellcheck source=lib/frankenphp.sh
-  source "${ANVIL_ROOT}/lib/frankenphp.sh"
-
   echo "=== Anvil Doctor ==="
   anvil_doctor_versions || true
   anvil_caddy_doctor || true
@@ -279,10 +321,212 @@ run_doctor() {
 }
 
 # =========================================================================
-# Interactive menu
+# Runtime control functions (mirror anvilctl dispatch)
+# =========================================================================
+
+# --- Start ---
+menu_start() {
+  local env
+  env="$("$UI" --title "Start Stack" --menu \
+    "Select environment:" 12 50 3 \
+    "dev"       "Local dev (laptop)" \
+    "staging"   "Staging server" \
+    "production" "Production server" 3>&1 1>&2 2>&3)" || return 0
+  export ANVIL_ENV="$env"
+  case "$env" in
+    dev)
+      if [[ "${DATA_SOURCE:-docker}" == "docker" ]]; then
+        docker compose -f "${ANVIL_ROOT}/dev/compose.data.yml" up -d || anvil_warn "data tier failed"
+      fi
+      if [[ "${ANVIL_STACK_MODE:-slim}" == "slim" ]]; then
+        anvil_info "starting dev (collapsed mode)"
+        nohup "$ANVIL_FRANKENPHP_BIN" run --config "${ANVIL_ROOT}/dev/Caddyfile.dev" \
+          >"${ANVIL_LOG_DIR:-/tmp}/anvil-dev.log" 2>&1 &
+        anvil_info "dev started (pid $!)"
+      else
+        anvil_frankenphp_start blue; anvil_tengine_start; anvil_caddy_start
+      fi
+      ;;
+    staging|production)
+      anvil_caddy_start; anvil_tengine_start; anvil_frankenphp_start blue
+      ;;
+  esac
+  ui_msg "Started" "Stack started for env=$env"
+}
+
+# --- Stop ---
+menu_stop() {
+  case "${ANVIL_ENV:-dev}" in
+    dev)
+      if [[ "${ANVIL_STACK_MODE:-slim}" == "slim" ]]; then
+        pkill -f "frankenphp run --config ${ANVIL_ROOT}/dev/Caddyfile.dev" 2>/dev/null || true
+      else
+        anvil_caddy_stop; anvil_tengine_stop; anvil_frankenphp_stop blue
+      fi
+      ;;
+    *) anvil_caddy_stop; anvil_tengine_stop; anvil_frankenphp_stop blue ;;
+  esac
+  ui_msg "Stopped" "Stack stopped."
+}
+
+# --- Status ---
+menu_status() {
+  local out
+  out="=== Anvil v3 status ===\n"
+  out+="env=${ANVIL_ENV:-dev} stack=${ANVIL_STACK_MODE:-slim} data=${DATA_SOURCE:-docker}\n\n"
+  out+="--- Caddy ---\n$(anvil_caddy_status 2>&1 || echo 'not running')\n"
+  out+="--- Tengine ---\n$(anvil_tengine_status 2>&1 || echo 'not running')\n"
+  out+="--- FrankenPHP ---\n$(anvil_frankenphp_status "${ANVIL_ENV:-dev}" 2>&1 || echo 'not running')\n"
+  out+="\n--- Tenants ---\n$(anvil_registry_list 2>&1)"
+  ui_msg "Status" "$out"
+}
+
+# --- Restart service ---
+menu_restart() {
+  local svc
+  svc="$("$UI" --title "Restart Service" --menu \
+    "Select service to restart:" 14 50 6 \
+    "caddy"     "Caddy edge proxy" \
+    "tengine"   "Tengine internal LB" \
+    "app@blue"  "FrankenPHP blue worker" \
+    "app@green" "FrankenPHP green worker" \
+    "data"      "Docker data tier" 3>&1 1>&2 2>&3)" || return 0
+  case "$svc" in
+    caddy)         anvil_caddy_start ;;
+    tengine)       anvil_tengine_start ;;
+    app@blue)      systemctl restart anvil-frankenphp@blue ;;
+    app@green)     systemctl restart anvil-frankenphp@green ;;
+    data)          docker compose -f "${ANVIL_ROOT}/dev/compose.data.yml" restart ;;
+  esac
+  ui_msg "Restarted" "$svc restarted."
+}
+
+# --- Deploy ---
+menu_deploy() {
+  local env
+  env="$("$UI" --title "Deploy" --menu \
+    "Select target environment:" 12 50 3 \
+    "staging"   "Staging server" \
+    "production" "Production server" 3>&1 1>&2 2>&3)" || return 0
+  if ui_confirm "Deploy to $env" "Deploy the current release to $env?\n\nThis will:.Stop the inactive pool, swap release, verify health.\n\nProceed?"; then
+    anvil_deploy "$env" --strategy blue-green
+    ui_msg "Deployed" "Deployment to $env complete."
+  fi
+}
+
+# --- Rollback ---
+menu_rollback() {
+  local env
+  env="$("$UI" --title "Rollback" --menu \
+    "Select environment to rollback:" 12 50 3 \
+    "staging"   "Staging server" \
+    "production" "Production server" 3>&1 1>&2 2>&3)" || return 0
+  if ui_confirm "Rollback $env" "Swap $env back to the previous pool?\n\nProceed?"; then
+    anvil_rollback "$env"
+    ui_msg "Rolled back" "$env rolled back."
+  fi
+}
+
+# --- Logs ---
+menu_logs() {
+  local svc
+  svc="$("$UI" --title "Logs" --menu \
+    "Select service to tail logs:" 14 50 5 \
+    "caddy"       "Caddy edge (journalctl)" \
+    "tengine"     "Tengine LB (journalctl)" \
+    "app"         "FrankenPHP blue (journalctl)" \
+    "data"        "Docker data tier" \
+    "dev"         "Dev collapsed mode log" 3>&1 1>&2 2>&3)" || return 0
+  case "$svc" in
+    caddy)         journalctl -u anvil-caddy -f ;;
+    tengine)       journalctl -u anvil-tengine -f ;;
+    app)           journalctl -u anvil-frankenphp@blue -f ;;
+    data)          docker compose -f "${ANVIL_ROOT}/dev/compose.data.yml" logs -f ;;
+    dev)           tail -f "${ANVIL_LOG_DIR:-/tmp}/anvil-dev.log" ;;
+  esac
+}
+
+# --- Verify ---
+menu_verify() {
+  local check
+  check="$("$UI" --title "Verify" --menu \
+    "Select validation gate:" 14 55 6 \
+    "boot"    "Systemd unit boot check" \
+    "health"  "HTTP health endpoints" \
+    "headers" "Security header audit" \
+    "ports"   "Port binding verification" \
+    "all"     "Run all gates" 3>&1 1>&2 2>&3)" || return 0
+  local out
+  out="$(anvil_verify "$check" 2>&1)"
+  ui_msg "Verify ($check)" "$out"
+}
+
+# --- Tenants ---
+menu_tenants() {
+  while true; do
+    local action
+    action="$("$UI" --title "Tenant Management" --menu \
+      "Tenant registry operations:" 14 55 6 \
+      "list"       "List all tenants" \
+      "register"   "Register a new tenant" \
+      "unregister" "Remove a tenant" \
+      "scan"       "Re-scan for tenants" \
+      "back"       "Return to main menu" 3>&1 1>&2 2>&3)" || return 0
+    case "$action" in
+      list)
+        local out; out="$(anvil_registry_list 2>&1)"
+        ui_msg "Tenants" "$out"
+        ;;
+      register)
+        local slug
+        slug="$("$UI" --title "Register Tenant" --inputbox \
+          "Enter tenant slug (e.g. myproject):" 10 50 3>&1 1>&2 2>&3)" || continue
+        [[ -n "$slug" ]] && anvil_registry_register "$slug"
+        ui_msg "Registered" "Tenant '$slug' registered."
+        ;;
+      unregister)
+        local slug
+        slug="$("$UI" --title "Unregister Tenant" --inputbox \
+          "Enter tenant slug to remove:" 10 50 3>&1 1>&2 2>&3)" || continue
+        if [[ -n "$slug" ]] && ui_confirm "Unregister" "Remove tenant '$slug'? This deletes ${WWW_DIR:-/var/www/anvil}/$slug/"; then
+          anvil_registry_unregister "$slug"
+          ui_msg "Unregistered" "Tenant '$slug' removed."
+        fi
+        ;;
+      scan)
+        anvil_registry_scan
+        ui_msg "Scan" "Tenant scan complete."
+        ;;
+      back|"") break ;;
+    esac
+  done
+}
+
+# --- EC2 ---
+menu_ec2() {
+  while true; do
+    local action
+    action="$("$UI" --title "EC2 Operations" --menu \
+      "AWS EC2 + RDS provisioning:" 14 55 6 \
+      "provision"     "Provision EC2 + RDS instance" \
+      "tunnel"        "Open SSH tunnel to RDS" \
+      "billing"       "Show this month's AWS cost" \
+      "billing-alarm" "Create CloudWatch billing alarm" \
+      "back"          "Return to main menu" 3>&1 1>&2 2>&3)" || return 0
+    case "$action" in
+      provision)  anvil_ec2_provision ;;
+      tunnel)     anvil_ec2_tunnel ;;
+      billing)    local out; out="$(anvil_ec2_billing 2>&1)"; ui_msg "AWS Billing" "$out" ;;
+      billing-alarm) anvil_ec2_billing_alarm ;;
+      back|"") break ;;
+    esac
+  done
+}
+
+# =========================================================================
+# Main interactive menu
 # =========================================================================
 menu_main() {
-  # Ensure dialog/whiptail is available for the menu.
   if [[ -z "$UI" ]]; then
     echo "ERROR: neither 'dialog' nor 'whiptail' is installed." >&2
     echo "       Install one first:  apt-get install -y dialog" >&2
@@ -292,15 +536,27 @@ menu_main() {
 
   while true; do
     local choice
-    choice="$("$UI" --clear --title "Anvil Installer" \
-      --menu "Select an action:" 22 65 12 \
-      "1" "Full install (bootstrap + trio)" \
-      "2" "Bootstrap only (Docker, DNS, mkcert, sass)" \
-      "3" "Trio only (Caddy + Tengine + FrankenPHP)" \
-      "4" "Build Tengine from source" \
-      "5" "Uninstall (remove anvil + conflicts)" \
-      "6" "Doctor (version + port health check)" \
-      "7" "Exit" 3>&1 1>&2 2>&3)" || { clear; exit 0; }
+    choice="$("$UI" --clear --title "Anvil v3" \
+      --menu "Select an action:" 24 65 16 \
+      "1"  "Install — Full (bootstrap + trio)" \
+      "2"  "Install — Bootstrap only (Docker, DNS, mkcert, sass)" \
+      "3"  "Install — Trio only (Caddy + Tengine + FrankenPHP)" \
+      "4"  "Install — Build Tengine from source" \
+      "5"  "Runtime — Start stack" \
+      "6"  "Runtime — Stop stack" \
+      "7"  "Runtime — Restart service" \
+      "8"  "Runtime — Status" \
+      "9"  "Deploy — Blue/green deploy" \
+      "10" "Deploy — Rollback" \
+      "11" "Tenants — Manage tenant registry" \
+      "12" "EC2 — Provision / tunnel / billing" \
+      "13" "Diagnostics — Doctor (health check)" \
+      "14" "Diagnostics — Verify (staging gates)" \
+      "15" "Diagnostics — Logs" \
+      "16" "Maintenance — Reinstall systemd units" \
+      "17" "Maintenance — Build frontend assets" \
+      "18" "Uninstall — Remove anvil + conflicts" \
+      "19" "Exit" 3>&1 1>&2 2>&3)" || { clear; exit 0; }
 
     case "$choice" in
       1)
@@ -317,14 +573,40 @@ menu_main() {
       4)
         run_build_tengine
         ;;
-      5)
-        exec "${ANVIL_ROOT}/uninstall.sh" --yes
-        ;;
-      6)
+      5)  menu_start ;;
+      6)  menu_stop ;;
+      7)  menu_restart ;;
+      8)  menu_status ;;
+      9)  menu_deploy ;;
+      10) menu_rollback ;;
+      11) menu_tenants ;;
+      12) menu_ec2 ;;
+      13)
         run_doctor
         ui_msg "Doctor" "Health check complete.\n\nFix any issues above, then:\n  anvilctl start"
         ;;
-      7|"") clear; exit 0 ;;
+      14) menu_verify ;;
+      15) menu_logs ;;
+      16)
+        anvil_caddy_install_config
+        anvil_tengine_install_config
+        anvil_frankenphp_install_configs
+        for unit in anvil-caddy.service anvil-tengine.service anvil-frankenphp@.service anvil-secrets.service; do
+          install -m 0644 "${ANVIL_ROOT}/systemd/${unit}" "/etc/systemd/system/${unit}"
+        done
+        install -d -m 0755 /opt/anvil/bin
+        install -m 0755 "${ANVIL_ROOT}/bin/fetch-secrets.sh" /opt/anvil/bin/fetch-secrets.sh
+        systemctl daemon-reload
+        ui_msg "Units Reinstalled" "Systemd units + configs reinstalled.\nRun 'Start stack' to boot."
+        ;;
+      17)
+        anvil_build_assets
+        ui_msg "Assets Built" "Frontend assets compiled via dart-sass."
+        ;;
+      18)
+        exec "${ANVIL_ROOT}/uninstall.sh" --yes
+        ;;
+      19|"") clear; exit 0 ;;
     esac
   done
 }
@@ -349,6 +631,10 @@ case "$MODE" in
     ;;
   doctor)
     run_doctor
+    ;;
+  delegate)
+    # Fall through to anvilctl for any other subcommand.
+    exec "${ANVIL_ROOT}/bin/anvilctl" "$@"
     ;;
   menu)
     menu_main
