@@ -12,7 +12,7 @@
 #   * The Anvil Web UI is NOT part of this stack; it runs on the host bound to
 #     127.0.0.1:9999 (see config WEB_UI_HOST) and is reached via the tunnel.
 #   * Let's Encrypt live certs are bind-mounted at /etc/letsencrypt so the
-#     vhost rendered by provisioning/certbot-setup.sh can reference them.
+#     vhost rendered by lib/certbot.sh can reference them.
 #
 # Bring this stack up with:
 #   COMPOSE_FILE=docker/docker-compose.ec2.yml anvilctl start

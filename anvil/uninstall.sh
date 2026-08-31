@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# anvil/migrate.sh
+# anvil/uninstall.sh
 #
-# Migration script: uninstalls the previous anvil (all phases) and any
-# manually installed servers that conflict with the new anvil trio
-# (Caddy + Tengine + FrankenPHP).
+# Anvil uninstaller -- removes all installed artefacts and any conflicting
+# servers to prepare for a clean anvil reinstallation.
 #
 # What it removes:
 #   +---------------------------------------------------------------------+
@@ -34,10 +33,10 @@
 #   - SSH keys or AWS credentials
 #
 # Usage:
-#   sudo ./migrate.sh              # interactive -- confirm each phase
-#   sudo ./migrate.sh --yes        # non-interactive -- run all phases
-#   sudo ./migrate.sh --phase N    # run only phase N (1-6)
-#   sudo ./migrate.sh --dry-run   # show what would be removed, don't act
+#   sudo ./uninstall.sh              # interactive -- confirm each phase
+#   sudo ./uninstall.sh --yes        # non-interactive -- run all phases
+#   sudo ./uninstall.sh --phase N    # run only phase N (1-6)
+#   sudo ./uninstall.sh --dry-run   # show what would be removed, don't act
 #
 # Exit codes: 0 ok, 1 user-abort, 2 not-root, 3 phase error
 #
@@ -72,13 +71,13 @@ for arg in "$@"; do
     --phase)             TARGET_PHASE="${2:-}"; shift 2 ;;
     -h|--help)
       cat <<'EOF'
-Anvil migration script -- removes old anvil + conflicting servers.
+Anvil uninstaller -- removes old anvil + conflicting servers.
 
 Usage:
-  sudo ./migrate.sh              interactive
-  sudo ./migrate.sh --yes        non-interactive
-  sudo ./migrate.sh --phase N    run only phase N (1-6)
-  sudo ./migrate.sh --dry-run    show what would be removed
+  sudo ./uninstall.sh              interactive
+  sudo ./uninstall.sh --yes        non-interactive
+  sudo ./uninstall.sh --phase N    run only phase N (1-6)
+  sudo ./uninstall.sh --dry-run    show what would be removed
 
 Phases:
   1  Stop anvil services + Docker containers
@@ -742,7 +741,7 @@ EOF
 # ===========================================================================
 main() {
   echo
-  printf "${BOLD}${CYAN}  Anvil Migration Script${RST}\n"
+  printf "${BOLD}${CYAN}  Anvil Uninstaller${RST}\n"
   printf "${BOLD}${CYAN}  Uninstall old anvil + conflicting servers${RST}\n"
   echo "  $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   echo
