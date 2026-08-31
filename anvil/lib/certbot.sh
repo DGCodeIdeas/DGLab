@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
 #
-# anvil/provisioning/certbot-setup.sh
+# anvil/lib/certbot.sh
 #
 # Obtain Let's Encrypt certificates via the webroot plugin on a real domain and
 # render an nginx vhost (into the EC2 compose's conf.d) that terminates TLS with

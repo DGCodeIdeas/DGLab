@@ -57,7 +57,7 @@ aarch64. See §5.1 of the v3 doc for the full distro matrix.
 sudo ./install.sh --yes
 
 # 2. Install the v3 runtime (FrankenPHP only — collapsed dev mode).
-#    The install-trio.sh script is for staging/prod; in dev you only need
+#    The install.sh --trio script is for staging/prod; in dev you only need
 #    the FrankenPHP binary on PATH at /usr/local/bin/frankenphp:
 curl -fsSL -o /usr/local/bin/frankenphp \
   https://github.com/php/frankenphp/releases/download/v1.12.7/frankenphp-linux-x86_64
@@ -155,7 +155,7 @@ anvil/
 ├── ReImplementation_Instruction.md   # v3 source of truth (1220 lines)
 ├── README.md                         # this file (operator's quick-start)
 ├── install.sh                        # v1 host prereqs (Docker + dnsmasq + mkcert)
-├── install-trio.sh                   # v3 trio installer (Caddy + Tengine + FrankenPHP)
+├── install.sh --trio                   # v3 trio installer (Caddy + Tengine + FrankenPHP)
 ├── bin/
 │   ├── anvilctl                      # CLI dispatcher (v3 surface)
 │   └── fetch-secrets.sh              # SSM → /etc/anvil/secrets.env
@@ -192,7 +192,7 @@ anvil/
 ├── scripts/
 │   ├── vhost-watcher.sh              # inotify on WWW_DIR (rewired to registry)
 │   └── deploy-smoke.sh               # public-URL smoke suite (used by deploy.sh)
-├── tui/anvil-tui.sh                  # menu skin (v3 panels: stack, doctor, deploy, rollback)
+├── install.sh (interactive menu)                  # menu skin (v3 panels: stack, doctor, deploy, rollback)
 ├── web/                              # Web UI skin (v1 structure; v3 panels TBD)
 ├── provisioning/cloud-init.yaml      # v3 EC2 first-boot (trio + health gate)
 └── www/                              # tenant roots (presence = registration)
@@ -229,7 +229,7 @@ anvilctl ec2 provision|tunnel|billing|billing-alarm
 
 # Provisioning helpers
 anvilctl provision install-units     # (re)install systemd units + rendered configs
-anvilctl provision install-trio      # run install-trio.sh (root required)
+anvilctl provision install-trio      # run install.sh --trio (root required)
 ```
 
 ---
