@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
 #
-# anvil/provisioning/rds-tunnel.sh
+# anvil/lib/rds-tunnel.sh
 #
 # Developer bastion tunnel: forwards a local port to the PRIVATE RDS instance
 # through the EC2 host (which is the only thing allowed to reach 3306). RDS is
