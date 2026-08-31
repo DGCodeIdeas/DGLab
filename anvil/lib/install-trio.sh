@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# anvil/install-trio.sh
+# anvil/lib/install-trio.sh
 #
 # Anvil v3 trio installer — Caddy + Tengine + FrankenPHP.
 #
@@ -19,7 +19,7 @@
 # What this installer does NOT do (deferred to other tooling):
 #   * Install Docker, dnsmasq, mkcert, dart-sass — that's install.sh (v1 path, kept for dev)
 #   * Provision EC2/RDS — that's `anvilctl ec2 provision`
-#   * Fetch secrets — that's the anvil-secrets.service oneshot at boot (bin/fetch-secrets.sh)
+#   * Fetch secrets — that's the anvil-secrets.service oneshot at boot (lib/fetch-secrets.sh)
 #   * Deploy the application release — that's `anvilctl deploy <env>`
 #
 # Usage:
@@ -29,7 +29,7 @@
 
 set -euo pipefail
 
-ANVIL_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 export ANVIL_ROOT
 
 # shellcheck source=config/anvil.conf
@@ -178,12 +178,12 @@ else
   anvil_info "  installed: $ANVIL_FRANKENPHP_BIN"
 fi
 
-# Tengine — prefer official packages, fall back to source build (lb/tengine.build.sh).
+# Tengine — prefer official packages, fall back to source build (lib/tengine-build.sh).
 if [[ -x "$ANVIL_TENGINE_BIN" ]] && "$ANVIL_TENGINE_BIN" -v 2>&1 | head -1 | grep -q "${FLOORS[TENGINE]}"; then
   anvil_info "  tengine ${FLOORS[TENGINE]} already installed at $ANVIL_TENGINE_BIN"
 else
-  anvil_warn "  tengine ${FLOORS[TENGINE]} not pre-installed — attempt source build (lb/tengine.build.sh)?"
-  anvil_warn "  Run:  sudo ${ANVIL_ROOT}/lb/tengine.build.sh --version ${FLOORS[TENGINE]}"
+  anvil_warn "  tengine ${FLOORS[TENGINE]} not pre-installed — attempt source build (lib/tengine-build.sh)?"
+  anvil_warn "  Run:  sudo ${ANVIL_ROOT}/lib/tengine-build.sh --version ${FLOORS[TENGINE]}"
   anvil_warn "  Tengine 3.2.0 packages ship x86_64+aarch64 only; on other arches Option B (Caddy-only) is the path."
   anvil_warn "  Skipping Tengine install — the Caddy + FrankenPHP pair is sufficient for Option B."
 fi
@@ -213,7 +213,7 @@ for unit in anvil-caddy.service anvil-tengine.service anvil-frankenphp@.service 
 done
 # install fetch-secrets.sh into /opt/anvil/bin/ (where anvil-secrets.service expects it).
 install -d -m 0755 -o root -g root /opt/anvil/bin
-install -m 0755 "${ANVIL_ROOT}/bin/fetch-secrets.sh" /opt/anvil/bin/fetch-secrets.sh
+install -m 0755 "${ANVIL_ROOT}/lib/fetch-secrets.sh" /opt/anvil/lib/fetch-secrets.sh
 systemctl daemon-reload
 anvil_info "  4 units installed; boot order: secrets → frankenphp@blue → tengine → caddy"
 
@@ -302,5 +302,5 @@ echo "  4. Run the staging validation gates:"
 echo "       anvilctl verify all"
 echo
 echo "Tengine note: if the source build was skipped above, run:"
-echo "  sudo ${ANVIL_ROOT}/lb/tengine.build.sh --version ${FLOORS[TENGINE]}"
+echo "  sudo ${ANVIL_ROOT}/lib/tengine-build.sh --version ${FLOORS[TENGINE]}"
 echo "or adopt Option B (Caddy-only) per §3.5 of the v3 doc until 3.2.0 packages are available."
