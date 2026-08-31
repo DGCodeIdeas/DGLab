@@ -4,9 +4,13 @@ on:
   push:
     paths:
       - 'Architecture/**'
+      - 'anvil/**'
+      - '.github/workflows/architecture-lint.yml'
   pull_request:
     paths:
       - 'Architecture/**'
+      - 'anvil/**'
+      - '.github/workflows/architecture-lint.yml'
   workflow_dispatch: {}
 
 jobs:

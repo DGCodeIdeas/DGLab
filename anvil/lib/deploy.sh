@@ -183,8 +183,8 @@ anvil_deploy() {
   fi
 
   # ---- Step 5: Smoke through the FULL public chain (auto-rollback) ----------
-  anvil_info "[5/7] Smoke suite via public URL (scripts/deploy-smoke.sh)"
-  if ! "${ANVIL_ROOT}/scripts/deploy-smoke.sh" "$env" "https://${ANVIL_PRIMARY_FQDN}/health"; then
+  anvil_info "[5/7] Smoke suite via public URL (lib/deploy-smoke.sh)"
+  if ! "${ANVIL_ROOT}/lib/deploy-smoke.sh" "$env" "https://${ANVIL_PRIMARY_FQDN}/health"; then
     anvil_error "deploy: smoke suite FAILED — auto-rollback"
     # Swap back to the previously-active pool.
     anvil_tengine_dyups_set_upstream frankenphp \

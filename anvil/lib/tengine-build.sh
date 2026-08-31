@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# anvil/lb/tengine.build.sh
+# anvil/lib/tengine-build.sh
 #
 # Build Tengine 3.2.0 from source with the modules Anvil v3 depends on:
 #   * dyups              — dynamic upstream mutation (blue/green deploys, §7.7)
@@ -20,7 +20,7 @@
 #   version. This script refuses to.
 #
 # Usage:
-#   sudo anvil/lb/tengine.build.sh [--prefix /usr/local/tengine] [--version 3.2.0]
+#   sudo anvil/lib/tengine-build.sh [--prefix /usr/local/tengine] [--version 3.2.0]
 #
 # Output:
 #   - Tengine installed at --prefix (default: /usr/local/tengine)

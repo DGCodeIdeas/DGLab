@@ -5,11 +5,13 @@ on:
     paths:
       - 'packages/**'
       - 'orchestrator/**'
+      - 'anvil/**'
       - '.github/workflows/packages-ci.yml'
   pull_request:
     paths:
       - 'packages/**'
       - 'orchestrator/**'
+      - 'anvil/**'
       - '.github/workflows/packages-ci.yml'
   workflow_dispatch: {}
 

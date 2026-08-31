@@ -9,7 +9,7 @@
 #      >>> REPLACE the ANVIL_REPO_URL below with your real repository <<<
 #      (or bake the repo into a custom AMI and skip the clone).
 #   3. Runs anvil/install-trio.sh — installs pinned Caddy 2.11.4 + FrankenPHP 1.12.7
-#      + Tengine 3.2.0 (source build via lb/tengine.build.sh), creates system users,
+#      + Tengine 3.2.0 (source build via lib/tengine-build.sh), creates system users,
 #      renders configs, installs systemd units, sets sysctl/limits, firewall baseline.
 #   4. Fetches secrets from SSM (anvil-secrets.service) and starts the trio:
 #         anvil-frankenphp@blue → anvil-tengine → anvil-caddy
@@ -86,9 +86,9 @@ runcmd:
   #     without prebuilt packages; on EC2 x86_64/Graviton we always build it) ---
   - |
     if ! /usr/local/tengine/sbin/nginx -v 2>&1 | grep -q '3.2.0'; then
-      /opt/anvil/anvil/lb/tengine.build.sh --version 3.2.0 --prefix /usr/local/tengine
+      /opt/anvil/anvil/lib/tengine-build.sh --version 3.2.0 --prefix /usr/local/tengine
       # Re-render tengine.conf now that the binary exists.
-      /opt/anvil/anvil/bin/anvilctl provision install-units
+      /opt/anvil/anvil/anvilctl provision install-units
     fi
 
   # --- Fetch secrets from SSM (instance role needs ssm:GetParameter on /anvil/rds/*) ---

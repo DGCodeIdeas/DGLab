@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# anvil/bin/anvilctl
+# anvil/anvilctl
 #
 # Anvil v3 control dispatcher. Intentionally THIN: resolves ANVIL_ROOT, sources
 # the config + the shared bash library, and delegates every subcommand to a lib
@@ -25,39 +25,39 @@
 set -euo pipefail
 
 # Resolve Anvil root from this script's location: anvil/bin/anvilctl -> anvil/
-ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+ANVIL_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 export ANVIL_ROOT
 
-# shellcheck source=../config/anvil.conf
+# shellcheck source=config/anvil.conf
 source "${ANVIL_ROOT}/config/anvil.conf"
-# shellcheck source=../lib/core.sh
+# shellcheck source=lib/core.sh
 source "${ANVIL_ROOT}/lib/core.sh"
-# shellcheck source=../lib/caddy.sh
+# shellcheck source=lib/caddy.sh
 source "${ANVIL_ROOT}/lib/caddy.sh"
-# shellcheck source=../lib/tengine.sh
+# shellcheck source=lib/tengine.sh
 source "${ANVIL_ROOT}/lib/tengine.sh"
-# shellcheck source=../lib/frankenphp.sh
+# shellcheck source=lib/frankenphp.sh
 source "${ANVIL_ROOT}/lib/frankenphp.sh"
-# shellcheck source=../lib/deploy.sh
+# shellcheck source=lib/deploy.sh
 source "${ANVIL_ROOT}/lib/deploy.sh"
-# shellcheck source=../lib/verify.sh
+# shellcheck source=lib/verify.sh
 source "${ANVIL_ROOT}/lib/verify.sh"
-# shellcheck source=../lib/registry.sh
+# shellcheck source=lib/registry.sh
 source "${ANVIL_ROOT}/lib/registry.sh"
 # v1 libs retained (docker, ssl, vhost, project, db, ec2, web).
-# shellcheck source=../lib/docker.sh
+# shellcheck source=lib/docker.sh
 source "${ANVIL_ROOT}/lib/docker.sh"
-# shellcheck source=../lib/ssl.sh
+# shellcheck source=lib/ssl.sh
 source "${ANVIL_ROOT}/lib/ssl.sh"
-# shellcheck source=../lib/vhost.sh
+# shellcheck source=lib/vhost.sh
 source "${ANVIL_ROOT}/lib/vhost.sh"
-# shellcheck source=../lib/project.sh
+# shellcheck source=lib/project.sh
 source "${ANVIL_ROOT}/lib/project.sh"
-# shellcheck source=../lib/db.sh
+# shellcheck source=lib/db.sh
 source "${ANVIL_ROOT}/lib/db.sh"
-# shellcheck source=../lib/ec2.sh
+# shellcheck source=lib/ec2.sh
 source "${ANVIL_ROOT}/lib/ec2.sh"
-# shellcheck source=../lib/web.sh
+# shellcheck source=lib/web.sh
 source "${ANVIL_ROOT}/lib/web.sh"
 
 usage() {
@@ -234,7 +234,7 @@ case "$cmd" in
     anvil_registry_unregister "${1:?Usage: anvilctl unregister <slug>}"
     ;;
   watch)
-    exec "${ANVIL_ROOT}/scripts/vhost-watcher.sh" "$@"
+    exec "${ANVIL_ROOT}/lib/vhost-watcher.sh" "$@"
     ;;
 
   # ---- v1 surface (kept) -------------------------------------------------
@@ -300,7 +300,7 @@ case "$cmd" in
           install -m 0644 "${ANVIL_ROOT}/systemd/${unit}" "/etc/systemd/system/${unit}"
         done
         install -d -m 0755 /opt/anvil/bin
-        install -m 0755 "${ANVIL_ROOT}/bin/fetch-secrets.sh" /opt/anvil/bin/fetch-secrets.sh
+        install -m 0755 "${ANVIL_ROOT}/lib/fetch-secrets.sh" /opt/anvil/bin/fetch-secrets.sh
         systemctl daemon-reload
         anvil_info "units + configs installed; run 'anvilctl start' to boot"
         ;;

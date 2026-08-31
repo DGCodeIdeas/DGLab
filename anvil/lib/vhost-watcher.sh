@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# anvil/scripts/vhost-watcher.sh
+# anvil/lib/vhost-watcher.sh
 #
 # Tenant watcher for Anvil v3. Watches $WWW_DIR for tenant directory
 # create/delete events using inotifywait and keeps the tenant registry in sync
@@ -26,7 +26,7 @@
 
 set -euo pipefail
 
-# Resolve Anvil root from this script's location: anvil/scripts/vhost-watcher.sh
+# Resolve Anvil root from this script's location: anvil/lib/vhost-watcher.sh
 # -> anvil/. Export it so the sourced lib scripts do not re-derive it.
 ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 export ANVIL_ROOT

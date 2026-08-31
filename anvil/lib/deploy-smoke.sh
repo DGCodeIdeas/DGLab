@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# anvil/scripts/deploy-smoke.sh
+# anvil/lib/deploy-smoke.sh
 #
 # Public-URL smoke suite, run by lib/deploy.sh AFTER the dyups switch (§7.7 step 5).
 # Each failure triggers auto-rollback.
