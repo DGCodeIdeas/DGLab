@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
 #
-# anvil/provisioning/ec2-provision.sh
+# anvil/lib/ec2-provision.sh
 #
 # Standalone entrypoint for Phase 4 EC2 + RDS provisioning. It is a thin wrapper
 # around the shared engine in lib/ec2.sh (anvil_ec2_provision) so the real logic

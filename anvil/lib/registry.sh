@@ -19,7 +19,7 @@
 # This bash lib is used by:
 #   * anvilctl scan            — re-scans $WWW_DIR and logs registered tenants
 #   * anvilctl projects        — lists tenants as TSV
-#   * scripts/vhost-watcher.sh — inotify on $WWW_DIR, re-scans on create/delete
+#   * lib/vhost-watcher.sh — inotify on $WWW_DIR, re-scans on create/delete
 #   * the PHP shim that powers /_anvil/tls-allowed (via a `bash -c` call)
 
 set -euo pipefail

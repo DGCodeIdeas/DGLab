@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# anvil/tui/anvil-tui.sh
+# anvil/lib/anvil-tui.sh
 #
 # Anvil TUI skin — a dialog/whiptail menu that drives the SAME engine the
 # Web UI and anvilctl use. It sources the shared lib functions and calls them
@@ -11,23 +11,23 @@
 
 set -euo pipefail
 
-# Resolve Anvil root from this script: anvil/tui/anvil-tui.sh -> anvil/
+# Resolve Anvil root from this script: anvil/lib/anvil-tui.sh -> anvil/
 ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
 export ANVIL_ROOT
 
 # shellcheck source=../config/anvil.conf
 source "${ANVIL_ROOT}/config/anvil.conf"
-# shellcheck source=../lib/core.sh
+# shellcheck source=./core.sh
 source "${ANVIL_ROOT}/lib/core.sh"
-# shellcheck source=../lib/registry.sh
+# shellcheck source=./registry.sh
 source "${ANVIL_ROOT}/lib/registry.sh"
-# shellcheck source=../lib/docker.sh
+# shellcheck source=./docker.sh
 source "${ANVIL_ROOT}/lib/docker.sh"
-# shellcheck source=../lib/project.sh
+# shellcheck source=./project.sh
 source "${ANVIL_ROOT}/lib/project.sh"
-# shellcheck source=../lib/db.sh
+# shellcheck source=./db.sh
 source "${ANVIL_ROOT}/lib/db.sh"
-# shellcheck source=../lib/web.sh
+# shellcheck source=./web.sh
 source "${ANVIL_ROOT}/lib/web.sh"
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ tui_run() {
 #   Shows docker stack status + project list in a scrollable textbox.
 tui_status() {
   local out
-  out="$("${ANVIL_ROOT}/bin/anvilctl" status 2>&1)" || true
+  out="$("${ANVIL_ROOT}/anvilctl" status 2>&1)" || true
   [[ -z "$out" ]] && out="(no status output)"
   local tmp
   tmp="$(mktemp)"
@@ -102,7 +102,7 @@ tui_projects() {
 
 # tui_doctor — runs anvilctl doctor and shows the verdict.
 tui_doctor() {
-  tui_run "anvilctl doctor (CVE floors + port registry)" "${ANVIL_ROOT}/bin/anvilctl" doctor
+  tui_run "anvilctl doctor (CVE floors + port registry)" "${ANVIL_ROOT}/anvilctl" doctor
 }
 
 # tui_deploy — deploy wizard: env input → strategy → release → run.
@@ -112,7 +112,7 @@ tui_deploy() {
   [[ -z "$env" ]] && return 0
   strategy="$(_tui_input "Deploy" "Strategy (blue-green):" "blue-green")" || return 0
   release="$(_tui_input "Deploy" "Release digest (empty = autodetect from CI/Git):" "")" || return 0
-  local cmd=("${ANVIL_ROOT}/bin/anvilctl" deploy "$env" --strategy "${strategy:-blue-green}")
+  local cmd=("${ANVIL_ROOT}/anvilctl" deploy "$env" --strategy "${strategy:-blue-green}")
   [[ -n "$release" ]] && cmd+=(--release "$release")
   tui_run "Deploy ${env}" "${cmd[@]}"
 }
@@ -122,7 +122,7 @@ tui_rollback() {
   local env
   env="$(_tui_input "Rollback" "Environment (staging|production):" "staging")" || return 0
   [[ -z "$env" ]] && return 0
-  tui_run "Rollback ${env}" "${ANVIL_ROOT}/bin/anvilctl" rollback "$env"
+  tui_run "Rollback ${env}" "${ANVIL_ROOT}/anvilctl" rollback "$env"
 }
 
 # tui_stack — dev stack shape toggle.
@@ -133,8 +133,8 @@ tui_stack() {
     "2" "Full — Caddy + Tengine + FrankenPHP parity trio" \
     "3" "Back" 3>&1 1>&2 2>&3)" || return 0
   case "$choice" in
-    1) tui_run "Stack slim" "${ANVIL_ROOT}/bin/anvilctl" stack slim ;;
-    2) tui_run "Stack full" "${ANVIL_ROOT}/bin/anvilctl" stack full ;;
+    1) tui_run "Stack slim" "${ANVIL_ROOT}/anvilctl" stack slim ;;
+    2) tui_run "Stack full" "${ANVIL_ROOT}/anvilctl" stack full ;;
     3|"") return 0 ;;
   esac
 }
@@ -207,8 +207,8 @@ tui_main() {
       "12" "Exit" 3>&1 1>&2 2>&3)" || { clear; exit 0; }
 
     case "$choice" in
-      1) tui_run "Start stack" "${ANVIL_ROOT}/bin/anvilctl" start ;;
-      2) tui_run "Stop stack" "${ANVIL_ROOT}/bin/anvilctl" stop ;;
+      1) tui_run "Start stack" "${ANVIL_ROOT}/anvilctl" start ;;
+      2) tui_run "Stop stack" "${ANVIL_ROOT}/anvilctl" stop ;;
       3) tui_status ;;
       4) tui_doctor ;;
       5) tui_stack ;;

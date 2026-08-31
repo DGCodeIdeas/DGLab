@@ -192,7 +192,7 @@ anvil/
 ├── scripts/
 │   ├── vhost-watcher.sh              # inotify on WWW_DIR (rewired to registry)
 │   └── deploy-smoke.sh               # public-URL smoke suite (used by deploy.sh)
-├── tui/anvil-tui.sh                  # menu skin (v3 panels: stack, doctor, deploy, rollback)
+├── lib/anvil-tui.sh                  # menu skin (v3 panels: stack, doctor, deploy, rollback)
 ├── web/                              # Web UI skin (v1 structure; v3 panels TBD)
 ├── provisioning/cloud-init.yaml      # v3 EC2 first-boot (trio + health gate)
 └── www/                              # tenant roots (presence = registration)

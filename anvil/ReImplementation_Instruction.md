@@ -991,7 +991,7 @@ Description=Anvil v3 secrets fetch (SSM → EnvironmentFile)
 Before=anvil-frankenphp@blue.service anvil-frankenphp@green.service
 [Service]
 Type=oneshot
-ExecStart=/opt/anvil/bin/fetch-secrets.sh     # aws ssm get-parameters → /etc/anvil/secrets.env (0600)
+ExecStart=/opt/anvil/lib/fetch-secrets.sh     # aws ssm get-parameters → /etc/anvil/secrets.env (0600)
 RemainAfterExit=yes
 ```
 
@@ -1145,7 +1145,7 @@ anvilctl ec2 provision|tunnel|billing|billing-alarm
 | 6 | systemd units (§7.6) + `fetch-secrets.sh` + boot ordering; `anvil provision` writes them | 1 d | 🔥 |
 | 7 | `lib/deploy.sh` — §7.7 runbook as code incl. auto-rollback + smoke suite | 1.5 d | 🔥 |
 | 8 | `lib/verify.sh` — header-chain/port/health assertions (staging gates §6.3) | 1 d | High |
-| 9 | Tenant registry: `www/` → TLS-ask endpoint data source + `scripts/vhost-watcher.sh` rewire | 1 d | High |
+| 9 | Tenant registry: `www/` → TLS-ask endpoint data source + `lib/vhost-watcher.sh` rewire | 1 d | High |
 | 10 | `install.sh` v3: pinned binary installs, users (caddy/tengine/anvil), sysctl/limits, firewall baseline | 1 d | High |
 | 11 | TUI/Web UI panels: stack shape, doctor, deploy, rollback | 1 d | Medium |
 | 12 | `cloud-init.yaml` update: trio install + units + first-boot health gate | 0.5 d | Medium |
