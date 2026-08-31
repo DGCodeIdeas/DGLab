@@ -97,7 +97,11 @@ Usage:
   anvilctl ec2 help                   Show EC2 provisioning help (v1)
 
   anvilctl provision install-units    (re)install systemd units + rendered configs
-  anvilctl provision install-trio     Run install-trio.sh (root required)
+  anvilctl provision install-trio     Run trio installer (Caddy + Tengine + FrankenPHP)
+  anvilctl provision build-tengine    Build Tengine from source
+
+  anvilctl install [--full|--bootstrap|--trio]   Run the unified installer
+  anvilctl uninstall                       Run the uninstaller
 
   anvilctl help                       Show this help
 
@@ -289,8 +293,14 @@ case "$cmd" in
 
   # ---- Provisioning helpers ---------------------------------------------
   provision)
-    sub="${1:?Usage: anvilctl provision install-units|install-trio}"
-    case "$sub" in
+    sub="${1:-}"
+    case "${sub:-}" in
+      "")
+        echo "Usage: anvilctl provision <subcommand>"
+        echo "  install-units   Reinstall systemd units + rendered configs"
+        echo "  install-trio    Run trio installer (Caddy + Tengine + FrankenPHP)"
+        echo "  build-tengine   Build Tengine from source"
+        ;;
       install-units)
         [[ $EUID -eq 0 ]] || exec sudo -E "$0" provision install-units
         anvil_caddy_install_config
@@ -305,10 +315,21 @@ case "$cmd" in
         anvil_info "units + configs installed; run 'anvilctl start' to boot"
         ;;
       install-trio)
-        exec "${ANVIL_ROOT}/install-trio.sh" "${@:2}"
+        exec "${ANVIL_ROOT}/install.sh" --trio "${@:2}"
         ;;
-      *) anvil_die 2 "provision: unknown subcommand '$sub'" ;;
+      build-tengine)
+        exec "${ANVIL_ROOT}/install.sh" --trio "${@:2}"
+        ;;
+      *) anvil_die 2 "provision: unknown subcommand '${sub:-}'" ;;
     esac
+    ;;
+
+  # ---- Install / Uninstall bridges ------------------------------------
+  install)
+    exec "${ANVIL_ROOT}/install.sh" "${@}"
+    ;;
+  uninstall)
+    exec "${ANVIL_ROOT}/uninstall.sh" "${@}"
     ;;
 
   help|--help|-h|"")

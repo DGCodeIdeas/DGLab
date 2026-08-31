@@ -646,8 +646,7 @@ anvil_ec2_provision() {
   echo "      ssh -N -L 8080:127.0.0.1:8080 -L 9999:127.0.0.1:9999 -i ${key_file} ${ANVIL_EC2_SSH_USER}@${public_ip}"
   echo "  - Bastion tunnel to private RDS (local 3306):"
   echo "      anvilctl ec2 tunnel --rds-endpoint ${db_host} --host ${public_ip} --key ${key_file}"
-  echo "  - Issue Let's Encrypt certs:"
-  echo "      anvilctl ec2 certbot   (or provisioning/certbot-setup.sh)"
+  echo "  - TLS certificates (automatic via Caddy ACME, no manual step needed)"
 }
 
 # ---------------------------------------------------------------------------

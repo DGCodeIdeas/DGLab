@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# anvil/install-trio.sh
+# anvil/lib/install-trio.sh
 #
 # Anvil v3 trio installer — Caddy + Tengine + FrankenPHP.
 #
-# Idempotent. Run as root (re-execs via sudo if needed). Installs:
+# INTERNAL MODULE — not for direct execution. Called by install.sh or
+# anvilctl provision install-trio. ANVIL_ROOT must be set before sourcing.
+#
+# Installs:
 #   * Pinned binaries (from config/versions.env) to:
 #       /usr/local/bin/caddy
 #       /usr/local/bin/frankenphp
@@ -16,23 +19,13 @@
 #   * Firewall baseline (ufw OR nftables; RULE T1 enforcement, §7.2 of v3 doc)
 #   * Configured Caddyfile + tengine.conf + Caddyfile.blue/green (rendered from templates)
 #
-# What this installer does NOT do (deferred to other tooling):
-#   * Install Docker, dnsmasq, mkcert, dart-sass — that's install.sh (v1 path, kept for dev)
-#   * Provision EC2/RDS — that's `anvilctl ec2 provision`
-#   * Fetch secrets — that's the anvil-secrets.service oneshot at boot (bin/fetch-secrets.sh)
-#   * Deploy the application release — that's `anvilctl deploy <env>`
-#
-# Usage:
-#   sudo ./install-trio.sh [--env staging|production] [--noninteractive]
-#
-# Exit codes: 0 success; 1 not-root; 2 missing required tool; 3 binary download failed.
+# Exit codes: 0 success; 2 missing required tool; 3 binary download failed.
+#   (Caller handles root check.)
 
 set -euo pipefail
 
-ANVIL_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
-export ANVIL_ROOT
-
-# shellcheck source=config/anvil.conf
+# ANVIL_ROOT must be exported by the caller (install.sh or anvilctl).
+# shellcheck source=../config/anvil.conf
 source "${ANVIL_ROOT}/config/anvil.conf"
 # shellcheck source=lib/core.sh
 source "${ANVIL_ROOT}/lib/core.sh"
@@ -44,56 +37,37 @@ source "${ANVIL_ROOT}/lib/tengine.sh"
 source "${ANVIL_ROOT}/lib/frankenphp.sh"
 
 # ---------------------------------------------------------------------------
-# Re-exec as root.
+# anvil_install_trio [--env staging|production] [--noninteractive]
+#
+# Function wrapper — call this instead of sourcing the file directly.
+# ANVIL_ROOT must be exported. Caller handles root check.
 # ---------------------------------------------------------------------------
-if [[ $EUID -ne 0 ]]; then
-  anvil_info "re-execing as root via sudo"
-  exec sudo -E bash "$0" "$@"
-fi
+anvil_install_trio() {
+  local ANVIL_INSTALL_ENV="production"
+  local NONINTERACTIVE=0
+  for arg in "$@"; do
+    case "$arg" in
+      --env) ANVIL_INSTALL_ENV="${2:-production}"; shift 2 ;;
+      --noninteractive|--yes) NONINTERACTIVE=1 ;;
+    esac
+  done
 
-# ---------------------------------------------------------------------------
-# Args.
-# ---------------------------------------------------------------------------
-ANVIL_INSTALL_ENV="production"
-NONINTERACTIVE=0
-for arg in "$@"; do
-  case "$arg" in
-    --env) ANVIL_INSTALL_ENV="${2:-production}"; shift 2 ;;
-    --noninteractive|--yes) NONINTERACTIVE=1 ;;
-    -h|--help)
-      cat <<EOF
-Anvil v3 trio installer — Caddy + Tengine + FrankenPHP.
+  # Propagate env into the config vars used by the lib renderers.
+  export ANVIL_ENV="$ANVIL_INSTALL_ENV"
+  if [[ "$ANVIL_INSTALL_ENV" == "staging" ]]; then
+    export ACME_CA="https://acme-staging-v02.api.letsencrypt.org/directory"
+  fi
 
-Usage: sudo ./install-trio.sh [--env staging|production] [--noninteractive]
+  anvil_info "Anvil v3 trio install — env=${ANVIL_INSTALL_ENV} noninteractive=${NONINTERACTIVE}"
+  anvil_info "version floors: $(awk -F= '/^[A-Z]/ {printf "%s=%s ", $1, $2}' "$ANVIL_VERSIONS_ENV")"
 
-Installs pinned binaries, system users, runtime dirs, systemd units, sysctl/limits,
-and the firewall baseline. Idempotent — safe to re-run.
-
---env staging     : use staging ACME CA in the rendered Caddyfile
---env production  : use production ACME CA (default)
---noninteractive  : skip the confirmation prompt
-EOF
-      exit 0 ;;
-    *) echo "Unknown option: $arg" >&2; exit 2 ;;
-  esac
-done
-
-# Propagate env into the config vars used by the lib renderers.
-export ANVIL_ENV="$ANVIL_INSTALL_ENV"
-if [[ "$ANVIL_INSTALL_ENV" == "staging" ]]; then
-  export ACME_CA="https://acme-staging-v02.api.letsencrypt.org/directory"
-fi
-
-anvil_info "Anvil v3 trio install — env=${ANVIL_INSTALL_ENV} noninteractive=${NONINTERACTIVE}"
-anvil_info "version floors: $(awk -F= '/^[A-Z]/ {printf "%s=%s ", $1, $2}' "$ANVIL_VERSIONS_ENV")"
-
-if [[ $NONINTERACTIVE -eq 0 ]]; then
-  read -r -p "Proceed with trio install? [y/N] " yn
-  case "$yn" in
-    y|Y|yes|YES) ;;
-    *) anvil_die 1 "aborted by user" ;;
-  esac
-fi
+  if [[ $NONINTERACTIVE -eq 0 ]]; then
+    read -r -p "Proceed with trio install? [y/N] " yn
+    case "$yn" in
+      y|Y|yes|YES) ;;
+      *) anvil_die 1 "aborted by user" ;;
+    esac
+  fi
 
 # ---------------------------------------------------------------------------
 # Step 1: Create system users + groups.
@@ -182,8 +156,8 @@ fi
 if [[ -x "$ANVIL_TENGINE_BIN" ]] && "$ANVIL_TENGINE_BIN" -v 2>&1 | head -1 | grep -q "${FLOORS[TENGINE]}"; then
   anvil_info "  tengine ${FLOORS[TENGINE]} already installed at $ANVIL_TENGINE_BIN"
 else
-  anvil_warn "  tengine ${FLOORS[TENGINE]} not pre-installed — attempt source build (lb/tengine.build.sh)?"
-  anvil_warn "  Run:  sudo ${ANVIL_ROOT}/lb/tengine.build.sh --version ${FLOORS[TENGINE]}"
+  anvil_warn "  Tengine ${FLOORS[TENGINE]} not pre-installed — attempt source build?"
+  anvil_warn "  Run:  anvilctl provision build-tengine"
   anvil_warn "  Tengine 3.2.0 packages ship x86_64+aarch64 only; on other arches Option B (Caddy-only) is the path."
   anvil_warn "  Skipping Tengine install — the Caddy + FrankenPHP pair is sufficient for Option B."
 fi
@@ -281,7 +255,7 @@ EOF
   systemctl enable --now nftables
   anvil_info "  nftables configured: 22/tcp + 80/tcp + 443/tcp + 443/udp allowed; internals loopback-only"
 else
-  anvil_warn "  no firewall tooling detected (ufw OR nftables) — install one and run install-trio.sh again"
+  anvil_warn "  no firewall tooling detected (ufw OR nftables) — install one and run install.sh again"
 fi
 
 # ---------------------------------------------------------------------------
@@ -302,5 +276,6 @@ echo "  4. Run the staging validation gates:"
 echo "       anvilctl verify all"
 echo
 echo "Tengine note: if the source build was skipped above, run:"
-echo "  sudo ${ANVIL_ROOT}/lb/tengine.build.sh --version ${FLOORS[TENGINE]}"
-echo "or adopt Option B (Caddy-only) per §3.5 of the v3 doc until 3.2.0 packages are available."
+echo "  anvilctl provision build-tengine"
+echo "or adopt Option B (Caddy-only) per 3.5 of the v3 doc until 3.2.0 packages are available."
+}  # end anvil_install_trio
