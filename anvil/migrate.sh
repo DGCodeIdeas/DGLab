@@ -102,7 +102,9 @@ done
 # ---------------------------------------------------------------------------
 # Privilege check
 # ---------------------------------------------------------------------------
-if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+# Dry-run never needs root — it doesn't change anything and most detection
+# uses [[ -f ... ]] / command -v which work unprivileged.
+if [[ "${EUID:-$(id -u)}" -ne 0 && $DRY_RUN -eq 0 ]]; then
   error "this script must run as root. Re-executing with sudo..."
   exec sudo "${BASH_SOURCE[0]}" "$@"
 fi
@@ -253,6 +255,7 @@ phase_1() {
     fi
     ok
   fi
+  fi  # close `if ! command -v docker ... else` from line 208
 }
 
 # ===========================================================================
