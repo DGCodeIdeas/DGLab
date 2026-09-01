@@ -1,0 +1,33 @@
+// ---------------------------------------------------------------------------
+// Sovereign SCSS Framework
+// ---------------------------------------------------------------------------
+// A personalized SCSS framework for DGLab — the Sovereign Stack.
+//
+// Dark-first. Light mode via <html data-theme="light">.
+// OS chrome aesthetic. Minimal class footprint.
+//
+// Usage:
+//   @use 'sovereign';
+//   // or import individual modules:
+//   @use 'sovereign/tokens';
+//   @use 'sovereign/components';
+//
+// Architecture (inspired by):
+//   - Open Props     → token-first CSS custom properties
+//   - Pico.css       → semantic HTML styling
+//   - Bulma          → component architecture
+//   - Tufte CSS      → content typography
+//   - modern-normalize → cross-browser reset
+//   - NES.css/98.css → OS chrome aesthetic (subtle, not literal retro)
+//
+// Compiled size target: <20KB minified, <5KB gzipped.
+// ---------------------------------------------------------------------------
+
+@use 'tokens';
+@use 'reset';
+@use 'type';
+@use 'layout';
+@use 'components';
+@use 'forms';
+@use 'tables';
+@use 'utilities';

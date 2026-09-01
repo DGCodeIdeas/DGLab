@@ -1,0 +1,168 @@
+// ---------------------------------------------------------------------------
+// Sovereign SCSS Framework — Reset
+// ---------------------------------------------------------------------------
+// Inspired by modern-normalize, ress, and sanitize.css.
+// Preserves useful defaults rather than obliterating everything.
+// ---------------------------------------------------------------------------
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  // Prevent font size inflation in landscape on iOS
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  // Smooth scrolling, but respect user preference
+  scroll-behavior: smooth;
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh; // dynamic viewport height for mobile
+  line-height: var(--line-normal);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  // Improve text rendering
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Remove default list styles where semantic
+ul, ol {
+  list-style: none;
+}
+
+// Restore list styles inside article/content
+:where(article, .content) {
+  ul { list-style: disc; }
+  ol { list-style: decimal; }
+  ul, ol {
+    padding-left: var(--space-6);
+  }
+}
+
+// Consistent heading margins
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--text-4xl); margin-bottom: var(--space-6); }
+h2 { font-size: var(--text-3xl); margin-bottom: var(--space-4); }
+h3 { font-size: var(--text-2xl); margin-bottom: var(--space-3); }
+h4 { font-size: var(--text-xl);  margin-bottom: var(--space-3); }
+h5 { font-size: var(--text-lg);  margin-bottom: var(--space-2); }
+h6 { font-size: var(--text-base); margin-bottom: var(--space-2); text-transform: uppercase; letter-spacing: 0.05em; }
+
+// Paragraphs and text blocks
+p {
+  margin-bottom: var(--space-4);
+  text-wrap: pretty;
+}
+
+// Links
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+
+  &:hover {
+    text-decoration: underline;
+    color: var(--color-primary-700);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+// Images and media
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+// Form elements — minimal reset, styled in _forms.scss
+input, button, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+// Code and preformatted text
+code, kbd, samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+code {
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+  margin-bottom: var(--space-4);
+
+  code {
+    padding: 0;
+    background: transparent;
+  }
+}
+
+// Horizontal rule
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-6) 0;
+}
+
+// Tables
+// Full styling in _tables.scss; minimal reset here
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+// Blockquotes
+blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--space-4);
+  margin-left: 0;
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+// Selection
+::selection {
+  background: var(--color-primary-300);
+  color: var(--color-text);
+}
