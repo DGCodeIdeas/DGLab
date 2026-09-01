@@ -134,6 +134,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         //     Outside any Fiber, pulse-scoped bindings are transient (no cache).
         $definition = $this->definitions[$id] ?? null;
         if ($definition !== null && $definition->pulseScoped) {
+            /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
             $fiber = \Fiber::getCurrent();
             if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
                 return $this->pulseInstances[$fiber][$id];
@@ -213,8 +214,15 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // 8b. Cache pulse-scoped instances (per-Fiber, via WeakMap).
         if ($definition !== null && $definition->pulseScoped) {
+            /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
             $fiber = \Fiber::getCurrent();
             if ($fiber !== null) {
+                // Initialize the inner array on first write to this Fiber —
+                // avoids "cannot assign offset to null" and the mixed-type
+                // inference ambiguity on chained WeakMap[$fiber][$id] = $obj.
+                if (!isset($this->pulseInstances[$fiber])) {
+                    $this->pulseInstances[$fiber] = [];
+                }
                 $this->pulseInstances[$fiber][$id] = $object;
             }
         }
