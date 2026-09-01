@@ -45,7 +45,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * Pulse-scoped instance cache, keyed on the Fiber object itself.
      *
-     * @var \WeakMap<\Fiber, array<string, mixed>>
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, mixed>>
      *
      * WeakMap<Fiber, array<string, mixed>> — when a Fiber is garbage-collected
      * (Pulse completes), PHP automatically evicts the entire inner array for
