@@ -16,9 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR title against Conventional-Commit spec
+        env:
+          # Pass the title via env var, NOT inline `${{ }}` substitution.
+          # GitHub Actions sets env vars at runtime via its own interpolation,
+          # so this avoids shell-quote injection when the title contains
+          # characters like `"`, `'`, `$`, backticks, or `\`.
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           set -euo pipefail
-          TITLE="${{ github.event.pull_request.title }}"
+          TITLE="$PR_TITLE"
           # Conventional-Commit regex per CORE-01.md §SemVer Automation Plan P1 gap 5.
           # Allowed types: feat|fix|chore|docs|refactor|test|perf|build|ci|style|revert
           # Optional scope: (anything)
