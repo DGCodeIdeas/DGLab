@@ -45,6 +45,8 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * Pulse-scoped instance cache, keyed on the Fiber object itself.
      *
+     * @var \WeakMap<\Fiber, array<string, mixed>>
+     *
      * WeakMap<Fiber, array<string, mixed>> — when a Fiber is garbage-collected
      * (Pulse completes), PHP automatically evicts the entire inner array for
      * that Fiber. No manual cleanup, no scheduler coupling, no memory leak
@@ -140,7 +142,10 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // 2. Resolve the concrete binding (fall back to $id when unbound, supporting
         //    make(SomeClass::class) without an explicit bind() — see blueprint).
-        $concrete = $definition?->concrete ?? $id;
+        //    PHPStan strict rule: `?->concrete ?? $id` is redundant (`?->` already
+        //    handles null receiver; `??` is then equivalent). Use an explicit
+        //    null check so the access is plain `->`, which PHPStan accepts.
+        $concrete = $definition !== null ? $definition->concrete : $id;
 
         // 3. Reject unresolvable ids before pushing onto the stack. If there is no
         //    explicit definition AND $id is not a class-string, the caller asked for
