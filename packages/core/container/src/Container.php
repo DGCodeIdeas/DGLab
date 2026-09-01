@@ -45,6 +45,8 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * Pulse-scoped instance cache, keyed on the Fiber object itself.
      *
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, mixed>>
+     *
      * WeakMap<Fiber, array<string, mixed>> — when a Fiber is garbage-collected
      * (Pulse completes), PHP automatically evicts the entire inner array for
      * that Fiber. No manual cleanup, no scheduler coupling, no memory leak
@@ -132,6 +134,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         //     Outside any Fiber, pulse-scoped bindings are transient (no cache).
         $definition = $this->definitions[$id] ?? null;
         if ($definition !== null && $definition->pulseScoped) {
+            /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
             $fiber = \Fiber::getCurrent();
             if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
                 return $this->pulseInstances[$fiber][$id];
@@ -140,7 +143,10 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // 2. Resolve the concrete binding (fall back to $id when unbound, supporting
         //    make(SomeClass::class) without an explicit bind() — see blueprint).
-        $concrete = $definition?->concrete ?? $id;
+        //    PHPStan strict rule: `?->concrete ?? $id` is redundant (`?->` already
+        //    handles null receiver; `??` is then equivalent). Use an explicit
+        //    null check so the access is plain `->`, which PHPStan accepts.
+        $concrete = $definition !== null ? $definition->concrete : $id;
 
         // 3. Reject unresolvable ids before pushing onto the stack. If there is no
         //    explicit definition AND $id is not a class-string, the caller asked for
@@ -208,8 +214,15 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // 8b. Cache pulse-scoped instances (per-Fiber, via WeakMap).
         if ($definition !== null && $definition->pulseScoped) {
+            /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
             $fiber = \Fiber::getCurrent();
             if ($fiber !== null) {
+                // Initialize the inner array on first write to this Fiber —
+                // avoids "cannot assign offset to null" and the mixed-type
+                // inference ambiguity on chained WeakMap[$fiber][$id] = $obj.
+                if (!isset($this->pulseInstances[$fiber])) {
+                    $this->pulseInstances[$fiber] = [];
+                }
                 $this->pulseInstances[$fiber][$id] = $object;
             }
         }

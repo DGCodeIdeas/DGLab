@@ -14,18 +14,25 @@ namespace SovereignStack\Core\Container;
 final readonly class ServiceDefinition
 {
     /**
-     * @param string       $abstract The service identifier (the id passed to bind()).
-     * @param mixed        $concrete A class-string, a Closure receiving
-     *                               ($container, $parameters), or a pre-built
-     *                               object instance.
-     * @param bool         $shared   True for singletons (cached after first resolution).
-     * @param list<string> $tags     Optional tags for tagged-iterator passes.
+     * @param string       $abstract     The service identifier (the id passed to bind()).
+     * @param mixed        $concrete     A class-string, a Closure receiving
+     *                                  ($container, $parameters), or a pre-built
+     *                                  object instance.
+     * @param bool         $shared       True for singletons (cached after first resolution).
+     * @param list<string> $tags         Optional tags for tagged-iterator passes.
+     * @param bool         $pulseScoped  True for per-Fiber/Pulse bindings (cached on WeakMap
+     *                                  keyed by current Fiber, auto-evicted on Fiber GC).
+     *                                  Added to support CORE-18's cooperative runtime
+     *                                  per-ADR-017; defaults to false so all pre-existing
+     *                                  callers (bind / singleton / instance) remain
+     *                                  worker-scoped.
      */
     public function __construct(
         public string $abstract,
         public mixed $concrete,
         public bool $shared = false,
         public array $tags = [],
+        public bool $pulseScoped = false,
     ) {
     }
 }
