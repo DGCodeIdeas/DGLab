@@ -124,7 +124,7 @@ if [[ $NONINTERACTIVE -eq 0 && $DRY_RUN -eq 0 ]]; then
   echo "  - Conflicting servers: Apache, Nginx, PHP-FPM, Caddy, FrankenPHP, Tengine, Certbot"
   echo "  - Anvil system users (caddy, tengine, anvil)"
   echo
-  echo "${YELLOW}It will NOT remove:${RST}"
+  printf "${YELLOW}It will NOT remove:${RST}\n"
   echo "  - Docker Engine itself"
   echo "  - Your anvil/ source directory (git repo)"
   echo "  - Project source code in www/"
