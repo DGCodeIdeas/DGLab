@@ -15,10 +15,10 @@ use Psr\Http\Message\ResponseInterface;
  */
 final class Response implements ResponseInterface
 {
-    /** @var array<non-empty-string, list<string>> Header values keyed by lowercased name. */
+    /** @var array<string, list<string>> Header values keyed by lowercased name. */
     private readonly array $headers;
 
-    /** @var array<non-empty-string, non-empty-string> Map: lowercased name → original casing. */
+    /** @var array<string, string> Map: lowercased name → original casing. */
     private readonly array $headerNames;
 
     /**
@@ -39,9 +39,9 @@ final class Response implements ResponseInterface
             );
         }
 
-        /** @var array<non-empty-string, list<string>> $normalized */
+        /** @var array<string, list<string>> $normalized */
         $normalized = [];
-        /** @var array<non-empty-string, non-empty-string> $names */
+        /** @var array<string, string> $names */
         $names = [];
         foreach ($headers as $name => $value) {
             $values = is_array($value) ? array_map('strval', $value) : [(string) $value];
@@ -186,7 +186,7 @@ final class Response implements ResponseInterface
      * PHP 8.3 readonly properties cannot be mutated post-construction,
      * so immutability requires `new self(...)` rather than clone+mutate.
      */
-    /** @param array<non-empty-string, list<string>>|null $headers */
+    /** @param array<string, list<string>>|null $headers */
     private function rebuild(
         ?int $statusCode = null,
         ?string $reasonPhrase = null,
@@ -204,9 +204,9 @@ final class Response implements ResponseInterface
     }
 
     /**
-     * @param array<non-empty-string, list<string>> $headers
-     * @param array<non-empty-string, non-empty-string> $names
-     * @return array<non-empty-string, list<string>>
+     * @param array<string, list<string>> $headers
+     * @param array<string, string> $names
+     * @return array<string, list<string>>
      */
     private function restoreCasing(array $headers, array $names): array
     {
