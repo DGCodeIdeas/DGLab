@@ -119,12 +119,12 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
 
         $query = (string)($server['QUERY_STRING'] ?? '');
 
-        $uri = $scheme . '://';
+        $uri = '';
         if ($host !== '') {
-            $uri .= $host;
-        }
-        if ($port !== null && $port !== 80 && $port !== 443) {
-            $uri .= ':' . $port;
+            $uri = $scheme . '://' . $host;
+            if ($port !== null && $port !== 80 && $port !== 443) {
+                $uri .= ':' . $port;
+            }
         }
         $uri .= $path;
         if ($query !== '') {
