@@ -194,14 +194,55 @@ else
   anvil_info "  installed: $ANVIL_FRANKENPHP_BIN"
 fi
 
-# Tengine — prefer official packages, fall back to source build (lib/tengine-build.sh).
+# Tengine — prefer pre-installed binary, fall back to source build (lib/tengine-build.sh).
+# Tengine 3.2.0 does not ship pre-built packages yet; source build is the path.
 if [[ -x "$ANVIL_TENGINE_BIN" ]] && "$ANVIL_TENGINE_BIN" -v 2>&1 | head -1 | grep -q "${FLOORS[TENGINE]}"; then
   anvil_info "  tengine ${FLOORS[TENGINE]} already installed at $ANVIL_TENGINE_BIN"
 else
-  anvil_warn "  tengine ${FLOORS[TENGINE]} not pre-installed — attempt source build (lib/tengine-build.sh)?"
-  anvil_warn "  Run:  sudo ${ANVIL_ROOT}/lib/tengine-build.sh --version ${FLOORS[TENGINE]}"
-  anvil_warn "  Tengine 3.2.0 packages ship x86_64+aarch64 only; on other arches Option B (Caddy-only) is the path."
-  anvil_warn "  Skipping Tengine install — the Caddy + FrankenPHP pair is sufficient for Option B."
+  anvil_info "  tengine ${FLOORS[TENGINE]} not found — attempting source build"
+  anvil_info "  (Tengine 3.2.0 pre-built packages are not yet available for any arch)"
+
+  # Check if build prerequisites are available before attempting.
+  local tengine_build_ok=1
+  for cmd in gcc make curl; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      anvil_warn "  missing build prerequisite: $cmd (apt install build-essential)"
+      tengine_build_ok=0
+    fi
+  done
+  for hdr in /usr/include/pcre2.h /usr/include/openssl/ssl.h /usr/include/zlib.h; do
+    if [[ ! -f "$hdr" ]]; then
+      anvil_warn "  missing dev header: $hdr (apt install libpcre2-dev libssl-dev zlib1g-dev)"
+      tengine_build_ok=0
+    fi
+  done
+
+  if [[ "$tengine_build_ok" -eq 1 ]]; then
+    # Interactive: ask the user. Non-interactive: auto-build.
+    local do_build=1
+    if [[ "$NONINTERACTIVE" -eq 0 ]]; then
+      read -r -p "  Build Tengine ${FLOORS[TENGINE]} from source? (~5 min) [Y/n] " yn || yn=""
+      case "$yn" in
+        n|N|no|NO) do_build=0 ;;
+      esac
+    fi
+
+    if [[ "$do_build" -eq 1 ]]; then
+      anvil_info "  building Tengine ${FLOORS[TENGINE]} from source (this takes several minutes)..."
+      if bash "${ANVIL_ROOT}/lib/tengine-build.sh" --version "${FLOORS[TENGINE]}" --prefix /usr/local/tengine; then
+        anvil_info "  tengine ${FLOORS[TENGINE]} built and installed from source"
+      else
+        anvil_warn "  tengine source build failed — continuing with Option B (Caddy + FrankenPHP only)"
+        anvil_warn "  the Caddy + FrankenPHP pair is sufficient for dev/staging"
+      fi
+    else
+      anvil_warn "  tengine source build skipped by user — Option B (Caddy + FrankenPHP only)"
+    fi
+  else
+    anvil_warn "  build prerequisites missing — install them and re-run, or use Option B (Caddy-only)"
+    anvil_warn "  apt install build-essential libpcre2-dev libssl-dev zlib1g-dev"
+    anvil_warn "  then: sudo ${ANVIL_ROOT}/lib/tengine-build.sh --version ${FLOORS[TENGINE]}"
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -317,6 +358,7 @@ echo "       sudo systemctl enable --now anvil-caddy"
 echo "  4. Run the staging validation gates:"
 echo "       anvilctl verify all"
 echo
-echo "Tengine note: if the source build was skipped above, run:"
+echo "Tengine note: if the source build was skipped or failed, run:"
+echo "  sudo apt install build-essential libpcre2-dev libssl-dev zlib1g-dev"
 echo "  sudo ${ANVIL_ROOT}/lib/tengine-build.sh --version ${FLOORS[TENGINE]}"
-echo "or adopt Option B (Caddy-only) per §3.5 of the v3 doc until 3.2.0 packages are available."
+echo "or use Option B (Caddy + FrankenPHP only) for dev/staging."
