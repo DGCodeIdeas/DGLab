@@ -75,7 +75,9 @@ TARBALL="${VERSION}.tar.gz"
 URL="https://github.com/alibaba/tengine/archive/refs/tags/${TARBALL}"
 if [[ ! -f "$TARBALL" ]]; then
   echo "==> Downloading $URL"
-  curl -fsSLO "$URL"
+  echo  # blank line before progress bar
+  curl -fL --progress-bar -o "$TARBALL" "$URL"
+  echo  # blank line after progress bar
 fi
 # GitHub archive extracts as tengine-VERSION (e.g. tengine-3.2.0-rc5)
 rm -rf "tengine-${VERSION}"
