@@ -27,6 +27,8 @@ jobs:
             working-dir: packages/core/container
           - package: core/event-dispatcher
             working-dir: packages/core/event-dispatcher
+          - package: core/http-message
+            working-dir: packages/core/http-message
           - package: orchestrator
             working-dir: orchestrator
     steps:
