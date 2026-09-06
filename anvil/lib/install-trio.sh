@@ -53,13 +53,23 @@ fi
 
 # ---------------------------------------------------------------------------
 # Args.
+#
+# Uses while+shift (NOT for-in) because shift must modify $@ live so that
+# --env's value is consumed and not re-iterated.
 # ---------------------------------------------------------------------------
 ANVIL_INSTALL_ENV="production"
 NONINTERACTIVE=0
-for arg in "$@"; do
-  case "$arg" in
-    --env) ANVIL_INSTALL_ENV="${2:-production}"; shift 2 ;;
-    --noninteractive|--yes) NONINTERACTIVE=1 ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: --env requires a value (e.g. --env production)" >&2
+        exit 2
+      fi
+      ANVIL_INSTALL_ENV="$2"; shift 2 ;;
+    --env=*)
+      ANVIL_INSTALL_ENV="${1#--env=}"; shift ;;
+    --noninteractive|--yes) NONINTERACTIVE=1; shift ;;
     -h|--help)
       cat <<EOF
 Anvil v3 trio installer — Caddy + Tengine + FrankenPHP.
@@ -71,14 +81,17 @@ and the firewall baseline. Idempotent — safe to re-run.
 
 --env staging     : use staging ACME CA in the rendered Caddyfile
 --env production  : use production ACME CA (default)
+--env=staging     : same, using --env=value syntax
 --noninteractive  : skip the confirmation prompt
 EOF
       exit 0 ;;
-    *) echo "Unknown option: $arg" >&2; exit 2 ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
 
 # Propagate env into the config vars used by the lib renderers.
+# Exported BEFORE lib functions are called (they read ANVIL_ENV at call
+# time, not source time, but exporting early is the safe order).
 export ANVIL_ENV="$ANVIL_INSTALL_ENV"
 if [[ "$ANVIL_INSTALL_ENV" == "staging" ]]; then
   export ACME_CA="https://acme-staging-v02.api.letsencrypt.org/directory"
@@ -88,7 +101,7 @@ anvil_info "Anvil v3 trio install — env=${ANVIL_INSTALL_ENV} noninteractive=${
 anvil_info "version floors: $(awk -F= '/^[A-Z]/ {printf "%s=%s ", $1, $2}' "$ANVIL_VERSIONS_ENV")"
 
 if [[ $NONINTERACTIVE -eq 0 ]]; then
-  read -r -p "Proceed with trio install? [y/N] " yn
+  read -r -p "Proceed with trio install? [y/N] " yn || yn=""
   case "$yn" in
     y|Y|yes|YES) ;;
     *) anvil_die 1 "aborted by user" ;;
@@ -140,7 +153,10 @@ install_binary_from_github() {
   fi
   local url
   # shellcheck disable=SC2059
-  url="$(printf "$pattern" "$repo" "$version" "$(uname -m)" "$(uname -m)")"
+  # Pattern has 3 %s: repo, version, version (version appears in both
+  # the path tag and the filename). Arch is expanded from ${CADDY_ARCH}
+  # in the caller's scope at string-assignment time.
+  url="$(printf "$pattern" "$repo" "$version" "$version")"
   anvil_info "  downloading $name $version → $dest"
   if ! curl -fsSL -o "$dest.tmp" "$url"; then
     anvil_error "  FAILED to download $url"
@@ -211,8 +227,8 @@ install -d -m 0755 /etc/systemd/system
 for unit in anvil-caddy.service anvil-tengine.service anvil-frankenphp@.service anvil-secrets.service; do
   install -m 0644 "${ANVIL_ROOT}/systemd/${unit}" "/etc/systemd/system/${unit}"
 done
-# install fetch-secrets.sh into /opt/anvil/bin/ (where anvil-secrets.service expects it).
-install -d -m 0755 -o root -g root /opt/anvil/bin
+# install fetch-secrets.sh into /opt/anvil/lib/ (where anvil-secrets.service expects it).
+install -d -m 0755 -o root -g root /opt/anvil/lib
 install -m 0755 "${ANVIL_ROOT}/lib/fetch-secrets.sh" /opt/anvil/lib/fetch-secrets.sh
 systemctl daemon-reload
 anvil_info "  4 units installed; boot order: secrets → frankenphp@blue → tengine → caddy"
@@ -230,7 +246,7 @@ net.ipv4.tcp_fin_timeout = 15
 net.ipv4.ip_local_port_range = 10000 65535
 fs.file-max = 1048576
 EOF
-sysctl --system >/dev/null
+sysctl --system >/dev/null 2>&1 || anvil_warn "  sysctl --system failed (container? unprivileged?) — continuing"
 
 cat >/etc/security/limits.d/99-anvil.conf <<'EOF'
 # Anvil v3 — open-files limits for caddy/tengine/anvil users.
