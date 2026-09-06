@@ -45,8 +45,15 @@ final class Stream implements StreamInterface
                 throw new RuntimeException("Unable to open '{$stream}' in mode '{$mode}'");
             }
             $this->resource = $resource;
+            // Use the REQUESTED mode for readability/writability detection.
+            // php://temp and other wrapper streams may report a different mode
+            // via stream_get_meta_data (e.g. 'r+' becomes 'w+b'), which would
+            // break the READABLE/WRITABLE constant lookup.
         } elseif (is_resource($stream)) {
             $this->resource = $stream;
+            // For resources, we don't know the original mode — use metadata.
+            $meta = stream_get_meta_data($stream);
+            $mode = strtolower($meta['mode']);
         } else {
             throw new \InvalidArgumentException(
                 'Stream must be a string filename or a resource; got ' . get_debug_type($stream)
@@ -55,7 +62,6 @@ final class Stream implements StreamInterface
 
         $meta = stream_get_meta_data($this->resource);
         $this->seekable = (bool) $meta['seekable'];
-        $mode = strtolower($meta['mode']);
         $this->readable = in_array($mode, self::READABLE, true);
         $this->writable = in_array($mode, self::WRITABLE, true);
     }
