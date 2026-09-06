@@ -33,7 +33,10 @@ final class StreamTest extends TestCase
         self::assertTrue($stream->isReadable());
         self::assertTrue($stream->isWritable());
         self::assertTrue($stream->isSeekable());
-        self::assertNull($stream->getSize()); // empty stream, size unknown until written
+        // getSize() on an empty php://temp returns 0 (fstat reports size=0),
+        // not null — null is only returned when the stream is detached or
+        // the resource is gone.
+        self::assertSame(0, $stream->getSize());
     }
 
     public function testConstructFromReadOnlyFile(): void
