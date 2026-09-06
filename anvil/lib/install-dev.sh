@@ -305,13 +305,10 @@ install_mkcert() {
     fi
 
     echo "Downloading mkcert from ${url}"
-    echo  # blank line before progress bar
-    if curl -fL --progress-bar "$url" -o "${ANVIL_MKCERT_PATH}"; then
-      echo  # blank line after progress bar
+    if anvil_download "$url" "${ANVIL_MKCERT_PATH}" "mkcert"; then
       chmod +x "${ANVIL_MKCERT_PATH}"
       echo "mkcert installed to ${ANVIL_MKCERT_PATH}"
     else
-      echo  # blank line after progress bar
       warn "failed to download mkcert from ${url}; install manually"
       return 1
     fi
@@ -353,9 +350,7 @@ install_sass() {
   fi
 
   tmp="$(mktemp -d)"
-  echo  # blank line before progress bar
-  if curl -fL --progress-bar "$url" -o "${tmp}/sass.tar.gz"; then
-    echo  # blank line after progress bar
+  if anvil_download "$url" "${tmp}/sass.tar.gz" "dart-sass"; then
     tar -xzf "${tmp}/sass.tar.gz" -C "$tmp"
     sass_bin="$(find "$tmp" -name sass -type f | head -1)"
     if [[ -n "$sass_bin" ]]; then
@@ -368,7 +363,6 @@ install_sass() {
       return 1
     fi
   else
-    echo  # blank line after progress bar
     warn "failed to download dart-sass from ${url}"
     rm -rf "$tmp"
     return 1

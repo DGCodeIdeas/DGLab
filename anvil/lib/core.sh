@@ -59,6 +59,41 @@ anvil_warn()  { anvil_log WARN  "$@"; }
 anvil_error() { anvil_log ERROR "$@"; }
 anvil_debug() { anvil_log DEBUG "$@"; }
 
+# anvil_download URL OUTPUT_PATH [LABEL]
+#   Downloads a file with a progress bar (speed + percentage + ETA).
+#   Uses pv if available (best UX); auto-installs it if missing.
+#   Falls back to curl's default meter if pv can't be installed.
+#   Returns 0 on success, non-zero on failure.
+anvil_download() {
+  local url="$1" output="$2" label="${3:-download}"
+  # Ensure pv is available for the progress bar.
+  if ! command -v pv >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get install -y -qq pv >/dev/null 2>&1 || true
+    fi
+  fi
+  echo  # blank line before progress
+  if command -v pv >/dev/null 2>&1; then
+    # pv shows: size, time, speed, bar, percentage, ETA.
+    # Get content-length from the server for the progress bar.
+    local size
+    size="$(curl -sIL "$url" 2>/dev/null | grep -i '^content-length:' | tail -1 | awk '{print $2}' | tr -d '\r')"
+    if [[ -n "$size" && "$size" =~ ^[0-9]+$ ]]; then
+      curl -fsSL "$url" 2>/dev/null | pv -s "$size" -N "$label" > "$output"
+    else
+      # No content-length header; let pv use a moving average.
+      curl -fsSL "$url" 2>/dev/null | pv -N "$label" > "$output"
+    fi
+    local rc=${PIPESTATUS[0]}
+  else
+    # Fallback: curl's built-in meter (shows speed + percentage table).
+    curl -fL -o "$output" "$url"
+    local rc=$?
+  fi
+  echo  # blank line after progress
+  return $rc
+}
+
 # anvil_die CODE MSG...   — log ERROR then exit CODE.
 anvil_die() {
   local code="${1:?}"
