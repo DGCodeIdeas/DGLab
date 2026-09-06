@@ -10,6 +10,14 @@
 
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# Root-privilege check — all phases need root (systemctl, rm -rf /opt, apt).
+# ---------------------------------------------------------------------------
+if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+  echo "[INFO] This script must run as root. Re-executing with sudo..." >&2
+  exec sudo "$0" "$@"
+fi
+
 ANVIL_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 export ANVIL_ROOT
 
@@ -18,16 +26,26 @@ source "${ANVIL_ROOT}/lib/core.sh"
 
 # ---------------------------------------------------------------------------
 # Parse arguments
+#
+# Uses while+shift (NOT for-in) because shift must modify $@ live so that
+# --phase's value is consumed and not re-iterated.
 # ---------------------------------------------------------------------------
 PHASE=""
 DRY_RUN=0
 YES=0
 
-for arg in "$@"; do
-  case "$arg" in
-    --yes|--noninteractive) YES=1 ;;
-    --dry-run) DRY_RUN=1 ;;
-    --phase) PHASE="${2:-}"; shift 2 ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --yes|--noninteractive) YES=1; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    --phase)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: --phase requires a value (e.g. --phase 3)" >&2
+        exit 2
+      fi
+      PHASE="$2"; shift 2 ;;
+    --phase=*)
+      PHASE="${1#--phase=}"; shift ;;
     -h|--help)
       cat <<'EOF'
 Anvil Uninstaller
@@ -59,7 +77,7 @@ run_phase() {
         return 0
     fi
     if [[ "$YES" -eq 0 ]]; then
-        read -rp "  Execute phase $num? [Y/n] " confirm
+        read -rp "  Execute phase $num? [Y/n] " confirm || confirm=""
         [[ "$confirm" =~ ^[Nn]$ ]] && { anvil_info "  Skipped."; return 0; }
     fi
     eval "$cmd" || anvil_warn "  Phase $num completed with warnings."
@@ -102,7 +120,7 @@ phase4() {
 phase5() {
     if [[ "$YES" -eq 0 && "$DRY_RUN" -eq 0 ]]; then
         echo
-        read -rp "Remove conflicting web servers (apache2, nginx, php-fpm)? [y/N] " confirm
+        read -rp "Remove conflicting web servers (apache2, nginx, php-fpm)? [y/N] " confirm || confirm=""
         [[ "$confirm" =~ ^[Yy]$ ]] || { anvil_info "Phase 5 skipped."; return 0; }
     fi
     run_phase 5 "Remove conflicting web servers"         "apt-get remove -y apache2 nginx php-fpm 2>/dev/null || true; \

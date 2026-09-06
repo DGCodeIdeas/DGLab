@@ -74,9 +74,9 @@ anvil_deploy() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --strategy)   strategy="$2";  shift 2 ;;
-      --timeout)    timeout="$2";   shift 2 ;;
-      --release)    release="$2";   shift 2 ;;
+      --strategy)   strategy="${2:?--strategy requires a value}";  shift 2 ;;
+      --timeout)    timeout="${2:?--timeout requires a value}";     shift 2 ;;
+      --release)    release="${2:?--release requires a value}";      shift 2 ;;
       -*) anvil_die 2 "anvil_deploy: unknown option $1" ;;
       *)
         if [[ -z "$env" ]]; then env="$1"; shift

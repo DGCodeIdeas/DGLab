@@ -35,8 +35,8 @@ WORKDIR="${TMPDIR:-/tmp}/anvil-tengine-build"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --prefix)  PREFIX="$2";  shift 2 ;;
-    --version) VERSION="$2"; shift 2 ;;
+    --prefix)  PREFIX="${2:?--prefix requires a value}";  shift 2 ;;
+    --version) VERSION="${2:?--version requires a value}"; shift 2 ;;
     -h|--help)
       cat <<EOF
 Usage: $0 [--prefix /usr/local/tengine] [--version 3.2.0]
