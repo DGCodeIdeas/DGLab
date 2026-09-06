@@ -19,6 +19,44 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 - **Owner:** Architecture lead (DGCI)
 - **Decision route:** Deferred until ADR-017 interfaces are proven in Phase 0. `DGLAB-AS-OS-RUNTIME.md` defines a library-agnostic `EventLoopInterface` as the abstraction boundary.
 
+### OD-09 — DGLab SCSS framework: scope, inspirations, SuperPHP authoring model
+- **Fork:** Build a personalized SCSS framework for DGLab, or adopt an existing one (Tailwind, Bootstrap, Bulma, etc.). Resolution of the "full control" question for the styling layer.
+- **High-level decision (deferred implementation):** Build custom, per the "full control" rationale established by `ADR-005` (SuperPHP vs. Blade/Twig) and continued in `CORE-02` (custom DI vs. Symfony DI), `CORE-03` (custom event dispatcher). The styling layer is part of the application stack DGLab controls end-to-end.
+- **Interim decision (active now):** Use Tailwind + hand-rolled custom styles for any UI work that needs styling before the custom framework ships. Tailwind is consumed as a build-time tool, not a runtime dependency. Custom styles live alongside Tailwind output. This unblocks UI work without committing to the full custom framework build before its prerequisites are ready.
+- **Authoring model (when implemented):** SuperPHP components with `<dg:style>` blocks — the Vue SFC / Svelte / Astro pattern. Component-scoped styles compiled at build time, no runtime CSS-in-JS overhead. NOT raw `.scss` files; NOT CSS-in-JS. This requires `<dg:style>` block support in `CORE-12` (SuperPHP compiler), which is not currently in `CORE-12`'s blueprint and must be added before implementation starts.
+- **Four-layer model (when implemented):**
+  1. **Token binding layer** — SuperPHP components that import `HUB-26`'s frozen token manifest (`Architecture/Cooldown0/HUB-26-theme-tokens.md`) and expose them as SCSS variables + CSS custom properties. This is the bridge between HUB-26 (Markdown spec) and runtime CSS. **HUB-26 is frozen (Cooldown 0) and is NOT redefined by this framework — the framework consumes it.**
+  2. **Utility layer** — SuperPHP mixins/partials that generate atomic utility classes (`dg-u-flex`, `dg-u-gap-4`). Hand-rolled, not Tailwind's JIT engine. ~200-300 lines of SCSS in SuperPHP `<dg:style>` blocks. Naming convention stolen from Tailwind (`text-sm`, `flex`, `gap-4`); JIT-purge concept stolen from Tailwind; **not** Tailwind's Node toolchain.
+  3. **Component layer** — SuperPHP components (`<dg:button>`, `<dg:card>`, `<dg:nav>`) that emit markup + scoped SCSS. Bootstrap-style opinionated component patterns (`.btn`, `.card`, `.navbar`); Bulma-style modifier syntax (`is-primary`, `has-shadow`); MD3 state-layer + elevation concepts. **Not** Bootstrap's jQuery.
+  4. **Class-less content layer** (optional) — Pico.css-inspired semantic styling for content pages where component classes are overkill (marketing pages, ESPOKE-05-style surfaces, blog posts). Lives in a single SuperPHP `<dg:style global>` block, not per-component. Opt-in — doesn't impose on sites that don't import it.
+- **Inspirations (synthesized from a survey of 50+ CSS frameworks):**
+  - **Tailwind** — utility-class naming convention; JIT-purge concept; config-as-token-source. NOT the Node toolchain.
+  - **Bootstrap** — component class patterns (`.btn`, `.card`, `.navbar`); 12-col grid; opinionated form/table defaults. NOT the jQuery.
+  - **MD3 / Material Components Web** — token system (already in HUB-26); state-layer concept; elevation as `box-shadow` tiers; ripple as `::after` pseudo. HUB-26 is already MD3-aligned; this extends it.
+  - **Pico.css** — class-less semantic styling for `<article>`, `<form>`, `<nav>`, `<table>`. Needed for ESPOKE-05 marketing pages and content-heavy External Spokes.
+  - **Open Props** — `--*` custom property as first-class; namespace conventions (`--color-*`, `--size-*`); promo of CSS vars over SCSS vars for runtime theming. Aligns with HUB-26's already-frozen token approach.
+  - **Carbon / Primer** — design-system organization: tokens → primitives → components → patterns. Documentation structure. Scales; gives the framework a navigable shape.
+  - **Bulma** — modifier syntax (`is-primary`, `has-shadow`); column system naming. Cleaner class names than Bootstrap's `.btn-primary` BEM-ish hybrid.
+- **Distribution model (for External Spokes):** External Spokes cannot `composer require` a Hub-tier package — they're external apps running outside the Hub's process. Three candidate paths:
+  - **(a) Tarball on GitHub Release** — Loom already creates releases. Add a build step that produces `dglab-styles-vX.Y.Z.tar.gz` containing compiled CSS + compiled SuperPHP components. External Spokes download at build time. **Simplest. No registry. Preferred for initial release.**
+  - **(b) npm package mirror** — publish `@dglab/styles` to npm via a release workflow. External Spokes `npm install`. Standard tooling for JS-side builds. Requires npm account + a release workflow that publishes.
+  - **(c) Composer path-repository in a separate dist repo** — like `DGCodeIdeas/DGLab-Styles-Dist` containing only built artifacts. External Spokes add it as a Composer repo. Keeps everything in PHP toolchain.
+  - Migrate from (a) to (b) or (c) later if External Spokes multiply and version-pinning across multiple spokes becomes painful.
+- **Scope line for "full control":** DGLab controls the application stack above the language runtime — DI (`CORE-02`), events (`CORE-03`), HTTP message (`CORE-04`), middleware (`CORE-05`), router (`CORE-06`), templates (SuperPHP, `CORE-07`/`11`/`12`), CSS framework (this OD). DGLab does NOT control: PHP itself, Composer, PHPUnit, PHPStan, Caddy, Tengine, FrankenPHP (configured, not built). The scope line is the decision boundary — below the line, consume; above the line, build.
+- **Prerequisites (must land before implementation starts):**
+  1. `CORE-07` (SuperPHP Lexer) — Step 6 of `INDEX.md` §5 build order.
+  2. `CORE-11` (SuperPHP Parser) — blocked on `CORE-07`.
+  3. `CORE-12` (SuperPHP Compiler) — blocked on `CORE-11`.
+  4. `<dg:style>` block support in `CORE-12`'s blueprint — NOT currently specified. Must be added (via OD amendment or ADR) before `CORE-12` implementation starts, otherwise `<dg:style>` becomes a post-1.0 addition and delays this framework by another lap.
+- **Open dimensions (sub-decisions to make when the prerequisites land):**
+  - **(i) Package location:** HUB-32 (clean — new Hub-tier blueprint under `packages/hub/styles/`, SemVer-tagged, depends on HUB-26; blocks on Hub tier not being started yet) vs. cross-cutting package (sidesteps Hub-tier blocking; needs new tier or exception to `ADR-001`) vs. app-tier (consumer-local under `app/Resources/styles/`; isn't a library, won't be `require`d). Lean: HUB-32 even though it blocks — same precedent as `CORE-02` waiting for its tier.
+  - **(ii) Utility layer implementation:** hand-rolled SCSS mixins (~200-300 lines, full control, no Node beyond Dart Sass) vs. adopt Tailwind's JIT engine as a build step (battle-tested, adds Node toolchain to a PHP-only repo). Lean: hand-rolled for consistency with the "build our own" pattern; the Node toolchain argument is weak since DGLab already has Node via the web UI's `app.js`.
+  - **(iii) Class-less content layer in scope:** yes (Pico-inspired, for ESPOKE-05-style marketing pages) vs. no (every surface uses component classes). Lean: yes, opt-in.
+  - **(iv) `<dg:style>` block scope:** scoped-only (per-component, Vue SFC-style) vs. scoped + global (also supports framework-wide styles like resets + class-less content layer). Lean: scoped + global — the class-less content layer (iv) requires global.
+  - **(v) Does `CORE-12` blueprint need amending for `<dg:style>`?** Yes — `CORE-12`'s current blueprint doesn't specify `<dg:style>` as a first-class feature. Either amend `CORE-12` directly (file an OD amendment referencing this one) or ship `<dg:style>` as a separate ADR-gated extension after `CORE-12` 1.0. Lean: amend `CORE-12` directly to avoid delaying this framework by a lap.
+- **Owner:** Architecture lead (DGCI)
+- **Decision route:** Resolve via `ADR-018` once `CORE-07`/`11`/`12` ship and `<dg:style>` block support is in `CORE-12`'s spec. `ADR-018` will cite `ADR-005` (build-vs-adopt precedent for templating), `ADR-001` (package location), `HUB-26` (token consumer, not definer), and this OD. Until then, the interim decision (Tailwind + custom styles) is active.
+
 ## Resolved
 
 ### OD-01 — HUB-31 (Real-Time Analytics & Metrics Ledger): accepted as full Hub tier
