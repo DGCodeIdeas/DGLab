@@ -158,13 +158,25 @@ install_binary_from_github() {
   # in the caller's scope at string-assignment time.
   url="$(printf "$pattern" "$repo" "$version" "$version")"
   anvil_info "  downloading $name $version → $dest"
-  if ! curl -fsSL -o "$dest.tmp" "$url"; then
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  if ! curl -fsSL -o "${tmpdir}/download.tar.gz" "$url"; then
     anvil_error "  FAILED to download $url"
-    rm -f "$dest.tmp"
+    rm -rf "$tmpdir"
     return 3
   fi
-  mv "$dest.tmp" "$dest"
-  chmod +x "$dest"
+  # Caddy ships as a tar.gz containing the binary; extract it.
+  tar -xzf "${tmpdir}/download.tar.gz" -C "$tmpdir"
+  # Find the binary inside the extracted archive.
+  local extracted_bin
+  extracted_bin="$(find "$tmpdir" -name "caddy" -type f | head -1)"
+  if [[ -z "$extracted_bin" ]]; then
+    anvil_error "  FAILED to find caddy binary in downloaded archive"
+    rm -rf "$tmpdir"
+    return 3
+  fi
+  install -m 0755 "$extracted_bin" "$dest"
+  rm -rf "$tmpdir"
   anvil_info "  installed: $dest"
 }
 

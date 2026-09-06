@@ -98,6 +98,7 @@ cd "tengine-${VERSION}"
   --with-http_realip_module \
   --with-threads \
   --with-compat \
+  --with-cc-opt='-Wno-error=unterminated-string-initialization' \
   --add-module=modules/ngx_http_upstream_check_module \
   --add-module=modules/ngx_http_upstream_dyups_module \
   --add-module=modules/ngx_http_concat_module
