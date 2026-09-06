@@ -203,7 +203,7 @@ else
   anvil_info "  (Tengine 3.2.0 pre-built packages are not yet available for any arch)"
 
   # Check if build prerequisites are available before attempting.
-  local tengine_build_ok=1
+  tengine_build_ok=1
   for cmd in gcc make curl; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
       anvil_warn "  missing build prerequisite: $cmd (apt install build-essential)"
@@ -219,7 +219,7 @@ else
 
   if [[ "$tengine_build_ok" -eq 1 ]]; then
     # Interactive: ask the user. Non-interactive: auto-build.
-    local do_build=1
+    do_build=1
     if [[ "$NONINTERACTIVE" -eq 0 ]]; then
       read -r -p "  Build Tengine ${FLOORS[TENGINE]} from source? (~5 min) [Y/n] " yn || yn=""
       case "$yn" in
