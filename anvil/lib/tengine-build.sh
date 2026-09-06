@@ -59,7 +59,7 @@ command -v make             >/dev/null || { echo "missing: make" >&2; exit 1; }
 command -v curl             >/dev/null || { echo "missing: curl" >&2; exit 1; }
 [[ -f /usr/include/pcre2.h ]]         || { echo "missing: pcre2-dev (apt install libpcre2-dev)" >&2; exit 1; }
 [[ -d /usr/include/openssl ]]         || { echo "missing: libssl-dev (apt install libssl-dev)" >&2; exit 1; }
-[[ -d /usr/include/zlib ]]            || { echo "missing: zlib1g-dev (apt install zlib1g-dev)" >&2; exit 1; }
+[[ -f /usr/include/zlib.h ]]          || { echo "missing: zlib1g-dev (apt install zlib1g-dev)" >&2; exit 1; }
 
 echo "==> Building Tengine ${VERSION} → ${PREFIX}"
 mkdir -p "$WORKDIR" && cd "$WORKDIR"
