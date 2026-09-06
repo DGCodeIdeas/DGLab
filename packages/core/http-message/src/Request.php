@@ -14,7 +14,7 @@ use Psr\Http\Message\UriInterface;
  * (RFC 9110 §5.1) with original casing preserved. All with*() methods return
  * a new instance.
  */
-final class Request implements RequestInterface
+class Request implements RequestInterface
 {
     /** @var array<string, list<string>> Header values keyed by lowercased name. */
     private array $headers;
@@ -38,8 +38,8 @@ final class Request implements RequestInterface
         string $method = 'GET',
         UriInterface|string $uri = '',
         array $headers = [],
-        private readonly ?StreamInterface $body = null,
-        private readonly string $protocolVersion = '1.1',
+        private ?StreamInterface $body = null,
+        private string $protocolVersion = '1.1',
     ) {
         $this->method = strtoupper($method);
         $this->uri = is_string($uri) ? new Uri($uri) : $uri;

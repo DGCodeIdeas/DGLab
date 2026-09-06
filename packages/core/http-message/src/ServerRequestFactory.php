@@ -14,6 +14,9 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 final class ServerRequestFactory implements ServerRequestFactoryInterface
 {
+    /**
+     * @param array<string, mixed> $serverParams
+     */
     public function createServerRequest(string $method, $uri, array $serverParams = []): ServerRequestInterface
     {
         return new ServerRequest($method, $uri, serverParams: $serverParams);
@@ -45,7 +48,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
         $cookie ??= $_COOKIE;
         $files ??= $_FILES;
 
-        $method = $server['REQUEST_METHOD'] ?? 'GET';
+        $method = (string)($server['REQUEST_METHOD'] ?? 'GET');
         $uri = self::marshalUriFromGlobals($server);
         $headers = self::marshalHeadersFromGlobals($server);
         $body = new Stream('php://input', 'r');
@@ -87,6 +90,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
 
     /**
      * Marshal the URI from server params.
+     * @param array<string, mixed> $server
      */
     private static function marshalUriFromGlobals(array $server): Uri
     {

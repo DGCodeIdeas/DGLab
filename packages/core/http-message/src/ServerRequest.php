@@ -22,9 +22,9 @@ final class ServerRequest extends Request implements ServerRequestInterface
     private array $cookieParams;
     /** @var array<string, mixed> */
     private array $queryParams;
-    /** @var array<UploadedFileInterface> */
+    /** @var array<UploadedFileInterface|array> */
     private array $uploadedFiles;
-    /** @var null|array<string, mixed>|object */
+    /** @var array<string, mixed>|object|null */
     private mixed $parsedBody;
     /** @var array<string, mixed> */
     private array $attributes;
@@ -54,16 +54,19 @@ final class ServerRequest extends Request implements ServerRequestInterface
         $this->attributes = [];
     }
 
+    /** @return array<string, mixed> */
     public function getServerParams(): array
     {
         return $this->serverParams;
     }
 
+    /** @return array<string, string> */
     public function getCookieParams(): array
     {
         return $this->cookieParams;
     }
 
+    /** @param array<string, string> $cookies */
     public function withCookieParams(array $cookies): ServerRequestInterface
     {
         $new = clone $this;
@@ -71,11 +74,13 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
+    /** @return array<string, mixed> */
     public function getQueryParams(): array
     {
         return $this->queryParams;
     }
 
+    /** @param array<string, mixed> $query */
     public function withQueryParams(array $query): ServerRequestInterface
     {
         $new = clone $this;
@@ -83,11 +88,13 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
+    /** @return array<UploadedFileInterface|array> */
     public function getUploadedFiles(): array
     {
         return $this->uploadedFiles;
     }
 
+    /** @param array<UploadedFileInterface|array> $uploadedFiles */
     public function withUploadedFiles(array $uploadedFiles): ServerRequestInterface
     {
         $new = clone $this;
@@ -95,11 +102,13 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
+    /** @return array<string, mixed>|object|null */
     public function getParsedBody(): mixed
     {
         return $this->parsedBody;
     }
 
+    /** @param array<string, mixed>|object|null $data */
     public function withParsedBody($data): ServerRequestInterface
     {
         if ($data !== null && !is_array($data) && !is_object($data)) {
@@ -112,6 +121,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
+    /** @return array<string, mixed> */
     public function getAttributes(): array
     {
         return $this->attributes;

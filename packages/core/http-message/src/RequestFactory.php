@@ -13,6 +13,11 @@ final class RequestFactory implements RequestFactoryInterface
 {
     public function createRequest(string $method, $uri): RequestInterface
     {
-        return new Request($method, $uri);
+        if (is_string($uri) || $uri instanceof UriInterface) {
+            return new Request($method, $uri);
+        }
+        throw new \InvalidArgumentException(
+            'URI must be a string or UriInterface; got ' . get_debug_type($uri)
+        );
     }
 }
