@@ -12,12 +12,13 @@ use Psr\Http\Message\UriInterface;
  */
 final class RequestFactory implements RequestFactoryInterface
 {
+    /** @param mixed $uri */
     public function createRequest(string $method, $uri): RequestInterface
     {
         if ($uri instanceof UriInterface) {
             return new Request($method, $uri);
         }
         // String or Stringable — convert to string for the Request constructor.
-        return new Request($method, (string) $uri);
+        return new Request($method, is_string($uri) ? $uri : (string) $uri);
     }
 }

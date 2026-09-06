@@ -165,11 +165,11 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
      * (e.g. <input name="files[]">). This flattens it to a clean array.
      *
      * @param array<string, mixed> $files
-     * @return array<string, \Psr\Http\Message\UploadedFileInterface|array>
+     * @return array<string, mixed>
      */
     private static function normalizeUploadedFiles(array $files): array
     {
-        /** @var array<string, \Psr\Http\Message\UploadedFileInterface|array> $normalized */
+        /** @var array<string, mixed> $normalized */
         $normalized = [];
         foreach ($files as $key => $value) {
             if ($value instanceof \Psr\Http\Message\UploadedFileInterface) {
