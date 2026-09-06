@@ -147,24 +147,34 @@ while IFS='=' read -r k v; do FLOORS["$k"]="$v"; done < <(_anvil_parse_versions_
 
 install_binary_from_github() {
   local name="$1" repo="$2" version="$3" pattern="$4" dest="$5"
+
+  # Idempotency check: if the binary exists, is executable, and reports
+  # the correct version, skip the download.
   if [[ -x "$dest" ]] && "$dest" version 2>&1 | head -1 | grep -q "$version"; then
     anvil_info "  $name $version already installed at $dest"
     return 0
   fi
+
+  # Detect and remove broken install from the pre-#135 bug where the
+  # tar.gz archive was saved directly as the binary (not executable).
+  if [[ -f "$dest" ]] && ! [[ -x "$dest" ]]; then
+    anvil_warn "  removing broken $dest (not executable — likely old tarball-as-binary bug)"
+    rm -f "$dest"
+  fi
+
   local url
   # shellcheck disable=SC2059
-  # Pattern has 3 %s: repo, version, version (version appears in both
-  # the path tag and the filename). Arch is expanded from ${CADDY_ARCH}
-  # in the caller's scope at string-assignment time.
   url="$(printf "$pattern" "$repo" "$version" "$version")"
   anvil_info "  downloading $name $version → $dest"
   local tmpdir
   tmpdir="$(mktemp -d)"
-  if ! curl -fsSL -o "${tmpdir}/download.tar.gz" "$url"; then
+  echo  # blank line before progress bar
+  if ! curl -fL --progress-bar -o "${tmpdir}/download.tar.gz" "$url"; then
     anvil_error "  FAILED to download $url"
     rm -rf "$tmpdir"
     return 3
   fi
+  echo  # blank line after progress bar
   # Caddy ships as a tar.gz containing the binary; extract it.
   tar -xzf "${tmpdir}/download.tar.gz" -C "$tmpdir"
   # Find the binary inside the extracted archive.
@@ -199,9 +209,16 @@ install_binary_from_github caddy \
 if [[ -x "$ANVIL_FRANKENPHP_BIN" ]] && "$ANVIL_FRANKENPHP_BIN" version 2>&1 | grep -q "${FLOORS[FRANKENPHP]}"; then
   anvil_info "  frankenphp ${FLOORS[FRANKENPHP]} already installed at $ANVIL_FRANKENPHP_BIN"
 else
+  # Remove broken install from pre-#135 bug (non-executable file).
+  if [[ -f "$ANVIL_FRANKENPHP_BIN" ]] && ! [[ -x "$ANVIL_FRANKENPHP_BIN" ]]; then
+    anvil_warn "  removing broken $ANVIL_FRANKENPHP_BIN (not executable)"
+    rm -f "$ANVIL_FRANKENPHP_BIN"
+  fi
   anvil_info "  downloading frankenphp ${FLOORS[FRANKENPHP]} → $ANVIL_FRANKENPHP_BIN"
-  curl -fsSL -o "$ANVIL_FRANKENPHP_BIN" \
+  echo  # blank line before progress bar
+  curl -fL --progress-bar -o "$ANVIL_FRANKENPHP_BIN" \
     "https://github.com/php/frankenphp/releases/download/v${FLOORS[FRANKENPHP]}/frankenphp-${FRANKEN_ARCH}"
+  echo  # blank line after progress bar
   chmod +x "$ANVIL_FRANKENPHP_BIN"
   anvil_info "  installed: $ANVIL_FRANKENPHP_BIN"
 fi
