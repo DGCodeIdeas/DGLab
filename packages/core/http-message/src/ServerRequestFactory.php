@@ -29,11 +29,11 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
      * marshals the URI from scheme/host/path/query, wraps $_FILES into
      * UploadedFile[], and sets parsed body from $_POST when applicable.
      *
-     * @param array $server Override $_SERVER (for testing).
-     * @param array $get Override $_GET.
-     * @param array $post Override $_POST.
-     * @param array $cookie Override $_COOKIE.
-     * @param array $files Override $_FILES.
+     * @param array<string, mixed> $server Override $_SERVER (for testing).
+     * @param array<string, mixed> $get Override $_GET.
+     * @param array<string, mixed> $post Override $_POST.
+     * @param array<string, mixed> $cookie Override $_COOKIE.
+     * @param array<string, mixed> $files Override $_FILES.
      */
     public static function fromGlobals(
         array $server = null,
@@ -90,12 +90,13 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
 
     /**
      * Marshal the URI from server params.
-     * @param array $server
+     * @param array<string, mixed> $server
      */
     private static function marshalUriFromGlobals(array $server): Uri
     {
         $scheme = 'http';
-        $https = (string)($server['HTTPS'] ?? '');
+        $https = $server['HTTPS'] ?? '';
+        if (!is_string($https)) { $https = ''; }
         if ($https !== '' && strtolower($https) !== 'off') {
             $scheme = 'https';
         }
@@ -139,7 +140,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
     /**
      * Normalize HTTP_* server vars into a headers array.
      *
-     * @param array $server
+     * @param array<string, mixed> $server
      * @return array<string, string>
      */
     private static function marshalHeadersFromGlobals(array $server): array
@@ -166,7 +167,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
      * PHP's $_FILES has a quirky nested structure when inputs are arrays
      * (e.g. <input name="files[]">). This flattens it to a clean array.
      *
-     * @param array $files
+     * @param array<string, mixed> $files
      * @return array<string, \Psr\Http\Message\UploadedFileInterface|array>
      */
     private static function normalizeUploadedFiles(array $files): array
@@ -174,7 +175,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
         /** @var array<string, \Psr\Http\Message\UploadedFileInterface|array> $normalized */
         $normalized = [];
         foreach ($files as $key => $value) {
-            if ($value instanceof UploadedFileInterface) {
+            if ($value instanceof PsrHttpMessagePLOADEDFILEINTERFACE) {
                 $normalized[$key] = $value;
                 continue;
             }

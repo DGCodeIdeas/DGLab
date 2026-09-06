@@ -35,7 +35,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
      * @param array<string, string|list<string>> $headers Header values.
      * @param StreamInterface|null $body Request body.
      * @param string $protocolVersion HTTP protocol version.
-     * @param array $serverParams Copy of $_SERVER.
+     * @param array<string, mixed> $serverParams Copy of $_SERVER.
      */
     public function __construct(
         string $method = 'GET',
@@ -80,7 +80,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $this->queryParams;
     }
 
-    /** @param array $query */
+    /** @param array<string, mixed> $query */
     public function withQueryParams(array $query): ServerRequestInterface
     {
         $new = clone $this;
@@ -94,7 +94,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $this->uploadedFiles;
     }
 
-    /** @param array $uploadedFiles */
+    /** @param array<string, mixed> $uploadedFiles */
     public function withUploadedFiles(array $uploadedFiles): ServerRequestInterface
     {
         $new = clone $this;
@@ -108,6 +108,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $this->parsedBody;
     }
 
+    /** @param mixed $data */
     public function withParsedBody($data): ServerRequestInterface
     {
         if ($data !== null && !is_array($data) && !is_object($data)) {
