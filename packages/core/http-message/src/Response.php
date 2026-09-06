@@ -22,7 +22,7 @@ final class Response implements ResponseInterface
     private readonly array $headerNames;
 
     /**
-     * @param array<non-empty-string, string|list<string>> $headers Header values.
+     * @param array<string, string|list<string>> $headers Header values.
      * @throws \InvalidArgumentException If $statusCode is outside 100-599.
      * @throws \InvalidArgumentException If any header value contains \r or \n (header injection).
      */
@@ -39,7 +39,9 @@ final class Response implements ResponseInterface
             );
         }
 
+        /** @var array<non-empty-string, list<string>> $normalized */
         $normalized = [];
+        /** @var array<non-empty-string, non-empty-string> $names */
         $names = [];
         foreach ($headers as $name => $value) {
             $values = is_array($value) ? array_map('strval', $value) : [(string) $value];
@@ -162,6 +164,7 @@ final class Response implements ResponseInterface
      * value-object layer makes it impossible for downstream emitters
      * (which may be naive) to produce a vulnerable response.
      */
+    /** @param list<string> $values */
     private function assertNoCrlf(string $name, array $values): void
     {
         if (preg_match('/[\r\n]/', $name)) {
@@ -183,6 +186,7 @@ final class Response implements ResponseInterface
      * PHP 8.3 readonly properties cannot be mutated post-construction,
      * so immutability requires `new self(...)` rather than clone+mutate.
      */
+    /** @param array<non-empty-string, list<string>>|null $headers */
     private function rebuild(
         ?int $statusCode = null,
         ?string $reasonPhrase = null,
@@ -199,7 +203,11 @@ final class Response implements ResponseInterface
         );
     }
 
-    /** @param array<non-empty-string, list<string>> $headers */
+    /**
+     * @param array<non-empty-string, list<string>> $headers
+     * @param array<non-empty-string, non-empty-string> $names
+     * @return array<non-empty-string, list<string>>
+     */
     private function restoreCasing(array $headers, array $names): array
     {
         $out = [];

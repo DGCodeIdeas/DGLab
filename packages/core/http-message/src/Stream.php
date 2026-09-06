@@ -29,7 +29,6 @@ final class Stream implements StreamInterface
     private bool $seekable = false;
     private bool $readable = false;
     private bool $writable = false;
-    private ?string $uri = null;
 
     /**
      * @param string|resource $stream Filename or open resource.
@@ -46,11 +45,8 @@ final class Stream implements StreamInterface
                 throw new RuntimeException("Unable to open '{$stream}' in mode '{$mode}'");
             }
             $this->resource = $resource;
-            $this->uri = $stream;
         } elseif (is_resource($stream)) {
             $this->resource = $stream;
-            $uri = stream_get_meta_data($stream)['uri'] ?? null;
-            $this->uri = is_string($uri) ? $uri : null;
         } else {
             throw new \InvalidArgumentException(
                 'Stream must be a string filename or a resource; got ' . get_debug_type($stream)
@@ -102,7 +98,6 @@ final class Stream implements StreamInterface
         $this->seekable = false;
         $this->readable = false;
         $this->writable = false;
-        $this->uri = null;
         return $resource;
     }
 
