@@ -29,6 +29,12 @@
 
 set -euo pipefail
 
+# Source core.sh for anvil_download (pv-based progress bar).
+ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+export ANVIL_ROOT
+# shellcheck source=lib/core.sh
+source "${ANVIL_ROOT}/lib/core.sh"
+
 PREFIX="/usr/local/tengine"
 VERSION="3.2.0-rc5"
 WORKDIR="${TMPDIR:-/tmp}/anvil-tengine-build"
@@ -75,9 +81,10 @@ TARBALL="${VERSION}.tar.gz"
 URL="https://github.com/alibaba/tengine/archive/refs/tags/${TARBALL}"
 if [[ ! -f "$TARBALL" ]]; then
   echo "==> Downloading $URL"
-  echo  # blank line before progress bar
-  curl -fL --progress-bar -o "$TARBALL" "$URL"
-  echo  # blank line after progress bar
+  if ! anvil_download "$URL" "$TARBALL" "tengine ${VERSION}"; then
+    echo "FAILED to download $URL" >&2
+    exit 3
+  fi
 fi
 # GitHub archive extracts as tengine-VERSION (e.g. tengine-3.2.0-rc5)
 rm -rf "tengine-${VERSION}"

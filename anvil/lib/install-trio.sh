@@ -168,13 +168,11 @@ install_binary_from_github() {
   anvil_info "  downloading $name $version → $dest"
   local tmpdir
   tmpdir="$(mktemp -d)"
-  echo  # blank line before progress bar
-  if ! curl -fL --progress-bar -o "${tmpdir}/download.tar.gz" "$url"; then
+  if ! anvil_download "$url" "${tmpdir}/download.tar.gz" "$name $version"; then
     anvil_error "  FAILED to download $url"
     rm -rf "$tmpdir"
     return 3
   fi
-  echo  # blank line after progress bar
   # Caddy ships as a tar.gz containing the binary; extract it.
   tar -xzf "${tmpdir}/download.tar.gz" -C "$tmpdir"
   # Find the binary inside the extracted archive.
@@ -215,10 +213,13 @@ else
     rm -f "$ANVIL_FRANKENPHP_BIN"
   fi
   anvil_info "  downloading frankenphp ${FLOORS[FRANKENPHP]} → $ANVIL_FRANKENPHP_BIN"
-  echo  # blank line before progress bar
-  curl -fL --progress-bar -o "$ANVIL_FRANKENPHP_BIN" \
-    "https://github.com/php/frankenphp/releases/download/v${FLOORS[FRANKENPHP]}/frankenphp-${FRANKEN_ARCH}"
-  echo  # blank line after progress bar
+  if ! anvil_download \
+    "https://github.com/php/frankenphp/releases/download/v${FLOORS[FRANKENPHP]}/frankenphp-${FRANKEN_ARCH}" \
+    "$ANVIL_FRANKENPHP_BIN" \
+    "frankenphp ${FLOORS[FRANKENPHP]}"; then
+    anvil_error "  FAILED to download frankenphp"
+    return 3
+  fi
   chmod +x "$ANVIL_FRANKENPHP_BIN"
   anvil_info "  installed: $ANVIL_FRANKENPHP_BIN"
 fi
