@@ -15,9 +15,18 @@
 #   sudo ./install.sh --full [--env prod]     # bootstrap + trio
 #   sudo ./install.sh --uninstall             # run uninstaller
 #   sudo ./install.sh --doctor                # health checks
+#   sudo ./install.sh --yes                   # non-interactive (defaults to --full)
 #   sudo ./install.sh <anvilctl command>      # any anvilctl subcommand
 
 set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Root-privilege check — most operations need root (apt-get, systemctl, etc.)
+# ---------------------------------------------------------------------------
+if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+  echo "[INFO] This script must run as root. Re-executing with sudo..." >&2
+  exec sudo "$0" "$@"
+fi
 
 ANVIL_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 export ANVIL_ROOT
@@ -27,23 +36,35 @@ source "${ANVIL_ROOT}/lib/core.sh"
 
 # ---------------------------------------------------------------------------
 # Parse arguments — install-specific flags first, then fall through to anvilctl.
+#
+# Uses a while+shift loop (NOT for-in) because shift must modify $@ live so
+# that (a) --env's value is consumed and not re-iterated, and (b) the
+# remaining $@ is correctly passed through to anvilctl in delegate mode.
 # ---------------------------------------------------------------------------
 MODE="menu"
 NONINTERACTIVE=0
 ANVIL_INSTALL_ENV="production"
 
-for arg in "$@"; do
-  case "$arg" in
-    --bootstrap)      MODE="bootstrap" ;;
-    --trio)           MODE="trio" ;;
-    --full)           MODE="full" ;;
-    --uninstall)      MODE="uninstall" ;;
-    --doctor)         MODE="doctor" ;;
-    --menu)           MODE="menu" ;;
-    --yes|--noninteractive) NONINTERACTIVE=1 ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --bootstrap)      MODE="bootstrap"; shift ;;
+    --trio)           MODE="trio"; shift ;;
+    --full)           MODE="full"; shift ;;
+    --uninstall)      MODE="uninstall"; shift ;;
+    --doctor)         MODE="doctor"; shift ;;
+    --menu)           MODE="menu"; shift ;;
+    --yes|--noninteractive) NONINTERACTIVE=1; shift ;;
     --env)
-      ANVIL_INSTALL_ENV="${2:-production}"
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: --env requires a value (e.g. --env production)" >&2
+        exit 2
+      fi
+      ANVIL_INSTALL_ENV="$2"
       shift 2
+      ;;
+    --env=*)
+      ANVIL_INSTALL_ENV="${1#--env=}"
+      shift
       ;;
     -h|--help)
       cat <<'EOF'
@@ -57,6 +78,7 @@ Install shortcuts:
   sudo ./install.sh --full [--env prod]    Bootstrap + Trio
   sudo ./install.sh --uninstall            Remove anvil + services
   sudo ./install.sh --doctor               Health checks
+  sudo ./install.sh --yes                  Non-interactive (defaults to --full --env production)
 
 Runtime (delegates to anvilctl):
   sudo ./install.sh start                  Start the active stack
@@ -76,6 +98,13 @@ EOF
 done
 
 # ---------------------------------------------------------------------------
+# Non-interactive mode: --yes without an explicit mode defaults to --full.
+# ---------------------------------------------------------------------------
+if [[ "$NONINTERACTIVE" -eq 1 && "$MODE" == "menu" ]]; then
+  MODE="full"
+fi
+
+# ---------------------------------------------------------------------------
 # Non-interactive direct mode.
 # ---------------------------------------------------------------------------
 if [[ "$MODE" != "menu" ]]; then
@@ -86,7 +115,7 @@ if [[ "$MODE" != "menu" ]]; then
     trio)
       bash "${ANVIL_ROOT}/lib/install-trio.sh" --env "$ANVIL_INSTALL_ENV" "$@"
       ;;
-      full)
+    full)
       bash "${ANVIL_ROOT}/lib/install-dev.sh" "$@"
       bash "${ANVIL_ROOT}/lib/install-trio.sh" --env "$ANVIL_INSTALL_ENV" "$@"
       ;;
@@ -134,57 +163,57 @@ while true; do
   case "${CHOICE:-exit}" in
       install-dev)
           bash "${ANVIL_ROOT}/lib/install-dev.sh"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       install-trio)
           ENV=$(whiptail --inputbox "Environment (development/staging/production):" 8 50 "production" 3>&1 1>&2 2>&3) || true
           bash "${ANVIL_ROOT}/lib/install-trio.sh" --env "${ENV:-production}"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       install-full)
           ENV=$(whiptail --inputbox "Environment (development/staging/production):" 8 50 "production" 3>&1 1>&2 2>&3) || true
           bash "${ANVIL_ROOT}/lib/install-dev.sh"
           bash "${ANVIL_ROOT}/lib/install-trio.sh" --env "${ENV:-production}"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       start)
           bash "${ANVIL_ROOT}/anvilctl" start
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       stop)
           bash "${ANVIL_ROOT}/anvilctl" stop
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       restart)
           SVC=$(whiptail --inputbox "Service to restart (caddy/tengine/frankenphp/all):" 8 50 "all" 3>&1 1>&2 2>&3) || true
           bash "${ANVIL_ROOT}/anvilctl" restart "${SVC:-all}"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       status)
           bash "${ANVIL_ROOT}/anvilctl" status
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       logs)
           SVC=$(whiptail --inputbox "Service logs (caddy/tengine/frankenphp):" 8 50 "frankenphp" 3>&1 1>&2 2>&3) || true
           bash "${ANVIL_ROOT}/anvilctl" logs "${SVC:-frankenphp}"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       top)
           bash "${ANVIL_ROOT}/anvilctl" top
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       deploy)
           ENV=$(whiptail --inputbox "Deploy to (staging/production):" 8 50 "staging" 3>&1 1>&2 2>&3) || true
           bash "${ANVIL_ROOT}/anvilctl" deploy "${ENV:-staging}"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       smoke)
           bash "${ANVIL_ROOT}/lib/deploy-smoke.sh"
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       doctor)
           bash "${ANVIL_ROOT}/anvilctl" doctor
-          read -rp "Press Enter to continue..."
+          read -rp "Press Enter to continue..." || true
           ;;
       uninstall)
           bash "${ANVIL_ROOT}/uninstall.sh"
