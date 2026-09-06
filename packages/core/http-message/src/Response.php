@@ -44,7 +44,7 @@ final class Response implements ResponseInterface
         /** @var array<string, string> $names */
         $names = [];
         foreach ($headers as $name => $value) {
-            $values = is_array($value) ? array_map('strval', $value) : [(string) $value];
+            $values = is_array($value) ? array_values(array_map('strval', $value)) : [(string) $value];
             $this->assertNoCrlf($name, $values);
             $lower = strtolower($name);
             $normalized[$lower] = $values;

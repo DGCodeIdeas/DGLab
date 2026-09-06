@@ -110,7 +110,7 @@ final class Stream implements StreamInterface
             return null;
         }
         $stat = fstat($this->resource);
-        if ($stat !== false && array_key_exists('size', $stat)) {
+        if ($stat !== false) {
             $this->size = $stat['size'];
         }
         return $this->size;

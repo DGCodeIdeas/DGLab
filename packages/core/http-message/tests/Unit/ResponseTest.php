@@ -112,7 +112,7 @@ final class ResponseTest extends TestCase
 
     public function testHeadersAreCaseInsensitiveForLookup(): void
     {
-        $r = new Response(200, ['Content-Type' => 'application/json']);
+        $r = new Response(200, headers: ['Content-Type' => 'application/json']);
         self::assertTrue($r->hasHeader('content-type'));
         self::assertTrue($r->hasHeader('CONTENT-TYPE'));
         self::assertTrue($r->hasHeader('Content-Type'));
@@ -122,7 +122,7 @@ final class ResponseTest extends TestCase
 
     public function testHeaderOriginalCasingIsPreserved(): void
     {
-        $r = new Response(200, ['X-Custom-Header' => 'value']);
+        $r = new Response(200, headers: ['X-Custom-Header' => 'value']);
         $headers = $r->getHeaders();
         self::assertArrayHasKey('X-Custom-Header', $headers);
         self::assertArrayNotHasKey('x-custom-header', $headers);
@@ -137,7 +137,7 @@ final class ResponseTest extends TestCase
 
     public function testWithHeaderReplacesExistingValue(): void
     {
-        $r = new Response(200, ['X-Test' => 'old']);
+        $r = new Response(200, headers: ['X-Test' => 'old']);
         $r2 = $r->withHeader('X-Test', 'new');
         self::assertSame(['new'], $r2->getHeader('X-Test'));
         // Original unchanged
@@ -146,7 +146,7 @@ final class ResponseTest extends TestCase
 
     public function testWithAddedHeaderAppendsToExistingValue(): void
     {
-        $r = new Response(200, ['X-Test' => 'first']);
+        $r = new Response(200, headers: ['X-Test' => 'first']);
         $r2 = $r->withAddedHeader('X-Test', 'second');
         self::assertSame(['first', 'second'], $r2->getHeader('X-Test'));
     }
@@ -160,7 +160,7 @@ final class ResponseTest extends TestCase
 
     public function testWithoutHeaderRemovesHeader(): void
     {
-        $r = new Response(200, ['X-Keep' => 'a', 'X-Remove' => 'b']);
+        $r = new Response(200, headers: ['X-Keep' => 'a', 'X-Remove' => 'b']);
         $r2 = $r->withoutHeader('X-Remove');
         self::assertFalse($r2->hasHeader('X-Remove'));
         self::assertTrue($r2->hasHeader('X-Keep'));
@@ -178,7 +178,7 @@ final class ResponseTest extends TestCase
 
     public function testHeaderAcceptsArrayValue(): void
     {
-        $r = new Response(200, ['X-Multi' => ['a', 'b', 'c']]);
+        $r = new Response(200, headers: ['X-Multi' => ['a', 'b', 'c']]);
         self::assertSame(['a', 'b', 'c'], $r->getHeader('X-Multi'));
         self::assertSame('a, b, c', $r->getHeaderLine('X-Multi'));
     }
@@ -203,14 +203,14 @@ final class ResponseTest extends TestCase
 
     public function testWithAddedHeaderReturnsNewInstance(): void
     {
-        $r = new Response(200, ['X-Test' => 'a']);
+        $r = new Response(200, headers: ['X-Test' => 'a']);
         $r2 = $r->withAddedHeader('X-Test', 'b');
         self::assertNotSame($r, $r2);
     }
 
     public function testWithoutHeaderReturnsNewInstance(): void
     {
-        $r = new Response(200, ['X-Test' => 'a']);
+        $r = new Response(200, headers: ['X-Test' => 'a']);
         $r2 = $r->withoutHeader('X-Test');
         self::assertNotSame($r, $r2);
     }
@@ -271,14 +271,14 @@ final class ResponseTest extends TestCase
     public function testConstructorRejectsHeaderNameWithCrlf(string $name): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new Response(200, [$name => 'value']);
+        new Response(200, headers: [$name => 'value']);
     }
 
     #[DataProvider('crlfProvider')]
     public function testConstructorRejectsHeaderValueWithCrlf(string $value): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new Response(200, ['X-Test' => $value]);
+        new Response(200, headers: ['X-Test' => $value]);
     }
 
     #[DataProvider('crlfProvider')]
