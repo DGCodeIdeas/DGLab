@@ -279,7 +279,9 @@ final class StreamTest extends TestCase
         assert($resource !== false);
         $stream = new Stream($resource);
         $stream->close();
-        self::assertIsNotResource($resource); // closed by fclose()
+        // After close(), is_resource() returns false even though the variable
+        // type is still resource (PHP doesn't change the variable's type).
+        self::assertFalse(is_resource($resource));
     }
 
     public function testCloseDetachesAfterClosing(): void
