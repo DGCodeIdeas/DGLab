@@ -30,13 +30,13 @@ final class ImmutabilityTest extends TestCase
     {
         $body = new Stream('php://temp', 'r+');
         $base = new Response(200, headers: ['X-Test' => 'a'], body: $body);
-        return [
+        return array_values([
             'withStatus'          => ['getStatusCode', fn () => $base->withStatus(404)],
             'withProtocolVersion' => ['getProtocolVersion', fn () => $base->withProtocolVersion('2.0')],
             'withHeader'          => ['getHeaderLine', fn () => $base->withHeader('X-New', 'val')],
             'withAddedHeader'     => ['getHeaderLine', fn () => $base->withAddedHeader('X-Test', 'b')],
             'withBody'            => ['getBody', fn () => $base->withBody(new Stream('php://temp', 'r+'))],
-        ];
+        ]);
     }
 
     #[DataProvider('responseWithMethods')]
@@ -53,7 +53,7 @@ final class ImmutabilityTest extends TestCase
     public static function uriWithMethods(): array
     {
         $base = new Uri('http://example.com/path?q=1#frag');
-        return [
+        return array_values([
             'withScheme'    => [fn () => $base->withScheme('https')],
             'withUserInfo'  => [fn () => $base->withUserInfo('user', 'pass')],
             'withHost'      => [fn () => $base->withHost('other.com')],
@@ -61,7 +61,7 @@ final class ImmutabilityTest extends TestCase
             'withPath'      => [fn () => $base->withPath('/new')],
             'withQuery'     => [fn () => $base->withQuery('a=b')],
             'withFragment'  => [fn () => $base->withFragment('section2')],
-        ];
+        ]);
     }
 
     #[DataProvider('uriWithMethods')]
@@ -78,7 +78,7 @@ final class ImmutabilityTest extends TestCase
     public static function requestWithMethods(): array
     {
         $base = new Request('GET', 'http://example.com', headers: ['X-Test' => 'a']);
-        return [
+        return array_values([
             'withMethod'         => [fn () => $base->withMethod('POST')],
             'withUri'            => [fn () => $base->withUri(new Uri('http://other.com'))],
             'withRequestTarget'  => [fn () => $base->withRequestTarget('/custom')],
@@ -86,7 +86,7 @@ final class ImmutabilityTest extends TestCase
             'withHeader'         => [fn () => $base->withHeader('X-New', 'val')],
             'withAddedHeader'    => [fn () => $base->withAddedHeader('X-Test', 'b')],
             'withBody'           => [fn () => $base->withBody(new Stream('php://temp', 'r+'))],
-        ];
+        ]);
     }
 
     #[DataProvider('requestWithMethods')]
@@ -103,13 +103,13 @@ final class ImmutabilityTest extends TestCase
     public static function serverRequestWithMethods(): array
     {
         $base = new ServerRequest('GET', '/');
-        return [
+        return array_values([
             'withCookieParams'   => [fn () => $base->withCookieParams(['s' => '1'])],
             'withQueryParams'    => [fn () => $base->withQueryParams(['q' => '1'])],
             'withUploadedFiles'  => [fn () => $base->withUploadedFiles([])],
             'withParsedBody'     => [fn () => $base->withParsedBody(['k' => 'v'])],
             'withAttribute'      => [fn () => $base->withAttribute('user', 'admin')],
-        ];
+        ]);
     }
 
     #[DataProvider('serverRequestWithMethods')]

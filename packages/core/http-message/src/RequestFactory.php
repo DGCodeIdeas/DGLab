@@ -5,6 +5,7 @@ namespace SovereignStack\Core\Http;
 
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * PSR-17 RequestFactory — creates Request instances.

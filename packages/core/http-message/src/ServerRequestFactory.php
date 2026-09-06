@@ -29,11 +29,11 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
      * marshals the URI from scheme/host/path/query, wraps $_FILES into
      * UploadedFile[], and sets parsed body from $_POST when applicable.
      *
-     * @param array<string, mixed> $server Override $_SERVER (for testing).
-     * @param array<string, mixed> $get Override $_GET.
-     * @param array<string, mixed> $post Override $_POST.
-     * @param array<string, mixed> $cookie Override $_COOKIE.
-     * @param array<string, mixed> $files Override $_FILES.
+     * @param array $server Override $_SERVER (for testing).
+     * @param array $get Override $_GET.
+     * @param array $post Override $_POST.
+     * @param array $cookie Override $_COOKIE.
+     * @param array $files Override $_FILES.
      */
     public static function fromGlobals(
         array $server = null,
@@ -77,7 +77,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
         }
 
         // Parsed body: $_POST for form submissions (Content-Type: application/x-www-form-urlencoded or multipart/form-data).
-        $contentType = $server['CONTENT_TYPE'] ?? ($server['HTTP_CONTENT_TYPE'] ?? '');
+        $contentType = (string)($server['CONTENT_TYPE'] ?? ($server['HTTP_CONTENT_TYPE'] ?? ''));
         if (!empty($post) && (
             str_starts_with($contentType, 'application/x-www-form-urlencoded')
             || str_starts_with($contentType, 'multipart/form-data')
@@ -90,17 +90,17 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
 
     /**
      * Marshal the URI from server params.
-     * @param array<string, mixed> $server
+     * @param array $server
      */
     private static function marshalUriFromGlobals(array $server): Uri
     {
         $scheme = 'http';
-        $https = $server['HTTPS'] ?? '';
-        if (!empty($https) && strtolower($https) !== 'off') {
+        $https = (string)($server['HTTPS'] ?? '');
+        if ($https !== '' && strtolower($https) !== 'off') {
             $scheme = 'https';
         }
 
-        $host = $server['HTTP_HOST'] ?? ($server['SERVER_NAME'] ?? '');
+        $host = (string)($server['HTTP_HOST'] ?? ($server['SERVER_NAME'] ?? ''));
         $port = isset($server['SERVER_PORT']) ? (int) $server['SERVER_PORT'] : null;
 
         // Strip port from host header if present.
@@ -109,13 +109,14 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
             $port = (int) $portFromHost;
         }
 
-        $path = $server['REQUEST_URI'] ?? '/';
+        $path = (string)($server['REQUEST_URI'] ?? '/');
         // Strip query string from path.
-        if (str_contains($path, '?')) {
-            $path = substr($path, 0, strpos($path, '?'));
+        $qPos = strpos($path, '?');
+        if ($qPos !== false) {
+            $path = substr($path, 0, $qPos);
         }
 
-        $query = $server['QUERY_STRING'] ?? '';
+        $query = (string)($server['QUERY_STRING'] ?? '');
 
         $uri = '';
         if ($scheme !== '') {
@@ -138,7 +139,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
     /**
      * Normalize HTTP_* server vars into a headers array.
      *
-     * @param array<string, mixed> $server
+     * @param array $server
      * @return array<string, string>
      */
     private static function marshalHeadersFromGlobals(array $server): array
@@ -165,24 +166,25 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
      * PHP's $_FILES has a quirky nested structure when inputs are arrays
      * (e.g. <input name="files[]">). This flattens it to a clean array.
      *
-     * @param array<string, mixed> $files
-     * @return array<string, UploadedFileInterface|array>
+     * @param array $files
+     * @return array<string, \Psr\Http\Message\UploadedFileInterface|array>
      */
     private static function normalizeUploadedFiles(array $files): array
     {
+        /** @var array<string, \Psr\Http\Message\UploadedFileInterface|array> $normalized */
         $normalized = [];
         foreach ($files as $key => $value) {
             if ($value instanceof UploadedFileInterface) {
                 $normalized[$key] = $value;
                 continue;
             }
-            if (isset($value['tmp_name']) && is_string($value['tmp_name'])) {
+            if (is_array($value) && isset($value['tmp_name']) && is_string($value['tmp_name'])) {
                 $normalized[$key] = new UploadedFile(
                     $value['tmp_name'],
                     isset($value['size']) ? (int) $value['size'] : null,
                     isset($value['error']) ? (int) $value['error'] : \UPLOAD_ERR_OK,
-                    $value['name'] ?? null,
-                    $value['type'] ?? null,
+                    isset($value['name']) ? (string) $value['name'] : null,
+                    isset($value['type']) ? (string) $value['type'] : null,
                 );
             } elseif (is_array($value)) {
                 $normalized[$key] = self::normalizeUploadedFiles($value);

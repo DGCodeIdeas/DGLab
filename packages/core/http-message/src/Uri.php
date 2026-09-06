@@ -49,7 +49,7 @@ final class Uri implements UriInterface
         $this->scheme = isset($parts['scheme']) ? strtolower($parts['scheme']) : '';
         $this->userInfo = $this->buildUserInfo($parts['user'] ?? null, $parts['pass'] ?? null);
         $this->host = isset($parts['host']) ? strtolower($parts['host']) : '';
-        $this->port = isset($parts['port']) ? $this->filterPort($parts['port'], $this->scheme) : null;
+        $this->port = isset($parts['port']) ? $this->filterPort((int) $parts['port'], $this->scheme) : null;
         $this->path = $this->normalizePath($parts['path'] ?? '');
         $this->query = $this->normalizeQuery($parts['query'] ?? '');
         $this->fragment = $this->normalizeFragment($parts['fragment'] ?? '');
@@ -130,7 +130,7 @@ final class Uri implements UriInterface
         $scheme = strtolower((string) $scheme);
         $new = clone $this;
         $new->scheme = $scheme;
-        $new->port = $this->filterPort($this->port, $scheme);
+        $new->port = $this->port !== null ? $this->filterPort($this->port, $scheme) : null;
         return $new;
     }
 

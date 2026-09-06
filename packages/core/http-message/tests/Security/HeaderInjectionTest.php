@@ -28,7 +28,7 @@ final class HeaderInjectionTest extends TestCase
      */
     public static function crlfInNameProvider(): array
     {
-        return [
+        return array_values([
             'CR in name'     => ["X-Test\r"],
             'LF in name'     => ["X-Test\n"],
             'CRLF in name'   => ["X-Test\r\n"],
@@ -36,7 +36,7 @@ final class HeaderInjectionTest extends TestCase
             'CR at start'    => ["\rX-Test"],
             'LF at start'    => ["\nX-Test"],
             'CRLF in middle' => ["X-\r\nTest"],
-        ];
+        ]);
     }
 
     /**
@@ -44,14 +44,14 @@ final class HeaderInjectionTest extends TestCase
      */
     public static function crlfInValueProvider(): array
     {
-        return [
+        return array_values([
             'CR in value'     => ["value\r"],
             'LF in value'     => ["value\n"],
             'CRLF in value'   => ["value\r\n"],
             'LFCR in value'   => ["value\n\r"],
             'CRLF injection'  => ["value\r\nX-Injected: yes"],
             'LF injection'    => ["value\nX-Injected: yes"],
-        ];
+        ]);
     }
 
     // -----------------------------------------------------------------------
