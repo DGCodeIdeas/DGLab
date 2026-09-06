@@ -5,6 +5,7 @@ namespace SovereignStack\Core\Http;
 
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * PSR-17 RequestFactory — creates Request instances.
@@ -13,9 +14,10 @@ final class RequestFactory implements RequestFactoryInterface
 {
     public function createRequest(string $method, $uri): RequestInterface
     {
-        if (is_string($uri)) {
+        if ($uri instanceof UriInterface) {
             return new Request($method, $uri);
         }
-        return new Request($method, $uri);
+        // String or Stringable — convert to string for the Request constructor.
+        return new Request($method, (string) $uri);
     }
 }

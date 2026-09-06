@@ -101,7 +101,9 @@ final class ServerRequestFactoryTest extends TestCase
         ];
         $post = ['username' => 'admin', 'password' => 'secret'];
         $req = ServerRequestFactory::fromGlobals($server, [], $post);
-        self::assertSame('admin', $req->getParsedBody()['username']);
+        $parsedBody = $req->getParsedBody();
+        self::assertIsArray($parsedBody);
+        self::assertSame('admin', $parsedBody['username']);
     }
 
     public function testFromGlobalsDoesNotSetParsedBodyForGetRequest(): void

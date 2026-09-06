@@ -16,15 +16,15 @@ use Psr\Http\Message\UriInterface;
  */
 final class ServerRequest extends Request implements ServerRequestInterface
 {
-    /** @var array */
+    /** @var array<string, mixed> */
     private array $serverParams;
     /** @var array<string, string> */
     private array $cookieParams;
-    /** @var array */
+    /** @var array<string, mixed> */
     private array $queryParams;
-    /** @var array */
+    /** @var array<string, mixed> */
     private array $uploadedFiles;
-    /** @var array|object|null */
+    /** @var array<string, mixed>|object|null */
     private mixed $parsedBody;
     /** @var array<string, mixed> */
     private array $attributes;
@@ -54,7 +54,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         $this->attributes = [];
     }
 
-    /** @return array */
+    /** @return array<string, mixed> */
     public function getServerParams(): array
     {
         return $this->serverParams;
@@ -74,7 +74,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
-    /** @return array */
+    /** @return array<string, mixed> */
     public function getQueryParams(): array
     {
         return $this->queryParams;
@@ -88,7 +88,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
-    /** @return array */
+    /** @return array<string, mixed> */
     public function getUploadedFiles(): array
     {
         return $this->uploadedFiles;
@@ -102,7 +102,7 @@ final class ServerRequest extends Request implements ServerRequestInterface
         return $new;
     }
 
-    /** @return array|object|null */
+    /** @return array<string, mixed>|object|null */
     public function getParsedBody(): mixed
     {
         return $this->parsedBody;

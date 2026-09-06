@@ -119,10 +119,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
 
         $query = (string)($server['QUERY_STRING'] ?? '');
 
-        $uri = '';
-        if ($scheme !== '') {
-            $uri .= $scheme . '://';
-        }
+        $uri = $scheme . '://';
         if ($host !== '') {
             $uri .= $host;
         }
@@ -175,7 +172,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
         /** @var array<string, \Psr\Http\Message\UploadedFileInterface|array> $normalized */
         $normalized = [];
         foreach ($files as $key => $value) {
-            if ($value instanceof PsrHttpMessagePLOADEDFILEINTERFACE) {
+            if ($value instanceof \Psr\Http\Message\UploadedFileInterface) {
                 $normalized[$key] = $value;
                 continue;
             }
