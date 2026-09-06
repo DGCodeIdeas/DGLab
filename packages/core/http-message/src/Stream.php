@@ -221,10 +221,15 @@ final class Stream implements StreamInterface
         return $meta[$key] ?? null;
     }
 
-    private function assertAttached(): void
+    /**
+     * @return resource
+     * @throws \RuntimeException If the stream has been detached.
+     */
+    private function assertAttached()
     {
         if (!isset($this->resource)) {
             throw new RuntimeException('Stream is detached; no underlying resource');
         }
+        return $this->resource;
     }
 }
