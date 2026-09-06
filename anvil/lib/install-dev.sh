@@ -25,10 +25,18 @@ set -euo pipefail
 # Parse command-line arguments for non-interactive mode.
 # ---------------------------------------------------------------------------
 NONINTERACTIVE=0
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --yes|--noninteractive)
-      NONINTERACTIVE=1
+      NONINTERACTIVE=1; shift
+      ;;
+    --env)
+      # --env is handled by install.sh; if install-dev.sh is called directly,
+      # silently consume the value.
+      shift 2 2>/dev/null || shift || true
+      ;;
+    --env=*)
+      shift
       ;;
     -h|--help)
       cat <<'EOF'
@@ -52,21 +60,25 @@ EOF
       exit 0
       ;;
     *)
-      echo "Unknown option: $arg" >&2
+      echo "Unknown option: $1" >&2
       exit 1
       ;;
   esac
 done
 
 # ---------------------------------------------------------------------------
+# Resolve ANVIL_ROOT unconditionally (sibling of lib/).
+# ---------------------------------------------------------------------------
+ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+export ANVIL_ROOT
+
+# ---------------------------------------------------------------------------
 # Load configuration (anvil.conf) so installer paths/URLs are configurable.
 # Falls back to built-in defaults if the config is not present.
 # ---------------------------------------------------------------------------
-if [[ -f "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/config/anvil.conf" ]]; then
+if [[ -f "${ANVIL_ROOT}/config/anvil.conf" ]]; then
   # shellcheck source=config/anvil.conf
-  ANVIL_ROOT="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
-export ANVIL_ROOT
-source "${ANVIL_ROOT}/config/anvil.conf"
+  source "${ANVIL_ROOT}/config/anvil.conf"
 fi
 
 # Installer-specific configurable paths/URLs (overridable via anvil.conf or env).
@@ -120,7 +132,7 @@ ui_msg() {
 # Orientation: detect presence of required/expected tooling.
 # ---------------------------------------------------------------------------
 detect_presence() {
-  local tools=("dialog" "whiptail" "docker" "mkcert" "dnsmasq" "inotifywait" "sass" "dig")
+  local tools=("docker" "mkcert" "dnsmasq" "inotifywait" "sass" "dig")
   local line
   for t in "${tools[@]}"; do
     if [[ "$t" == "docker" ]]; then
@@ -284,7 +296,7 @@ install_mkcert() {
 
     local api_url="${ANVIL_MKCERT_GITHUB_API}"
     url="$(curl -fsSL "$api_url" \
-      | grep -oP '"browser_download_url":\s*"\Khttps://[^\"]*mkcert[^\"]*'"$arch"'[^\"]*' \
+      | grep -oE 'https://[^"]*mkcert[^"]*'"$arch"'[^"]*' \
       | head -1)" || true
 
     if [[ -z "$url" ]]; then
@@ -329,7 +341,7 @@ install_sass() {
 
   local api_url="${ANVIL_SASS_GITHUB_API}"
   url="$(curl -fsSL "$api_url" \
-    | grep -oP '"browser_download_url":\s*"\Khttps://[^\"]*dart-sass-[^\"]*'"$arch"'\.tar\.gz' \
+    | grep -oE 'https://[^"]*dart-sass-[^"]*'"$arch"'\.tar\.gz' \
     | head -1)" || true
 
   if [[ -z "$url" ]]; then
