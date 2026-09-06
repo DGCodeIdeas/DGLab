@@ -71,11 +71,18 @@ NONINTERACTIVE=0
 DRY_RUN=0
 TARGET_PHASE=""
 
-for arg in "$@"; do
-  case "$arg" in
-    --yes|--noninteractive) NONINTERACTIVE=1 ;;
-    --dry-run)           DRY_RUN=1 ;;
-    --phase)             TARGET_PHASE="${2:-}"; shift 2 ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --yes|--noninteractive) NONINTERACTIVE=1; shift ;;
+    --dry-run)           DRY_RUN=1; shift ;;
+    --phase)
+      if [[ $# -lt 2 ]]; then
+        error "--phase requires a value (e.g. --phase 3)"
+        exit 2
+      fi
+      TARGET_PHASE="$2"; shift 2 ;;
+    --phase=*)
+      TARGET_PHASE="${1#--phase=}"; shift ;;
     -h|--help)
       cat <<'EOF'
 Anvil migration script -- removes old anvil + conflicting servers.
@@ -84,6 +91,7 @@ Usage:
   sudo ./migrate.sh              interactive
   sudo ./migrate.sh --yes        non-interactive
   sudo ./migrate.sh --phase N    run only phase N (1-6)
+  sudo ./migrate.sh --phase=N    same, using --phase=N syntax
   sudo ./migrate.sh --dry-run    show what would be removed
 
 Phases:
@@ -95,7 +103,7 @@ Phases:
   6  Restore DNS / cleanup firewall + sysctl
 EOF
       exit 0 ;;
-    *) error "unknown option: $arg"; exit 2 ;;
+    *) error "unknown option: $1"; exit 2 ;;
   esac
 done
 
@@ -130,7 +138,7 @@ if [[ $NONINTERACTIVE -eq 0 && $DRY_RUN -eq 0 ]]; then
   echo "  - Project source code in www/"
   echo "  - Host MySQL / Redis / SSH keys / AWS credentials"
   echo
-  read -r -p "Proceed? [y/N] " yn
+  read -r -p "Proceed? [y/N] " yn || yn=""
   case "$yn" in
     y|Y|yes|YES) ;;
     *) echo "Aborted."; exit 1 ;;
