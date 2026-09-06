@@ -30,7 +30,7 @@
 set -euo pipefail
 
 PREFIX="/usr/local/tengine"
-VERSION="3.2.0"
+VERSION="3.2.0-rc5"
 WORKDIR="${TMPDIR:-/tmp}/anvil-tengine-build"
 
 while [[ $# -gt 0 ]]; do
@@ -39,7 +39,7 @@ while [[ $# -gt 0 ]]; do
     --version) VERSION="${2:?--version requires a value}"; shift 2 ;;
     -h|--help)
       cat <<EOF
-Usage: $0 [--prefix /usr/local/tengine] [--version 3.2.0]
+Usage: $0 [--prefix /usr/local/tengine] [--version 3.2.0-rc5]
 Builds Tengine ${VERSION} with dyups + check + concat modules.
 EOF
       exit 0 ;;
@@ -48,7 +48,11 @@ EOF
 done
 
 # CVE guard: refuse to build anything older than 3.2.0.
-if [[ "$(printf '%s\n' "3.2.0" "$VERSION" | sort -V | head -1)" != "3.2.0" ]]; then
+# Allow 3.2.0 final and 3.2.0-rc* (release candidates include the CVE fix).
+CVE_FLOOR="3.2.0"
+# Strip -rc suffix for comparison: 3.2.0-rc5 -> 3.2.0
+VERSION_BASE="${VERSION%%-*}"
+if [[ "$(printf '%s\n' "$CVE_FLOOR" "$VERSION_BASE" | sort -V | head -1)" != "$CVE_FLOOR" ]]; then
   echo "REFUSING to build Tengine $VERSION — CVE-2026-42945 ('NGINX Rift') is unfixed below 3.2.0." >&2
   echo "Run with --version 3.2.0 (or later, when released)." >&2
   exit 1
@@ -64,12 +68,16 @@ command -v curl             >/dev/null || { echo "missing: curl" >&2; exit 1; }
 echo "==> Building Tengine ${VERSION} → ${PREFIX}"
 mkdir -p "$WORKDIR" && cd "$WORKDIR"
 
-TARBALL="tengine-${VERSION}.tar.gz"
-URL="https://tengine.taobao.org/download/${TARBALL}"
+# Download from GitHub releases (taobao.org doesn't host 3.2.0 yet).
+# GitHub archive URL format: https://github.com/alibaba/tengine/archive/refs/tags/VERSION.tar.gz
+# The extracted directory name is tengine-VERSION (GitHub uses the tag as-is).
+TARBALL="${VERSION}.tar.gz"
+URL="https://github.com/alibaba/tengine/archive/refs/tags/${TARBALL}"
 if [[ ! -f "$TARBALL" ]]; then
   echo "==> Downloading $URL"
   curl -fsSLO "$URL"
 fi
+# GitHub archive extracts as tengine-VERSION (e.g. tengine-3.2.0-rc5)
 rm -rf "tengine-${VERSION}"
 tar xzf "$TARBALL"
 cd "tengine-${VERSION}"
