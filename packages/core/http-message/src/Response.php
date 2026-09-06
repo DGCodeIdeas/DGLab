@@ -112,7 +112,7 @@ final class Response implements ResponseInterface
 
     public function withHeader(string $name, $value): ResponseInterface
     {
-        $values = is_array($value) ? array_map('strval', $value) : [(string) $value];
+        $values = is_array($value) ? array_values(array_map('strval', $value)) : [(string) $value];
         $this->assertNoCrlf($name, $values);
         $lower = strtolower($name);
         $headers = $this->headers;
@@ -124,7 +124,7 @@ final class Response implements ResponseInterface
 
     public function withAddedHeader(string $name, $value): ResponseInterface
     {
-        $values = is_array($value) ? array_map('strval', $value) : [(string) $value];
+        $values = is_array($value) ? array_values(array_map('strval', $value)) : [(string) $value];
         $this->assertNoCrlf($name, $values);
         $lower = strtolower($name);
         $headers = $this->headers;

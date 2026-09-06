@@ -50,6 +50,7 @@ final class StreamTest extends TestCase
     public function testConstructFromResource(): void
     {
         $resource = fopen('php://temp', 'r+');
+        assert($resource !== false);
         $stream = new Stream($resource);
         self::assertTrue($stream->isReadable());
         self::assertTrue($stream->isWritable());
@@ -177,6 +178,7 @@ final class StreamTest extends TestCase
     public function testDetachReturnsResource(): void
     {
         $resource = fopen('php://temp', 'r+');
+        assert($resource !== false);
         $stream = new Stream($resource);
         $detached = $stream->detach();
         self::assertIsResource($detached);
@@ -274,6 +276,7 @@ final class StreamTest extends TestCase
     public function testCloseClosesResource(): void
     {
         $resource = fopen('php://temp', 'r+');
+        assert($resource !== false);
         $stream = new Stream($resource);
         $stream->close();
         self::assertIsNotResource($resource); // closed by fclose()

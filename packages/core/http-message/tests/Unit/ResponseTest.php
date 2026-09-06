@@ -236,7 +236,7 @@ final class ResponseTest extends TestCase
     public function testWithBodyReturnsSameInstanceWhenBodyUnchanged(): void
     {
         $body = new \SovereignStack\Core\Http\Stream('php://temp', 'r+');
-        $r = new Response(200, [], body: $body);
+        $r = new Response(200, headers: [], body: $body);
         $r2 = $r->withBody($body);
         self::assertSame($r, $r2);
     }
@@ -300,7 +300,7 @@ final class ResponseTest extends TestCase
     #[DataProvider('crlfProvider')]
     public function testWithAddedHeaderRejectsNameWithCrlf(string $name): void
     {
-        $r = new Response(200, ['X-Test' => 'a']);
+        $r = new Response(200, headers: ['X-Test' => 'a']);
         $this->expectException(\InvalidArgumentException::class);
         $r->withAddedHeader($name, 'b');
     }
@@ -308,7 +308,7 @@ final class ResponseTest extends TestCase
     #[DataProvider('crlfProvider')]
     public function testWithAddedHeaderRejectsValueWithCrlf(string $value): void
     {
-        $r = new Response(200, ['X-Test' => 'a']);
+        $r = new Response(200, headers: ['X-Test' => 'a']);
         $this->expectException(\InvalidArgumentException::class);
         $r->withAddedHeader('X-Test', $value);
     }
