@@ -1,8 +1,10 @@
 # /etc/systemd/system/anvil-caddy.service — Anvil v3 edge (Caddy)  §7.6 of v3 doc.
+# Requires /etc/anvil to be world-traversable (0755) so User=caddy can read
+# /etc/anvil/edge/Caddyfile. secrets.env stays 0640 root:anvil.
 [Unit]
 Description=Anvil v3 edge (Caddy)
-After=network-online.target
-Wants=network-online.target
+After=network-online.target anvil-tengine.service
+Wants=network-online.target anvil-tengine.service
 
 [Service]
 Type=notify
