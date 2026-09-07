@@ -12,16 +12,17 @@ use Psr\Container\ContainerInterface;
 final class MiddlewareResolver implements MiddlewareResolverInterface
 {
     public function __construct(
-        private ContainerInterface $container,
+        private ?ContainerInterface $container = null,
     ) {}
 
+    /** @param MiddlewareInterface|callable|string $entry */
     public function resolve(MiddlewareInterface|string|callable $entry): MiddlewareInterface
     {
         if ($entry instanceof MiddlewareInterface) {
             return $entry;
         }
 
-        if (\is_string($entry)) {
+        if (\is_string($entry) && $this->container !== null) {
             // Lazy: the container only constructs the middleware the first time
             // the request actually reaches that layer. A DB-backed session
             // middleware is never instantiated for static-asset requests.

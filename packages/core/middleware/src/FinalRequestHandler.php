@@ -33,7 +33,7 @@ final class FinalRequestHandler implements FinalRequestHandlerInterface
 
         $match = $this->router->match($request);
         if ($match === null) {
-            return new \SovereignStack\Core\Http\Response(404, [], 'Not Found');
+            return new Response(404, reasonPhrase: 'Not Found');
         }
 
         $controller = $this->container->get($match->controllerClass);

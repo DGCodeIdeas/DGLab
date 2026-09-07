@@ -17,7 +17,7 @@ interface MiddlewarePipelineInterface extends RequestHandlerInterface
      * first and the response last. The last middleware piped is the INNERMOST:
      * it sits immediately in front of the terminal handler.
      *
-     * @param MiddlewareInterface|callable(string $middlewareClass, ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface|class-string $middleware
+     * @param MiddlewareInterface|callable(ServerRequestInterface, RequestHandlerInterface): ResponseInterface|class-string $middleware
      *
      * @throws \LogicException If called after handle() has been invoked at least once.
      */
