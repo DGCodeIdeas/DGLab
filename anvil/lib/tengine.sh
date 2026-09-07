@@ -52,6 +52,19 @@ anvil_tengine_install_config() {
   chown -R tengine:tengine "$ANVIL_DYUPS_STATE" "$ANVIL_RUN_DIR" "$ANVIL_LOG_DIR"
   anvil_tengine_render "$ANVIL_LB_TENGINE_CONF"
   chmod 0644 "$ANVIL_LB_TENGINE_CONF"
+  # nginx -c /etc/anvil/lb/tengine.conf resolves relative includes against
+  # THIS directory, not the compile-time prefix. Ship a copy so a live
+  # `include mime.types;` (pre-fix rendered confs) still passes nginx -t.
+  local conf_dir mime_src=""
+  conf_dir="$(dirname "$ANVIL_LB_TENGINE_CONF")"
+  for cand in /usr/local/tengine/conf/mime.types /etc/nginx/mime.types; do
+    if [[ -f "$cand" ]]; then mime_src="$cand"; break; fi
+  done
+  if [[ -n "$mime_src" ]]; then
+    install -m 0644 "$mime_src" "$conf_dir/mime.types"
+  else
+    anvil_warn "mime.types not found under /usr/local/tengine/conf or /etc/nginx — nginx -t will fail"
+  fi
   anvil_info "tengine config installed: $ANVIL_LB_TENGINE_CONF"
 }
 

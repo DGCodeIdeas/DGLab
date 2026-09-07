@@ -8,7 +8,7 @@
 [Unit]
 Description=Anvil v3 app server (FrankenPHP %i)
 After=network-online.target anvil-secrets.service
-Requires=anvil-secrets.service
+Wants=anvil-secrets.service
 
 [Service]
 Type=notify
