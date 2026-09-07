@@ -3,6 +3,8 @@
 #
 # Only blue is enabled at boot; green is started at deploy time by lib/deploy.sh.
 # Boot order: anvil-secrets.service → anvil-frankenphp@blue → anvil-tengine → anvil-caddy
+#
+# systemd does NOT support inline comments after values. Keep comments on their own lines.
 [Unit]
 Description=Anvil v3 app server (FrankenPHP %i)
 After=network-online.target anvil-secrets.service
@@ -16,13 +18,15 @@ WorkingDirectory=/opt/anvil/current
 EnvironmentFile=/etc/anvil/secrets.env
 ExecStart=/usr/local/bin/frankenphp run --config /etc/anvil/app/Caddyfile.%i
 ExecReload=/usr/local/bin/frankenphp reload --config /etc/anvil/app/Caddyfile.%i
-TimeoutStopSec=30s          # let in-flight Fibers finish during deploys
+# Let in-flight Fibers finish during deploys
+TimeoutStopSec=30s
 KillSignal=SIGTERM
 Restart=on-failure
 RestartSec=2s
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/opt/anvil/current/var   # app writes (var/cache, var/log)
+# App writes (var/cache, var/log)
+ReadWritePaths=/opt/anvil/current/var
 ProtectHome=true
 PrivateTmp=true
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
