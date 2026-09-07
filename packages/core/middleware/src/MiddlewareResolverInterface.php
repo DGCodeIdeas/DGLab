@@ -8,7 +8,7 @@ use Psr\Http\Server\MiddlewareInterface;
 interface MiddlewareResolverInterface
 {
     /**
-     * @param MiddlewareInterface|callable|class-string $entry
+     * @param mixed $entry MiddlewareInterface instance, callable, or class-string.
      *
      * @throws \TypeError  If $entry is a class-string whose container-resolved
      *                     value does not implement MiddlewareInterface.
