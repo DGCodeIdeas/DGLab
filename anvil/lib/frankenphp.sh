@@ -87,6 +87,7 @@ anvil_frankenphp_render() {
       -e "s|__APP_ROOT__|${root_dir}|g" \
       -e "s|__TRUSTED_PROXIES__|${TRUSTED_PROXIES}|g" \
       -e "s|__APP_ENV__|${ANVIL_ENV}|g" \
+      -e "s|__PRIMARY_FQDN__|${ANVIL_PRIMARY_FQDN}|g" \
       "$template" > "$out"
   anvil_debug "rendered $pool → $out (listen=$listen_port admin=$admin_port workers=$workers root=$root_dir)"
 }

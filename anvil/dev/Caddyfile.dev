@@ -30,10 +30,10 @@
             # The path is relative to the repo root (anvil/..).
             file ../public/index.php
             num 2                       # 2 workers — laptop-friendly
-            env APP_ENV=dev
-            env APP_DEBUG=true
-            env DB_DSN="mysql:host=127.0.0.1;port=3306;dbname=dglab_dev"
-            env REDIS_URL="redis://127.0.0.1:6379"
+            env APP_ENV dev
+            env APP_DEBUG true
+            env DB_DSN "mysql:host=127.0.0.1;port=3306;dbname=dglab_dev"
+            env REDIS_URL "redis://127.0.0.1:6379"
             # Hot reload: restart workers when sources change (dev only!).
             # Defaults to watching **/*.{php,twig,yaml,yml,env}.
             watch

@@ -14,6 +14,7 @@
 #   __APP_ROOT__         — /opt/anvil/current (prod blue) / current-green (green) / repo root (dev)
 #   __TRUSTED_PROXIES__  — 127.0.0.1 (loopback; Tengine is the only peer)
 #   __APP_ENV__          — dev|staging|production
+#   __PRIMARY_FQDN__     — dglab.example.com (APP_URL)
 
 {
     # CVE-2026-27589 posture: loopback bind + origin enforcement, on top of
@@ -41,9 +42,10 @@
             name dglab
             # Secrets NEVER live here — they arrive via the systemd unit's
             # EnvironmentFile (SSM-sourced, §7.8 of v3 doc) and are inherited by workers.
-            env APP_ENV=__APP_ENV__
-            env APP_URL=https://__APP_ROOT__
-            env TRUSTED_PROXIES=__TRUSTED_PROXIES__
+            # `env` takes TWO args (KEY VALUE), not KEY=VALUE — Caddyfile parse error otherwise.
+            env APP_ENV __APP_ENV__
+            env APP_URL https://__PRIMARY_FQDN__
+            env TRUSTED_PROXIES __TRUSTED_PROXIES__
             max_consecutive_failures 10     # auto-restart flapping workers
         }
 
