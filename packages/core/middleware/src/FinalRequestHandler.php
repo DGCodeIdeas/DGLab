@@ -36,8 +36,8 @@ final class FinalRequestHandler implements FinalRequestHandlerInterface
             return new Response(404, reasonPhrase: 'Not Found');
         }
 
-        $controller = $this->container->get($match->controllerClass);
-        return $controller->{$match->controllerMethod}(
+        $controller = $this->container->get($match->route->controllerClass);
+        return $controller->{$match->route->controllerMethod}(
             $request->withAttribute('__route_match', $match),
         );
     }

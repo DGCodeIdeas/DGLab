@@ -41,8 +41,8 @@ final class MiddlewareResolver implements MiddlewareResolverInterface
             return new CallableMiddlewareAdapter($entry);
         }
 
-        // Unreachable given the union type, but defensive: phpstan level 9
-        // cannot prove the union is exhaustive at the call site.
+        // Unreachable: the union type MiddlewareInterface|string|callable
+        // is exhaustive. PHPStan proves this at level 8+.
         throw new \TypeError(\sprintf(
             'Middleware must be %s, callable, or class-string; got %s.',
             MiddlewareInterface::class,

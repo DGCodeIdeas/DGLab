@@ -10,6 +10,7 @@ namespace SovereignStack\Core\Router;
 
 final class RouteResult
 {
+    /** @param array<string, string> $parameters */
     public function __construct(
         public readonly Route $route,
         public readonly array $parameters,

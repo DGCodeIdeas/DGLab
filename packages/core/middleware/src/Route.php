@@ -9,6 +9,11 @@ namespace SovereignStack\Core\Router;
 
 final class Route
 {
+    /**
+     * @param list<string> $methods
+     * @param list<class-string> $middleware
+     * @param array<string, string> $constraints
+     */
     public function __construct(
         public readonly string $path,
         public readonly array $methods,
