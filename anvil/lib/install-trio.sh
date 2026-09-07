@@ -129,10 +129,14 @@ create_user anvil   anvil   /opt/anvil
 # Step 2: Runtime directories.
 # ---------------------------------------------------------------------------
 anvil_info "[2/7] Runtime directories"
+# /etc/anvil MUST stay 0755 (world-traversable). caddy and tengine are not in
+# group anvil; 0750 on the parent makes /etc/anvil/edge/Caddyfile and
+# /etc/anvil/lb/tengine.conf unreadable (EACCES) even when those files are 0644.
+# secrets.env is 0640 root:anvil; /etc/anvil/app stays 0750 root:anvil.
+install -d -m 0755 -o root  -g root   /etc/anvil
 install -d -m 0755 -o root  -g root   /etc/anvil/edge
 install -d -m 0755 -o root  -g root   /etc/anvil/lb
 install -d -m 0750 -o root  -g anvil  /etc/anvil/app
-install -d -m 0750 -o root  -g anvil  /etc/anvil  # secrets.env lives here
 install -d -m 0755 -o anvil -g anvil  /opt/anvil/releases
 install -d -m 0750 -o tengine -g tengine /var/log/anvil /var/lib/anvil/dyups /run/anvil
 
