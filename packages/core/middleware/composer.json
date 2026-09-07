@@ -27,6 +27,12 @@
             "SovereignStack\\Core\\Http\\Tests\\": "tests/"
         }
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../http-message"
+        }
+    ],
     "minimum-stability": "stable",
     "prefer-stable": true
 }
