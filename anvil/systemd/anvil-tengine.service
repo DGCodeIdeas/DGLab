@@ -1,18 +1,28 @@
 # /etc/systemd/system/anvil-tengine.service — Anvil v3 internal LB (Tengine)  §7.6.
+# Boot order: secrets → frankenphp@blue → tengine → caddy (Caddy reverse-proxies here).
 [Unit]
 Description=Anvil v3 internal LB (Tengine)
-After=network-online.target anvil-caddy.service
+After=network-online.target anvil-frankenphp@blue.service
+Wants=anvil-frankenphp@blue.service
 
 [Service]
 Type=forking
 User=tengine
 Group=tengine
 PIDFile=/run/anvil/tengine.pid
+RuntimeDirectory=anvil
+RuntimeDirectoryMode=0750
+LogsDirectory=anvil
+LogsDirectoryMode=0750
+StateDirectory=anvil
+StateDirectoryMode=0750
+ExecStartPre=+/usr/bin/install -d -m 0750 -o tengine -g tengine /var/lib/anvil/dyups
 ExecStartPre=/usr/local/tengine/sbin/nginx -t -c /etc/anvil/lb/tengine.conf
 ExecStart=/usr/local/tengine/sbin/nginx -c /etc/anvil/lb/tengine.conf
 ExecReload=/usr/local/tengine/sbin/nginx -s reload -c /etc/anvil/lb/tengine.conf
 ExecStop=/usr/local/tengine/sbin/nginx -s quit -c /etc/anvil/lb/tengine.conf
 Restart=on-failure
+RestartSec=2s
 # No capabilities needed: loopback, unprivileged ports only.
 NoNewPrivileges=true
 ProtectSystem=strict
