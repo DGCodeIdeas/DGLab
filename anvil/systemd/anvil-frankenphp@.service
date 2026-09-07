@@ -16,6 +16,12 @@ User=anvil
 Group=anvil
 WorkingDirectory=/opt/anvil/current
 EnvironmentFile=/etc/anvil/secrets.env
+# Caddy (embedded) stores state under XDG_*; default $HOME/.local is not writable
+# under ProtectSystem=strict (ReadWritePaths is only current/var).
+StateDirectory=anvil-frankenphp-%i
+Environment=XDG_DATA_HOME=/var/lib/anvil-frankenphp-%i
+Environment=XDG_CONFIG_HOME=/var/lib/anvil-frankenphp-%i
+Environment=HOME=/opt/anvil
 ExecStart=/usr/local/bin/frankenphp run --config /etc/anvil/app/Caddyfile.%i
 ExecReload=/usr/local/bin/frankenphp reload --config /etc/anvil/app/Caddyfile.%i
 # Let in-flight Fibers finish during deploys

@@ -50,6 +50,12 @@ anvil_tengine_install_config() {
            "$ANVIL_RUN_DIR" \
            "$ANVIL_LOG_DIR"
   chown -R tengine:tengine "$ANVIL_DYUPS_STATE" "$ANVIL_RUN_DIR" "$ANVIL_LOG_DIR"
+  install -d -m 0750 -o tengine -g tengine \
+    "${ANVIL_LIB_DIR:-/var/lib/anvil}/tmp/client_body" \
+    "${ANVIL_LIB_DIR:-/var/lib/anvil}/tmp/proxy" \
+    "${ANVIL_LIB_DIR:-/var/lib/anvil}/tmp/fastcgi" \
+    "${ANVIL_LIB_DIR:-/var/lib/anvil}/tmp/uwsgi" \
+    "${ANVIL_LIB_DIR:-/var/lib/anvil}/tmp/scgi"
   anvil_tengine_render "$ANVIL_LB_TENGINE_CONF"
   chmod 0644 "$ANVIL_LB_TENGINE_CONF"
   # nginx -c /etc/anvil/lb/tengine.conf resolves relative includes against
