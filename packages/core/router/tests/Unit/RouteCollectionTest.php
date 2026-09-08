@@ -11,6 +11,7 @@ use SovereignStack\Core\Router\Exception\RouteNotFoundException;
 
 final class RouteCollectionTest extends TestCase
 {
+    /** @param list<string> $methods */
     private function createRoute(string $name = '', string $path = '/test', array $methods = ['GET']): Route
     {
         return new Route(

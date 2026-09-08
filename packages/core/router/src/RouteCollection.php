@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace SovereignStack\Core\Router;
 
+use SovereignStack\Core\Router\Exception\DuplicateRouteNameException;
+use SovereignStack\Core\Router\Exception\RouteNotFoundException;
+
 /**
  * Ordered, name-indexed set of Route objects.
  *

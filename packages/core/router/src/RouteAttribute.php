@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace SovereignStack\Core\Router;
 
+#[\Attribute(\Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
 final class RouteAttribute
 {
     /**

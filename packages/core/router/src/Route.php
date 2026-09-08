@@ -9,9 +9,9 @@ final class Route
      * @param string                $path             Path pattern with {placeholder} syntax.
      * @param list<string>          $methods          HTTP methods (canonical uppercase).
      * @param string                $name             Unique route name (empty = anonymous).
-     * @param class-string          $controllerClass  Fully-qualified controller class name.
+     * @param string                $controllerClass  Fully-qualified controller class name.
      * @param string                $controllerMethod Controller method name.
-     * @param list<class-string>    $middleware       Route-local middleware class-strings.
+     * @param list<string>          $middleware       Route-local middleware class-strings.
      * @param array<string,string>  $constraints      Placeholder → regex subpattern.
      */
     public function __construct(

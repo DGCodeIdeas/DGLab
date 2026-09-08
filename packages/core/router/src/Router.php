@@ -4,6 +4,9 @@ declare(strict_types=1);
 namespace SovereignStack\Core\Router;
 
 use Psr\Http\Message\ServerRequestInterface;
+use SovereignStack\Core\Router\Exception\DuplicateRouteNameException;
+use SovereignStack\Core\Router\Exception\MissingRouteParameterException;
+use SovereignStack\Core\Router\Exception\RouteNotFoundException;
 
 final class Router implements RouterInterface
 {
@@ -101,7 +104,7 @@ final class Router implements RouterInterface
                 $encoded,
                 $path,
                 1,
-            );
+            ) ?? $path;
         }
 
         // Remaining parameters and explicit query both append as RFC-3986 query string.

@@ -11,9 +11,9 @@ interface RouterInterface
     /**
      * Register a Route. Compiles via RouteCompiler.
      *
-     * @throws \LogicException              If called after match() has been invoked.
-     * @throws DuplicateRouteNameException  If $route->name is non-empty and already registered.
-     * @throws InvalidRoutePatternException If $route->path is malformed.
+     * @throws \LogicException                                          If called after match() has been invoked.
+     * @throws Exception\DuplicateRouteNameException                   If $route->name is non-empty and already registered.
+     * @throws Exception\InvalidRoutePatternException                  If $route->path is malformed.
      */
     public function addRoute(Route $route): void;
 
@@ -42,8 +42,8 @@ interface RouterInterface
      * @param array<string,string> $parameters  Parameter values (each rawurlencode()'d).
      * @param array<string,string> $query       Optional query-string parameters.
      *
-     * @throws RouteNotFoundException           If $name is not registered.
-     * @throws MissingRouteParameterException   If a required placeholder is absent.
+     * @throws Exception\RouteNotFoundException         If $name is not registered.
+     * @throws Exception\MissingRouteParameterException  If a required placeholder is absent.
      */
     public function generateUrl(string $name, array $parameters = [], array $query = []): string;
 }

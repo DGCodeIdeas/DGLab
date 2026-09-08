@@ -17,6 +17,7 @@ final class RouteCompilerTest extends TestCase
         $this->compiler = new RouteCompiler();
     }
 
+    /** @param array<string,string> $constraints */
     private function createRoute(string $path, array $constraints = []): Route
     {
         return new Route(
