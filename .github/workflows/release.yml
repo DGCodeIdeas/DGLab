@@ -55,6 +55,9 @@ jobs:
         package:
           - core/container
           - core/event-dispatcher
+          - core/http-message
+          - core/middleware
+          - core/router
 
     steps:
       - name: Checkout
