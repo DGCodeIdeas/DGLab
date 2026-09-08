@@ -31,6 +31,8 @@ jobs:
             working-dir: packages/core/http-message
           - package: core/middleware
             working-dir: packages/core/middleware
+          - package: core/router
+            working-dir: packages/core/router
           - package: orchestrator
             working-dir: orchestrator
     steps:
