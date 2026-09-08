@@ -29,6 +29,8 @@ jobs:
             working-dir: packages/core/event-dispatcher
           - package: core/http-message
             working-dir: packages/core/http-message
+          - package: core/middleware
+            working-dir: packages/core/middleware
           - package: orchestrator
             working-dir: orchestrator
     steps:
