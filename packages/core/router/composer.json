@@ -1,0 +1,37 @@
+{
+    "name": "sovereign-stack/core-router",
+    "description": "CORE-06: Attribute-Based Router with PCRE compilation and method-indexed matching",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "require": {
+        "php": "^8.3",
+        "psr/http-message": "^2.0",
+        "sovereign-stack/core-http-message": "^1.0",
+        "ext-mbstring": "*",
+        "ext-pcre": "*"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^10.5",
+        "friendsofphp/php-cs-fixer": "^3.48"
+    },
+    "autoload": {
+        "psr-4": {
+            "SovereignStack\\Core\\Router\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SovereignStack\\Core\\Router\\Tests\\": "tests/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../http-message"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
