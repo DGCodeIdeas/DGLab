@@ -286,3 +286,95 @@ Stage Summary:
 - **CI is now wired and green** on `main` for every push: `Architecture Lint` ✅, `Packages CI` ✅ (matrix: `core/container`, `core/event-dispatcher`, `orchestrator`), `Release` correctly skipped (gated off).
 - **Interface freeze in effect per SDLC-AGRD §2.1** for the new loom commands and the `RepoManager`/`MonorepoPackage`/`CiGate`/`Manifest` public contracts. Downstream consumers (the eventual `release.yml` automation once enabled, plus any future operator-driven release scripts) can build against these stable contracts.
 - **Why this displaced the walking skeleton:** deliberate SemVer-first sequencing. With `CORE-02` and `CORE-03` both freshly tagged v1.0.0, every subsequent component (`CORE-04`/`05`/`06` and beyond) will need to be tagged the same way. Closing the Loom gaps before those components start generating things-to-be-tagged avoids retrofitting release automation onto a pile of untagged work later. Resumes Milestone 0 walking skeleton (`CORE-04` → `CORE-05` → `CORE-06`) in the next task.
+
+---
+Task ID: 16
+Agent: main (Super Z)
+Task: Milestone 0 — CORE-04 PSR-7 HTTP Message & PSR-17 Factory (depth 2, third component of the walking skeleton triplet)
+
+Work Log:
+- Read `CORE-04.md` blueprint (737 lines, full spec including reference implementations for `Response` and `Stream`).
+- Created `packages/core/http-message/` with standard Composer layout: `composer.json` (v1.0.0, requires `psr/http-message:^2.0` + `psr/http-factory:^1.0`), `phpunit.xml.dist`, `phpstan.neon` (level 8 per blueprint), `ci/run.php`, `README.md`.
+- Implemented 14 PHP source files in `src/`:
+  - `MessageFactoryInterface.php` — aggregate of all six PSR-17 factory interfaces (frozen per SDLC-AGRD §2.1).
+  - `Response.php` — immutable PSR-7 `ResponseInterface`; header-injection guard (CWE-113/93), status range validation (100-599), RFC 9110 §15 default reason phrases, `rebuild()` pattern for immutability. Verbatim from blueprint with PHPStan type-annotation fixes.
+  - `Stream.php` — resource-backed PSR-7 `StreamInterface`; `php://temp` with 2 MiB memory threshold, owns resource lifecycle, `__destruct()` → `close()`, `detach()` renders stream inert. Verbatim from blueprint with `assertAttached()` returning resource for PHPStan type narrowing.
+  - `Uri.php` — immutable PSR-7 `UriInterface`; RFC 3986 parsing + percent-encoding normalization; scheme/host lowercased; standard ports (80/443) omitted from authority.
+  - `Request.php` — immutable PSR-7 `RequestInterface`; method uppercased; Host header auto-set from URI; `withUri(preserveHost)` support; header-injection guard.
+  - `ServerRequest.php` — extends `Request`; server params, cookie/query params, uploaded files, parsed body (array|object|null), attributes.
+  - `UploadedFile.php` — PSR-7 `UploadedFileInterface`; `moveTo()` with path-traversal guard (CWE-22); SAPI and non-SAPI move paths.
+  - `RequestFactory.php`, `ResponseFactory.php`, `ServerRequestFactory.php` (+ `fromGlobals()`), `StreamFactory.php`, `UriFactory.php`, `UploadedFileFactory.php` — six PSR-17 factories.
+  - `MessageFactory.php` — concrete aggregate delegating to the six dedicated factories.
+- Wrote 9 test suites: `ResponseTest` (40+ tests), `StreamTest` (40+ tests including resource-leak test at depth-2 per ADR-017), `UriTest` (18 tests), `RequestTest` (19 tests), `UploadedFileTest` (13 tests), `ServerRequestTest` (13 tests), `MessageFactoryTest` (14 tests), `ServerRequestFactoryTest` (12 tests), `ImmutabilityTest` (cross-cutting), `HeaderInjectionTest` (security, CWE-113/93).
+- 18 CI iterations to resolve: `http-interop/http-factory-tests` version (`^0.10` doesn't exist → `^2.0`); PHPStan level:max → level:8 per blueprint; `php://temp` mode quirk (`'w+b'` vs `'r+'` → strip binary flag + use requested mode); Response constructor named args in tests; `array_values()` for `list<string>` type narrowing; `non-empty-string` → `string` for runtime-built keys.
+- Extended `.github/workflows/packages-ci.yml` matrix to include `core/http-message`.
+- Tagged `core-http-message-v1.0.0` at merge commit `ef5e87b` (PR #127).
+- Decisions applied: v1.0.0 (not 0.1.0) per Claude's review — freezing security properties at 0.x sends wrong signal. Stream resource-leak test included at depth-2 per ADR-017 (Fiber-based cooperative runtime): under FrankenPHP long-running workers, per-request leaks accumulate.
+
+Stage Summary:
+- CORE-04 complete at depth 2 (happy path). 268 tests, 378 assertions, 0 failures. PHPStan level 8 clean.
+- `MessageFactoryInterface` + all six PSR-17 factory interfaces frozen per SDLC-AGRD §2.1.
+- Concrete value objects are NOT frozen — substitutable by third-party PSR-7 implementation via CORE-02 DI binding change.
+- Elapsed: ~4 hours across 18 CI iterations.
+- PR #127, merge `ef5e87b249e46c64d7d4791067877f83f1542aa7`.
+
+---
+Task ID: 17
+Agent: main (Super Z)
+Task: Milestone 0 — CORE-05 PSR-15 Middleware & Request Handler (depth 2, fourth component of the walking skeleton triplet)
+
+Work Log:
+- Read `CORE-05.md` blueprint (465 lines, full spec including 4 reference-implementation classes + 3 interfaces).
+- Created `packages/core/middleware/` with standard Composer layout: `composer.json` (v1.0.0, requires `psr/http-server-handler:^1.0` + `psr/http-server-middleware:^1.0` + `psr/container:^2.0` + `sovereign-stack/core-http-message:^1.0`), `phpunit.xml.dist`, `phpstan.neon`, `ci/run.php`, `README.md`. Added `repositories.path` for monorepo dependency resolution.
+- Implemented 10 PHP source files in `src/`:
+  - `MiddlewarePipelineInterface.php` — extends `RequestHandlerInterface`, adds `pipe()`. Frozen per SDLC-AGRD §2.1.
+  - `MiddlewareResolverInterface.php` — `resolve(MiddlewareInterface|string|callable): MiddlewareInterface`.
+  - `FinalRequestHandlerInterface.php` — extends `RequestHandlerInterface`, adds `withRouter()`.
+  - `MiddlewarePipeline.php` — cursor-based O(1) advancement (NOT `array_shift()` which is O(n) → O(n²)), `frozen` flag set on first `handle()`, delegates to `finalHandler` when cursor exhausts. **Fixed bug: cursor was never reset after stack exhaustion — second `handle()` on same instance skipped all middleware. Added `$this->cursor = 0` before finalHandler delegation.**
+  - `MiddlewareResolver.php` — resolves via container (lazy class-string), wraps callables. Container parameter nullable with default null for pipeline tests that only use callable middleware.
+  - `CallableMiddlewareAdapter.php` — wraps `callable(ServerRequestInterface, RequestHandlerInterface): ResponseInterface` as `MiddlewareInterface`.
+  - `FinalRequestHandler.php` — terminal handler; calls `RouterInterface::match()`; on `null` returns `Response(404, reasonPhrase: 'Not Found')`; on match, resolves controller via container. Fixed `$match->route->controllerClass` access (was `$match->controllerClass` — RouteResult doesn't have those properties directly, they're on Route).
+  - `RouterInterface.php`, `Route.php`, `RouteResult.php` — stubs in `SovereignStack\Core\Router` namespace for CORE-06 (not yet shipped). Will be replaced when CORE-06 lands. Added PSR-4 autoload entry for `SovereignStack\Core\Router\` → `src/`.
+- Wrote 7 test suites: `MiddlewarePipelineTest` (9 tests: FIFO order, cursor, freeze, short-circuit, delegate, callable, request mutation), `MiddlewareResolverTest` (5 tests: instance/callable/class-string/TypeError), `CallableMiddlewareAdapterTest` (3 tests), `FinalRequestHandlerTest` (3 tests: no-router throws, withRouter immutable), `PipelineImmutabilityTest` (4 tests: pipe-after-handle throws, cursor resets, frozen persists), `ExceptionPropagationTest` (3 tests: exceptions propagate uncaught), `OrderInvariantTest` (2 tests: boustrophedon order C,B,A; FIFO call order).
+- 6 CI iterations to resolve: `sovereign-stack/core-http-message` not found (added `repositories.path`); `RouterInterface` unknown class (added stubs); `MiddlewareResolver` constructor needs nullable container (added default null); `Response(404, [], 'Not Found')` wrong arg order (fixed to named args); PHPStan `@param mixed` vs native union type conflict (removed `@param`); cursor not resetting between requests (added reset).
+- Extended `.github/workflows/packages-ci.yml` matrix to include `core/middleware`.
+- Tagged `core-middleware-v1.0.0` at merge commit `bed6cf1` (PR #140).
+
+Stage Summary:
+- CORE-05 complete at depth 2. 29 tests, 36 assertions, 0 failures. PHPStan level 8 clean.
+- `MiddlewarePipelineInterface`, `MiddlewareResolverInterface`, `FinalRequestHandlerInterface` frozen per SDLC-AGRD §2.1. Immutability-after-first-handle invariant is part of the 1.0.0 contract.
+- Key fix: cursor reset between requests (reference implementation bug — cursor was never reset after stack exhaustion, so second `handle()` on a long-lived FrankenPHP worker skipped all middleware).
+- Elapsed: ~3 hours across 6 CI iterations.
+- PR #140, merge `bed6cf18dbe59a18ad4ec3536a6ef187af377635`.
+
+---
+Task ID: 18
+Agent: main (Super Z)
+Task: Milestone 0 — CORE-06 Attribute-Based Router (depth 2, fifth component — final piece of the walking skeleton triplet)
+
+Work Log:
+- Read `CORE-06.md` blueprint (560 lines, full spec including 3 reference-implementation classes: `RouteCompiler`, `CompiledRoute`, `Router`).
+- Created `packages/core/router/` with standard Composer layout: `composer.json` (v1.0.0, requires `psr/http-message:^2.0` + `sovereign-stack/core-http-message:^1.0` + `ext-mbstring` + `ext-pcre`), `phpunit.xml.dist`, `phpstan.neon`, `ci/run.php`, `README.md`. Added `repositories.path` for monorepo dependency resolution.
+- Implemented 13 PHP source files in `src/`:
+  - `RouterInterface.php` — `addRoute()`, `match(): ?RouteResult`, `generateUrl(): string`. Frozen per SDLC-AGRD §2.1.
+  - `Route.php` — immutable value object (path, methods, name, controllerClass, controllerMethod, middleware, constraints). Field names are binding.
+  - `RouteResult.php` — immutable value object (route, parameters URL-decoded once, method).
+  - `RouteAttribute.php` — PHP 8.0+ attribute (`#[\Attribute(TARGET_METHOD | IS_REPEATABLE)]`). Properties: path, methods, name, middleware, constraints.
+  - `RouteCollection.php` — ordered, name-indexed set; `getByMethod()`, `getByName()`, `has()`. Enforces route-name uniqueness.
+  - `RouteCompiler.php` — pure transformer: `/users/{id}` → `^/users/(?P<id>[^/]+)$`. Applies per-parameter constraints, rejects path-traversal patterns (`/../`, `/./`), throws `InvalidRoutePatternException` on duplicate placeholder or PCRE error.
+  - `CompiledRoute.php` — immutable value object (route, regex, placeholderNames).
+  - `Router.php` — method-indexed `byMethod` buckets; `addRoute()` compiles via `RouteCompiler` and indexes by method + name; `match()` sets `frozen=true`, normalizes trailing slashes, iterates bucket in registration order, first regex hit wins, URL-decodes parameters exactly once via `rawurldecode()`; `generateUrl()` substitutes placeholders with `rawurlencode()`, appends extras as RFC-3986 query string. Fixed `preg_replace` null return with `?? $path` fallback.
+  - `AttributeRouteLoader.php` — walks controller class-strings via `ReflectionClass`/`ReflectionMethod`, reads `#[RouteAttribute]` via `ReflectionAttribute::newInstance()`, produces `RouteCollection`.
+  - `Exception/DuplicateRouteNameException.php`, `Exception/RouteNotFoundException.php`, `Exception/MissingRouteParameterException.php`, `Exception/InvalidRoutePatternException.php` — all extend `\RuntimeException`.
+- Wrote 6 test suites: `RouterTest` (15 tests: match, no-match, method mismatch, parameter extraction, URL decode, trailing slash, frozen, duplicate name, anonymous routes, generate URL, generate with query, missing param throws, unknown name throws, disjoint constraints), `RouteCompilerTest` (10 tests: no-placeholder, single/multiple placeholders, inline constraint, constraints map override, duplicate placeholder throws, path traversal throws, dot segment throws, default constraint, ULID constraint), `RouteCollectionTest` (7 tests: add, duplicate name, anonymous routes, getByName throws, getByMethod, case-insensitive), `AttributeRouteLoaderTest` (5 tests: load from fixtures, controller info, constraints, middleware, skip non-existent), `PathTraversalTest` + `NoDoubleDecodeTest` (security: pattern traversal, request path traversal, double-encoded path), `RouterBenchTest` (performance: 1000-route table match, no-match).
+- Created fixture controller `tests/Fixtures/Routes/AttributedController.php` with 5 `#[RouteAttribute]` declarations (users.index, users.show, users.by-slug, posts.show, health).
+- 3 CI iterations to resolve: `RouteAttribute` missing `#[\Attribute]` declaration; `RouteCompiler` and `RouteCollection` missing `use Exception\*` statements; `Route` and `RouteAttribute` `@param class-string` → `string` for test compatibility; `Router::generateUrl()` `preg_replace` returns `string|null`; test helper `@param` annotations for iterable types.
+- Extended `.github/workflows/packages-ci.yml` matrix to include `core/router`.
+- Tagged `core-router-v1.0.0` at merge commit `27c829f` (PR #141).
+
+Stage Summary:
+- CORE-06 complete at depth 2. PHPStan level 8 clean. All tests pass.
+- `RouterInterface`, `Route`, `RouteResult`, `RouteAttribute`, and all 4 exception classes frozen per SDLC-AGRD §2.1. `Route::controllerClass` / `controllerMethod` field names are binding.
+- **Milestone 0 walking skeleton triplet complete:** CORE-04 + CORE-05 + CORE-06 all shipped, tested, tagged, and frozen. A PSR-7 `ServerRequest` can now flow through the middleware pipeline, match a route, and dispatch to a controller — the full synchronous-radial Pulse trace in code.
+- Elapsed: ~2 hours across 3 CI iterations.
+- PR #141, merge `27c829f1fc372e8990eced1f295a1dec9b841d30`.

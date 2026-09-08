@@ -71,9 +71,9 @@ copied from them into `Architecture/` without re-verifying it against this index
 | CORE-01 | Polyrepo Orchestrator ("Loom") | `SovereignStack\Orchestrator` | `orchestrator/` | ✅ Implemented + tested |
 | CORE-02 | Dependency Injection Container | `SovereignStack\Core\Container` | `packages/core/container/` | ✅ **Implemented + tested, v1.0.0, 97.2% coverage, PSR-11 conformance** |
 | CORE-03 | PSR-14 Event Dispatcher | `SovereignStack\Core\EventDispatcher` | `packages/core/event-dispatcher/` | ✅ Implemented + tested |
-| CORE-04 | PSR-7 HTTP Message & Factory | `SovereignStack\Core\Http` | — | 📝 Not started |
-| CORE-05 | PSR-15 Middleware & Request Handler | `SovereignStack\Core\Http` | — | 📝 Not started |
-| CORE-06 | Attribute-Based Router | `SovereignStack\Core\Router` | — | 📝 Not started |
+| CORE-04 | PSR-7 HTTP Message & Factory | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-http-message-v1.0.0 (PR #127) |
+| CORE-05 | PSR-15 Middleware & Request Handler | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-middleware-v1.0.0 (PR #140) |
+| CORE-06 | Attribute-Based Router | `SovereignStack\Core\Router` | — | ✅ Depth 2 — Tagged core-router-v1.0.0 (PR #141) |
 | CORE-07 | SuperPHP Lexer | `SovereignStack\Core\SuperPHP\Lexer` | — | 📝 Not started |
 | CORE-08 | Global Error & Exception Handler | `SovereignStack\Core\Error` | — | 📝 Not started |
 | CORE-09 | **PSR-3 Logging Service** | `SovereignStack\Core\Logging` | — | 📝 Not started |
