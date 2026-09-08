@@ -71,6 +71,13 @@ jobs:
           extensions: mbstring, xml, dom
           tools: composer:v2
 
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: orchestrator/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('orchestrator/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
       - name: Install orchestrator dependencies
         working-directory: orchestrator
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -195,3 +202,34 @@ jobs:
             --title "${{ matrix.package }} ${{ steps.bump.outputs.new_version }}" \
             --generate-notes \
             --target main
+
+      - name: Show generated repos.json (on failure)
+        if: failure()
+        run: cat orchestrator/repos.json 2>/dev/null || echo '(repos.json not found)'
+
+      - name: Restore git remote URL (always — token hygiene)
+        if: always() && steps.compare.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
+        run: |
+          # Restore the original remote URL even if the release step failed.
+          # The TOKEN_URL is embedded in origin during the release step;
+          # without this, the PAT would persist in git config.
+          ORIGIN_URL=$(git remote get-url origin 2>/dev/null || true)
+          if echo "$ORIGIN_URL" | grep -q 'x-access-token\|ghp_'; then
+            git remote set-url origin "https://github.com/${{ github.repository }}.git"
+            echo "Restored origin URL (was token-embedded)"
+          fi
+
+  summary:
+    name: Release Summary
+    if: always()
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "### Release Dry-Run Complete" >> "$GITHUB_STEP_SUMMARY"
+            echo "No releases were created. Set dry_run=false to actually release." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Release Workflow Complete" >> "$GITHUB_STEP_SUMMARY"
+            echo "Check individual jobs above for per-package results." >> "$GITHUB_STEP_SUMMARY"
+          fi
