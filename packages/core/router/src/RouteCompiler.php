@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace SovereignStack\Core\Router;
 
+use SovereignStack\Core\Router\Exception\InvalidRoutePatternException;
+
 final class RouteCompiler
 {
     private const PLACEHOLDER_REGEX = '/\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]+))?\}/';

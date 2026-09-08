@@ -10,7 +10,7 @@ final class RouteAttribute
      * @param string               $path        Path pattern, e.g. "/users/{id}".
      * @param list<string>         $methods     HTTP methods, e.g. ["GET", "HEAD"].
      * @param string               $name        Route name for generateUrl(); empty = anonymous.
-     * @param list<class-string>   $middleware  Route-local middleware class-strings.
+     * @param list<string>         $middleware  Route-local middleware class-strings.
      * @param array<string,string> $constraints Placeholder → regex subpattern, e.g. ["id" => "\d+"].
      */
     public function __construct(
