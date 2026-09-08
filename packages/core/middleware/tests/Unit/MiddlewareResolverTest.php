@@ -70,11 +70,8 @@ final class MiddlewareResolverTest extends TestCase
         $container = $this->createMock(ContainerInterface::class);
         $resolver = new MiddlewareResolver($container);
 
+        $this->expectException(\TypeError::class);
         /** @phpstan-ignore-next-line intentional type violation for testing */
-        $result = @$resolver->resolve(42);
-        // If it doesn't throw, it shouldn't return a valid MiddlewareInterface
-        // The TypeError may be caught by error suppression in some configs;
-        // just assert we didn't crash.
-        $this->addToAssertionCount(1);
+        $resolver->resolve(42);
     }
 }

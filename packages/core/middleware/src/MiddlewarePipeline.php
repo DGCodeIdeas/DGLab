@@ -60,7 +60,11 @@ final class MiddlewarePipeline implements MiddlewarePipelineInterface
             return $middleware->process($request, $this);
         }
 
-        // Stack exhausted: delegate to the terminal handler (router + controller).
+        // Stack exhausted: reset cursor for next request, then delegate
+        // to the terminal handler (router + controller). The reset enables
+        // the same pipeline instance to serve sequential requests on a
+        // long-lived worker (PHP-FPM, RoadRunner, FrankenPHP).
+        $this->cursor = 0;
         return $this->finalHandler->handle($request);
     }
 }
