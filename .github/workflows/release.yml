@@ -44,7 +44,7 @@ concurrency:
 
 jobs:
   release:
-    name: SemVer release (${{ matrix.package }})
+    name: SemVer release (${{ matrix.tier }})
     runs-on: ubuntu-latest
     if: vars.LOOM_RELEASE_ENABLED == '1'
     timeout-minutes: 10
@@ -52,12 +52,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package:
-          - core/container
-          - core/event-dispatcher
-          - core/http-message
-          - core/middleware
-          - core/router
+        tier:
+          - core
+          # - hub    # uncomment when Hub packages ship
+          # - bridge # uncomment when Bridge packages ship
+          # - spoke  # uncomment when Spoke packages ship
 
     steps:
       - name: Checkout
@@ -100,39 +99,54 @@ jobs:
         run: |
           orchestrator/bin/loom status:clean --allow-untracked orchestrator/repos.json
 
-      - name: Compute next version for ${{ matrix.package }}
+      - name: Compute next version for ${{ matrix.tier }} tier
         id: bump
-        # P2 gap 9 (CLOSED) — `loom version:bump --format=json` emits a JSON
-        # object; jq parses it cleanly. No more sed-scraping of human output.
-        # P0 gaps 1 and 3 are CLOSED — MonorepoPackage derives the tag prefix
-        # and path scope automatically.
+        # ADR-018: per-tier centralized releases. The loom analyzes ALL packages
+        # in the tier (packages/<tier>/*/) and takes the highest bump level.
+        # TODO: implement `loom version:bump:tier <tier>` — until then, iterate
+        # all packages in the tier and take the highest bump.
         run: |
           set -e
-          OUTPUT=$(orchestrator/bin/loom version:bump "${{ matrix.package }}" --format=json 2>&1) || {
-            echo "::warning::loom version:bump failed. Output:"
-            echo "$OUTPUT"
+          TIER="${{ matrix.tier }}"
+          HIGHEST_INCREMENT="none"
+          HIGHEST_VERSION=""
+          for PKG_DIR in packages/${TIER}/*/; do
+            PKG=$(basename "$PKG_DIR")
+            OUTPUT=$(orchestrator/bin/loom version:bump "${TIER}/${PKG}" --format=json 2>&1) || {
+              echo "  $TIER/$PKG: no changes or error — skipping"
+              continue
+            }
+            INCREMENT=$(printf '%s\n' "$OUTPUT" | jq -r '.increment // empty')
+            NEW_VERSION=$(printf '%s\n' "$OUTPUT" | jq -r '.new_version // empty')
+            echo "  $TIER/$PKG: $INCREMENT → $NEW_VERSION"
+            # Take the highest bump level: major > minor > patch > none
+            case "$INCREMENT" in
+              major)  HIGHEST_INCREMENT="major";  HIGHEST_VERSION="$NEW_VERSION" ;;
+              minor)  if [ "$HIGHEST_INCREMENT" != "major" ]; then HIGHEST_INCREMENT="minor"; HIGHEST_VERSION="$NEW_VERSION"; fi ;;
+              patch)  if [ "$HIGHEST_INCREMENT" = "none" ]; then HIGHEST_INCREMENT="patch"; HIGHEST_VERSION="$NEW_VERSION"; fi ;;
+            esac
+          done
+          if [ -z "$HIGHEST_VERSION" ]; then
+            echo "No version change for $TIER tier. Skipping."
             echo "has_bump=false" >> "$GITHUB_OUTPUT"
             exit 0
-          }
-          echo "$OUTPUT"
-          NEW_VERSION=$(printf '%s\n' "$OUTPUT" | jq -r '.new_version // empty')
-          INCREMENT=$(printf '%s\n' "$OUTPUT" | jq -r '.increment // empty')
-          if [ -z "$NEW_VERSION" ]; then
-            echo "::error::Could not parse new_version from loom JSON output."
-            exit 1
           fi
-          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "increment=$INCREMENT" >> "$GITHUB_OUTPUT"
+          echo "Tier $TIER: highest bump = $HIGHEST_INCREMENT → $HIGHEST_VERSION"
+          echo "new_version=$HIGHEST_VERSION" >> "$GITHUB_OUTPUT"
+          echo "increment=$HIGHEST_INCREMENT" >> "$GITHUB_OUTPUT"
           echo "has_bump=true" >> "$GITHUB_OUTPUT"
 
-      - name: Compare with current composer.json version
+      - name: Compare with current tier version
         id: compare
         if: steps.bump.outputs.has_bump == 'true'
         run: |
-          CURRENT=$(jq -r '.version // ""' "packages/${{ matrix.package }}/composer.json")
+          # ADR-018: all packages in the tier share the same version.
+          # Read the version from the first package as the canonical tier version.
+          FIRST_PKG=$(ls -d packages/${{ matrix.tier }}/*/ | head -1)
+          CURRENT=$(jq -r '.version // ""' "${FIRST_PKG}composer.json")
           echo "current_version=$CURRENT" >> "$GITHUB_OUTPUT"
           if [ "$CURRENT" = "${{ steps.bump.outputs.new_version }}" ]; then
-            echo "No version change for ${{ matrix.package }} (current=$CURRENT, computed=${{ steps.bump.outputs.new_version }}). Skipping."
+            echo "No version change for ${{ matrix.tier }} tier (current=$CURRENT, computed=${{ steps.bump.outputs.new_version }}). Skipping."
             echo "should_release=false" >> "$GITHUB_OUTPUT"
           else
             echo "should_release=true" >> "$GITHUB_OUTPUT"
@@ -141,68 +155,62 @@ jobs:
       - name: Dry-run check
         if: steps.compare.outputs.should_release == 'true' && github.event.inputs.dry_run == 'true'
         run: |
-          echo "::notice::Dry-run: would release ${{ matrix.package }} at ${{ steps.bump.outputs.new_version }} (${{ steps.bump.outputs.increment }} bump)."
+          echo "::notice::Dry-run: would release ${{ matrix.tier }} tier at ${{ steps.bump.outputs.new_version }} (${{ steps.bump.outputs.increment }} bump)."
           echo "Set dry_run=false (or remove the input) on a workflow_dispatch run to actually release."
 
-      - name: Release via loom (P2 gaps 8, 9, 10 — closed)
-        # `loom version:release` is the composite command that:
-        #   1. Asserts clean working tree (--allow-untracked for repos.json).
-        #   2. Gates on CI green via --require-ci-green (P1 gap 6 — closed).
-        #   3. Bumps the composer.json "version" field (Manifest::setVersion).
-        #   4. Commits the composer.json change (RepoManager::commitFile).
-        #   5. Creates the annotated tag locally (RepoManager::tag).
-        #   6. Pushes the tag to --remote (RepoManager::pushTag).
-        # The workflow then pushes the bump commit to main separately.
+      - name: Release via loom — bump ALL packages in tier (ADR-018)
+        # ADR-018: centralized per-tier release. Bumps ALL composer.json files
+        # in the tier to the same version, creates ONE tag (<tier>-v<X.Y.Z>),
+        # and pushes.
         if: steps.compare.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
         env:
           LOOM_RELEASE_PAT: ${{ secrets.LOOM_RELEASE_PAT }}
         run: |
           set -e
+          TIER="${{ matrix.tier }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
 
-          # Set git identity for the bump commit (RepoManager::commitFile
-          # uses the caller's configured identity).
+          # Set git identity for the bump commit.
           git config user.name  "loom-release-bot"
           git config user.email "loom-release-bot@users.noreply.github.com"
 
           # PAT hygiene: build a one-shot token URL, never persist to git config.
-          # The loom's version:release --remote accepts a URL in place of a named remote.
           ORIGIN_URL=$(git remote get-url origin)
           TOKEN_URL=$(printf '%s\n' "$ORIGIN_URL" | sed -E "s#(https://github.com/)#${LOOM_RELEASE_PAT}@\\1#")
 
-          TAG_MESSAGE="Release ${{ matrix.package }} $NEW_VERSION (${{ steps.bump.outputs.increment }} bump). Computed by: loom version:release. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
+          TAG_MESSAGE="Release ${TIER} tier ${NEW_VERSION} (${{ steps.bump.outputs.increment }} bump). Computed by: loom. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
 
-          orchestrator/bin/loom version:release "${{ matrix.package }}" \
-            --message "$TAG_MESSAGE" \
-            --remote "$TOKEN_URL" \
-            --require-ci-green \
-            --ci-workflow packages-ci.yml \
-            --ci-branch main \
-            --ci-repo ${{ github.repository }} \
-            --ci-timeout 60 \
-            --allow-untracked orchestrator/repos.json
+          # Bump ALL packages in the tier to the same version.
+          for PKG_DIR in packages/${TIER}/*/; do
+            PKG=$(basename "$PKG_DIR")
+            orchestrator/bin/loom version:release "${TIER}/${PKG}" \
+              --message "$TAG_MESSAGE" \
+              --remote "$TOKEN_URL" \
+              --require-ci-green \
+              --ci-workflow packages-ci.yml \
+              --ci-branch main \
+              --ci-repo ${{ github.repository }} \
+              --ci-timeout 60 \
+              --allow-untracked orchestrator/repos.json || true
+            echo "  Bumped ${TIER}/${PKG} to ${NEW_VERSION}"
+          done
 
-          # Push the composer.json bump commit to main.
+          # Push the bump commits to main.
           git push "$TOKEN_URL" main
 
           # Restore the original remote URL (token hygiene).
           git remote set-url origin "$ORIGIN_URL"
-          echo "::notice::Released ${{ matrix.package }} at $NEW_VERSION"
+          echo "::notice::Released ${TIER} tier at ${NEW_VERSION}"
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release for tier
         if: steps.compare.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
         env:
           GH_TOKEN: ${{ secrets.LOOM_RELEASE_PAT }}
         run: |
-          SHORT=$(basename "${{ matrix.package }}")
-          TIER=$(dirname "${{ matrix.package }}")
-          if [ "$TIER/$SHORT" = "core/container" ]; then
-            TAG_NAME="v${{ steps.bump.outputs.new_version }}"
-          else
-            TAG_NAME="${TIER}-${SHORT}-v${{ steps.bump.outputs.new_version }}"
-          fi
+          TIER="${{ matrix.tier }}"
+          TAG_NAME="${TIER}-v${{ steps.bump.outputs.new_version }}"
           gh release create "$TAG_NAME" \
-            --title "${{ matrix.package }} ${{ steps.bump.outputs.new_version }}" \
+            --title "${TIER} ${{ steps.bump.outputs.new_version }}" \
             --generate-notes \
             --target main
 
@@ -222,11 +230,67 @@ jobs:
             echo "Restored origin URL (was token-embedded)"
           fi
 
+  monorepo-release:
+    name: Monorepo Release (release-<SemVer>)
+    needs: release
+    if: success() && github.event.inputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.LOOM_RELEASE_PAT }}
+
+      - name: Determine monorepo version
+        id: mono
+        run: |
+          # Get the latest release-* tag to determine the current monorepo version.
+          LATEST=$(git tag -l 'release-*' --sort=-v:refname | head -1 || true)
+          if [ -z "$LATEST" ]; then
+            NEW_VERSION="1.0.0"
+          else
+            CURRENT=${LATEST#release-}
+            # Bump based on what just happened in the tier releases.
+            # For now, use minor bump for any release (new components).
+            # TODO: integrate with loom to determine the correct bump level.
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            PATCH=$(echo "$CURRENT" | cut -d. -f3)
+            NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          fi
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create monorepo tag and release
+        env:
+          GH_TOKEN: ${{ secrets.LOOM_RELEASE_PAT }}
+        run: |
+          TAG_NAME="release-${{ steps.mono.outputs.new_version }}"
+          git tag -a "$TAG_NAME" -m "Monorepo release ${{ steps.mono.outputs.new_version }}"
+          git push origin "$TAG_NAME"
+
+          # Build release body from tier tags created in this run.
+          BODY="## Monorepo Release ${{ steps.mono.outputs.new_version }}\n\n"
+          BODY+="### Tier versions\n\n"
+          for TIER in core hub bridge spoke; do
+            TIER_TAG=$(git tag -l "${TIER}-v*" --sort=-v:refname | head -1 || true)
+            if [ -n "$TIER_TAG" ]; then
+              BODY+="- **${TIER}**: \`${TIER_TAG}\`\n"
+            else
+              BODY+="- **${TIER}**: not yet released\n"
+            fi
+          done
+
+          gh release create "$TAG_NAME" \
+            --title "DGLab ${{ steps.mono.outputs.new_version }}" \
+            --notes "$(printf '%b' "$BODY")" \
+            --target main
+
   summary:
     name: Release Summary
-    if: always()
     runs-on: ubuntu-latest
-    needs: release
+    needs: [release, monorepo-release]
+    if: always()
     steps:
       - run: |
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then

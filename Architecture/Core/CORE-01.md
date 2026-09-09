@@ -575,11 +575,14 @@ No inline workarounds remain — every step delegates to a loom command.
 
 ### Tag-naming convention
 
-Documented here as the canonical rule for future packages:
+**Superseded by ADR-018 (2026-09-08).** The per-package tag convention (`core-<package>-v<X.Y.Z>`) is replaced by the per-tier convention (`core-v<X.Y.Z>`). All packages within a tier share a single version and tag. See `Architecture/ADRs/ADR-018-centralized-per-tier-releases.md` for the full rationale.
 
-- **Per-package prefixed tags** are the convention: `core-<package>-v<X.Y.Z>`. Examples: `core-container-v1.0.0`, `core-event-dispatcher-v1.1.0`, `core-event-dispatcher-v2.0.0`.
-- **Grandfathered exception**: the inaugural tag for `core/container` is `v1.0.0` (unprefixed), created in PR #107 before the convention was clear. Renaming it to `core-container-v1.0.0` would require deleting a pushed tag — a destructive operation that breaks any external reference. It is retained as-is; future container releases (`v1.1.0`, `v2.0.0`) MUST use the prefixed form.
+The original per-package convention is preserved below for historical reference:
+
+- ~~**Per-package prefixed tags** are the convention: `core-<package>-v<X.Y.Z>`. Examples: `core-container-v1.0.0`, `core-event-dispatcher-v1.1.0`, `core-event-dispatcher-v2.0.0`.~~
+- **Grandfathered exceptions**: the inaugural tags for `core/container` (`v1.0.0`) and the per-package tags created before ADR-018 (`core-event-dispatcher-v1.0.0`, `core-http-message-v1.0.0`, `core-middleware-v1.0.0`, `core-router-v1.0.0`) remain for history. No new per-package tags are created.
 - **`type: project` packages** (e.g. `orchestrator`) do not get tags via the loom; they are not `require`d by anything and follow their own release cadence.
+- **Monorepo releases** (`release-<SemVer>`, e.g. `release-1.0.0`) represent the state of the entire codebase at a point in time. Used by DEPLOY-01 for container image builds. Separate from per-tier SemVer tags.
 
 ### Path forward
 
