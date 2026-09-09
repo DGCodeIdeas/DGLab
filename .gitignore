@@ -1,2 +1,41 @@
-.cora/
-.roo/
+# PHP
+vendor/
+composer.lock
+.phpunit.result.cache
+.php-cs-fixer.cache
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Anvil runtime
+anvil/.anvil-web.pid
+anvil/.anvil-web.log
+anvil/www/.anvil-registered
+
+# Secrets (never commit)
+.env
+*.pem
+*.key
+secrets.env
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Temporary
+tmp/
+temp/
+*.tmp
