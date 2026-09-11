@@ -174,7 +174,7 @@ final class HelloWorldTest extends TestCase
                         }
                     },
                 );
-            },
+            }
         };
 
         $kernel = TestKernelFactory::create($customBootstrapper);
