@@ -258,9 +258,11 @@ jobs:
         id: mono
         run: |
           # ADR-019: monorepo version is v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
-          # Pre-MUWV (MUWV=0), Milestone 0 (Milestone=1), lap increments per release.
-          # Get the latest v0.* tag to determine the current monorepo version.
-          LATEST=$(git tag -l 'v0.*' --sort=-v:refname | head -1 || true)
+          # Post-MUWV flip (2026-09-12): MUWV=1, Milestone 1 = segment 2.
+          # Pre-flip: MUWV=0, Milestone 0 = segment 1.
+          # Get the latest v* tag (both v0.* pre-MUWV and v1.* post-MUWV) to
+          # determine the current monorepo version.
+          LATEST=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1 || true)
           if [ -z "$LATEST" ]; then
             # First release under the new scheme (ADR-019).
             # Pre-MUWV, Milestone 0, lap 0, patch 0.
@@ -274,8 +276,9 @@ jobs:
             LAP=$(echo "$CURRENT" | cut -d. -f3)
             PATCH=$(echo "$CURRENT" | cut -d. -f4)
             # Increment lap for each new monorepo release (each tier release cycle = one lap).
-            # TODO: integrate with loom to determine the correct bump level.
-            # For now, lap bump for any release (new components or fixes within Milestone 0).
+            # The MUWV segment is never auto-bumped — the flip is a manual governance
+            # action (see ADR-019 §8 Flip Log). Subsequent releases continue bumping
+            # the lap segment within whatever MUWV/milestone the latest tag is in.
             NEW_VERSION="${MUWV}.${MILESTONE}.$((LAP + 1)).0"
           fi
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
