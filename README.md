@@ -8,8 +8,8 @@ DGLab is a personal scaffold: a complete, opinionated application stack that eli
 
 The repository contains:
 
-- **5 Core-tier packages** (PSR-7, PSR-15, PSR-11, PSR-14, attribute router) — the foundational infrastructure
-- **18 Architecture Decision Records** — every major decision documented with alternatives and trade-offs
+- **8 Core-tier packages** (PSR-7, PSR-15, PSR-11, PSR-14, attribute router, PSR-3 logging, config, error handler) — the foundational infrastructure
+- **19 Architecture Decision Records** — every major decision documented with alternatives and trade-offs
 - **105 component blueprints** — full implementation specs for Core, Hub, Bridge, Spoke, and Deploy tiers
 - **Anvil** — a three-tier deployment stack (Caddy + Tengine + FrankenPHP) with automated provisioning
 - **Loom** — a custom SemVer automation tool that drives the monorepo release flow end-to-end
@@ -50,15 +50,18 @@ DGLab follows a **Wheel architecture** with 6 concentric rings. A request enters
 DGLab/
 ├── packages/              # Composer packages (the framework)
 │   └── core/
-│       ├── container/         # CORE-02: PSR-11 DI Container (v1.0.0)
-│       ├── event-dispatcher/  # CORE-03: PSR-14 Event Dispatcher (v1.0.0)
-│       ├── http-message/      # CORE-04: PSR-7 HTTP Message + PSR-17 Factory (v1.0.0)
-│       ├── middleware/        # CORE-05: PSR-15 Middleware Pipeline (v1.0.0)
-│       └── router/            # CORE-06: Attribute-Based Router (v1.0.0)
+│       ├── container/         # CORE-02: PSR-11 DI Container
+│       ├── event-dispatcher/  # CORE-03: PSR-14 Event Dispatcher
+│       ├── http-message/      # CORE-04: PSR-7 HTTP Message + PSR-17 Factory
+│       ├── middleware/        # CORE-05: PSR-15 Middleware Pipeline
+│       ├── router/            # CORE-06: Attribute-Based Router
+│       ├── config/            # CORE-10: Configuration & Environment Loader
+│       ├── logger/            # CORE-09: PSR-3 Structured Logging Service
+│       └── error-handler/     # CORE-08: Global Error & Exception Handler
 ├── orchestrator/          # CORE-01: Loom — SemVer automation tool
 ├── anvil/                 # Deployment stack (Caddy + Tengine + FrankenPHP)
 ├── Architecture/          # Blueprints, ADRs, governance docs
-│   ├── ADRs/                  # 18 Architecture Decision Records
+│   ├── ADRs/                  # 19 Architecture Decision Records
 │   ├── Core/                  # 20 Core-tier blueprints
 │   ├── Hub/                   # 31 Hub-tier blueprints
 │   ├── Spoke/                 # 45 Spoke-tier blueprints (internal + external)
@@ -67,6 +70,55 @@ DGLab/
 ├── .github/workflows/     # CI: packages-ci.yml, release.yml, pr-title-lint.yml
 └── app/                   # Application tier (consumer of the framework)
 ```
+
+## Development methodology — SDLC-AGRD
+
+DGLab uses **SDLC-AGRD v3.4(3): Spiral Deepening** (ratified as [ADR-014](Architecture/ADRs/ADR-014-ratify-agrd-canonical-sdlc.md)) — a solo-tech-lead methodology designed for sustained, calibrated development without burnout.
+
+### Core concepts
+
+- **Spiral Deepening:** components are built at increasing depth across laps, not all at once. A component starts as a stub (depth 1), gains a happy path (depth 2), error paths (depth 3), observability (depth 4), production hardening (depth 5), and at-scale verification (depth 6).
+- **Interface freeze (§2.1):** a blueprint's public contract freezes the first time it's implemented at any depth. Changing a frozen interface is an ADR-gated event.
+- **Laps:** a lap is one pass through the build order (Core → Hub → Bridge → Spoke → Deploy). Each lap deepens existing components and adds new ones. Lap count is tracked in the version number.
+- **Milestones:** Milestone 0 = walking skeleton (CORE-18 Kernel wiring the full request pipeline). Milestone 1+ = feature expansion.
+- **Cooldowns (§7):** 2-week between-lap cooldowns for worklog reconciliation, OD triage, refactor backlog, and recovery. Interim: **mini cooldowns** (OD-11) — ~1-day checkpoints between Steps within a lap.
+
+### Build order (INDEX.md §5)
+
+The build order defines which components depend on which:
+
+| Step | Components | Status |
+|------|------------|--------|
+| 1 | CORE-02 (DI), CORE-03 (Events), CORE-04 (HTTP), CORE-05 (Middleware), CORE-06 (Router) | ✅ Complete |
+| 2 | CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler) | ✅ Complete |
+| 3 | CORE-18 (Kernel) | ⬜ In progress |
+| 4 | HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ⬜ Pending |
+
+See [`Architecture/CrossCutting/SDLC-AGRD.md`](Architecture/CrossCutting/SDLC-AGRD.md) for the full methodology and [`Architecture/INDEX.md`](Architecture/INDEX.md) §5 for the complete build order.
+
+## Versioning
+
+DGLab uses a **four-segment pre-MUWV version scheme** ([ADR-019](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md)):
+
+```
+v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
+```
+
+| Segment | Meaning |
+|---------|---------|
+| `MUWV` | `0` = pre-MUWV (walking skeleton not yet complete), `1` = post-MUWV |
+| `Milestone` | Milestone number + 1 (Milestone 0 = `1`, Milestone 1 = `2`) |
+| `Lap` | Lap within the milestone (resets at each milestone) |
+| `Patch` | Patch within the lap (0 = first release of the lap) |
+| `+sha` | 7-char git short SHA (build metadata, ignored for precedence) |
+
+**Current version:** `v0.1.3.0` — pre-MUWV, Milestone 0, lap 3, patch 0.
+
+**Tag formats:**
+- Monorepo releases: `v0.1.3.0+abc1234`
+- Per-tier releases: `core-v0.1.3.0+abc1234` (per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
+
+**Deprecated tags** (historical, not retagged): `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`, `core-v1.0.0`, per-package `core-*-v1.0.0`. See ADR-019 §4 for the mapping.
 
 ## Key design decisions
 
@@ -77,6 +129,7 @@ DGLab/
 | ADR-014 | SDLC-AGRD: Spiral Deepening | Solo-tech-lead methodology with calibration |
 | ADR-017 | Fiber-based cooperative runtime | FrankenPHP workers with per-Fiber scoping |
 | ADR-018 | Centralized per-tier releases | All packages in a tier share one version |
+| ADR-019 | Pre-MUWV version scheme (v0.X.Y.Z) | Honest versioning before walking skeleton is complete |
 
 See [`Architecture/ADRs/`](Architecture/ADRs/) for the full list.
 
@@ -102,7 +155,7 @@ sudo ./install.sh --trio       # production trio (Caddy + Tengine + FrankenPHP)
 ### Use a package
 
 ```bash
-composer require sovereign-stack/core-http-message:^1.0
+composer require sovereign-stack/core-http-message:^0.1
 ```
 
 ### Run the test suite
@@ -114,20 +167,14 @@ vendor/bin/phpunit --testdox
 vendor/bin/phpstan analyse
 ```
 
-## Development methodology
-
-DGLab uses **Spiral Deepening** (SDLC-AGRD v3.4): a solo-tech-lead methodology where each component is built at increasing depth across laps, with 2-week cooldowns for reconciliation. Components are frozen at their first implementation (depth 1–2) and deepened in later laps without breaking the frozen interface.
-
-See [`Architecture/CrossCutting/SDLC-AGRD.md`](Architecture/CrossCutting/SDLC-AGRD.md) for the full methodology.
-
 ## Releasing
 
-DGLab uses a **centralized per-tier release model** (ADR-018):
+DGLab uses a **centralized per-tier release model** (ADR-018) with the pre-MUWV version scheme (ADR-019):
 
-- All packages within a tier share a single SemVer version (`core-v1.0.0`, `hub-v0.1.0`)
+- All packages within a tier share a single version (`core-v0.1.3.0+abc1234`)
 - The Loom (`orchestrator/bin/loom`) analyzes path-scoped commits and computes the bump
 - Tags are created automatically by `release.yml` when `LOOM_RELEASE_ENABLED=1`
-- Monorepo releases (`release-<SemVer>`) track deployment state
+- Monorepo releases (`v0.1.3.0+abc1234`) track deployment state
 
 ## Built with
 
@@ -139,7 +186,7 @@ DGLab uses a **centralized per-tier release model** (ADR-018):
 | Tengine 3.2 | Internal LB (dynamic upstream, health checks) |
 | Composer 2.x | Dependency management |
 | PHPUnit 10.5 | Testing |
-| PHPStan 2.x | Static analysis (level 8) |
+| PHPStan 2.x | Static analysis (level max) |
 | Dart Sass | Asset compilation |
 
 ## License
@@ -148,17 +195,23 @@ MIT — see [LICENSE](LICENSE).
 
 ## Project status
 
-**Active development.** Milestone 0 (the walking skeleton) is in progress:
+**Active development. Pre-MUWV.** Milestone 0 (the walking skeleton) is in progress:
 
-- ✅ CORE-02 (DI Container)
-- ✅ CORE-03 (Event Dispatcher)
-- ✅ CORE-04 (HTTP Message)
-- ✅ CORE-05 (Middleware)
-- ✅ CORE-06 (Router)
-- ⬜ CORE-08 (Error Handler)
-- ⬜ CORE-09 (Logging)
-- ⬜ CORE-10 (Config)
-- ⬜ CORE-18 (Kernel)
-- ⬜ HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01
+### Milestone 0 components
+
+| Component | Status | PR |
+|-----------|--------|-----|
+| CORE-02 (DI Container) | ✅ Depth 2 | — |
+| CORE-03 (Event Dispatcher) | ✅ Depth 2 | — |
+| CORE-04 (HTTP Message) | ✅ Depth 2 | #127 |
+| CORE-05 (Middleware) | ✅ Depth 2 | #140 |
+| CORE-06 (Router) | ✅ Depth 2 | #141 |
+| CORE-10 (Config) | ✅ Depth 2 | #150 |
+| CORE-09 (Logger) | ✅ Depth 2 | #151 |
+| CORE-08 (Error Handler) | ✅ Depth 2 | #153 |
+| CORE-18 (Kernel) | ⬜ Not started | — |
+| HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ⬜ Not started | — |
+
+**MUWV reached when CORE-18 ships** — the Kernel wires the Step 1 + Step 2 components into the full Pulse round-trip: `ServerRequest` → middleware → router → controller → `Response`.
 
 See [`Architecture/CrossCutting/WORKLOG.md`](Architecture/CrossCutting/WORKLOG.md) for the full execution log.

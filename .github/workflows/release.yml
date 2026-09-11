@@ -1,6 +1,10 @@
 # =============================================================================
 # SemVer Release Automation — driven by the Loom (CORE-01)
 #
+# Tag format (ADR-019): v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
+#   - Monorepo releases: v0.1.3.0+abc1234
+#   - Per-tier releases: core-v0.1.3.0+abc1234
+#
 # Status: ASPIRATIONAL. This workflow is gated on the repo variable
 # `LOOM_RELEASE_ENABLED=1` (default off) and will not run until that flag is
 # flipped. P0 gaps (tag-prefix, path-scoped commits, tag push, monorepo
@@ -208,9 +212,12 @@ jobs:
           GH_TOKEN: ${{ secrets.LOOM_RELEASE_PAT }}
         run: |
           TIER="${{ matrix.tier }}"
-          TAG_NAME="${TIER}-v${{ steps.bump.outputs.new_version }}"
+          # ADR-019: tag format is <tier>-v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
+          # The +<sha> build metadata is the 7-char git short SHA of the release commit.
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          TAG_NAME="${TIER}-v${{ steps.bump.outputs.new_version }}+${SHORT_SHA}"
           gh release create "$TAG_NAME" \
-            --title "${TIER} ${{ steps.bump.outputs.new_version }}" \
+            --title "${TIER} v${{ steps.bump.outputs.new_version }}+${SHORT_SHA}" \
             --generate-notes \
             --target main
 
@@ -231,7 +238,7 @@ jobs:
           fi
 
   monorepo-release:
-    name: Monorepo Release (release-<SemVer>)
+    name: Monorepo Release (v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>)
     needs: release
     if: success() && github.event.inputs.dry_run != 'true'
     runs-on: ubuntu-latest
@@ -250,19 +257,26 @@ jobs:
       - name: Determine monorepo version
         id: mono
         run: |
-          # Get the latest release-* tag to determine the current monorepo version.
-          LATEST=$(git tag -l 'release-*' --sort=-v:refname | head -1 || true)
+          # ADR-019: monorepo version is v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
+          # Pre-MUWV (MUWV=0), Milestone 0 (Milestone=1), lap increments per release.
+          # Get the latest v0.* tag to determine the current monorepo version.
+          LATEST=$(git tag -l 'v0.*' --sort=-v:refname | head -1 || true)
           if [ -z "$LATEST" ]; then
-            NEW_VERSION="1.0.0"
+            # First release under the new scheme (ADR-019).
+            # Pre-MUWV, Milestone 0, lap 0, patch 0.
+            NEW_VERSION="0.1.0.0"
           else
-            CURRENT=${LATEST#release-}
-            # Bump based on what just happened in the tier releases.
-            # For now, use minor bump for any release (new components).
+            # Parse the four segments (strip the leading 'v' and any +sha build metadata).
+            CURRENT=${LATEST#v}
+            CURRENT=${CURRENT%%+*}
+            MUWV=$(echo "$CURRENT" | cut -d. -f1)
+            MILESTONE=$(echo "$CURRENT" | cut -d. -f2)
+            LAP=$(echo "$CURRENT" | cut -d. -f3)
+            PATCH=$(echo "$CURRENT" | cut -d. -f4)
+            # Increment lap for each new monorepo release (each tier release cycle = one lap).
             # TODO: integrate with loom to determine the correct bump level.
-            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
-            MINOR=$(echo "$CURRENT" | cut -d. -f2)
-            PATCH=$(echo "$CURRENT" | cut -d. -f3)
-            NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+            # For now, lap bump for any release (new components or fixes within Milestone 0).
+            NEW_VERSION="${MUWV}.${MILESTONE}.$((LAP + 1)).0"
           fi
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
@@ -270,12 +284,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.LOOM_RELEASE_PAT }}
         run: |
-          TAG_NAME="release-${{ steps.mono.outputs.new_version }}"
-          git tag -a "$TAG_NAME" -m "Monorepo release ${{ steps.mono.outputs.new_version }}"
+          # ADR-019: tag format is v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          TAG_NAME="v${{ steps.mono.outputs.new_version }}+${SHORT_SHA}"
+          git tag -a "$TAG_NAME" -m "Monorepo release ${{ steps.mono.outputs.new_version }}+${SHORT_SHA}"
           git push origin "$TAG_NAME"
 
           # Build release body from tier tags created in this run.
-          BODY="## Monorepo Release ${{ steps.mono.outputs.new_version }}\n\n"
+          BODY="## Monorepo Release v${{ steps.mono.outputs.new_version }}+${SHORT_SHA}\n\n"
           BODY+="### Tier versions\n\n"
           for TIER in core hub bridge spoke; do
             TIER_TAG=$(git tag -l "${TIER}-v*" --sort=-v:refname | head -1 || true)
@@ -287,7 +303,7 @@ jobs:
           done
 
           gh release create "$TAG_NAME" \
-            --title "DGLab ${{ steps.mono.outputs.new_version }}" \
+            --title "DGLab v${{ steps.mono.outputs.new_version }}+${SHORT_SHA}" \
             --notes "$(printf '%b' "$BODY")" \
             --target main
 

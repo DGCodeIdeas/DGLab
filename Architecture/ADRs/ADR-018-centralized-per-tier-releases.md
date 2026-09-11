@@ -1,8 +1,14 @@
 # ADR-018: Centralized per-tier release model
 
-**Status:** Accepted
+**Status:** Accepted (extended by ADR-019)
 **Date:** 2026-09-08
 **Decided by:** Architecture lead (DGCI)
+
+> **Note:** This ADR established the per-tier release model. The tag format
+> (`<tier>-v<X.Y.Z>`) was subsequently revised by [ADR-019](ADR-019-pre-muwv-version-scheme.md)
+> to use the four-segment pre-MUWV scheme (`<tier>-v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>`).
+> The model described here (per-tier centralized SemVer, monorepo release snapshots,
+> composer.json version sync) is unchanged — only the tag format has evolved.
 
 ## Context
 
