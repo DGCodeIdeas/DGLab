@@ -398,3 +398,43 @@ Stage Summary:
 - Mini cooldowns are now the codified interim operating mode. The first one will be taken after Step 2 (CORE-10/09/08) ships, before Step 3 (CORE-18 Kernel).
 - AGRD §7 2-week cooldown text preserved unchanged.
 - Ready to start Step 2: CORE-10 (Config) → CORE-09 (Logger) → CORE-08 (Error Handler), in dependency order. Build order is Step 2 per `INDEX.md` §5.
+
+---
+Task ID: 20
+Agent: main (Super Z)
+Task: Milestone 0 — CORE-10 Configuration & Environment Loader (depth 2, first component of Step 2 triplet)
+
+Work Log:
+- Read `CORE-10.md` blueprint (28 lines): ConfigRepository with dot-notation, EnvLoader for .env parsing, Processor for ${VAR} interpolation. CI criteria: required-key enforcement, < 0.01ms nested-key resolution.
+- Created `packages/core/config/` with standard Composer layout: composer.json (v1.0.0, PHP 8.3+, ext-mbstring), phpunit.xml.dist, phpstan.neon (bleedingEdge, level max), ci/run.php, README.md.
+- Implemented 9 PHP source files in `src/`:
+  - `ConfigInterface.php` — `get`/`getOrFail`/`has`/`all`. Frozen per SDLC-AGRD §2.1.
+  - `ConfigBuilderInterface.php` — `loadFile`/`withOverride`/`build`. Frozen per §2.1. Builder freezes after `build()`.
+  - `EnvLoaderInterface.php` — `load(path): array<string, string>`. Frozen per §2.1.
+  - `ConfigRepository.php` — immutable, dot-notation traversal, worker-scoped per ADR-017. `segments()` rejects empty keys and consecutive-dot keys.
+  - `ConfigBuilder.php` — merges PHP config files (recursive) + `$_ENV` (string values only, dot-converted `APP_URL` -> `app.url`) + inline overrides. `assertValidKey()` validates at `withOverride()` time (not deferred to `build()`).
+  - `EnvLoader.php` — parses `.env` files into `$_ENV`. Single quotes verbatim, double quotes interpolate `${VAR}`. `export` prefix supported. Environment wins over .env file (never overwrites existing `$_ENV`). Writes to `$_ENV` only — never `getenv()` (thread-safety per blueprint).
+  - `Exception/MissingConfigurationException.php` — `getOrFail()` throws this.
+  - `Exception/InvalidConfigFileException.php` — missing file / non-array return.
+  - `Exception/InvalidEnvFileException.php` — missing .env file.
+  - `Exception/UndefinedInterpolationException.php` — reserved for strict mode (not yet wired).
+- Wrote 5 test suites: `ConfigRepositoryTest` (16 tests), `ConfigBuilderTest` (14 tests), `EnvLoaderTest` (14 tests), `ConfigSecurityTest` (7 tests), `ConfigBenchTest` (4 tests). Total 55 tests, 100+ assertions.
+- Created 4 fixture files: `app.php` (typical config), `local.php` (override demonstrating recursive merge), `not_array.php` (error case), `.env.test` (env parsing fixtures with comments, quotes, export prefix, interpolation).
+- Extended `.github/workflows/packages-ci.yml` matrix to include `core/config` (7 packages total).
+- **6 CI iterations** to resolve:
+  1. `mergeRecursive()` — `array<string, mixed>` vs `array<mixed, mixed>` widening. Fixed with `@var` annotations and `is_string($key)` runtime check (later removed when PHPStan flagged as redundant).
+  2. `EnvLoader::interpolate()` closure — "returns mixed" because PHPStan 2.x can't verify `$_ENV[$varName] ?? $m[0]` returns string. Extracted to named method `resolveEnvVar()`.
+  3. `is_string($envValue)` in `ConfigBuilder::build()` — flagged as "always true" by PHPStan (treats `$_ENV` stub inconsistently between foreach iteration and direct access). Removed is_string, but this broke `testNonStringEnvValuesAreSkipped`.
+  4. `is_string($existing)` in `EnvLoader::resolveEnvVar()` — also flagged as "always true". Replaced with `array_key_exists` guard + `@var string` annotation.
+  5. `@phpstan-ignore-next-line` on `is_string($envValue)` — failed with "No error to ignore is reported on line 77" because the previous ConfigBuilder changes had altered PHPStan's flow analysis. Removed the suppression; is_string check now passes without complaint.
+  6. `testOverrideKeyCannotTraverseUpViaEmptySegments` and `testOverrideKeyCannotBeEmpty` — expected `withOverride()` to throw immediately. Added `assertValidKey()` validation at `withOverride()` time (was previously deferred to `build()` via `setNested()`).
+- Tagged: per ADR-018, no separate `core-config-v1.0.0` tag — `core-v1.0.0` centralized tier tag covers this package.
+- PR #150 merged as `265ddb6`.
+
+Stage Summary:
+- CORE-10 complete at depth 2. PHPStan level max clean. All 55 tests pass.
+- `ConfigInterface`, `ConfigBuilderInterface`, `EnvLoaderInterface` frozen per SDLC-AGRD §2.1.
+- Worker-scoped per ADR-017: `ConfigRepository` is immutable, `ConfigBuilder` freezes after `build()`.
+- Performance target met: nested-key resolution benchmarked at < 10 µs (target was < 0.01ms = 10 µs).
+- Elapsed: ~2 hours across 6 CI iterations.
+- Next: CORE-09 (PSR-3 Logging) — depends on CORE-10 ConfigInterface for log level + destination configuration.
