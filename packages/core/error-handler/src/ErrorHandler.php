@@ -28,12 +28,6 @@ final class ErrorHandler implements ErrorHandlerInterface
 {
     private bool $registered = false;
 
-    /** @var callable|null The previous exception handler, restored on unregister(). */
-    private $previousExceptionHandler = null;
-
-    /** @var callable|null The previous error handler, restored on unregister(). */
-    private $previousErrorHandler = null;
-
     /** @var string|null The original display_errors ini value, restored on unregister(). */
     private ?string $originalDisplayErrors = null;
 
@@ -60,8 +54,8 @@ final class ErrorHandler implements ErrorHandlerInterface
         $this->originalDisplayErrors = ini_get('display_errors') ?: '';
         ini_set('display_errors', 'Off');
 
-        $this->previousExceptionHandler = set_exception_handler($this->handleException(...));
-        $this->previousErrorHandler = set_error_handler($this->handleError(...));
+        set_exception_handler($this->handleException(...));
+        set_error_handler($this->handleError(...));
         register_shutdown_function($this->handleFatal(...));
 
         $this->registered = true;
@@ -137,11 +131,11 @@ final class ErrorHandler implements ErrorHandlerInterface
         }
 
         $throwable = new \ErrorException(
-            $error['message'] ?? 'Unknown fatal error',
+            $error['message'],
             0,
-            $error['type'] ?? E_ERROR,
-            $error['file'] ?? '',
-            $error['line'] ?? 0,
+            $error['type'],
+            $error['file'],
+            $error['line'],
         );
 
         $this->handleException($throwable);
@@ -167,13 +161,13 @@ final class ErrorHandler implements ErrorHandlerInterface
      *
      * Fatal errors and runtime exceptions are logged at ERROR.
      * Throwable types that are likely bugs (TypeError, ArgumentCountError)
-     * are logged at CRITICAL.
+     * are logged at CRITICAL. ArgumentCountError extends TypeError, so
+     * the TypeError arm catches both.
      */
     private function logThrowable(Throwable $throwable): void
     {
         $level = match (true) {
-            $throwable instanceof \TypeError => LogLevel::CRITICAL,
-            $throwable instanceof \ArgumentCountError => LogLevel::CRITICAL,
+            $throwable instanceof \TypeError => LogLevel::CRITICAL, // Also catches ArgumentCountError.
             $throwable instanceof \Error => LogLevel::CRITICAL,
             default => LogLevel::ERROR,
         };
