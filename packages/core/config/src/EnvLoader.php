@@ -130,12 +130,20 @@ final class EnvLoader implements EnvLoaderInterface
         // (could be a literal dollar sign) and is intentionally NOT expanded.
         return preg_replace_callback(
             '/\$\{([A-Z_][A-Z0-9_]*)\}/i',
-            static function (array $m): string {
-                $varName = $m[1];
-                // Undefined ${VAR} is left literal rather than emptied.
-                return $_ENV[$varName] ?? $m[0];
-            },
+            fn (array $m): string => $this->resolveEnvVar($m[1], $m[0]),
             $value,
         ) ?? $value;
+    }
+
+    /**
+     * Look up an environment variable, returning $fallback if unset.
+     *
+     * Extracted from the interpolate() closure so the return type is
+     * explicit and verifiable by PHPStan.
+     */
+    private function resolveEnvVar(string $varName, string $fallback): string
+    {
+        $existing = $_ENV[$varName] ?? null;
+        return is_string($existing) ? $existing : $fallback;
     }
 }
