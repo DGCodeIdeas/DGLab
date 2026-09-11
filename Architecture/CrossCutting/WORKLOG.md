@@ -512,3 +512,84 @@ Stage Summary:
 - Elapsed: ~2 hours across 5 CI iterations + 1 process mistake (wrong-branch PR).
 - **Step 2 triplet complete:** CORE-10 (Config) + CORE-09 (Logger) + CORE-08 (Error Handler) all shipped, tested, and frozen.
 - **Mini cooldown checkpoint:** per OD-11, this is the natural mini cooldown point between Step 2 and Step 3 (CORE-18 Kernel). The cooldown should cover: (a) worklog reconciliation for the triplet — DONE (this entry + Tasks 20/21), (b) interface-freeze audit against INDEX.md §5.1, (c) refactor backlog triage for the just-shipped triplet, (d) optional lint-scope expansion.
+
+---
+Task ID: 23
+Agent: main (Super Z)
+Task: ADR-019 pre-MUWV version scheme (v0.X.Y.Z+sha) + AGRD application throughout the GitHub repo
+
+Work Log:
+- User directive: "I think DGLab 1.3.0 -> v0.1.3.0 : v<Minimally Usable Working Version>+.... Also apply the AGRD throughout the Github repo (Readme.md...etc, PRs, Issues...etc)"
+- Asked clarifying questions via AskUserQuestion — user resent the same message without answering, signalling "just proceed with sensible defaults". Proceeded with defaults.
+- Read current state: README.md (165 lines), CONTRIBUTING.md (82 lines), PR template, Issue templates (bug_report, feature_request), ADR-018, release.yml (307 lines), Loom RepoManager.php.
+
+## ADR-019: Pre-MUWV version scheme
+
+- Authored `Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md` (200+ lines).
+- **Scheme:** `v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>`
+  - MUWV segment: 0 = pre-MUWV, 1 = post-MUWV (flips once, when CORE-18 ships and Milestone 0 success criterion is met)
+  - Milestone segment: Milestone number + 1 (Milestone 0 = 1, Milestone 1 = 2)
+  - Lap segment: lap within milestone (resets at each milestone)
+  - Patch segment: patch within lap (0 = first release of lap)
+  - +sha: 7-char git short SHA (build metadata, ignored for precedence per SemVer §10)
+- **Tag formats:**
+  - Monorepo: `v0.1.3.0+abc1234`
+  - Per-tier: `core-v0.1.3.0+abc1234` (tier prefix preserved from ADR-018)
+- **Existing tags grandfathered** as deprecated aliases — not retagged, to avoid breaking existing composer constraints and external clones. Documented mapping in ADR-019 §4.
+- **MUWV flip trigger:** Milestone 0 success criterion per SDLC-AGRD §4 (CORE-18 Kernel wiring the full Pulse round-trip).
+- **Composer version field:** drops the +sha build metadata (Composer doesn't support it in the `version` field). The +sha appears only in git tags and GitHub Release titles.
+
+## AGRD application throughout the repo
+
+### README.md (rewrite)
+- New "Development methodology — SDLC-AGRD" section: spiral deepening, interface freeze, laps, milestones, cooldowns, mini cooldowns (OD-11), build order Steps table with current status.
+- New "Versioning" section documenting v0.X.Y.Z+sha scheme with segment-meaning table.
+- Updated "Releasing" section to reference ADR-019 + new tag format.
+- Updated "Key design decisions" table: added ADR-019 row.
+- Updated "Project status" section: corrected Milestone 0 component table (CORE-08/09/10 now shipped, with PR numbers; CORE-18 not started).
+- Updated "Repository structure" section: added config/, logger/, error-handler/ packages; updated ADR count to 19.
+
+### CONTRIBUTING.md (rewrite)
+- New "Development methodology — SDLC-AGRD" section with build order Steps table, laps, cooldowns, mini cooldowns (OD-11), when-to-take guidance.
+- Updated "Release process" section: new tag format + deprecated tags documentation.
+- Added WORKLOG discipline reminder in PR process (append at implementation time, not retroactively).
+
+### PR template (.github/PULL_REQUEST_TEMPLATE.md)
+- New "AGRD classification" section: Build order Step, Component ID, Depth, Lap, mini cooldown taken Y/N, interfaces frozen Y/N.
+- Added WORKLOG entry checkbox in Verification section.
+
+### Issue templates
+- `bug_report.md`: AGRD classification (Type, Component, Step, Depth, frozen interface affected) + DGLab version field (v0.X.Y.Z+sha).
+- `feature_request.md`: AGRD classification (Type with `feature`/`deepening`/`lap-marker`/`refactor` options, Component, Step, target depth, frozen interface affected).
+
+### ADR-018
+- Added cross-reference note at top pointing to ADR-019 for the revised tag format.
+- Status changed from "Accepted" to "Accepted (extended by ADR-019)".
+
+### release.yml
+- Updated header comment with new tag format examples.
+- Tier release tag: `<tier>-v<version>+<short-sha>` (was `<tier>-v<version>`). Added `SHORT_SHA=$(git rev-parse --short=7 HEAD)`.
+- Monorepo release tag: `v<version>+<short-sha>` (was `release-<version>`). Dropped the `release-` prefix.
+- Monorepo version computation: parse latest `v0.*` tag (instead of `release-*`), strip +sha, parse four segments, bump lap segment.
+- Fixed pre-existing typo: `branches: ain]` → `branches: [main]` (this was a corrupted character in the original file that displayed as `ain]` but was actually `[main]` at the byte level — the fix was a no-op at the byte level but the display issue is resolved).
+
+### Loom (orchestrator/src/RepoManager.php)
+- `tag()` and `pushTag()` now accept four-segment versions (ADR-019) as well as legacy three-segment SemVer.
+- New `isValidVersion()` private method with regex matching both formats:
+  - ADR-019: `\d+\.\d+\.\d+\.\d+` with optional `+<build-metadata>`
+  - Legacy: `\d+\.\d+\.\d+` with optional `+<build-metadata>`
+- `buildTagName()` preserves build metadata in the tag name per SemVer §10.
+- Preserved the original "Invalid SemVer format" error message wording for backward compatibility with existing PHPUnit tests.
+
+## CI iteration
+- 1 CI iteration: orchestrator PHPUnit failed because error message changed from "Invalid SemVer" to "Invalid version format". Restored original wording.
+
+Stage Summary:
+- ADR-019 filed and merged (PR #154, commit `cca44c0`).
+- 9 files changed, 468 insertions, 87 deletions.
+- Version scheme is now `v0.X.Y.Z+sha` — honest about pre-MUWV status.
+- AGRD is now visible throughout the repo: README, CONTRIBUTING, PR template, Issue templates, ADR-018 cross-reference.
+- Loom supports four-segment versions; release.yml ready to tag in the new format.
+- Existing tags (v1.0.0, release-1.X.0, core-v1.0.0, per-package core-*-v1.0.0) remain as deprecated aliases.
+- Next release will be `v0.1.3.0+<sha>` — pre-MUWV, Milestone 0, lap 3, patch 0.
+- Mini cooldown continues: worklog reconciliation done, interface-freeze audit next.
