@@ -143,12 +143,17 @@ final class EnvLoader implements EnvLoaderInterface
      */
     private function resolveEnvVar(string $varName, string $fallback): string
     {
-        // Guard with array_key_exists so PHPStan can statically verify the
-        // subsequent array access returns a known-present value (string per
-        // $_ENV stubs) rather than falling back to mixed.
         if (!array_key_exists($varName, $_ENV)) {
             return $fallback;
         }
-        return $_ENV[$varName];
+        // $_ENV is stubbed as array<string, mixed> in PHPStan 2.x — direct
+        // access returns mixed even after array_key_exists narrows the key.
+        // Runtime values are virtually always strings (env vars from .env
+        // files, shell environment, or $_SERVER population). Annotate as
+        // string to satisfy PHPStan; non-string values would surface as
+        // a TypeError from the caller's string context.
+        /** @var string $value */
+        $value = $_ENV[$varName];
+        return $value;
     }
 }
