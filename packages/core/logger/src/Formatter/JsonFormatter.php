@@ -35,16 +35,13 @@ final class JsonFormatter implements FormatterInterface
     public function format(LogRecord $record): string
     {
         $payload = [
-            'timestamp' => $record->timestamp->format(DateTimeInterface::ATOM),
+            'timestamp' => $record->timestamp->format(\DateTimeInterface::ATOM),
             'level' => $record->level,
             'message' => $this->interpolate($record->message, $record->context),
         ];
 
         // Render context (excluding exception, which is structured separately).
         foreach ($record->context as $key => $value) {
-            if (!is_string($key)) {
-                continue;
-            }
             if ($key === 'exception') {
                 continue;
             }
@@ -53,9 +50,6 @@ final class JsonFormatter implements FormatterInterface
         }
 
         foreach ($record->extra as $key => $value) {
-            if (!is_string($key)) {
-                continue;
-            }
             $targetKey = array_key_exists($key, $payload) ? "{$key}_extra" : $key;
             $payload[$targetKey] = $value;
         }
@@ -93,7 +87,7 @@ final class JsonFormatter implements FormatterInterface
 
         $replace = [];
         foreach ($context as $key => $value) {
-            if (!is_string($key) || $value instanceof Throwable) {
+            if ($value instanceof Throwable) {
                 continue;
             }
             $replace['{' . $key . '}'] = match (true) {

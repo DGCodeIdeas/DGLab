@@ -19,7 +19,6 @@ namespace SovereignStack\Core\Logger;
  * Frozen per SDLC-AGRD §2.1.
  *
  * @package SovereignStack\Core\Logger
- * @extends \Psr\Log\LoggerInterface
  */
 interface LoggerInterface extends \Psr\Log\LoggerInterface
 {

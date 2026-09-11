@@ -86,9 +86,6 @@ final class LineFormatter implements FormatterInterface
 
         $replace = [];
         foreach ($context as $key => $value) {
-            if (!is_string($key)) {
-                continue;
-            }
             if ($value instanceof Throwable) {
                 // Exceptions are rendered separately — don't toString them inline.
                 continue;
@@ -109,9 +106,6 @@ final class LineFormatter implements FormatterInterface
     {
         $parts = [];
         foreach ($data as $key => $value) {
-            if (!is_string($key)) {
-                continue;
-            }
             $rendered = match (true) {
                 is_scalar($value) || $value === null => var_export($value, true),
                 default => json_encode($value, JSON_THROW_ON_ERROR) ?: 'null',
