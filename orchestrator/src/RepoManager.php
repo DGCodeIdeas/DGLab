@@ -116,7 +116,7 @@ class RepoManager
     public function tag(string $version, string $message = ''): bool
     {
         if (!$this->isValidVersion($version)) {
-            throw new \RuntimeException("Invalid version format: {$version}");
+            throw new \RuntimeException("Invalid SemVer format: {$version}");
         }
 
         $tagName = $this->buildTagName($version);
@@ -155,7 +155,7 @@ class RepoManager
     public function pushTag(string $version, string $remoteUrl): bool
     {
         if (!$this->isValidVersion($version)) {
-            throw new \RuntimeException("Invalid version format: {$version}");
+            throw new \RuntimeException("Invalid SemVer format: {$version}");
         }
 
         $tagName = $this->buildTagName($version);
