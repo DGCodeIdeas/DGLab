@@ -378,3 +378,23 @@ Stage Summary:
 - **Milestone 0 walking skeleton triplet complete:** CORE-04 + CORE-05 + CORE-06 all shipped, tested, tagged, and frozen. A PSR-7 `ServerRequest` can now flow through the middleware pipeline, match a route, and dispatch to a controller — the full synchronous-radial Pulse trace in code.
 - Elapsed: ~2 hours across 3 CI iterations.
 - PR #141, merge `27c829f1fc372e8990eced1f295a1dec9b841d30`.
+
+---
+Task ID: 19
+Agent: main (Super Z)
+Task: Codify mini-cooldown policy as OD-11; prepare for Step 2 (CORE-10/09/08)
+
+Work Log:
+- User directive refined earlier "skip all cooldowns until next year" to "mini cooldowns are ok" — short integration checkpoints within a lap now acceptable.
+- Filed OD-11 in `Architecture/OPEN-DECISIONS.md` documenting the mini-cooldown policy: ~1 working day (≤4 hours), scoped to worklog reconciliation + interface-freeze audit + just-shipped refactor triage + (optionally) trivial lint-scope expansion. Does NOT replace §7 between-lap cooldowns, does NOT consume OD-triage time, does NOT count toward §7 cooldown total.
+- Decided NOT to author an ADR: this is an operating-mode refinement, not an architectural change. Will be re-evaluated when §7 cooldowns are reinstated next year.
+- Created branch `chore/od-11-mini-cooldowns`, committed OD-11, pushed.
+- Opened PR #149, CI passed (architecture-lint + pr-title-lint), squash-merged as `a35d68e`.
+- Synced local `main` to `a35d68e`.
+- Disabled `core.fileMode` in git config to suppress spurious 1600-file mode-bit diff caused by filesystem remount (100644 → 100755 churn on every checkout).
+
+Stage Summary:
+- OD-11 filed and merged (PR #149, commit `a35d68e39e`).
+- Mini cooldowns are now the codified interim operating mode. The first one will be taken after Step 2 (CORE-10/09/08) ships, before Step 3 (CORE-18 Kernel).
+- AGRD §7 2-week cooldown text preserved unchanged.
+- Ready to start Step 2: CORE-10 (Config) → CORE-09 (Logger) → CORE-08 (Error Handler), in dependency order. Build order is Step 2 per `INDEX.md` §5.
