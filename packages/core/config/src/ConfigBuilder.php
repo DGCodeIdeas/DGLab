@@ -95,6 +95,9 @@ final class ConfigBuilder implements ConfigBuilderInterface
      * Recursively merge two config arrays. $right wins on key collision;
      * when both sides are arrays, they merge recursively.
      *
+     * Non-string keys are rejected — configuration trees use only string
+     * keys (PHP-int-numeric keys would be ambiguous with positional arrays).
+     *
      * @param array<string, mixed> $left
      * @param array<string, mixed> $right
      *
@@ -103,12 +106,22 @@ final class ConfigBuilder implements ConfigBuilderInterface
     private function mergeRecursive(array $left, array $right): array
     {
         foreach ($right as $key => $value) {
+            if (!is_string($key)) {
+                throw new \UnexpectedValueException(
+                    'Configuration array keys must be strings; got ' . get_debug_type($key),
+                );
+            }
+
             if (
                 array_key_exists($key, $left)
                 && is_array($left[$key])
                 && is_array($value)
             ) {
-                $left[$key] = $this->mergeRecursive($left[$key], $value);
+                /** @var array<string, mixed> $leftNested */
+                $leftNested = $left[$key];
+                /** @var array<string, mixed> $rightNested */
+                $rightNested = $value;
+                $left[$key] = $this->mergeRecursive($leftNested, $rightNested);
             } else {
                 $left[$key] = $value;
             }
