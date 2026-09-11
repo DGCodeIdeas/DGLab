@@ -132,10 +132,8 @@ final class EnvLoader implements EnvLoaderInterface
             '/\$\{([A-Z_][A-Z0-9_]*)\}/i',
             static function (array $m): string {
                 $varName = $m[1];
-                $existing = $_ENV[$varName] ?? null;
-                // Only string values can be substituted; non-string or
-                // missing leaves the ${VAR} literal in place.
-                return is_string($existing) ? $existing : $m[0];
+                // Undefined ${VAR} is left literal rather than emptied.
+                return $_ENV[$varName] ?? $m[0];
             },
             $value,
         ) ?? $value;
