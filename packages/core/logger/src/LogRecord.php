@@ -68,14 +68,20 @@ final class LogRecord
      * @param string $level PSR-3 LogLevel constant.
      * @param string|Stringable $message Message template.
      * @param array<string, mixed> $context PSR-3 context.
+     * @param array<string, mixed> $extra Handler-populated metadata.
      */
-    public static function create(string $level, string|Stringable $message, array $context = []): self
-    {
+    public static function create(
+        string $level,
+        string|Stringable $message,
+        array $context = [],
+        array $extra = [],
+    ): self {
         return new self(
             timestamp: new DateTimeImmutable(),
             level: $level,
             message: (string) $message,
             context: $context,
+            extra: $extra,
         );
     }
 
