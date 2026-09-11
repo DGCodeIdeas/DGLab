@@ -124,24 +124,29 @@ final class HelloWorldTest extends TestCase
     }
 
     /**
-     * The kernel dispatches lifecycle events.
+     * The kernel dispatches BootEvent at the end of boot().
      *
-     * BootEvent is dispatched at the end of boot(). We can verify this by
-     * registering a listener that sets a flag.
+     * We verify this indirectly: BootEvent is dispatched as the LAST step
+     * of boot() (after container compile, after Bootstrappers run). If
+     * boot() returns without throwing AND state transitions to Booted,
+     * the BootEvent dispatch step was reached. A listener that throws
+     * during BootEvent dispatch would surface as an exception out of
+     * boot() (CORE-03 logs and continues, but a throw out of dispatch
+     * propagates).
+     *
+     * TODO (depth-2 expansion): expose ListenerProvider on Kernel or
+     * bind into container during boot so tests can register a real
+     * BootEvent listener and assert it fired. Tracked in WORKLOG Task 25.
      */
     public function testBootEventIsDispatched(): void
     {
-        // We need a fresh kernel for this test because setUp() already booted.
+        // Fresh kernel (setUp() already booted one for other tests).
         $kernel = TestKernelFactory::create();
-
-        $bootEventDispatched = false;
-        $listenerProvider = $kernel->getEventDispatcher();
-
-        // We can't easily add listeners to the ListenerProvider after construction.
-        // Instead, we verify the event was dispatched by checking that boot()
-        // completed without error and the state is Booted.
         $kernel->boot();
 
+        // BootEvent fires as step 8 of boot(); reaching Booted state means
+        // the dispatch step was executed. If dispatch had thrown, boot()
+        // would have caught it and transitioned to Terminated instead.
         self::assertSame(KernelState::Booted, $kernel->getState());
 
         $kernel->terminate();
