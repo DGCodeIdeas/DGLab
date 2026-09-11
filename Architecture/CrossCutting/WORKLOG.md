@@ -593,3 +593,73 @@ Stage Summary:
 - Existing tags (v1.0.0, release-1.X.0, core-v1.0.0, per-package core-*-v1.0.0) remain as deprecated aliases.
 - Next release will be `v0.1.3.0+<sha>` — pre-MUWV, Milestone 0, lap 3, patch 0.
 - Mini cooldown continues: worklog reconciliation done, interface-freeze audit next.
+
+---
+Task ID: 24
+Agent: main (Super Z)
+Task: Actively deprecate old tags — register, composer.json migration, GitHub release notes
+
+Work Log:
+- User directive: "Deprecate other tags...etc" — ADR-019 (Task 23) grandfathered the old tags passively; this task makes the deprecation active.
+- Inventoried 9 deprecated tags on remote: v1.0.0, release-1.0.0/1.1.0/1.2.0/1.3.0, core-event-dispatcher-v1.0.0, core-http-message-v1.0.0, core-middleware-v1.0.0, core-router-v1.0.0.
+- Inventoried 8 package composer.json files: all had "version": "1.0.0" and sovereign-stack/* constraints at "^1.0".
+
+## What shipped (PR #155, commit 6ab198e)
+
+### 1. Architecture/DEPRECATED_TAGS.md (new file)
+- Comprehensive deprecation register: all 9 tags with replacement + reason
+- Migration guide for consumers (composer require ^0.1), deployments (git checkout v0.X.Y.Z+sha), CI/CD pipelines (git tag -l 'v0.*')
+- Enforcement section: composer.json migration + release.yml + PR review
+
+### 2. composer.json migration (8 packages)
+All packages/core/*/composer.json updated:
+- "version": "1.0.0" → "0.1.0.0"
+- sovereign-stack/* require constraints: "^1.0" → "^0.1"
+
+Packages affected: config, container, error-handler, event-dispatcher, http-message, logger, middleware, router.
+
+### 3. GitHub Release deprecation notes (9 tags)
+Via GitHub API, added deprecation release notes to each of the 9 deprecated tags:
+- v1.0.0 — created new deprecation release (no existing release)
+- release-1.0.0 — updated existing release with deprecation notice
+- release-1.1.0 — updated existing release
+- release-1.2.0 — updated existing release
+- release-1.3.0 — updated existing release
+- core-event-dispatcher-v1.0.0 — created new deprecation release
+- core-http-message-v1.0.0 — updated existing release
+- core-middleware-v1.0.0 — updated existing release
+- core-router-v1.0.0 — updated existing release
+
+Each release note includes:
+- ⚠️ DEPRECATED header
+- Reason for deprecation
+- Replacement tag (v0.X.Y.Z+sha format)
+- Link to ADR-019
+- Link to DEPRECATED_TAGS.md migration guide
+- Explanation that the tag is not deleted (backward compat)
+- Enforcement mechanism
+
+### 4. CI lint check — attempted then removed
+- Initially added checkDeprecatedTags() to Architecture/Verification/lint/run.php
+- Check flagged 19 historical references in Architecture/ docs, blueprints, WORKLOG, MEMORY, INDEX, ADRs
+- Adjusted exempt list — but the lint's root is Architecture/, so it only scans Architecture/ files. Exempting the entire Architecture/ directory made the check useless.
+- Removed the check entirely. Deprecation enforced via:
+  1. composer.json migration (all packages at 0.1.0.0)
+  2. release.yml (creates new-format tags only)
+  3. PR review (reviewers reject new references in source code)
+  4. DEPRECATED_TAGS.md (documentation)
+
+### 5. README.md + CONTRIBUTING.md
+Updated deprecated-tags sections to point to Architecture/DEPRECATED_TAGS.md and document the enforcement mechanism (composer.json + release.yml + PR review).
+
+## CI iterations
+- 1 CI iteration: Architecture Lint failed because checkDeprecatedTags() flagged 19 historical references. Fixed by removing the check (over-engineered for solo project).
+
+Stage Summary:
+- PR #155 merged (commit 6ab198e).
+- 11 files changed, 145 insertions, 19 deletions.
+- 9 deprecated tags now have deprecation release notes on GitHub.
+- All 8 package composer.json files migrated to 0.1.0.0 / ^0.1.
+- DEPRECATED_TAGS.md is the canonical deprecation register with migration guide.
+- Old tags remain in git history (not deleted) but are actively marked as deprecated on GitHub.
+- Next: CORE-18 (Kernel) — the final component needed to reach MUWV and flip the version scheme from v0.X.Y.Z to v1.X.Y.Z.
