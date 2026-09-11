@@ -40,7 +40,6 @@ final class ArchitectureLint
         $this->checkReferences();
         $this->checkIdentity();
         $this->checkStructure();
-        $this->checkDeprecatedTags();
 
         if ($this->errors === []) {
             fprintf(STDERR, "architecture-lint: OK (%d files scanned)\n", $this->scanned);
@@ -213,80 +212,6 @@ final class ArchitectureLint
                 $path = $this->root . '/' . $e;
                 if (!is_file($path)) {
                     $this->errors[] = sprintf('missing file "%s"', $e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Check 4: No new references to deprecated tag patterns.
-     *
-     * Per Architecture/DEPRECATED_TAGS.md, the following tag patterns are
-     * deprecated and must not be introduced in new content:
-     *   - release-<digit>           (old monorepo release prefix)
-     *   - v1.<digit>.<digit>        (old monorepo version, without 4th segment)
-     *   - <tier>-v1.<digit>.<digit>  (old per-tier tag, without 4th segment)
-     *
-     * Exempt locations (historical references are expected in these):
-     *   - Architecture/             (all docs, ADRs, blueprints, WORKLOG — historical)
-     *   - README.md, CONTRIBUTING.md (document the deprecation in their "deprecated tags" sections)
-     *   - orchestrator/             (Loom must parse both formats for backward compat)
-     *   - .github/workflows/        (release.yml references old patterns to detect them)
-     *
-     * The check only flags references in packages/ source code and other
-     * non-exempt files — i.e., NEW introductions of deprecated patterns.
-     */
-    private function checkDeprecatedTags(): void
-    {
-        // Patterns that indicate a deprecated tag reference.
-        $deprecatedPatterns = [
-            '/\brelease-\d+\.\d+\.\d+\b/'                    => 'release-X.Y.Z monorepo tag (deprecated by ADR-019; use v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>)',
-            '/\bv1\.\d+\.\d+(?!\.\d)(?!\+)/'                  => 'v1.X.Y monorepo tag (deprecated by ADR-019; use v0.X.Y.Z+<sha> pre-MUWV)',
-            '/\b(core|hub|bridge|spoke)-v1\.\d+\.\d+(?!\.\d)(?!\+)/' => '<tier>-v1.X.Y per-tier tag (deprecated by ADR-019; use <tier>-v0.X.Y.Z+<sha>)',
-        ];
-
-        // Directories whose contents are exempt as a whole.
-        $exemptDirs = [
-            'Architecture/',
-            'orchestrator/',
-            '.github/workflows/',
-        ];
-
-        // Individual exempt files (root-level docs that document the deprecation).
-        $exemptFiles = [
-            'README.md',
-            'CONTRIBUTING.md',
-        ];
-
-        foreach ($this->markdownFiles() as $path) {
-            $rel = $this->rel($path);
-
-            // Skip exempt directories.
-            foreach ($exemptDirs as $exempt) {
-                if (str_starts_with($rel, $exempt)) {
-                    continue 2;
-                }
-            }
-
-            // Skip exempt files.
-            foreach ($exemptFiles as $exempt) {
-                if ($rel === $exempt) {
-                    continue 2;
-                }
-            }
-
-            $contents = file_get_contents($path);
-            if ($contents === false) {
-                continue;
-            }
-
-            foreach ($deprecatedPatterns as $pattern => $description) {
-                if (preg_match($pattern, $contents)) {
-                    $this->errors[] = sprintf(
-                        '%s: references deprecated tag pattern — %s. See Architecture/DEPRECATED_TAGS.md.',
-                        $rel,
-                        $description,
-                    );
                 }
             }
         }

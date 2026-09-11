@@ -105,20 +105,15 @@ LATEST=$(git tag -l 'v0.*' --sort=-v:refname | head -1)
 
 The `release.yml` workflow has already been updated to use the new pattern — see [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
-## CI enforcement
+## Enforcement
 
-The `architecture-lint.yml` workflow includes a check that flags any new reference to a deprecated tag pattern in source files or documentation. The check matches:
+Deprecation is enforced through three mechanisms:
 
-- `release-<digit>` — the old monorepo release prefix
-- `v1.0.0`, `v1.1.0`, etc. — the old monorepo version tags (specifically `v1.*` without a fourth segment)
-- `core-v1.0.0` — the old per-tier tag (specifically `<tier>-v1.*` without a fourth segment)
-- `core-*-v1.0.0` — the old per-package tags (already deprecated by ADR-018)
+1. **`composer.json` migration** — all package `version` fields now use `0.1.0.0`; all `sovereign-stack/*` require constraints use `^0.1`. New packages must follow this pattern.
+2. **`release.yml`** — the release workflow creates tags in the new `v0.X.Y.Z+sha` / `<tier>-v0.X.Y.Z+sha` format only. No new tags in the old format can be created by the automated release pipeline.
+3. **PR review** — reviewers should reject PRs that introduce new references to deprecated tag patterns in source code or package `composer.json` files. Historical references in `Architecture/` docs, `README.md`, and `CONTRIBUTING.md` (which document the deprecation) are expected and allowed.
 
-The check allows references to these patterns in:
-- This file (`DEPRECATED_TAGS.md`)
-- `ADR-018` and `ADR-019` (the ADRs that established and superseded the schemes)
-- Lines starting with `#` or `<!--` (comments)
-- Test fixtures that explicitly test legacy-tag parsing
+The deprecated tags themselves are **not deleted** from git history — deleting them would break any external clone or `composer.lock` that references them.
 
 ## References
 

@@ -108,7 +108,7 @@ The following tag formats are deprecated (historical only, not retagged — see 
 - `core-v1.0.0` → replaced by `core-v0.1.X.0+<sha>`
 - Per-package `core-*-v1.0.0` → already deprecated by ADR-018 §4
 
-**CI enforcement:** `architecture-lint.yml` runs a check that flags any new reference to deprecated tag patterns in markdown files. Exceptions are limited to `DEPRECATED_TAGS.md`, `ADR-018`, `ADR-019`, the `orchestrator/` directory (Loom must parse both formats for backward compat), and `.github/workflows/release.yml` (must reference old patterns to detect them).
+**Enforcement:** deprecation is enforced via `composer.json` migration (all packages use `0.1.0.0`), `release.yml` (creates new-format tags only), and PR review. See [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for details.
 
 ## Architecture decisions
 
