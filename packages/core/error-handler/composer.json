@@ -27,6 +27,10 @@
     "repositories": [
         {
             "type": "path",
+            "url": "../config"
+        },
+        {
+            "type": "path",
             "url": "../logger"
         }
     ],
