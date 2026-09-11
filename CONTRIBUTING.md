@@ -103,10 +103,12 @@ Releases are automated via the Loom and `release.yml`. See [ADR-018](Architectur
 
 ### Deprecated tag formats
 
-The following tag formats are deprecated (historical only, not retagged — see ADR-019 §4):
-- `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0` → replaced by `v0.1.X.0+<sha>`
+The following tag formats are deprecated (historical only, not retagged — see [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for the full register, migration guide, and CI enforcement):
+- `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`/`1.3.0` → replaced by `v0.1.X.0+<sha>`
 - `core-v1.0.0` → replaced by `core-v0.1.X.0+<sha>`
 - Per-package `core-*-v1.0.0` → already deprecated by ADR-018 §4
+
+**Enforcement:** deprecation is enforced via `composer.json` migration (all packages use `0.1.0.0`), `release.yml` (creates new-format tags only), and PR review. See [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for details.
 
 ## Architecture decisions
 

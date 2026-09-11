@@ -3,11 +3,11 @@
     "description": "CORE-06: Attribute-Based Router with PCRE compilation and method-indexed matching",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "0.1.0.0",
     "require": {
         "php": "^8.3",
         "psr/http-message": "^2.0",
-        "sovereign-stack/core-http-message": "^1.0",
+        "sovereign-stack/core-http-message": "^0.1",
         "ext-mbstring": "*",
         "ext-pcre": "*"
     },

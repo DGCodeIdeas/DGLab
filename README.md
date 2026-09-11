@@ -118,7 +118,7 @@ v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
 - Monorepo releases: `v0.1.3.0+abc1234`
 - Per-tier releases: `core-v0.1.3.0+abc1234` (per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
 
-**Deprecated tags** (historical, not retagged): `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`, `core-v1.0.0`, per-package `core-*-v1.0.0`. See ADR-019 §4 for the mapping.
+**Deprecated tags** (historical, not retagged — see [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for the full register, migration guide, and CI enforcement details): `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`/`1.3.0`, `core-v1.0.0`, per-package `core-*-v1.0.0`. A CI lint check in `architecture-lint.yml` flags any new reference to these deprecated patterns.
 
 ## Key design decisions
 

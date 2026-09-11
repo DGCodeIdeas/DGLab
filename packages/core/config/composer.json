@@ -3,7 +3,7 @@
     "description": "CORE-10: Configuration & Environment Loader with dot-notation access, env interpolation, and required-key enforcement",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "0.1.0.0",
     "require": {
         "php": "^8.3",
         "ext-mbstring": "*"

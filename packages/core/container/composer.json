@@ -3,13 +3,13 @@
     "description": "CORE-02: PSR-11 compliant Dependency Injection Container with autowiring, compiler passes, and circular dependency detection",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "0.1.0.0",
     "require": {
         "php": "^8.3",
         "psr/container": "^2.0"
     },
     "suggest": {
-        "psr/log": "^3.0 — for diagnostic logging during container compilation"
+        "psr/log": "^3.0 \u2014 for diagnostic logging during container compilation"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",
