@@ -35,6 +35,8 @@ jobs:
             working-dir: packages/core/router
           - package: core/config
             working-dir: packages/core/config
+          - package: core/logger
+            working-dir: packages/core/logger
           - package: orchestrator
             working-dir: orchestrator
     steps:
