@@ -128,25 +128,39 @@ final class ErrorHandlerTest extends TestCase
     {
         $handler = $this->buildHandler();
 
-        // Call handleError directly — PHPUnit's own error handler intercepts
-        // trigger_error(), preventing the global handler from being invoked.
-        $this->expectException(\ErrorException::class);
-        $handler->handleError(E_USER_WARNING, 'test warning', __FILE__, __LINE__);
+        // Ensure error_reporting includes E_USER_WARNING — PHPUnit's default
+        // may exclude user-triggered warnings.
+        $originalErrorReporting = error_reporting();
+        error_reporting(E_ALL);
+
+        try {
+            $this->expectException(\ErrorException::class);
+            $handler->handleError(E_USER_WARNING, 'test warning', __FILE__, __LINE__);
+        } finally {
+            error_reporting($originalErrorReporting);
+        }
     }
 
     public function testHandleErrorLogsAtAppropriateLevel(): void
     {
         $handler = $this->buildHandler();
 
-        try {
-            $handler->handleError(E_USER_WARNING, 'warning test', __FILE__, __LINE__);
-        } catch (\ErrorException) {
-            // Expected — handleError converts warnings to exceptions.
-        }
+        $originalErrorReporting = error_reporting();
+        error_reporting(E_ALL);
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
-        self::assertStringContainsString('warning', $logContents);
-        self::assertStringContainsString('warning test', $logContents);
+        try {
+            try {
+                $handler->handleError(E_USER_WARNING, 'warning test', __FILE__, __LINE__);
+            } catch (\ErrorException) {
+                // Expected — handleError converts warnings to exceptions.
+            }
+
+            $logContents = file_get_contents($this->tempFile) ?: '';
+            self::assertStringContainsString('warning', $logContents);
+            self::assertStringContainsString('warning test', $logContents);
+        } finally {
+            error_reporting($originalErrorReporting);
+        }
     }
 
     public function testHandleFatalNoOpsWhenNoError(): void
