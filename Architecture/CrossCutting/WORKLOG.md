@@ -474,3 +474,41 @@ Stage Summary:
 - Reliability target met: `flock(LOCK_EX | LOCK_NB)` for concurrent-write safety on regular files; concurrent-write integrity test passes.
 - Elapsed: ~1.5 hours across 3 CI iterations.
 - Next: CORE-08 (Error Handler) — depends on CORE-09 Logger interface for fault recording.
+
+---
+Task ID: 22
+Agent: main (Super Z)
+Task: Milestone 0 — CORE-08 Global Error & Exception Handler (depth 2, third and final component of Step 2 triplet)
+
+Work Log:
+- Read `CORE-08.md` blueprint (29 lines): ExceptionHandler via set_exception_handler, ErrorHandler via set_error_handler (convert warnings/notices to ErrorExceptions), RendererInterface (Console/JSON/HTML), AuditBridge dispatches security.error event to CORE-03. Depends on CORE-09 Logger.
+- Created `packages/core/error-handler/` with standard Composer layout: composer.json (v1.0.0, requires psr/log ^3.0 + sovereign-stack/core-logger ^1.0, path repositories for both core-config and core-logger to resolve transitive deps), phpunit.xml.dist, phpstan.neon (bleedingEdge, level max), ci/run.php, README.md.
+- Implemented 5 PHP source files in `src/`:
+  - `ErrorHandlerInterface.php` — register/unregister/handleException/handleError/handleFatal/isRegistered/logger/renderer. Frozen per SDLC-AGRD §2.1.
+  - `RendererInterface.php` — render(Throwable, debug): string, contentType(): string. Frozen per §2.1.
+  - `ErrorHandler.php` — default implementation. Registers as PHP global handler via set_exception_handler/set_error_handler/register_shutdown_function. Forces display_errors=Off on register() (per blueprint CI criterion: production mode must never leak stack traces). Converts E_* errors to ErrorException. Recursion guard prevents infinite loop if logging or rendering throws. Severity-to-PSR-3 level mapping: TypeError/ArgumentCountError/Error → CRITICAL, other exceptions → ERROR; E_WARNING → WARNING, E_NOTICE → NOTICE, E_DEPRECATED → INFO. Respects @ silencing operator (checks error_reporting() & $severity).
+  - `Renderer/JsonRenderer.php` — JSON output for API responses. Production mode hides file/line/trace and maps specific exception types to generic messages (InvalidArgumentException → 'Bad request', OutOfBoundsException → 'Not found', etc.). Debug mode emits full trace with previous-exception chain.
+  - `Renderer/PlainTextRenderer.php` — plain text output for CLI or fallback. Debug mode: full trace + Caused-by chain. Production: one-line generic message.
+- Wrote 2 test suites: `RendererTest` (11 tests), `ErrorHandlerTest` (12 tests). Total 23 tests, 47 assertions.
+- Extended `.github/workflows/packages-ci.yml` matrix to include `core/error-handler` (9 packages total).
+- **Process mistake: PR #152 was opened from the wrong branch** (`feat/core-09-logger` instead of `feat/core-08-error-handler`) because my `pr_core08.py` script was a copy of `pr_core09.py` but the string-replacement Python one-liner didn't write changes back to the file. PR #152's squash-merge commit `1d506b1` was a no-op (re-applied already-merged CORE-09 changes). Opened PR #153 from the correct branch to actually merge CORE-08.
+- **5 CI iterations** to resolve:
+  1. Composer install failed — `core-logger` requires `core-config` but error-handler's composer.json only had a path repository for `core-logger`. Added path repository for `core-config` too.
+  2. PHPStan: `$previousExceptionHandler` and `$previousErrorHandler` properties stored but never read (restore_exception_handler/restore_error_handler handle this automatically). Removed the properties.
+  3. PHPStan: `error_get_last()` returns array with all keys always present — removed redundant `?? 'default'` fallbacks in handleFatal().
+  4. PHPStan: `ArgumentCountError extends TypeError` — the instanceof TypeError arm catches both, so the instanceof ArgumentCountError arm was unreachable ('always false'). Removed the redundant check.
+  5. PHPUnit: `testHandleErrorConvertsWarningToErrorException` and `testHandleErrorLogsAtAppropriateLevel` — called trigger_error() expecting the global handler to fire, but PHPUnit's own error handler intercepts trigger_error(). Fixed by calling handleError() directly. Also needed to set error_reporting(E_ALL) explicitly because PHPUnit's default may exclude E_USER_WARNING.
+  6. PHPUnit: `testRecursionGuardPreventsInfiniteLoop` — failing renderer threw from emitOutput(), but the try/finally in handleException didn't catch the exception. Wrapped logThrowable() and emitOutput() in separate try/catch blocks.
+  7. PHPUnit: `testDebugFlagControlsRendererOutput` — used ob_start() to capture handleException output, but emitOutput writes to STDERR in CLI mode (not STDOUT, which ob_start captures). Fixed by testing the renderer directly.
+- Tagged: per ADR-018, no separate `core-error-handler-v1.0.0` tag — `core-v1.0.0` centralized tier tag covers this package.
+- PR #153 merged as `11f740c`.
+
+Stage Summary:
+- CORE-08 complete at depth 2. PHPStan level max clean. All 23 tests pass.
+- `ErrorHandlerInterface`, `RendererInterface` frozen per SDLC-AGRD §2.1.
+- Worker-scoped per ADR-017: ErrorHandler is built once at worker boot, register() called once per worker process.
+- Blueprint CI criteria met: 100% intercept rate (set_exception_handler + register_shutdown_function for fatals); display_errors forced Off on register(); production renderers suppress file/line/trace.
+- Security: recursion guard prevents handler from crashing if logging or rendering throws; production renderers never emit sensitive data (file paths, stack traces, original exception messages).
+- Elapsed: ~2 hours across 5 CI iterations + 1 process mistake (wrong-branch PR).
+- **Step 2 triplet complete:** CORE-10 (Config) + CORE-09 (Logger) + CORE-08 (Error Handler) all shipped, tested, and frozen.
+- **Mini cooldown checkpoint:** per OD-11, this is the natural mini cooldown point between Step 2 and Step 3 (CORE-18 Kernel). The cooldown should cover: (a) worklog reconciliation for the triplet — DONE (this entry + Tasks 20/21), (b) interface-freeze audit against INDEX.md §5.1, (c) refactor backlog triage for the just-shipped triplet, (d) optional lint-scope expansion.
