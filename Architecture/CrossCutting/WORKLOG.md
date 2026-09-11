@@ -688,3 +688,43 @@ Stage Summary:
 - Mini-cooldown reminder per OD-11: this is the natural mini-cooldown point after Step 3 of the build order. Cooldown should cover: (a) worklog reconciliation — DONE (this entry), (b) interface-freeze audit of KernelInterface/BootstrapperInterface/KernelState/4 events against INDEX.md §5.1, (c) refactor triage of the 3 CI iterations (PHPStan write-only property, PHP syntax error in test, dead code in test).
 - Next after cooldown: Step 4 of the remaining Milestone 0 components — HUB-01 (Config & Feature Flags), BRIDGE-01 (Vanguard), ISPOKE-09, ESPOKE-01 — to complete the 8-blueprint walking skeleton per SDLC-AGRD §4.
 - PAT hygiene: 1 paste this session (PAT `ghp_3QjT…Ti3dJ` (redacted)). Push used one-shot token URL never persisted to git config. Verified `git config --list | grep ghp_` returns empty.
+
+---
+Task ID: 26
+Agent: main (Super Z)
+Task: MUWV flip 0→1 — Milestone 0 success criterion met, first post-MUWV release tagged
+
+Work Log:
+- User directive: "Let Milestone 0 be the flip." — confirmed CORE-18 Kernel merge (PR #156) met the SDLC-AGRD §4 success criterion. The flip is a governance action, not an automatic bump.
+- Read ADR-019 to confirm the flip semantics (§6 + §7): first post-MUWV tag is `v1.2.0.0+<sha>` (MUWV=1, Milestone=2 [milestone 1 = segment 2], Lap=0, Patch=0). Milestone counter does NOT reset — ensures strict monotonic precedence.
+- Read release.yml — found monorepo-release job hard-coded to `git tag -l 'v0.*'`. Updated to `'v[0-9]*'` so it recognizes both pre-MUWV (`v0.*`) and post-MUWV (`v1.*`) tags. Bump logic unchanged (lap segment bump); the MUWV segment is never auto-bumped.
+- Updated ADR-019: added §8 MUWV Flip Log section documenting:
+  - Flip date: 2026-09-12
+  - Trigger: PR #156 merge (commit `4296158`)
+  - Verification: `KernelHelloWorldIntegrationTest::testHelloWorldRoundTrip` (18 tests, all green)
+  - Last pre-MUWV tag: `v0.1.2.0+4296158`
+  - First post-MUWV tag: `v1.2.0.0+<merge-sha>` (created manually — see below)
+  - Known gap: `public/index.php` is still a 503 placeholder (Step 4 / BRIDGE-01 territory; does not block the flip)
+- Updated README.md: Project Status changed from "Pre-MUWV" to "MUWV reached (2026-09-12)". Build order Step 3 marked ✅ complete. Current version updated to `v1.2.0.0`.
+- PR #158 opened, CI green (Architecture Lint ✅; Packages CI didn't trigger — path filter excludes doc/workflow-only changes), squash-merged as `b4ed694`.
+- Manually created first post-MUWV tag `v1.2.0.0+b4ed694` pointing at the PR #158 merge commit, via GitHub Git Refs API. Created GitHub Release with full changelog: https://github.com/DGCodeIdeas/DGLab/releases/tag/v1.2.0.0%2Bb4ed694
+
+## Kilo's Anvil infrastructure analysis (acknowledged, not addressed this session)
+
+User pasted Kilo's diagnosis of the local Anvil dev environment:
+- Host Caddy running but misconfigured (proxying to Tengine which is down)
+- Tengine failed: permission issues on /var/log/anvil/ and /run/anvil/
+- FrankenPHP crashing: worker script /opt/anvil/current/public/index.php is a placeholder (returns 503, doesn't call frankenphp_handle_request())
+- Docker compose port conflicts in dev mode
+
+Kilo's analysis is sound. The `public/index.php` gap is the same one flagged in ADR-019 §8 — it's a Step 4 (BRIDGE-01) task, not a Milestone 0 criterion. The Anvil infrastructure fixes (permissions, port conflicts, dev TLS certs) are deployment concerns separate from the MUWV flip and are tracked for a follow-up session.
+
+Stage Summary:
+- PR #158 merged (commit `b4ed694`). 3 files changed, 62 insertions, 16 deletions.
+- First post-MUWV tag `v1.2.0.0+b4ed694` created manually on the merge commit.
+- GitHub Release published: https://github.com/DGCodeIdeas/DGLab/releases/tag/v1.2.0.0%2Bb4ed694
+- release.yml now recognizes `v1.*` tags — subsequent pushes to main that touch `packages/**` will auto-bump from `v1.2.0.0` (next would be `v1.2.1.0+<sha>`).
+- ADR-019 §8 is the canonical flip record. README reflects MUWV reached. Build order Step 3 marked complete.
+- Known gap: `public/index.php` still 503. Step 4 (HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01) is next.
+- PAT hygiene: reused PAT from previous session (1 paste this session, same token). Push used one-shot token URL. Verified no ghp_ in git config.
+- Next: take the mini-cooldown per OD-11 (interface-freeze audit + refactor triage), then start Step 4 — HUB-01 (Config & Feature Flags) is the natural first component.
