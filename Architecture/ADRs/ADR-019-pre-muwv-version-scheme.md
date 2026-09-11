@@ -1,6 +1,6 @@
-# ADR-019: Pre-MUWV version scheme (v0.X.Y.Z)
+# ADR-019: Pre-MUWV version scheme (v0.X.Y.Z) — MUWV FLIPPED
 
-**Status:** Accepted
+**Status:** Accepted — **MUWV flipped 0→1 on 2026-09-12** (see §8 Flip Log)
 **Date:** 2026-09-11
 **Decided by:** Architecture lead (DGCI)
 
@@ -129,6 +129,45 @@ v0.99.99.99  < v1.0.0.0        (MUWV flip — milestone counter resets to 0 for 
 ```
 
 **MUWV flip edge case:** when the MUWV segment flips from 0 to 1, the milestone counter does NOT reset. The first post-MUWV release is `v1.2.0.0` (Milestone 1 = second milestone), not `v1.0.0.0` (which would imply a re-do of Milestone 0). This ensures strict monotonic precedence: every post-MUWV release is greater than every pre-MUWV release.
+
+## 8. MUWV Flip Log
+
+### Flip event
+
+| Field | Value |
+|-------|-------|
+| **Flip date** | 2026-09-12 |
+| **Trigger** | PR #156 merge — `feat(kernel): CORE-18 — The Sovereign Kernel (depth 2) — MUWV reached` (commit `4296158`) |
+| **Success criterion** | SDLC-AGRD §4 — "a PSR-7 `ServerRequest` flows through middleware, matches a route, dispatches to a controller, and returns a PSR-7 `Response`, all wired together by CORE-18 (Kernel)" |
+| **Verification** | `KernelHelloWorldIntegrationTest::testHelloWorldRoundTrip` — boots the kernel, registers a `/hello` route, dispatches `GET /hello`, asserts 200 + body `"Hello World"`. 18 tests total in `packages/core/kernel/`, all passing on CI. |
+| **Last pre-MUWV tag** | `v0.1.2.0+4296158` (Milestone 0, lap 2, patch 0) |
+| **First post-MUWV tag** | `v1.2.0.0+<sha>` (Milestone 1 = segment 2, lap 0, patch 0) — created manually on the merge commit of the PR that documents the flip |
+| **Governance decision** | "Let Milestone 0 be the flip" — user directive 2026-09-12. Milestone 0 completion IS the MUWV flip trigger per §6 above. |
+
+### Known gap (does not block the flip)
+
+The MUWV success criterion is met **in code and tests**: `HelloWorldTest` proves the full Pulse round-trip works through the Kernel → middleware → router → controller → Response pipeline.
+
+However, the production HTTP entry point (`public/index.php`) is still a 503 placeholder — it does not yet instantiate and boot the Kernel. Wiring the Kernel into `public/index.php` is **Step 4** of the AGRD build order (BRIDGE-01 Vanguard territory), not a Milestone 0 criterion. The criterion is about the architecture working end-to-end, which the integration test proves.
+
+This gap is tracked as a follow-up: when BRIDGE-01 lands, `public/index.php` will be rewritten to:
+```php
+$kernel = new Kernel(...);
+$kernel->boot();
+$response = $kernel->handle(ServerRequestFactory::fromGlobals());
+(new SapiEmitter())->emit($response);
+$kernel->terminate();
+```
+
+Until then, the Kernel works in tests but a real HTTP request to the server still returns 503. This is intentional — the flip reflects architectural readiness, not deployment readiness.
+
+### Post-flip version computation
+
+After the flip, `release.yml`'s monorepo-release job recognizes both `v0.*` and `v1.*` tags. The bump logic:
+- If the latest tag is `v1.*`: parse the four segments, bump the lap segment (same as pre-flip logic).
+- If the latest tag is `v0.*` AND the flip has occurred (detected by presence of a `v1.*` tag): this state is unreachable — the first `v1.*` tag is created manually, and all subsequent tags are `v1.*`.
+
+The first `v1.2.0.0+<sha>` tag is created manually (not by `release.yml`) because the flip itself is a governance action, not an automated bump. Subsequent releases are automated.
 
 ## Alternatives considered
 
