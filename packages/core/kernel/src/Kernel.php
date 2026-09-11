@@ -121,20 +121,30 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Booting;
 
-        // Initialize core dependencies via factories.
-        $this->container = ($this->containerFactory)();
-        $this->config = ($this->configFactory)();
-        $this->logger = ($this->loggerFactory)();
-        $this->errorHandler = ($this->errorHandlerFactory)();
-        $this->providerRegistry = ($this->providerRegistryFactory)();
-        $this->eventDispatcher = ($this->eventDispatcherFactory)();
-        $this->router = ($this->routerFactory)();
+        // Initialize core dependencies via factories. Each factory returns a
+        // non-null instance; we assign to local variables first so PHPStan
+        // can narrow the types before storing on the nullable properties.
+        $container = ($this->containerFactory)();
+        $config = ($this->configFactory)();
+        $logger = ($this->loggerFactory)();
+        $errorHandler = ($this->errorHandlerFactory)();
+        $providerRegistry = ($this->providerRegistryFactory)();
+        $eventDispatcher = ($this->eventDispatcherFactory)();
+        $router = ($this->routerFactory)();
+
+        $this->container = $container;
+        $this->config = $config;
+        $this->logger = $logger;
+        $this->errorHandler = $errorHandler;
+        $this->providerRegistry = $providerRegistry;
+        $this->eventDispatcher = $eventDispatcher;
+        $this->router = $router;
 
         // Register the error handler (forces display_errors=Off per CORE-08).
-        $this->errorHandler->register();
+        $errorHandler->register();
 
         // Register service providers into the container.
-        $this->providerRegistry->registerAll($this->container);
+        $providerRegistry->registerAll($container);
 
         // Run bootstrappers (they wire the pipeline, router, final handler, etc.).
         foreach ($this->bootstrappers as $bootstrapper) {
@@ -142,12 +152,12 @@ final class Kernel implements KernelInterface
         }
 
         // Boot service providers (post-bootstrapper initialization).
-        $this->providerRegistry->bootAll($this->container);
+        $providerRegistry->bootAll($container);
 
         $this->state = KernelState::Booted;
 
         // Dispatch BootEvent.
-        $this->eventDispatcher->dispatch(new BootEvent($this));
+        $eventDispatcher->dispatch(new BootEvent($this));
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -163,18 +173,23 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Handling;
 
+        $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
+        $pipeline = $this->pipeline ?? throw new \LogicException(
+            'Middleware pipeline is not configured. Register the HttpBootstrapper.',
+        );
+
         try {
             // Dispatch RequestReceivedEvent (listeners may enrich the request).
             $requestEvent = new RequestReceivedEvent($this, $request);
-            $this->eventDispatcher->dispatch($requestEvent);
+            $eventDispatcher->dispatch($requestEvent);
             $request = $requestEvent->request;
 
             // Run the middleware pipeline.
-            $response = $this->pipeline->handle($request);
+            $response = $pipeline->handle($request);
 
             // Dispatch ResponseReadyEvent (listeners may transform the response).
             $responseEvent = new ResponseReadyEvent($this, $request, $response);
-            $this->eventDispatcher->dispatch($responseEvent);
+            $eventDispatcher->dispatch($responseEvent);
             $response = $responseEvent->response;
 
             return $response;
@@ -196,11 +211,14 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Terminating;
 
+        $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
+        $errorHandler = $this->errorHandler ?? throw $this->notInitialized('error handler');
+
         // Dispatch TerminateEvent (listeners flush logs, close connections, etc.).
-        $this->eventDispatcher->dispatch(new TerminateEvent($this));
+        $eventDispatcher->dispatch(new TerminateEvent($this));
 
         // Unregister the error handler.
-        $this->errorHandler->unregister();
+        $errorHandler->unregister();
 
         $this->state = KernelState::Terminated;
     }
@@ -213,31 +231,31 @@ final class Kernel implements KernelInterface
     public function getContainer(): ContainerInterface
     {
         $this->assertBooted();
-        return $this->container;
+        return $this->container ?? throw $this->notInitialized('container');
     }
 
     public function getRouter(): RouterInterface
     {
         $this->assertBooted();
-        return $this->router;
+        return $this->router ?? throw $this->notInitialized('router');
     }
 
     public function getConfig(): ConfigInterface
     {
         $this->assertBooted();
-        return $this->config;
+        return $this->config ?? throw $this->notInitialized('config');
     }
 
     public function getLogger(): DgLoggerInterface
     {
         $this->assertBooted();
-        return $this->logger;
+        return $this->logger ?? throw $this->notInitialized('logger');
     }
 
     public function getErrorHandler(): ErrorHandlerInterface
     {
         $this->assertBooted();
-        return $this->errorHandler;
+        return $this->errorHandler ?? throw $this->notInitialized('error handler');
     }
 
     /**
@@ -250,13 +268,10 @@ final class Kernel implements KernelInterface
     public function getPipeline(): MiddlewarePipelineInterface
     {
         $this->assertBooted();
-        if ($this->pipeline === null) {
-            throw new \LogicException(
-                'Middleware pipeline is not configured. Register the HttpBootstrapper '
-                . '(or an equivalent bootstrapper that calls setPipeline()) during kernel construction.',
-            );
-        }
-        return $this->pipeline;
+        return $this->pipeline ?? throw new \LogicException(
+            'Middleware pipeline is not configured. Register the HttpBootstrapper '
+            . '(or an equivalent bootstrapper that calls setPipeline()) during kernel construction.',
+        );
     }
 
     /**
@@ -289,7 +304,7 @@ final class Kernel implements KernelInterface
     public function getEventDispatcher(): EventDispatcherInterface
     {
         $this->assertBooted();
-        return $this->eventDispatcher;
+        return $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
     }
 
     private function assertBooted(): void
@@ -302,5 +317,19 @@ final class Kernel implements KernelInterface
         if ($this->state === KernelState::Terminated) {
             throw KernelException::handleAfterTerminate();
         }
+    }
+
+    /**
+     * Helper for accessor methods — thrown when a nullable property is accessed
+     * before it's been initialized. This should never happen in practice
+     * (assertBooted() guards the entry), but PHPStan needs proof that the
+     * property is non-null.
+     */
+    private function notInitialized(string $property): \LogicException
+    {
+        return new \LogicException(
+            "Kernel {$property} is not initialized. This should not happen — "
+            . 'assertBooted() should have prevented this call.',
+        );
     }
 }
