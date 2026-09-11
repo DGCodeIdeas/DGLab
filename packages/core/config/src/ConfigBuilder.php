@@ -68,12 +68,10 @@ final class ConfigBuilder implements ConfigBuilderInterface
 
         // 2. Merge $_ENV (string values only, dot-converted: APP_URL -> app.url).
         foreach ($_ENV as $envKey => $envValue) {
-            // PHPStan stubs $_ENV as array<string, string>, so is_string()
-            // is technically redundant per the stub. At runtime, however,
-            // $_ENV can hold non-string values (e.g. via direct assignment
-            // $_ENV['FOO'] = 42; — uncommon but legal). The is_string() check
-            // guards against that. Suppress the PHPStan "always true" warning.
-            // @phpstan-ignore-next-line — runtime guard against non-string $_ENV values
+            // PHPStan stubs $_ENV as array<string, string> in some contexts
+            // and array<string, mixed> in others. The is_string() check guards
+            // against runtime non-string values (rare but legal via direct
+            // $_ENV assignment) without affecting the happy path.
             if (!is_string($envValue) || $envValue === '') {
                 continue;
             }
