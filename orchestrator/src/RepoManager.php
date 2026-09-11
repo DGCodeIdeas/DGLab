@@ -103,15 +103,20 @@ class RepoManager
      * Create an annotated git tag for the given version.
      *
      * The tag NAME is derived from the version + tagPrefix:
-     *   - tagPrefix set:    "{prefix}-v{version}" (e.g. "core-container-v1.1.0")
-     *   - tagPrefix null:   "{version}"           (e.g. "1.0.0" — legacy mode)
+     *   - tagPrefix set:    "{prefix}-v{version}" (e.g. "core-v0.1.3.0")
+     *   - tagPrefix null:   "{version}"           (e.g. "0.1.3.0" — legacy mode)
      *
-     * The version MUST match /^\d+\.\d+\.\d+$/ (bare SemVer, no prefix).
+     * Supports both ADR-019 four-segment versions (\d+.\d+.\d+.\d+, optionally
+     * followed by +<build-metadata>) and legacy three-segment SemVer (\d+.\d+.\d+).
+     *
+     * @param string $version Bare version (no 'v' prefix, no tier prefix).
+     *                       Examples: "0.1.3.0", "0.1.3.0+abc1234", "1.0.0".
+     * @param string $message Annotated tag message. Defaults to the tag name.
      */
     public function tag(string $version, string $message = ''): bool
     {
-        if (!\preg_match('/^\d+\.\d+\.\d+$/', $version)) {
-            throw new \RuntimeException("Invalid SemVer tag format: {$version}");
+        if (!$this->isValidVersion($version)) {
+            throw new \RuntimeException("Invalid SemVer format: {$version}");
         }
 
         $tagName = $this->buildTagName($version);
@@ -149,7 +154,7 @@ class RepoManager
      */
     public function pushTag(string $version, string $remoteUrl): bool
     {
-        if (!\preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+        if (!$this->isValidVersion($version)) {
             throw new \RuntimeException("Invalid SemVer format: {$version}");
         }
 
@@ -391,6 +396,9 @@ class RepoManager
     /**
      * Build the tag NAME for a given bare version.
      * Used by tag() and pushTag() to construct the full tag name.
+     *
+     * Per ADR-019, the version may include +<build-metadata> (e.g. "0.1.3.0+abc1234").
+     * The build metadata is preserved in the tag name per SemVer §10.
      */
     private function buildTagName(string $version): string
     {
@@ -398,6 +406,29 @@ class RepoManager
             return "{$this->tagPrefix}-v{$version}";
         }
         return $version;
+    }
+
+    /**
+     * Validate a version string against ADR-019 (four-segment) or legacy
+     * three-segment SemVer.
+     *
+     * Accepted formats:
+     *   - ADR-019:    \d+.\d+.\d+.\d+         (e.g. "0.1.3.0")
+     *   - ADR-019+:   \d+.\d+.\d+.\d++<meta>  (e.g. "0.1.3.0+abc1234")
+     *   - Legacy:     \d+.\d+.\d+             (e.g. "1.0.0" — grandfathered)
+     *   - Legacy+:    \d+.\d+.\d++<meta>      (e.g. "1.0.0+abc1234")
+     */
+    private function isValidVersion(string $version): bool
+    {
+        // Four-segment (ADR-019), with optional +build-metadata.
+        if (\preg_match('/^\d+\.\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version)) {
+            return true;
+        }
+        // Legacy three-segment SemVer, with optional +build-metadata.
+        if (\preg_match('/^\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version)) {
+            return true;
+        }
+        return false;
     }
 
     /**
