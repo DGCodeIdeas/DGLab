@@ -68,7 +68,6 @@ final class Kernel implements KernelInterface
     private ?ContainerInterface $container = null;
     private ?ConfigInterface $config = null;
     private ?ErrorHandlerInterface $errorHandler = null;
-    private ?ProviderRegistryInterface $providerRegistry = null;
     private ?EventDispatcherInterface $eventDispatcher = null;
     private ?DgLoggerInterface $logger = null;
     private ?RouterInterface $router = null;
@@ -136,7 +135,6 @@ final class Kernel implements KernelInterface
         $this->config = $config;
         $this->logger = $logger;
         $this->errorHandler = $errorHandler;
-        $this->providerRegistry = $providerRegistry;
         $this->eventDispatcher = $eventDispatcher;
         $this->router = $router;
 
