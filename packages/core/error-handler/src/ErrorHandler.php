@@ -87,7 +87,15 @@ final class ErrorHandler implements ErrorHandlerInterface
 
         try {
             $this->logThrowable($throwable);
+        } catch (\Throwable) {
+            // Logging failed — continue to render so the client sees something.
+        }
+
+        try {
             $this->emitOutput($throwable);
+        } catch (\Throwable) {
+            // Rendering failed — nothing more we can do. Swallow to prevent
+            // the handler itself from throwing during fatal-error handling.
         } finally {
             $this->inErrorHandling = false;
         }
