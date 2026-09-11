@@ -33,6 +33,8 @@ jobs:
             working-dir: packages/core/middleware
           - package: core/router
             working-dir: packages/core/router
+          - package: core/config
+            working-dir: packages/core/config
           - package: orchestrator
             working-dir: orchestrator
     steps:
