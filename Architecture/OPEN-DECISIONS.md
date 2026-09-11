@@ -11,6 +11,13 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 
 ## Open
 
+### OD-11 — Cooldown policy under solo operation (mini cooldowns interim)
+- **Fork:** `SDLC-AGRD.md` §7 fixes cooldowns at 2 weeks for solo operation. Earlier session directive deferred all cooldowns "until sometime next year" to keep Milestone 0 unblocked. Refinement: short integration checkpoints *within* a lap (between depth bumps, between adjacent Steps in the build order) are now acceptable, even though the full 2-week *between-lap* cooldowns remain deferred.
+- **Definition — "mini cooldown":** A bounded checkpoint of approximately 1 working day (≤4 hours active work) inserted between Steps within a single lap, *not* a substitute for the §7 between-lap cooldown. Scope is limited to: (a) worklog reconciliation for the just-shipped component(s), (b) interface-freeze audit against `INDEX.md` §5.1, (c) optional refactor backlog triage limited to the just-shipped component, (d) lint-scope expansion *only if* trivially small. Mini cooldowns do **not** consume OD-triage time, do **not** run marketer/media review (Cooldown 0 only), and do **not** count toward the §7 cooldown total.
+- **Decision:** Accept mini cooldowns as the interim operating mode. The §7 2-week between-lap cooldown remains deferred until next year per the earlier directive; mini cooldowns fill the integration-discipline gap that pure skipping opened.
+- **Owner:** Architecture lead (DGCI)
+- **Decision route:** Recorded here as OD-11. No ADR — this is an operating-mode refinement, not an architectural change. Will be re-evaluated when the §7 cooldown is reinstated next year; at that point mini cooldowns either fold into the standard cadence or are retired.
+
 ### OD-08 — Async I/O library choice (ReactPHP vs Amp vs Swoole)
 - **Fork:** The Fiber-based runtime (ADR-017) requires an event loop / async I/O library as its "hardware abstraction layer." Three candidates.
 - **Option A — ReactPHP:** Mature, largest ecosystem, PSR-7/15/17 native. Blocking-implicit model (promise chains). Largest community.
