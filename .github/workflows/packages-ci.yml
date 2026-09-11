@@ -39,6 +39,8 @@ jobs:
             working-dir: packages/core/logger
           - package: core/error-handler
             working-dir: packages/core/error-handler
+          - package: core/kernel
+            working-dir: packages/core/kernel
           - package: orchestrator
             working-dir: orchestrator
     steps:
