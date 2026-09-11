@@ -260,9 +260,14 @@ jobs:
           # ADR-019: monorepo version is v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
           # Post-MUWV flip (2026-09-12): MUWV=1, Milestone 1 = segment 2.
           # Pre-flip: MUWV=0, Milestone 0 = segment 1.
-          # Get the latest v* tag (both v0.* pre-MUWV and v1.* post-MUWV) to
-          # determine the current monorepo version.
-          LATEST=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1 || true)
+          #
+          # IMPORTANT: only match 4-segment ADR-019 tags (vX.Y.Z.W).
+          # The old deprecated 3-segment tags (v1.0.0, release-1.X.0) sort
+          # HIGHER than v0.* tags under --sort=-v:refname and would produce
+          # malformed versions if matched. The pattern 'v[0-9]*.[0-9]*.[0-9]*.[0-9]*'
+          # matches exactly 4 dot-separated numeric segments after the 'v' prefix,
+          # excluding both 3-segment legacy tags and per-tier tags (core-v*).
+          LATEST=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1 || true)
           if [ -z "$LATEST" ]; then
             # First release under the new scheme (ADR-019).
             # Pre-MUWV, Milestone 0, lap 0, patch 0.
