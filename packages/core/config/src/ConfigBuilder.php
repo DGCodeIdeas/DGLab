@@ -53,6 +53,7 @@ final class ConfigBuilder implements ConfigBuilderInterface
     public function withOverride(string $key, mixed $value): static
     {
         $this->assertNotFrozen();
+        $this->assertValidKey($key);
         $this->overrides[] = [$key, $value];
         return $this;
     }
@@ -67,11 +68,13 @@ final class ConfigBuilder implements ConfigBuilderInterface
 
         // 2. Merge $_ENV (string values only, dot-converted: APP_URL -> app.url).
         foreach ($_ENV as $envKey => $envValue) {
-            // $_ENV is typed array<string, string> in PHPStan stubs; runtime
-            // non-string values (rare, but possible via putenv() interop) are
-            // skipped via the === '' check below. We do not call is_string()
-            // because PHPStan treats it as redundant given the stub type.
-            if ($envValue === '') {
+            // PHPStan stubs $_ENV as array<string, string>, so is_string()
+            // is technically redundant per the stub. At runtime, however,
+            // $_ENV can hold non-string values (e.g. via direct assignment
+            // $_ENV['FOO'] = 42; — uncommon but legal). The is_string() check
+            // guards against that. Suppress the PHPStan "always true" warning.
+            // @phpstan-ignore-next-line — runtime guard against non-string $_ENV values
+            if (!is_string($envValue) || $envValue === '') {
                 continue;
             }
             $configKey = strtolower(str_replace('_', '.', $envKey));
@@ -91,6 +94,26 @@ final class ConfigBuilder implements ConfigBuilderInterface
         if ($this->frozen) {
             throw new \LogicException(
                 'ConfigBuilder is frozen after build(). Create a new builder to produce another repository.',
+            );
+        }
+    }
+
+    /**
+     * Validate a dot-notation key immediately, before storing the override.
+     *
+     * Empty keys and keys with consecutive dots are rejected as malformed —
+     * catching them at withOverride() time gives the caller a useful stack
+     * trace pointing at the bad input, rather than deferring the error to
+     * build() where the originating call site is lost.
+     */
+    private function assertValidKey(string $key): void
+    {
+        if ($key === '') {
+            throw new \InvalidArgumentException('Configuration key cannot be empty.');
+        }
+        if (str_contains($key, '..')) {
+            throw new \InvalidArgumentException(
+                "Configuration key '{$key}' contains an empty segment (consecutive dots).",
             );
         }
     }
