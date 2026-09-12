@@ -1007,3 +1007,34 @@ Stage Summary:
 - ADR-019 §9 documents the prerelease labeling policy. README reflects the prerelease status.
 - MUWV flip remains UNAUTHORIZED. When the user is ready, the flip PR will: (a) remove --prerelease from release.yml, (b) update ADR-019 §8 with the flip log, (c) create the first v1.2.0.0+<sha> tag as a regular (non-prerelease) release, (d) mark all prior v0.* releases as no-longer-latest (they stay prerelease forever as historical artifacts).
 - PAT hygiene: reused PAT. API calls used Authorization header (not git config).
+
+---
+Task ID: 34
+Agent: main (Super Z)
+Task: Document and delete all deprecated tags
+
+Work Log:
+- User directive: "Document and delete only all deprecated tags" — delete the 9 deprecated tags (git tag refs + GitHub releases), update DEPRECATED_TAGS.md to document the deletion.
+- Inventoried remote tags: identified 9 deprecated tags still on the remote:
+  - 1 monorepo: v1.0.0
+  - 4 release-*: release-1.0.0, release-1.1.0, release-1.2.0, release-1.3.0
+  - 4 per-package: core-event-dispatcher-v1.0.0, core-http-message-v1.0.0, core-middleware-v1.0.0, core-router-v1.0.0
+- Also found 2 stale local tags from the premature MUWV flip (v1.2.0.0+b4ed694, v1.2.1.0+bb369af) — NOT on remote (deleted in Task 27), but present locally. Pruned them.
+- Deleted all 9 GitHub releases via the GitHub API (DELETE /releases/{id}) — all returned HTTP 204.
+- Deleted all 9 git tag refs from the remote via `git push origin :refs/tags/{tag}` — all succeeded.
+- Pruned 2 stale local tags (v1.2.0.0+b4ed694, v1.2.1.0+bb369af) via `git tag -d`.
+- Verified: 8 tags remain on the remote — all v0.* ADR-019 prerelease tags (v0.1.0.0 through v0.1.7.0).
+
+## Documentation updates
+
+- DEPRECATED_TAGS.md: rewrote header from "tags remain in git history but are no longer the canonical release identifiers" to "tags have been removed from git and GitHub. The register remains as a historical record." Updated "What 'deprecated' means here" section: changed "The tags still exist" to "The tags no longer exist." Changed "not deleted from git history" to "deleted from the git repository and GitHub (2026-09-13)."
+- ADR-019 §4: changed heading from "Existing tags — grandfathered, not retagged" to "Existing tags — deprecated, then deleted (2026-09-13)." Updated the body text to reflect deletion. Changed "Why not retag" to "Why deleted (not retagged)" documenting the timeline (deprecated 2026-09-11, deleted 2026-09-13).
+- ADR-019 Consequences §4: changed from "Existing tags are deprecated, not retagged. No destructive tag operations." to "Existing tags were deprecated then deleted. All 9 deprecated tags... were deleted from git and GitHub on 2026-09-13."
+
+Stage Summary:
+- All 9 deprecated tags deleted from git + GitHub. 2 stale local tags pruned. 8 v0.* ADR-019 prerelease tags remain.
+- DEPRECATED_TAGS.md updated to document the deletion (now a historical register, not an active deprecation).
+- ADR-019 §4 + Consequences updated to reflect the deletion.
+- The git commits pointed to by the deleted tags remain in git history (immutable) — only the tag labels were removed.
+- MUWV flip remains UNAUTHORIZED. All remaining tags are v0.* prerelease.
+- PAT hygiene: reused PAT. API calls used Authorization header. git push used one-shot token URL.
