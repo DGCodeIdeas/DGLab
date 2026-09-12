@@ -174,6 +174,17 @@ The flip is authorized when all 8 Milestone 0 blueprints (the table above) are s
 - Future pre-MUWV releases are no longer possible
 - The flip is a one-time governance action — it cannot be reversed once authorized
 
+## 9. Prerelease labeling (2026-09-12)
+
+**All `v0.*` releases are prerelease.** Per SemVer §9, a version with MUWV=0 is inherently pre-1.0 and is treated as a prerelease. Concretely:
+
+- **GitHub Releases**: every `v0.*` release (and the deprecated legacy tags) is marked with the `prerelease=True` flag on GitHub. This makes them visible as "Pre-release" in the GitHub UI and excludes them from "Latest release" until the MUWV flip.
+- **`release.yml`**: the `gh release create` commands in both the per-tier release job and the monorepo-release job include the `--prerelease` flag. All future `v0.*` releases created by the workflow will automatically be marked as prerelease.
+- **When MUWV flips**: the `--prerelease` flag is removed from `release.yml` (in the same PR that documents the flip per §8). The first `v1.2.0.0+<sha>` release is a regular (non-prerelease) release.
+- **Existing releases retagged**: all 16 existing GitHub releases (7 `v0.*` + 4 `release-*` + 4 `core-*-v1.0.0` + 1 `v1.0.0`) were marked `prerelease=True` on 2026-09-12. The git tags themselves are unchanged (immutable history); only the GitHub Release metadata was updated.
+
+This labeling makes the prerelease status visible to anyone browsing the GitHub Releases page — no one mistakes a `v0.*` tag for a stable release.
+
 ## Alternatives considered
 
 ### A. Standard `0.x.y` SemVer (no MUWV marker)

@@ -112,13 +112,13 @@ v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
 | `Patch` | Patch within the lap (0 = first release of the lap) |
 | `+sha` | 7-char git short SHA (build metadata, ignored for precedence) |
 
-**Current version:** `v0.1.2.0+4296158` — pre-MUWV, Milestone 0, lap 2, patch 0. Next release will be `v0.1.3.0+<sha>` when Step 4 components ship.
+**Current version:** `v0.1.6.0+faf997b` — **prerelease** (pre-MUWV), Milestone 0, lap 6, patch 0. All `v0.*` releases are marked as prerelease on GitHub per [ADR-019 §9](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md#9-prerelease-labeling-2026-09-12). The MUWV flip to `v1.*` is unauthorized until explicitly approved.
 
-**Pre-MUWV history:** `v0.1.0.0+cca44c0` → `v0.1.1.0+6ab198e` → `v0.1.2.0+4296158` (latest, CORE-18 Kernel merge).
+**Pre-MUWV history:** `v0.1.0.0` → `v0.1.1.0` → `v0.1.2.0` → `v0.1.3.0` → `v0.1.4.0` → `v0.1.5.0` → `v0.1.6.0` (latest, ESPOKE-01 Canvas merge — all 8 Milestone 0 blueprints complete).
 
 **Tag formats:**
-- Monorepo releases: `v0.1.2.0+abc1234`
-- Per-tier releases: `core-v0.1.2.0+abc1234` (per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
+- Monorepo releases: `v0.1.6.0+abc1234` (prerelease)
+- Per-tier releases: `core-v0.1.6.0+abc1234` (prerelease, per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
 
 **Deprecated tags** (historical, not retagged — see [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for the full register, migration guide, and CI enforcement details): `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`/`1.3.0`, `core-v1.0.0`, per-package `core-*-v1.0.0`. A CI lint check in `architecture-lint.yml` flags any new reference to these deprecated patterns.
 
