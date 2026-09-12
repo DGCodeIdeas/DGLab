@@ -39,8 +39,8 @@ final class DefaultDtoTransformer implements DtoTransformerInterface
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
+     * @param array<mixed, mixed> $data
+     * @return array<mixed, mixed>
      */
     private function stripInternal(array $data): array
     {
@@ -49,7 +49,7 @@ final class DefaultDtoTransformer implements DtoTransformerInterface
             if (is_string($key) && str_starts_with($key, '_')) {
                 continue;
             }
-            if (in_array($key, $this->redactKeys, true)) {
+            if (is_string($key) && in_array($key, $this->redactKeys, true)) {
                 continue;
             }
             $result[$key] = is_array($value) ? $this->stripInternal($value) : $value;
