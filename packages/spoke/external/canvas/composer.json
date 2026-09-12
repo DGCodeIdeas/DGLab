@@ -28,7 +28,7 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../../core/http-message"
+            "url": "../../../core/http-message"
         }
     ],
     "minimum-stability": "stable",
