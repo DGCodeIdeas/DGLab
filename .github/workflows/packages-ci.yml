@@ -47,6 +47,8 @@ jobs:
             working-dir: packages/bridge/vanguard
           - package: spoke/internal/codex
             working-dir: packages/spoke/internal/codex
+          - package: spoke/external/canvas
+            working-dir: packages/spoke/external/canvas
           - package: orchestrator
             working-dir: orchestrator
     steps:

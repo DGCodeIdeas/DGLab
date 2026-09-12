@@ -17,14 +17,7 @@ end-users, consuming content from the Internal Knowledge Base (`ISPOKE-09`) excl
 `BRIDGE-01` transformation layer — never directly.
 
 ## Build Status
-🔴 **Blocked** on `HUB-03`, `HUB-02`, `HUB-26`, `HUB-08`, `HUB-15` (Hub-tier, none implemented),
-`BRIDGE-01` (design-complete per this delivery, implementation blocked on its own dependencies), and
-`ISPOKE-09` (Internal Spoke, not yet documented at all — outside the 15 currently detailed and outside
-the 10 placeholder stubs in `docs/internal-spokes/placeholder-blueprints.md`; this is itself a gap
-worth flagging: `ISPOKE-09` is referenced as a live dependency by `ESPOKE-01` but has no blueprint file
-and no placeholder entry under the current `ISPOKE-01..25` numbering — confirm during Hub/Spoke
-consolidation whether it was renumbered along with the Core tier's drift in Finding 2, or whether it's
-a genuine, undocumented gap).
+📦 **Shipped at depth 2** (Milestone 0, Task 31, v0.1.0.0). `ContentDeliveryInterface` and `SeoValidationInterface` are frozen per SDLC-AGRD §2.1. Depth-2 implementation uses in-memory content storage and simple HTML rendering with stale-while-revalidate cache fallback. When HUB-02 (Cache), HUB-03 (Assets), HUB-26 (UI Components), and CORE-11/12 (SuperPHP) land, the renderer is upgraded — the interfaces are unchanged.
 
 ## Dependency Status
 
