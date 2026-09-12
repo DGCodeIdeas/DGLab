@@ -728,3 +728,29 @@ Stage Summary:
 - Known gap: `public/index.php` still 503. Step 4 (HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01) is next.
 - PAT hygiene: reused PAT from previous session (1 paste this session, same token). Push used one-shot token URL. Verified no ghp_ in git config.
 - Next: take the mini-cooldown per OD-11 (interface-freeze audit + refactor triage), then start Step 4 — HUB-01 (Config & Feature Flags) is the natural first component.
+
+---
+Task ID: 27
+Agent: main (Super Z)
+Task: Revert premature MUWV flip — flip criterion is the FULL AGRD §4 (8 blueprints + real HTTP round-trip), not just the integration test
+
+Work Log:
+- User directive: "I meant the full AGRD §4 criterion was the flip, so edit all tags" — clarified that the MUWV flip requires all 8 Milestone 0 blueprints (CORE-02, CORE-04/05/06, CORE-18, HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01) to ship AND `public/index.php` to actually serve a real HTTP request through the full Pulse trace (Outer Rim -> Inner Rim -> Inner Spoke -> return). Only 5 of 8 are shipped; the flip was premature.
+- Deleted tag `v1.2.0.0+b4ed694` and its GitHub release (the first/only post-MUWV tag, created on PR #158 merge commit). GitHub Release id 387317643 deleted; tag ref deleted.
+- ADR-019: rewrote §8 from "MUWV Flip Log" (which documented the premature flip as legitimate) to "MUWV Flip Criterion (corrected)". The new §8:
+  - Explicitly states the criterion is the FULL AGRD §4 success criterion, not just the integration test
+  - Lists all 8 required blueprints with current status (5 of 8 shipped)
+  - Documents the premature flip event (2026-09-12) and its reversion
+  - Clarifies when the flip will actually happen (all 8 shipped + `public/index.php` wired via BRIDGE-01)
+- ADR-019 header reverted from "MUWV FLIPPED" to "pre-MUWV (flip criterion NOT yet met)"
+- README.md: Project Status reverted from "MUWV reached" back to "Active development. Pre-MUWV." with the 8-blueprint table showing 5 of 8 shipped. Build order Step 3 marked "5 of 8 Milestone 0 blueprints shipped" (was "MUWV reached"). Current version reverted from "v1.2.0.0" to "v0.1.2.0+4296158".
+- release.yml: kept the 4-segment tag pattern fix from PR #160 (the bug fix was correct independently — the 3-segment legacy `v1.0.0` tag would still cause malformed version computations if matched). Updated the inline comments to reflect "Currently pre-MUWV" and "flip to v1.* is NOT yet authorized (see ADR-019 §8)". The bump logic is unchanged — the next `release.yml` run will see `v0.1.2.0+4296158` as the latest tag and produce `v0.1.3.0+<sha>`.
+
+Stage Summary:
+- All v1.* artifacts reverted: tag `v1.2.0.0+b4ed694` deleted, GitHub release deleted, ADR-019 status reverted, README reverted, release.yml comments reverted.
+- The 4-segment tag-pattern fix from PR #160 is kept (it correctly excludes the legacy `v1.0.0` tag — that fix was independent of the flip).
+- Current state: pre-MUWV continues. Latest tag `v0.1.2.0+4296158`. Next release will be `v0.1.3.0+<sha>` when Step 4 components ship.
+- The MUWV flip is now correctly scoped: requires ALL 8 Milestone 0 blueprints (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18, HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01) at depth 1-2 AND `public/index.php` wired to serve a real HTTP request through the full Rim.
+- 5 of 8 shipped. 4 remaining: HUB-01 -> BRIDGE-01 -> ISPOKE-09 -> ESPOKE-01.
+- PAT hygiene: reused PAT from previous session. Push used one-shot token URL.
+- Governance lesson: the AGRD §4 criterion is explicit — "a real HTTP request enters at the Outer Rim, crosses the Inner Rim, resolves against the Inner Spoke, and returns." The integration test passing is necessary but NOT sufficient. Documented in ADR-019 §8 to prevent future premature flips.

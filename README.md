@@ -91,8 +91,8 @@ The build order defines which components depend on which:
 |------|------------|--------|
 | 1 | CORE-02 (DI), CORE-03 (Events), CORE-04 (HTTP), CORE-05 (Middleware), CORE-06 (Router) | ✅ Complete |
 | 2 | CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler) | ✅ Complete |
-| 3 | CORE-18 (Kernel) | ✅ Complete — **MUWV reached** |
-| 4 | HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ⬜ Next |
+| 3 | CORE-18 (Kernel) | ✅ Complete — **5 of 8 Milestone 0 blueprints shipped** |
+| 4 | HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ⬜ Pending — required for MUWV |
 
 See [`Architecture/CrossCutting/SDLC-AGRD.md`](Architecture/CrossCutting/SDLC-AGRD.md) for the full methodology and [`Architecture/INDEX.md`](Architecture/INDEX.md) §5 for the complete build order.
 
@@ -112,13 +112,13 @@ v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
 | `Patch` | Patch within the lap (0 = first release of the lap) |
 | `+sha` | 7-char git short SHA (build metadata, ignored for precedence) |
 
-**Current version:** `v1.2.0.0` — **post-MUWV** (flipped 2026-09-12), Milestone 1 = segment 2, lap 0, patch 0.
+**Current version:** `v0.1.2.0+4296158` — pre-MUWV, Milestone 0, lap 2, patch 0. Next release will be `v0.1.3.0+<sha>` when Step 4 components ship.
 
-**Pre-MUWV history:** `v0.1.0.0` → `v0.1.1.0` → `v0.1.2.0+4296158` (last pre-MUWV tag, CORE-18 Kernel merge). The MUWV flip is a one-time governance action per ADR-019 §8.
+**Pre-MUWV history:** `v0.1.0.0+cca44c0` → `v0.1.1.0+6ab198e` → `v0.1.2.0+4296158` (latest, CORE-18 Kernel merge).
 
 **Tag formats:**
-- Monorepo releases: `v1.2.0.0+abc1234`
-- Per-tier releases: `core-v1.2.0.0+abc1234` (per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
+- Monorepo releases: `v0.1.2.0+abc1234`
+- Per-tier releases: `core-v0.1.2.0+abc1234` (per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
 
 **Deprecated tags** (historical, not retagged — see [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for the full register, migration guide, and CI enforcement details): `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`/`1.3.0`, `core-v1.0.0`, per-package `core-*-v1.0.0`. A CI lint check in `architecture-lint.yml` flags any new reference to these deprecated patterns.
 
@@ -197,25 +197,26 @@ MIT — see [LICENSE](LICENSE).
 
 ## Project status
 
-**MUWV reached (2026-09-12).** Milestone 0 success criterion met — the walking skeleton is complete in code and tests. The Kernel wires the full Pulse round-trip: `ServerRequest` → middleware → router → controller → `Response`.
+**Active development. Pre-MUWV.** Milestone 0 (the walking skeleton) is in progress — 5 of 8 blueprints shipped. The MUWV flip requires all 8 + a real HTTP request through the full Rim (per ADR-019 §8, corrected 2026-09-12 after a premature flip was reverted).
 
-### Milestone 0 components
+### Milestone 0 components (8 blueprints required for MUWV)
 
 | Component | Status | PR |
 |-----------|--------|-----|
 | CORE-02 (DI Container) | ✅ Depth 2 | — |
-| CORE-03 (Event Dispatcher) | ✅ Depth 2 | — |
 | CORE-04 (HTTP Message) | ✅ Depth 2 | #127 |
 | CORE-05 (Middleware) | ✅ Depth 2 | #140 |
 | CORE-06 (Router) | ✅ Depth 2 | #141 |
-| CORE-10 (Config) | ✅ Depth 2 | #150 |
-| CORE-09 (Logger) | ✅ Depth 2 | #151 |
-| CORE-08 (Error Handler) | ✅ Depth 2 | #153 |
 | CORE-18 (Kernel) | ✅ Depth 2 | #156 |
-| HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ⬜ Not started (Step 4) | — |
+| HUB-01 (Hub Config & Flags) | ⬜ Not started | — |
+| BRIDGE-01 (Vanguard) | ⬜ Not started | — |
+| ISPOKE-09 (Codex) | ⬜ Not started | — |
+| ESPOKE-01 (Canvas) | ⬜ Not started | — |
 
-**MUWV flip:** per ADR-019 §8, the MUWV segment flipped from `0` to `1` on 2026-09-12 when PR #156 (CORE-18 Kernel) merged. The success criterion is verified by `KernelHelloWorldIntegrationTest::testHelloWorldRoundTrip`. The first post-MUWV tag is `v1.2.0.0+<sha>` (Milestone 1, lap 0, patch 0).
+Also shipped but not in the Milestone 0 scope: CORE-03 (Event Dispatcher), CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler), CORE-17 (Service Providers, stub).
 
-**Known gap (does not block MUWV):** the production HTTP entry point (`public/index.php`) is still a 503 placeholder. Wiring the Kernel into the entry point is Step 4 (BRIDGE-01 Vanguard) — the MUWV criterion is architectural, proven by the integration test, not deployment readiness.
+**MUWV criterion (per AGRD §4 + ADR-019 §8):** all 8 blueprints above at depth 1–2 AND a real HTTP request through the full Pulse trace (Outer Rim → Inner Rim → Inner Spoke → return). The integration test `KernelHelloWorldIntegrationTest::testHelloWorldRoundTrip` proves the architectural round-trip works, but `public/index.php` is still a 503 placeholder — the flip is NOT yet authorized.
 
-See [`Architecture/CrossCutting/WORKLOG.md`](Architecture/CrossCutting/WORKLOG.md) for the full execution log.
+### Premature flip (2026-09-12) — reverted
+
+The MUWV segment was flipped to `1` prematurely on 2026-09-12 based on the integration test passing. The AGRD §4 criterion requires all 8 blueprints + a real HTTP request through the full Rim. The premature `v1.2.0.0+b4ed694` tag and GitHub release have been deleted; ADR-019 §8 documents the corrected criterion. See [`Architecture/CrossCutting/WORKLOG.md`](Architecture/CrossCutting/WORKLOG.md) Task 27 for the full reversion log.
