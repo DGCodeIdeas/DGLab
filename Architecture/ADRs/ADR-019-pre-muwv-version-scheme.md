@@ -72,11 +72,11 @@ Example: `core-v0.1.3.0+abc1234`
 
 The tier prefix (`core-`, `hub-`, `bridge-`, `spoke-`) is preserved from ADR-018.
 
-### 4. Existing tags — grandfathered, not retagged
+### 4. Existing tags — deprecated, then deleted (2026-09-13)
 
-The following existing tags remain in git history as-is. They are **deprecated aliases** and will not be created going forward:
+The following tags were deprecated on 2026-09-11 and **deleted on 2026-09-13** per user directive. They no longer exist in the git repository or on GitHub:
 
-| Existing tag | New equivalent (not created retroactively) |
+| Deleted tag | New equivalent (not created retroactively) |
 |---|---|
 | `v1.0.0` | `v0.1.0.0+<sha>` (the first Core release) |
 | `release-1.0.0` | `v0.1.0.0+<sha>` (same — `release-` prefix is dropped) |
@@ -88,7 +88,7 @@ The following existing tags remain in git history as-is. They are **deprecated a
 | `core-middleware-v1.0.0` | (same) |
 | `core-router-v1.0.0` | (same) |
 
-**Why not retag:** the existing tags are referenced in `composer.json` constraints, `composer.lock` files (if any), and possibly in external clones. Retagging is destructive and would silently break anyone who pinned to the old names. The deprecated tags stay as historical artifacts; new releases use the new scheme going forward.
+**Why deleted (not retagged):** the tags were initially deprecated (kept in history) on 2026-09-11. On 2026-09-13, per user directive, they were deleted entirely — both the git tag refs and the GitHub Releases. The commits they pointed to remain in git history (immutable); only the tag labels were removed. New releases use the new `v0.X.Y.Z+sha` scheme going forward.
 
 ### 5. Composer version constraints
 
@@ -219,7 +219,7 @@ This labeling makes the prerelease status visible to anyone browsing the GitHub 
 
 3. **composer.json `version` field drops build metadata.** The `version` field is `"0.1.3.0"` (four segments, no `+sha`). The `+sha` appears only in git tags and GitHub Release titles.
 
-4. **Existing tags are deprecated, not retagged.** No destructive tag operations. The `v1.0.0` tag remains in history; new releases use `v0.1.x.y` going forward. A "Deprecated Tags" section in the README documents the mapping.
+4. **Existing tags were deprecated then deleted.** All 9 deprecated tags (v1.0.0, release-1.0.0–1.3.0, core-*-v1.0.0 × 4) were deleted from git and GitHub on 2026-09-13. The commits remain in history; only the tag labels were removed. A "Deprecated Tags" section in the README and [`DEPRECATED_TAGS.md`](../DEPRECATED_TAGS.md) document the mapping.
 
 5. **First release under the new scheme.** The next release after this ADR is merged will be `v0.1.3.0+<sha>` — pre-MUWV, Milestone 0, lap 3, patch 0. This reflects the current state: Step 2 triplet (CORE-10/09/08) shipped, CORE-18 (Kernel) not yet shipped, Milestone 0 success criterion not yet met.
 
