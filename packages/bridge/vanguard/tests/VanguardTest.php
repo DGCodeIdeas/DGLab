@@ -62,10 +62,13 @@ final class VanguardTest extends TestCase
     {
         $this->contracts->registerContract('/hello', new DefaultDtoTransformer());
         $handler = $this->helloHandler();
-        $request = (new ServerRequestFactory())->createServerRequest('GET', '/hello')
-            ->withQueryParams(['q' => '<script>alert(1)</script>']);
-        // Need to set the URI's query string for WAF to scan
-        $request = $request->withUri($request->getUri()->withQuery('q=<script>alert(1)</script>'));
+        // WAF scans raw body — put the attack payload in the body, not the
+        // query string (URL-encoding would hide <script> from the regex).
+        $request = (new ServerRequestFactory())->createServerRequest('GET', '/hello');
+        $body = new \SovereignStack\Core\Http\Stream('php://temp', 'r+');
+        $body->write('<script>alert(1)</script>');
+        $body->rewind();
+        $request = $request->withBody($body);
 
         $response = $this->vanguard->process($request, $handler);
         self::assertSame(400, $response->getStatusCode());
