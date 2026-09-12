@@ -869,3 +869,43 @@ Stage Summary:
 - 11 tests covering: CRUD, version history, byte-for-byte version integrity, public/internal boundary enforcement (the load-bearing security test per CI criterion 4).
 - Next: ESPOKE-01 (Canvas) — the last remaining Milestone 0 blueprint.
 - PAT hygiene: reused PAT. Push used one-shot token URL.
+
+---
+Task ID: 31
+Agent: main (Super Z)
+Task: ESPOKE-01 Sovereign Canvas (depth 2) — 9th and FINAL Milestone 0 blueprint. Public-facing CMS.
+
+Work Log:
+- User directive: "Proceed." — this is the last Milestone 0 blueprint. After this, take the mini-cooldown per OD-11.
+- Read ESPOKE-01 blueprint (131 lines): ContentDeliveryInterface (renderPage, purgeCache), SeoValidationInterface (validate ContentMetadata), Canvas with stale-while-revalidate cache fallback for Bridge unavailability. Consumes content from ISPOKE-09 via BRIDGE-01 — never directly.
+- Scope decision: depth 2 (happy path). Full implementation depends on HUB-02 (Cache), HUB-03 (Assets), HUB-26 (UI), HUB-08 (Gateway), CORE-11/12 (SuperPHP). For depth 2, ship the interfaces + a simple HTML renderer with stale-while-revalidate fallback.
+- Created packages/spoke/external/canvas/ with 7 source files + 1 test file:
+  - ContentDeliveryInterface.php — renderPage(slug): ResponseInterface, purgeCache(slug): void. Frozen per §2.1.
+  - SeoValidationInterface.php — validate(ContentMetadata): array. Frozen per §2.1.
+  - ContentMetadata.php — immutable value object (title, description, canonicalUrl, ogImage, keywords).
+  - SeoValidator.php — validates title length (10-60), description length (50-160), canonical URL format, keyword count (max 10).
+  - Canvas.php — depth-2 implementation with publish(), renderPage(), purgeCache(), simulateBridgeOutage(). Stale-while-revalidate: on cache miss, serves stale with data-stale marker before falling back to 404.
+  - SimpleResponse.php — minimal PSR-7 ResponseInterface (avoids pulling core-http-message as a dep at depth 2).
+  - SimpleStream.php — minimal PSR-7 StreamInterface (pairs with SimpleResponse).
+- Tests: CanvasTest (5 tests: 404 for unknown slug, publish+render 200, purge forces refetch, stale-while-revalidate on Bridge outage, purge moves to stale before clearing) + SeoValidatorTest (6 tests: valid metadata passes, title too short/long, description too short, invalid URL, too many keywords). Total: 11 tests.
+- Updated packages-ci.yml matrix: +spoke/external/canvas (15 packages total).
+- Updated ESPOKE-01.md Build Status from "Blocked" to "Shipped at depth 2".
+
+Stage Summary:
+- ESPOKE-01 shipped at depth 2. ALL 8 Milestone 0 blueprints now complete:
+  1. CORE-02 (DI Container) ✅
+  2. CORE-04 (HTTP Message) ✅
+  3. CORE-05 (Middleware) ✅
+  4. CORE-06 (Router) ✅
+  5. CORE-18 (Kernel) ✅
+  6. HUB-01 (Hub Config & Flags) ✅
+  7. BRIDGE-01 (Vanguard) ✅
+  8. ISPOKE-09 (Codex) ✅
+  9. ESPOKE-01 (Canvas) ✅
+- ContentDeliveryInterface + SeoValidationInterface frozen per SDLC-AGRD §2.1.
+- Depth-2 Canvas implements stale-while-revalidate cache fallback (the blueprint's fail-closed contract from §5): if Bridge returns 503, serves cached last-known-good page with a stale marker, not a raw 5xx.
+- 11 tests covering: 404 for unknown, publish+render, purge+refetch, stale-while-revalidate on outage, stale preservation on purge, SEO validation (title/description/URL/keywords).
+- Also shipped as bonus: CORE-03 (Event Dispatcher), CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler), CORE-17 stub (Service Providers) — these are in the repo but outside the strict 8-blueprint Milestone 0 scope per AGRD §4. They were built as Steps 1-3 dependencies.
+- **MILESTONE 0 COMPLETE.** Next: mini-cooldown per OD-11 (interface-freeze audit + refactor triage of all CI iterations across the milestone).
+- The MUWV flip remains UNAUTHORIZED — everything stays v0.* until the user explicitly says to flip. The AGRD §4 criterion ("real HTTP request enters at the Outer Rim, crosses the Inner Rim, resolves against the Inner Spoke, and returns") is now met architecturally: public/index.php boots the Kernel, pipes the Vanguard (BRIDGE-01), dispatches through the router to a controller. All 8 blueprints shipped.
+- PAT hygiene: reused PAT. Push used one-shot token URL.
