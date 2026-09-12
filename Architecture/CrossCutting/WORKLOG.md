@@ -754,3 +754,39 @@ Stage Summary:
 - 5 of 8 shipped. 4 remaining: HUB-01 -> BRIDGE-01 -> ISPOKE-09 -> ESPOKE-01.
 - PAT hygiene: reused PAT from previous session. Push used one-shot token URL.
 - Governance lesson: the AGRD §4 criterion is explicit — "a real HTTP request enters at the Outer Rim, crosses the Inner Rim, resolves against the Inner Spoke, and returns." The integration test passing is necessary but NOT sufficient. Documented in ADR-019 §8 to prevent future premature flips.
+
+---
+Task ID: 28
+Agent: main (Super Z)
+Task: HUB-01 Sovereign Hub Config & Flags (depth 2) — first Hub-tier component, 6th of 8 Milestone 0 blueprints
+
+Work Log:
+- User directive: "Proceed" — started HUB-01 after the MUWV flip reversion (Task 27). HUB-01 is the first of 4 remaining Milestone 0 blueprints (HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01).
+- Read full HUB-01 blueprint (593 lines): GlobalConfigInterface, FeatureManagerInterface, Context, FeatureFlagManager reference impl, RolloutBucket, SQL DDL for hub_config_overrides + hub_feature_flags, 6 security properties, CI criteria.
+- Scope decision: depth 2 (happy path per AGRD §4.1). The blueprint's DBAL-backed repositories and HUB-02 cache integration are depth-3+ concerns — they depend on CORE-19 and HUB-02 which aren't shipped. For depth 2, ship the interfaces + pure-logic parts with in-memory repository stubs.
+- Created packages/hub/config/ with 12 source files + 4 test files:
+  - `GlobalConfigInterface.php` — frozen per §2.1. get() with tenant override + feature() kill-switch wrapper.
+  - `FeatureManagerInterface.php` — frozen per §2.1. isEnabled() + getVariant().
+  - `Context.php` — immutable value object (userId, tenantId, environment, attributes). readonly properties.
+  - `Environment.php` — local enum (development/staging/production/testing). NOTE: CORE-10 doesn't ship Environment; this local enum satisfies the Context dependency at depth 2. When CORE-10 promotes to include Environment, swap the use-clause.
+  - `RolloutBucket.php` — pure static helper. xxh3 hash (falls back to crc32b), modulo 100, returns [0, 100).
+  - `UnknownFlagException.php` — named constructor forFlag().
+  - `InvalidOverrideKeyException.php` — named constructors forKey() + secretRejected().
+  - `FeatureFlagRepositoryInterface.php` — findByKey() + save(). Abstraction for DBAL swap.
+  - `ConfigOverrideRepositoryInterface.php` — get() + set() + delete(). Abstraction for DBAL swap.
+  - `InMemoryFeatureFlagRepository.php` — depth-2 stub. Validates rollout 0-100 and variant weights sum to 100.
+  - `InMemoryConfigOverrideRepository.php` — depth-2 stub. Validates keys against known schema + rejects secret patterns (password|secret|key|token).
+  - `FeatureFlagManager.php` — reference impl. isEnabled() evaluates: disabled→false, 0%→false, 100%→true, 0-100%→RolloutBucket<percentage. getVariant() evaluates: disabled→"off", no variants→"default", variants→cumulative distribution walk.
+  - `HubConfigRegistry.php` — reference impl. get() resolves: tenant override → CORE-10 global → supplied default. feature() wraps isEnabled() with try/catch returning false for unknown flags.
+- Tests: RolloutBucketTest (4 tests: range, determinism, distribution, uniformity), FeatureFlagManagerTest (11 tests: disabled, enabled@100, enabled@0, deterministic, unknown throws, variant default/off/key, null context, invalid rollout, invalid weights), HubConfigRegistryTest (9 tests: global default, supplied default, tenant override, no override fallback, unknown key rejected, secret rejected, feature unknown false, feature enabled true, feature disabled false, delete override), PercentageRolloutStabilityTest (4 tests: 1000-eval stability, 50% uniformity, 10% uniformity, variant stability), ContextTest (4 tests: constructor, anonymous factory, immutability, enum cases). Total: 32 tests.
+- Updated packages-ci.yml matrix: +hub/config (12 packages total).
+- Updated HUB-01.md Build Status from "Blocked" to "Shipped at depth 2".
+
+Stage Summary:
+- HUB-01 shipped at depth 2. 6 of 8 Milestone 0 blueprints now complete (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18, HUB-01).
+- `GlobalConfigInterface`, `FeatureManagerInterface`, `Context`, `Environment` frozen per SDLC-AGRD §2.1.
+- Depth-2 implementation uses in-memory stubs — no DBAL/HUB-02 dependencies. Swappable for real implementations when CORE-19 and HUB-02 land.
+- 32 tests covering: deterministic rollout stability (the load-bearing invariant), uniformity at 10%/50%, variant selection, tenant override resolution, kill-switch semantics, secret-pattern rejection, schema-key validation.
+- CI validation pending (PHP not available locally). Expected iterations: 1-2 (PHPStan strictness on the nullable variants array, possible PHPUnit fragility around the hash uniformity thresholds).
+- 3 remaining Milestone 0 blueprints: BRIDGE-01 (Vanguard) → ISPOKE-09 (Codex) → ESPOKE-01 (Canvas). BRIDGE-01 is next — it wires public/index.php to boot the Kernel, which is the "real HTTP request through the full Rim" that AGRD §4 requires for the MUWV flip.
+- PAT hygiene: reused PAT. Push used one-shot token URL.

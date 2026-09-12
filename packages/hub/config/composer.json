@@ -1,0 +1,42 @@
+{
+    "name": "sovereign-stack/hub-config",
+    "description": "HUB-01: Sovereign Hub Config & Flags — tenant-aware configuration and feature flag evaluation with deterministic percentage rollouts",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0.0",
+    "require": {
+        "php": "^8.3",
+        "ext-json": "*",
+        "ext-hash": "*",
+        "psr/container": "^2.0",
+        "sovereign-stack/core-container": "^0.1",
+        "sovereign-stack/core-config": "^0.1"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^10.5",
+        "friendsofphp/php-cs-fixer": "^3.48"
+    },
+    "autoload": {
+        "psr-4": {
+            "SovereignStack\\Hub\\Config\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SovereignStack\\Hub\\Config\\Tests\\": "tests/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../core/container"
+        },
+        {
+            "type": "path",
+            "url": "../../core/config"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
