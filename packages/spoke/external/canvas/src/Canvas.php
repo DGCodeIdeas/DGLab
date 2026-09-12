@@ -109,9 +109,9 @@ final class Canvas implements ContentDeliveryInterface
 
     private function htmlResponse(int $status, string $body): ResponseInterface
     {
-        // Use a minimal PSR-7 response — the depth-2 implementation doesn't
-        // depend on sovereign-stack/core-http-message. When the full stack
-        // lands, this is replaced with the core ResponseFactory.
-        return new SimpleResponse($status, $body);
+        $stream = new \SovereignStack\Core\Http\Stream('php://temp', 'r+');
+        $stream->write($body);
+        $stream->rewind();
+        return new \SovereignStack\Core\Http\Response($status, body: $stream);
     }
 }
