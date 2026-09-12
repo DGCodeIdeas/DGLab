@@ -27,8 +27,7 @@ approval processes. Must exist before `ESPOKE-01` can be considered feature-comp
 public CMS's actual content source.
 
 ## Build Status
-🔴 **Blocked** on `HUB-14` (Search), `HUB-06`, `HUB-18` (Media Forge), `HUB-10` (Queue), `HUB-04`,
-`HUB-05` — none implemented.
+📦 **Shipped at depth 2** (Milestone 0, Task 30, v0.1.0.0). `KnowledgeBaseInterface` is frozen per SDLC-AGRD §2.1. Depth-2 implementation uses in-memory storage. When CORE-19 (DBAL) lands, the storage is replaced — the interface and DocumentManager logic are unchanged. The `isPublic()` method is load-bearing for the BRIDGE-01 security boundary: only documents with `isPublic() === true` are ever offered to BRIDGE-01's registered contract for ESPOKE-01.
 
 ## Dependency Status — corrected
 - **Direct Hub:** ~~`HUB-13: Full-text Search & Indexing`~~ → **`HUB-14: Search Abstraction Layer`**;

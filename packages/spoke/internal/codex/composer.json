@@ -1,0 +1,29 @@
+{
+    "name": "sovereign-stack/spoke-codex",
+    "description": "ISPOKE-09: Sovereign Codex — collaborative knowledge base with Markdown editing, version history, and public/internal boundary enforcement",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0.0",
+    "require": {
+        "php": "^8.3",
+        "ext-json": "*",
+        "psr/container": "^2.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^10.5",
+        "friendsofphp/php-cs-fixer": "^3.48"
+    },
+    "autoload": {
+        "psr-4": {
+            "SovereignStack\\Internal\\Codex\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SovereignStack\\Internal\\Codex\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

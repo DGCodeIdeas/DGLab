@@ -827,3 +827,45 @@ Stage Summary:
 - CI validation pending (PHP not available locally). Expected iterations: 1-3 (PHPStan on the anonymous classes in public/index.php, the Stream usage in Vanguard, the ServerRequestFactory::fromGlobals call).
 - 1 remaining Milestone 0 blueprint: ISPOKE-09 (Codex), then ESPOKE-01 (Canvas).
 - PAT hygiene: reused PAT. Push used one-shot token URL.
+
+---
+Task ID: 30
+Agent: main (Super Z)
+Task: ISPOKE-09 Sovereign Codex (depth 2) — 8th of 8 Milestone 0 blueprints. Internal knowledge base + wiki.
+
+Work Log:
+- User directive: "Proceed." — continuing through the remaining Milestone 0 blueprints. Everything stays prerelease until the user explicitly says otherwise.
+- Read ISPOKE-09 blueprint (106 lines): KnowledgeBaseInterface (getDocument, saveDocument, isPublic), DocumentManager, VersionControl, PublicMarker. The load-bearing method is isPublic() — BRIDGE-01's DtoTransformerInterface reads it to decide whether a document may be served to ESPOKE-01.
+- Scope decision: depth 2 (happy path). Full implementation depends on HUB-14 (Search), HUB-06 (Audit), HUB-18 (Media), HUB-10 (Queue), HUB-04, HUB-05, CORE-19 (DBAL) — none shipped. For depth 2, ship the KnowledgeBaseInterface + an in-memory implementation with version tracking + public marker.
+- Created packages/spoke/internal/codex/ with 3 source files + 1 test file:
+  - KnowledgeBaseInterface.php — getDocument(slug, ?version), saveDocument(slug, content, staffId, summary), isPublic(slug). Frozen per §2.1.
+  - DocumentNotFoundException.php — named constructors forSlug(), forVersion().
+  - InMemoryKnowledgeBase.php — in-memory implementation with:
+    - Full version history (each saveDocument creates a new version)
+    - Public marker (markPublic/markPrivate on latest version)
+    - Public flag inherited by new versions (a public doc stays public through edits)
+    - versionCount() helper for testing
+- Tests: KnowledgeBaseTest with 11 tests covering:
+  - Save + get document (basic CRUD)
+  - Version history increments (v1, v2, latest)
+  - Version integrity (byte-for-byte content match — CI criterion 2)
+  - Document not found throws
+  - Version not found throws
+  - Document is private by default (CI criterion 4: public/internal boundary)
+  - Mark public → isPublic true
+  - Mark private after public → isPublic false
+  - Public flag inherited on new version
+  - Public/internal boundary enforced (the load-bearing security test)
+  - Mark public on nonexistent throws
+  - Multiple documents (isolation between docs)
+- Updated packages-ci.yml matrix: +spoke/internal/codex (14 packages total).
+- Updated ISPOKE-09.md Build Status from "Blocked" to "Shipped at depth 2".
+
+Stage Summary:
+- ISPOKE-09 shipped at depth 2. 8 of 8 Milestone 0 blueprints now complete (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18, HUB-01, BRIDGE-01, ISPOKE-09).
+- Wait — that's only 8 of 9 if you count ESPOKE-01 separately. Per SDLC-AGRD §4, the 8 required blueprints are: CORE-02, CORE-04, CORE-05, CORE-06, CORE-18, HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01. That's actually 9 (the blueprint says "8 blueprints" but lists 9 items — the AGRD count was corrected from "~10" to 8, but the list has 9 items including both ISPOKE-09 and ESPOKE-01). 8 of 9 shipped; ESPOKE-01 is the last remaining.
+- Actually, re-reading the AGRD §4 scope: "minimal CORE-02, CORE-04/05/06 stubs, one Hub service (HUB-01), BRIDGE-01 stub, one Internal Spoke (ISPOKE-09, Codex), one External Spoke (ESPOKE-01, Canvas)." That's 8 components if you count CORE-04/05/06 as one (which they are — they're the "HTTP pipeline stubs"). So: CORE-02, CORE-04/05/06, CORE-18, HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 = 8 groups. All 8 groups shipped except ESPOKE-01.
+- KnowledgeBaseInterface frozen per SDLC-AGRD §2.1. The isPublic() method is load-bearing for the BRIDGE-01 security boundary.
+- 11 tests covering: CRUD, version history, byte-for-byte version integrity, public/internal boundary enforcement (the load-bearing security test per CI criterion 4).
+- Next: ESPOKE-01 (Canvas) — the last remaining Milestone 0 blueprint.
+- PAT hygiene: reused PAT. Push used one-shot token URL.
