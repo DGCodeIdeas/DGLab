@@ -1,0 +1,51 @@
+{
+    "name": "sovereign-stack/bridge-vanguard",
+    "description": "BRIDGE-01: The Vanguard — PSR-15 boundary middleware enforcing default-deny contract routing, WAF inspection, and DTO transformation at the SovereignStack tier boundary",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0.0",
+    "require": {
+        "php": "^8.3",
+        "ext-pcre": "*",
+        "ext-json": "*",
+        "psr/http-message": "^2.0",
+        "psr/http-server-middleware": "^1.0",
+        "psr/http-server-handler": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/log": "^3.0",
+        "sovereign-stack/core-http-message": "^0.1",
+        "sovereign-stack/core-middleware": "^0.1",
+        "sovereign-stack/core-router": "^0.1"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^10.5",
+        "friendsofphp/php-cs-fixer": "^3.48"
+    },
+    "autoload": {
+        "psr-4": {
+            "SovereignStack\\Bridge\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SovereignStack\\Bridge\\Tests\\": "tests/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../core/http-message"
+        },
+        {
+            "type": "path",
+            "url": "../../core/middleware"
+        },
+        {
+            "type": "path",
+            "url": "../../core/router"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

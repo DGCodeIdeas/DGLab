@@ -43,6 +43,8 @@ jobs:
             working-dir: packages/core/kernel
           - package: hub/config
             working-dir: packages/hub/config
+          - package: bridge/vanguard
+            working-dir: packages/bridge/vanguard
           - package: orchestrator
             working-dir: orchestrator
     steps:

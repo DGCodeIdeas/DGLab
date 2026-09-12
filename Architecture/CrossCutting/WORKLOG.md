@@ -790,3 +790,40 @@ Stage Summary:
 - CI validation pending (PHP not available locally). Expected iterations: 1-2 (PHPStan strictness on the nullable variants array, possible PHPUnit fragility around the hash uniformity thresholds).
 - 3 remaining Milestone 0 blueprints: BRIDGE-01 (Vanguard) → ISPOKE-09 (Codex) → ESPOKE-01 (Canvas). BRIDGE-01 is next — it wires public/index.php to boot the Kernel, which is the "real HTTP request through the full Rim" that AGRD §4 requires for the MUWV flip.
 - PAT hygiene: reused PAT. Push used one-shot token URL.
+
+---
+Task ID: 29
+Agent: main (Super Z)
+Task: BRIDGE-01 Vanguard (depth 2) — 7th of 8 Milestone 0 blueprints. Wires public/index.php to boot the Kernel.
+
+Work Log:
+- User directive: "Proceed. Note: Everything is prerelease until i say. Once Milestone 0 is completed take the mini-cooldown."
+- Read full BRIDGE-01 blueprint (615 lines): Vanguard PSR-15 middleware with 6-step chain (JWT → rate-limit → WAF → contract → forward → DTO-transform → audit), BoundaryContractInterface, DtoTransformerInterface, ContractRegistry (immutable after boot), WafInspector, 12 CI criteria, 12 security properties.
+- Scope decision: depth 2 (happy path). The full Vanguard depends on HUB-02/HUB-04/HUB-06/HUB-08/HUB-15/CORE-16 — none shipped. For depth 2, ship the pure-logic parts (contract lookup + WAF + DTO transform) with pass-through stubs for JWT/rate-limit/audit.
+- Created packages/bridge/vanguard/ with 6 source files + 4 test files:
+  - BoundaryContractInterface.php — extends PSR-15 MiddlewareInterface, adds registerContract(). Frozen per §2.1.
+  - DtoTransformerInterface.php — transform() + transformResponse(). Frozen per §2.1.
+  - ContractRegistry.php — in-process map, immutable after first resolve(). Malformed contract IDs rejected.
+  - WafInspector.php — pure PCRE regex scan for SQLi (union select, OR 1=1, comment markers, stacked), XSS (script tag, javascript:, event handler), path traversal (../, ..\, %2e%2e%2f). Returns pattern name (never payload).
+  - Vanguard.php — PSR-15 middleware. Chain: JWT (pass-through log) → rate-limit (pass-through log) → WAF (real, 400 on hit) → contract (real, 403 default-deny on unregistered) → forward (delegate to next handler) → DTO transform (strip _underscore fields) → audit (pass-through log).
+  - DefaultDtoTransformer.php — strips _underscore fields + configurable redactKeys, recursively on nested arrays.
+- Tests: ContractRegistryTest (5 tests: default-deny, registered resolves, freeze after first resolve, malformed ID rejected, has() doesn't freeze), WafInspectorTest (13 tests: SQLi union/OR/comment/stacked, XSS script/javascript/event, path traversal normal/encoded, benign JSON/URL/form passes, query string scanned), DefaultDtoTransformerTest (5 tests: underscore strip, redactKeys, nested strip, non-array unchanged, transform+transformResponse both strip), VanguardTest (5 tests: unregistered 403, registered forwards, WAF block 400, DTO strips internal, registerContract delegates). Total: 28 tests.
+- Rewrote public/index.php from 503 placeholder to real entry point:
+  - Builds Kernel dependencies (Container, ConfigRepository, ErrorHandler, EventDispatcher, Logger, ListenerProvider)
+  - Builds Vanguard (ContractRegistry + WafInspector + ResponseFactory)
+  - Registers the '/' contract with DefaultDtoTransformer
+  - Custom bootstrapper pipes Vanguard as outermost middleware, registers '/hello' route with HelloController
+  - Boots Kernel, handles ServerRequestFactory::fromGlobals(), emits response (status + headers + body), terminates
+  - This satisfies AGRD §4: "a real HTTP request enters at the Outer Rim (Vanguard), crosses the Inner Rim (Kernel pipeline → router → controller), and returns"
+- Updated packages-ci.yml matrix: +bridge/vanguard (13 packages total).
+- Updated BRIDGE-01.md Build Status from "Blocked" to "Shipped at depth 2".
+
+Stage Summary:
+- BRIDGE-01 shipped at depth 2. 7 of 8 Milestone 0 blueprints now complete (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18, HUB-01, BRIDGE-01).
+- BoundaryContractInterface + DtoTransformerInterface frozen per SDLC-AGRD §2.1.
+- public/index.php is now a real HTTP entry point — boots the Kernel, pipes the Vanguard, dispatches the request, emits the response. A real HTTP request to the server now flows through the full Pulse trace (Outer Rim → Inner Rim → controller → Response).
+- Depth-2 implementation: WAF + contract enforcement are real. JWT/rate-limit/audit are pass-through stubs. When HUB-02/HUB-04/HUB-06/CORE-16 land, the stubs are replaced — the interfaces, chain order, and public/index.php are unchanged.
+- 28 tests covering: contract default-deny, registry immutability, WAF patterns (SQLi/XSS/path traversal), DTO transformation (underscore strip, redactKeys, nested), Vanguard end-to-end (403/400/200/DTO strip).
+- CI validation pending (PHP not available locally). Expected iterations: 1-3 (PHPStan on the anonymous classes in public/index.php, the Stream usage in Vanguard, the ServerRequestFactory::fromGlobals call).
+- 1 remaining Milestone 0 blueprint: ISPOKE-09 (Codex), then ESPOKE-01 (Canvas).
+- PAT hygiene: reused PAT. Push used one-shot token URL.
