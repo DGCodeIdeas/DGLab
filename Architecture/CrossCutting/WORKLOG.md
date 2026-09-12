@@ -979,3 +979,31 @@ Stage Summary:
 - All 8 Milestone 0 blueprints shipped at depth 2. MUWV flip remains UNAUTHORIZED — everything stays v0.* until the user explicitly says.
 - The AGRD §4 criterion ("real HTTP request enters at the Outer Rim, crosses the Inner Rim, resolves against the Inner Spoke, and returns") is now architecturally met: public/index.php boots the Kernel, pipes the Vanguard (BRIDGE-01), dispatches through the router to a controller. All 8 blueprints shipped. The remaining depth-2 gap (public/index.php serving real traffic, not just the test fixture) is deployment readiness, not architectural readiness.
 - Ready for the user's MUWV flip authorization when they're ready.
+
+---
+Task ID: 33
+Agent: main (Super Z)
+Task: Label all releases as Prerelease + update release.yml for future prerelease marking
+
+Work Log:
+- User directive: "Not yet, label all Prerelease first and retag all new and existing ones." — MUWV flip NOT authorized. Everything stays v0.* and is explicitly marked as prerelease.
+- Inventoried all 16 GitHub releases: 14 were `prerelease=False` (regular releases), 2 were already `prerelease=True` (the deprecated v1.0.0 + core-event-dispatcher-v1.0.0 from Task 24's deprecation pass).
+- Marked all 14 non-prerelease releases as `prerelease=True` via the GitHub API (PATCH /releases/{id}):
+  - 7 v0.* monorepo tags: v0.1.0.0+cca44c0 through v0.1.6.0+faf997b
+  - 4 legacy release-* tags: release-1.0.0, release-1.1.0, release-1.2.0, release-1.3.0
+  - 3 legacy per-package tags: core-router-v1.0.0, core-middleware-v1.0.0, core-http-message-v1.0.0
+- Updated release.yml: added `--prerelease` flag to both `gh release create` commands (per-tier release job at line 219, monorepo-release job at line 315). All future releases created by the workflow will automatically be marked as prerelease.
+- Updated ADR-019: added §9 "Prerelease labeling (2026-09-12)" documenting:
+  - All v0.* releases are prerelease per SemVer §9 (MUWV=0 = pre-1.0)
+  - GitHub Releases marked with prerelease=True flag (visible as "Pre-release" in GitHub UI)
+  - release.yml includes --prerelease flag for future releases
+  - When MUWV flips: --prerelease flag removed in the same PR that documents the flip
+  - Existing 16 releases retagged (metadata only; git tags unchanged — immutable history)
+- Updated README: Current version updated to v0.1.6.0+faf997b (latest). Added "prerelease" labeling. Pre-MUWV history extended through v0.1.6.0.
+
+Stage Summary:
+- All 16 GitHub releases now marked `prerelease=True`. No one browsing the Releases page can mistake a v0.* tag for a stable release.
+- release.yml will create all future v0.* releases as prerelease automatically.
+- ADR-019 §9 documents the prerelease labeling policy. README reflects the prerelease status.
+- MUWV flip remains UNAUTHORIZED. When the user is ready, the flip PR will: (a) remove --prerelease from release.yml, (b) update ADR-019 §8 with the flip log, (c) create the first v1.2.0.0+<sha> tag as a regular (non-prerelease) release, (d) mark all prior v0.* releases as no-longer-latest (they stay prerelease forever as historical artifacts).
+- PAT hygiene: reused PAT. API calls used Authorization header (not git config).
