@@ -41,6 +41,8 @@ jobs:
             working-dir: packages/core/error-handler
           - package: core/kernel
             working-dir: packages/core/kernel
+          - package: hub/config
+            working-dir: packages/hub/config
           - package: orchestrator
             working-dir: orchestrator
     steps:

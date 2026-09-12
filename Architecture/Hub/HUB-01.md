@@ -20,13 +20,7 @@ The component exists because multi-tenant deployments need operator-controlled d
 What HUB-01 is **not**: not a secrets manager (HUB-20 serves rotating secrets, and any key matching `/password|secret|key|token/i` is rejected at override-write time); not a remote-config source (no Consul/etcd/AppConfig; configuration is operator-authored via SQL or a future admin tool backed by `ConfigOverrideRepository`); not a CDN-edge config layer (Bridge and External Spokes read HUB-01 through BRIDGE-01's DTO boundary, never directly). HUB-02 is the cache layer; HUB-01 is the policy and evaluation layer that *uses* HUB-02.
 
 ## Build Status
-🔴 **Blocked** on:
-- **CORE-02** (DI Container) — singleton binding of `GlobalConfigInterface` → `HubConfigRegistry`, and constructor injection of `ConfigInterface`, `ConfigOverrideRepository`, `FeatureFlagRepository`, HUB-02's `CacheInterface`.
-- **CORE-10** (Config Loader) — HUB-01 wraps the frozen `ConfigInterface`; without it there is no global-default layer to extend.
-- **CORE-19** (DBAL) — `ConfigOverrideRepository` and `FeatureFlagRepository` are DBAL-backed; the DDL presumes MySQL 8 (InnoDB) per ADR-013.
-- **HUB-02** (Cache) — resolved flag/config values are cached with 60s TTL and tag-based invalidation; HUB-01 cannot meet its consistency bound without HUB-02's `tag()` and `invalidateTags()` primitives.
-
-📝 Not started. Implementation may be written and unit-tested in isolation against the interfaces declared here (using in-memory fakes for the repositories and cache), but production wiring requires all four blockers to land. Per Build Sequence §5, CORE-19 lands in Step 5; per §8, HUB-01 lands in Step 8 (Hub tier) after HUB-02.
+📦 **Shipped at depth 2** (Milestone 0, Task 28, v0.1.0.0). `GlobalConfigInterface`, `FeatureManagerInterface`, `Context`, and `Environment` are frozen per SDLC-AGRD §2.1. The depth-2 implementation uses in-memory repository stubs (`InMemoryFeatureFlagRepository`, `InMemoryConfigOverrideRepository`) — no DBAL/HUB-02 dependencies. When CORE-19 (DBAL) and HUB-02 (Cache) land, the stubs are replaced with real DBAL-backed repositories — the interfaces and evaluation logic are unchanged.
 
 ## Dependency Status
 - **Upward:** CORE-02 (DI Container — singleton bindings), CORE-10 (Config Loader — base layer), CORE-19 (DBAL — `ConfigOverrideRepository`, `FeatureFlagRepository`), HUB-02 (Cache — `CacheInterface` with tag support), CORE-09 (Logging — diagnostic emission on cache miss).
