@@ -258,8 +258,9 @@ jobs:
         id: mono
         run: |
           # ADR-019: monorepo version is v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
-          # Post-MUWV flip (2026-09-12): MUWV=1, Milestone 1 = segment 2.
-          # Pre-flip: MUWV=0, Milestone 0 = segment 1.
+          # Currently pre-MUWV: MUWV=0, Milestone 0 = segment 1.
+          # The flip to v1.* is NOT yet authorized (see ADR-019 §8 — requires
+          # all 8 Milestone 0 blueprints + real HTTP request through the full Rim).
           #
           # IMPORTANT: only match 4-segment ADR-019 tags (vX.Y.Z.W).
           # The old deprecated 3-segment tags (v1.0.0, release-1.X.0) sort
@@ -282,8 +283,8 @@ jobs:
             PATCH=$(echo "$CURRENT" | cut -d. -f4)
             # Increment lap for each new monorepo release (each tier release cycle = one lap).
             # The MUWV segment is never auto-bumped — the flip is a manual governance
-            # action (see ADR-019 §8 Flip Log). Subsequent releases continue bumping
-            # the lap segment within whatever MUWV/milestone the latest tag is in.
+            # action (see ADR-019 §8). Subsequent releases continue bumping the lap
+            # segment within whatever MUWV/milestone the latest tag is in.
             NEW_VERSION="${MUWV}.${MILESTONE}.$((LAP + 1)).0"
           fi
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
