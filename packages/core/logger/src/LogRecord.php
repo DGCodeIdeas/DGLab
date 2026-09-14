@@ -45,7 +45,7 @@ final class LogRecord
      * @param DateTimeImmutable $timestamp When the record was created.
      * @param string $level PSR-3 LogLevel constant.
      * @param string $message Message template, possibly with {placeholder} tokens.
-     * @param array<string, mixed> $context PSR-3 context, including optional 'exception' => Throwable.
+     * @param array<mixed, mixed> $context PSR-3 context, including optional 'exception' => Throwable.
      * @param array<string, mixed> $extra Handler-populated metadata (e.g. file, line, pid).
      */
     public function __construct(
@@ -67,7 +67,7 @@ final class LogRecord
      *
      * @param string $level PSR-3 LogLevel constant.
      * @param string|Stringable $message Message template.
-     * @param array<string, mixed> $context PSR-3 context.
+     * @param array<mixed, mixed> $context PSR-3 context.
      * @param array<string, mixed> $extra Handler-populated metadata.
      */
     public static function create(
@@ -130,6 +130,25 @@ final class LogRecord
             $this->message,
             $this->context,
             [$key => $value] + $this->extra,
+        );
+    }
+
+    /**
+     * Return a new LogRecord with a replaced context array.
+     *
+     * Used by {@see RedactingFormatter} to strip sensitive keys before
+     * the record reaches the inner formatter.
+     *
+     * @param array<mixed, mixed> $context
+     */
+    public function withContext(array $context): self
+    {
+        return new self(
+            $this->timestamp,
+            $this->level,
+            $this->message,
+            $context,
+            $this->extra,
         );
     }
 }

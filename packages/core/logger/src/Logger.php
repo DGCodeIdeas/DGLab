@@ -72,7 +72,7 @@ final class Logger implements LoggerInterface
      *
      * @param mixed $level
      * @param string|Stringable $message
-     * @param array<string, mixed> $context
+     * @param array<mixed, mixed> $context
      */
     public function log($level, string|Stringable $message, array $context = []): void
     {
@@ -93,7 +93,14 @@ final class Logger implements LoggerInterface
         foreach ($this->handlers as $handler) {
             if ($handler->isHandling($record)) {
                 try {
-                    $handler->handle($record);
+                    $result = $handler->handle($record);
+                    // Honor the handler's propagation signal: if handle()
+                    // returns false, stop processing downstream handlers.
+                    // This is the HandlerStack propagation contract —
+                    // a handler that returns false "swallows" the record.
+                    if ($result === false) {
+                        break;
+                    }
                 } catch (Throwable $e) {
                     // Logging must never crash the application. Swallow handler
                     // failures silently. Production deployments should monitor

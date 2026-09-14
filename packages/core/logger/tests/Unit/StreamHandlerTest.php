@@ -33,7 +33,7 @@ final class StreamHandlerTest extends TestCase
         $handler = new StreamHandler($this->tempFile);
         $record = LogRecord::create(LogLevel::INFO, 'hello world');
         $handler->handle($record);
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertNotFalse($contents);
@@ -45,11 +45,11 @@ final class StreamHandlerTest extends TestCase
     {
         $handler1 = new StreamHandler($this->tempFile);
         $handler1->handle(LogRecord::create(LogLevel::INFO, 'first'));
-        $handler1->Close();
+        $handler1->close();
 
         $handler2 = new StreamHandler($this->tempFile);
         $handler2->handle(LogRecord::create(LogLevel::INFO, 'second'));
-        $handler2->Close();
+        $handler2->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringContainsString('first', $contents);
@@ -62,7 +62,7 @@ final class StreamHandlerTest extends TestCase
         $handler->handle(LogRecord::create(LogLevel::INFO, 'should not write'));
         $handler->handle(LogRecord::create(LogLevel::WARNING, 'should write'));
         $handler->handle(LogRecord::create(LogLevel::ERROR, 'should also write'));
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringNotContainsString('should not write', $contents);
@@ -73,7 +73,7 @@ final class StreamHandlerTest extends TestCase
     public function testIsHandlingReturnsFalseAfterClose(): void
     {
         $handler = new StreamHandler($this->tempFile);
-        $handler->Close();
+        $handler->close();
 
         $record = LogRecord::create(LogLevel::INFO, 'after close');
         self::assertFalse($handler->isHandling($record));
@@ -93,7 +93,7 @@ final class StreamHandlerTest extends TestCase
         $record = LogRecord::create(LogLevel::INFO, 'handled');
 
         self::assertTrue($handler->handle($record));
-        $handler->Close();
+        $handler->close();
     }
 
     public function testHandleBatchWritesAllFilteredRecords(): void
@@ -106,7 +106,7 @@ final class StreamHandlerTest extends TestCase
             LogRecord::create(LogLevel::ERROR, 'written 2'),
         ];
         $handler->handleBatch($records);
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringNotContainsString('skipped', $contents);
@@ -129,7 +129,7 @@ final class StreamHandlerTest extends TestCase
 
         $handler = new StreamHandler($this->tempFile, formatter: $formatter);
         $handler->handle(LogRecord::create(LogLevel::INFO, 'test'));
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringContainsString('CUSTOM::info::test', $contents);
@@ -142,7 +142,7 @@ final class StreamHandlerTest extends TestCase
 
         $handler = new StreamHandler($stream);
         $handler->handle(LogRecord::create(LogLevel::INFO, 'via resource'));
-        $handler->Close();
+        $handler->close();
 
         // Handler should NOT close externally-provided resources.
         self::assertTrue(is_resource($stream));
@@ -164,8 +164,8 @@ final class StreamHandlerTest extends TestCase
     public function testCloseIsIdempotent(): void
     {
         $handler = new StreamHandler($this->tempFile);
-        $handler->Close();
-        $handler->Close(); // Should not throw.
+        $handler->close();
+        $handler->close(); // Should not throw.
 
         $this->expectNotToPerformAssertions();
     }
@@ -181,8 +181,8 @@ final class StreamHandlerTest extends TestCase
             $handler2->handle(LogRecord::create(LogLevel::INFO, "h2-line-{$i}"));
         }
 
-        $handler1->Close();
-        $handler2->Close();
+        $handler1->close();
+        $handler2->close();
 
         $contents = file_get_contents($this->tempFile);
         $lines = explode("\n", $contents);

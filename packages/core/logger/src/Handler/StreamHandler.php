@@ -92,7 +92,12 @@ final class StreamHandler implements HandlerInterface
         $this->write($formatted);
     }
 
-    public function Close(): void
+    public function __destruct()
+    {
+        $this->close();
+    }
+
+    public function close(): void
     {
         if ($this->closed) {
             return;
@@ -135,7 +140,11 @@ final class StreamHandler implements HandlerInterface
         }
 
         try {
-            fwrite($stream, $data);
+            $written = fwrite($stream, $data);
+            if ($written === false || $written === 0) {
+                // Write failed — log to error_log so the failure is visible.
+                error_log("StreamHandler: fwrite failed to [{$this->streamSpec}]");
+            }
         } finally {
             if ($lockAcquired) {
                 flock($stream, LOCK_UN);
@@ -159,10 +168,11 @@ final class StreamHandler implements HandlerInterface
             return null;
         }
 
-        $stream = @fopen($this->streamSpec, 'ab');
+        $stream = fopen($this->streamSpec, 'ab');
         if ($stream === false) {
-            // Silently fail — logging must not crash the application.
-            // Production deployments should monitor for missing log output.
+            // fopen failed — log to PHP's error_log as a last resort
+            // so the failure isn't completely invisible.
+            error_log("StreamHandler: failed to open [{$this->streamSpec}] for writing");
             return null;
         }
         $this->stream = $stream;

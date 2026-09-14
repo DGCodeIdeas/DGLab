@@ -76,10 +76,15 @@ final class LineFormatter implements FormatterInterface
      * $context[$key]. Tokens with no matching context key are left as-is.
      *
      * @param string $message
-     * @param array<string, mixed> $context
+     * @param array<mixed, mixed> $context
      */
     private function interpolate(string $message, array $context): string
     {
+        // Security: sanitize control characters in the message template to
+        // prevent log injection (CWE-117). A user-supplied value containing
+        // \n can inject fake log entries.
+        $message = self::sanitizeForSingleLine($message);
+
         if ($context === []) {
             return $message;
         }
@@ -90,17 +95,20 @@ final class LineFormatter implements FormatterInterface
                 // Exceptions are rendered separately — don't toString them inline.
                 continue;
             }
-            $replace['{' . $key . '}'] = match (true) {
+            $replacement = match (true) {
                 is_scalar($value) || $value === null => (string) $value,
                 default => json_encode($value, JSON_THROW_ON_ERROR) ?: '',
             };
+            // Security: sanitize interpolated values too — a context value
+            // containing \n would break the single-line log format.
+            $replace['{' . $key . '}'] = self::sanitizeForSingleLine($replacement);
         }
 
         return strtr($message, $replace);
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<mixed, mixed> $data
      */
     private function renderContext(array $data): string
     {
@@ -110,7 +118,8 @@ final class LineFormatter implements FormatterInterface
                 is_scalar($value) || $value === null => var_export($value, true),
                 default => json_encode($value, JSON_THROW_ON_ERROR) ?: 'null',
             };
-            $parts[] = "{$key}={$rendered}";
+            // Security: sanitize rendered context values to prevent log injection.
+            $parts[] = "{$key}=" . self::sanitizeForSingleLine($rendered);
         }
         return '{' . implode(' ', $parts) . '}';
     }
@@ -119,5 +128,26 @@ final class LineFormatter implements FormatterInterface
     {
         $trace = $e->getTraceAsString();
         return "  Exception: " . $e::class . " '{$e->getMessage()}' at {$e->getFile()}:{$e->getLine()}\n{$trace}";
+    }
+
+    /**
+     * Replace control characters (\r, \n, \t, and other chars < 0x20) with
+     * their literal escape sequences to prevent log injection (CWE-117).
+     *
+     * A user-supplied value containing \n can inject fake log entries that
+     * look like separate records. This method ensures every interpolated
+     * value stays on a single line.
+     */
+    private static function sanitizeForSingleLine(string $value): string
+    {
+        // Replace common control chars with visible escape sequences.
+        $value = str_replace(["\r", "\n", "\t"], ['\\r', '\\n', '\\t'], $value);
+        // Replace any remaining control characters (0x00-0x1F except the
+        // already-handled \r\n\t) with their hex representation.
+        return preg_replace_callback(
+            '/[\x00-\x08\x0B\x0C\x0E-\x1F]/',
+            static fn(array $m): string => '\\x' . str_pad(dechex(ord($m[0])), 2, '0', STR_PAD_LEFT),
+            $value,
+        ) ?? $value;
     }
 }
