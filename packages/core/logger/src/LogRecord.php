@@ -139,7 +139,7 @@ final class LogRecord
      * Used by {@see RedactingFormatter} to strip sensitive keys before
      * the record reaches the inner formatter.
      *
-     * @param array<string, mixed> $context
+     * @param array<mixed, mixed> $context
      */
     public function withContext(array $context): self
     {
