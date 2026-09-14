@@ -72,7 +72,7 @@ final class Logger implements LoggerInterface
      *
      * @param mixed $level
      * @param string|Stringable $message
-     * @param array<string, mixed> $context
+     * @param array<mixed, mixed> $context
      */
     public function log($level, string|Stringable $message, array $context = []): void
     {

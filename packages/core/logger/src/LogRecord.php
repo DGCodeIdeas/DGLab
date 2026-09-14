@@ -67,7 +67,7 @@ final class LogRecord
      *
      * @param string $level PSR-3 LogLevel constant.
      * @param string|Stringable $message Message template.
-     * @param array<string, mixed> $context PSR-3 context.
+     * @param array<mixed, mixed> $context PSR-3 context.
      * @param array<string, mixed> $extra Handler-populated metadata.
      */
     public static function create(

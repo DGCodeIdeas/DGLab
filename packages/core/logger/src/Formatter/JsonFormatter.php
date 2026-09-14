@@ -77,7 +77,7 @@ final class JsonFormatter implements FormatterInterface
     }
 
     /**
-     * @param array<string, mixed> $context
+     * @param array<mixed, mixed> $context
      */
     private function interpolate(string $message, array $context): string
     {

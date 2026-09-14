@@ -76,7 +76,7 @@ final class LineFormatter implements FormatterInterface
      * $context[$key]. Tokens with no matching context key are left as-is.
      *
      * @param string $message
-     * @param array<string, mixed> $context
+     * @param array<mixed, mixed> $context
      */
     private function interpolate(string $message, array $context): string
     {
@@ -108,7 +108,7 @@ final class LineFormatter implements FormatterInterface
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<mixed, mixed> $data
      */
     private function renderContext(array $data): string
     {
