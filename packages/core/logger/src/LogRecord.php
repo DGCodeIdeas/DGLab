@@ -45,7 +45,7 @@ final class LogRecord
      * @param DateTimeImmutable $timestamp When the record was created.
      * @param string $level PSR-3 LogLevel constant.
      * @param string $message Message template, possibly with {placeholder} tokens.
-     * @param array<string, mixed> $context PSR-3 context, including optional 'exception' => Throwable.
+     * @param array<mixed, mixed> $context PSR-3 context, including optional 'exception' => Throwable.
      * @param array<string, mixed> $extra Handler-populated metadata (e.g. file, line, pid).
      */
     public function __construct(
