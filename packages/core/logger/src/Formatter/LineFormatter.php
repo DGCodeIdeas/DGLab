@@ -118,7 +118,8 @@ final class LineFormatter implements FormatterInterface
                 is_scalar($value) || $value === null => var_export($value, true),
                 default => json_encode($value, JSON_THROW_ON_ERROR) ?: 'null',
             };
-            $parts[] = "{$key}={$rendered}";
+            // Security: sanitize rendered context values to prevent log injection.
+            $parts[] = "{$key}=" . self::sanitizeForSingleLine($rendered);
         }
         return '{' . implode(' ', $parts) . '}';
     }
