@@ -85,8 +85,8 @@ final class RedactingFormatter implements FormatterInterface
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
+     * @param array<mixed, mixed> $data
+     * @return array<mixed, mixed>
      */
     private function redactArray(array $data): array
     {
