@@ -89,7 +89,7 @@ final class RedactingFormatterTest extends TestCase
         $record = LogRecord::create(
             'info',
             'Test',
-            ['PASSWORD' => 'upper', 'Api_Key' => 'mixed', 'session-id' => 'sid123'],
+            ['PASSWORD' => 'upper', 'Api_Key' => 'mixed', 'SESSION_ID' => 'sid123'],
         );
 
         $output = $formatter->format($record);
