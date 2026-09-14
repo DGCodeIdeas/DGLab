@@ -52,7 +52,7 @@ final class LoggerBenchTest extends TestCase
         }
         $perCallMicroseconds = ((hrtime(true) - $start) / $iterations) / 1000;
 
-        $handler->Close();
+        $handler->close();
 
         self::assertLessThan(
             100.0,
@@ -78,7 +78,7 @@ final class LoggerBenchTest extends TestCase
         }
         $perCallMicroseconds = ((hrtime(true) - $start) / $iterations) / 1000;
 
-        $handler->Close();
+        $handler->close();
 
         self::assertLessThan(
             10.0,
@@ -131,13 +131,13 @@ final class LoggerBenchTest extends TestCase
                 $handler1->handle($r);
             }
             $individualMs = (hrtime(true) - $start1) / 1_000_000;
-            $handler1->Close();
+            $handler1->close();
 
             // Batch write.
             $start2 = hrtime(true);
             $handler->handleBatch($records);
             $batchMs = (hrtime(true) - $start2) / 1_000_000;
-            $handler->Close();
+            $handler->close();
 
             // Batch should be at least as fast (usually faster due to single flock).
             // Soft assertion — I/O variability can flip this on slow disks.

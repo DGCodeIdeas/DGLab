@@ -33,7 +33,7 @@ final class LoggerTest extends TestCase
         $logger = new Logger([$handler]);
 
         $logger->info('hello from logger');
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringContainsString('info: hello from logger', $contents);
@@ -52,7 +52,7 @@ final class LoggerTest extends TestCase
         $logger->critical('critical msg');
         $logger->alert('alert msg');
         $logger->emergency('emergency msg');
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         foreach (['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'] as $level) {
@@ -68,7 +68,7 @@ final class LoggerTest extends TestCase
         $logger->info('should not write');
         $logger->warning('should write');
         $logger->error('should also write');
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringNotContainsString('should not write', $contents);
@@ -142,7 +142,7 @@ final class LoggerTest extends TestCase
                 throw new \RuntimeException('handler exploded');
             }
             public function handleBatch(array $records): void {}
-            public function Close(): void {}
+            public function close(): void {}
         };
 
         $logger = new Logger([$failingHandler]);
@@ -159,7 +159,7 @@ final class LoggerTest extends TestCase
         $logger = new Logger([$handler]);
 
         $logger->info('User {id} performed {action}', ['id' => 42, 'action' => 'login']);
-        $handler->Close();
+        $handler->close();
 
         $contents = file_get_contents($this->tempFile);
         self::assertStringContainsString('User 42 performed login', $contents);
@@ -176,8 +176,8 @@ final class LoggerTest extends TestCase
             $logger = new Logger([$h1, $h2]);
 
             $logger->info('broadcast');
-            $h1->Close();
-            $h2->Close();
+            $h1->close();
+            $h2->close();
 
             self::assertStringContainsString('broadcast', file_get_contents($file1));
             self::assertStringContainsString('broadcast', file_get_contents($file2));

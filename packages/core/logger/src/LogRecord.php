@@ -132,4 +132,23 @@ final class LogRecord
             [$key => $value] + $this->extra,
         );
     }
+
+    /**
+     * Return a new LogRecord with a replaced context array.
+     *
+     * Used by {@see RedactingFormatter} to strip sensitive keys before
+     * the record reaches the inner formatter.
+     *
+     * @param array<string, mixed> $context
+     */
+    public function withContext(array $context): self
+    {
+        return new self(
+            $this->timestamp,
+            $this->level,
+            $this->message,
+            $context,
+            $this->extra,
+        );
+    }
 }
