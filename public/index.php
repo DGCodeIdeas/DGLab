@@ -39,6 +39,7 @@ use SovereignStack\Bridge\ContractRegistry;
 use SovereignStack\Bridge\WafInspector;
 use SovereignStack\Bridge\DefaultDtoTransformer;
 use SovereignStack\Core\Http\ResponseFactory;
+use App\Controller\HelloController;
 use Psr\Log\NullLogger;
 
 // --- 1. Build the Kernel dependencies ---
@@ -88,6 +89,7 @@ $kernel = new Kernel(
     providerRegistryFactory: fn () => new ProviderRegistry(),
     eventDispatcherFactory: fn () => $dispatcher,
     loggerFactory: fn () => $logger,
+    routerFactory: fn () => new Router(),
     bootstrappers: [
         // Custom bootstrapper: wires the Vanguard as outermost middleware,
         // then delegates to the HttpBootstrapper for the router + pipeline.
@@ -111,12 +113,12 @@ $kernel = new Kernel(
                     path: '/',
                     methods: ['GET'],
                     name: 'hello',
-                    controllerClass: \SovereignStack\Core\Kernel\Tests\Fixtures\HelloController::class,
+                    controllerClass: HelloController::class,
                     controllerMethod: 'handle',
                 ));
 
                 // Bind the controller into the container.
-                $kernel->getContainer()->bind(\SovereignStack\Core\Kernel\Tests\Fixtures\HelloController::class);
+                $kernel->getContainer()->bind(HelloController::class);
             }
         },
     ],

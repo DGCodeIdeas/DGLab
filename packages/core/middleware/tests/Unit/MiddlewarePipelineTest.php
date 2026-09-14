@@ -187,4 +187,65 @@ final class MiddlewarePipelineTest extends TestCase
         // (We can't easily assert on the mock, but the pipeline should not throw)
         $this->expectNotToPerformAssertions();
     }
+
+    public function testReentrantHandleDoesNotCorruptCursor(): void
+    {
+        // Finding 3 fix: a middleware that recursively calls handle() must not
+        // corrupt the pipeline's cursor. Each handle() call gets its own
+        // PerRequestHandler with its own cursor.
+        $finalHandler = new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        $pipeline = new MiddlewarePipeline($finalHandler, new MiddlewareResolver());
+
+        // Middleware that calls handle() recursively (simulates re-entrancy).
+        $pipeline->pipe(function (ServerRequestInterface $req, RequestHandlerInterface $handler): ResponseInterface {
+            // First call: delegate to next (which is the final handler)
+            $response1 = $handler->handle($req);
+            // Second call: delegate again — should still reach the final handler
+            // because the per-request handler's cursor is independent.
+            $response2 = $handler->handle($req);
+            return $response2;
+        });
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $response = $pipeline->handle($request);
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    public function testConsecutiveRequestsAreIndependent(): void
+    {
+        // Long-lived worker pattern: the same pipeline instance serves multiple
+        // sequential requests. Each request must see the full middleware stack
+        // from the beginning — the cursor must NOT carry over from the previous
+        // request.
+        $finalHandler = new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        $pipeline = new MiddlewarePipeline($finalHandler, new MiddlewareResolver());
+
+        $callCount = 0;
+        $pipeline->pipe(function (ServerRequestInterface $req, RequestHandlerInterface $handler) use (&$callCount): ResponseInterface {
+            $callCount++;
+            return $handler->handle($req);
+        });
+
+        $request = $this->createMock(ServerRequestInterface::class);
+
+        // First request
+        $pipeline->handle($request);
+        self::assertSame(1, $callCount, 'Middleware should be called exactly once on first request.');
+
+        // Second request — must call the middleware again, not skip it
+        $pipeline->handle($request);
+        self::assertSame(2, $callCount, 'Middleware should be called exactly once on second request (no cursor carryover).');
+    }
 }

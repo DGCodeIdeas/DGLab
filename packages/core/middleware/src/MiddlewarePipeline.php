@@ -8,13 +8,26 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * PSR-15 middleware pipeline with per-request cursor isolation.
+ *
+ * The pipeline stores a list of middleware entries (frozen after the first
+ * handle() call). Each handle() invocation creates a fresh PerRequestHandler
+ * that owns its own cursor — there is no shared mutable state on the pipeline
+ * instance itself. This makes the pipeline safe for:
+ *
+ *   - Re-entrant calls (a middleware that recursively calls handle())
+ *   - Concurrent requests via Fibers (ADR-017 cooperative runtime)
+ *   - Long-lived workers (FrankenPHP, RoadRunner, PHP-FPM)
+ *
+ * The previous implementation stored `private int $cursor = 0` on the instance
+ * and reset it to 0 when the stack was exhausted. That was not re-entrant:
+ * two requests in flight would corrupt each other's cursor.
+ */
 final class MiddlewarePipeline implements MiddlewarePipelineInterface
 {
     /** @var list<MiddlewareInterface|string|callable> */
     private array $middleware = [];
-
-    /** Cursor index into $middleware. Reset to 0 on every handle() entry. */
-    private int $cursor = 0;
 
     /** True after the first handle() call. pipe() throws if set. */
     private bool $frozen = false;
@@ -43,33 +56,18 @@ final class MiddlewarePipeline implements MiddlewarePipelineInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        // Freeze on first call. This is the load-bearing immutability invariant:
-        // once a request is in flight, no other thread of control (e.g., a
-        // middleware that lazily registers a cleanup handler) may mutate the
-        // stack mid-flight. The frozen flag is per-instance, not per-request,
-        // so a long-lived worker accumulates middleware exactly once at boot.
+        // Freeze on first call — no further pipe() allowed.
         $this->frozen = true;
 
-        if ($this->cursor < \count($this->middleware)) {
-            // O(1) advancement. array_shift() would be O(n) per call → O(n²) total
-            // for an n-deep pipeline; with n = 50 that is 2,500 array re-indexes
-            // per request, which is measurable on hot paths.
-            $entry = $this->middleware[$this->cursor];
-            ++$this->cursor;
-            $middleware = $this->resolver->resolve($entry);
-            return $middleware->process($request, $this);
-        }
+        // Create a per-request handler with its own cursor. This is the
+        // load-bearing fix: each request gets its own handler chain, so
+        // concurrent or re-entrant handle() calls don't corrupt each other.
+        $handler = new PerRequestHandler(
+            $this->middleware,
+            $this->resolver,
+            $this->finalHandler,
+        );
 
-        // Stack exhausted: reset cursor for next request, then delegate
-        // to the terminal handler (router + controller). The reset enables
-        // the same pipeline instance to serve sequential requests on a
-        // long-lived worker (PHP-FPM, RoadRunner, FrankenPHP).
-        $this->cursor = 0;
-        return $this->finalHandler->handle($request);
+        return $handler->handle($request);
     }
 }
-
-/**
- * Default MiddlewareResolver implementation. Resolves class-strings through
- * CORE-02's container for lazy instantiation and auto-wiring.
- */

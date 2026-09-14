@@ -1038,3 +1038,51 @@ Stage Summary:
 - The git commits pointed to by the deleted tags remain in git history (immutable) — only the tag labels were removed.
 - MUWV flip remains UNAUTHORIZED. All remaining tags are v0.* prerelease.
 - PAT hygiene: reused PAT. API calls used Authorization header. git push used one-shot token URL.
+
+---
+Task ID: 35
+Agent: main (Super Z)
+Task: P0 fixes from code review — re-entrant pipeline, test-fixture dependency, missing routerFactory, namespace ownership
+
+Work Log:
+- User pasted a code review with 3 P0 findings + 1 boundary concern. All verified against source:
+  1. Finding 3 (P0): MiddlewarePipeline shared mutable cursor — not re-entrant
+  2. Finding 4 (P0): public/index.php references HelloController from test fixtures namespace (class doesn't even exist — worse than the reviewer thought)
+  3. Missing routerFactory: Kernel constructor requires 7 factories, public/index.php only passes 6
+  4. Boundary concern: core-middleware composer.json maps both SovereignStack\Core\Http\ AND SovereignStack\Core\Router\ to src/ — namespace ownership conflict with core-router package
+
+## Fix 1: MiddlewarePipeline re-entrant cursor (Finding 3)
+- Rewrote MiddlewarePipeline.php: removed the shared `private int $cursor = 0` property. Each `handle()` call now creates a new `PerRequestHandler` that owns its own cursor.
+- Created `PerRequestHandler.php`: internal class with per-request cursor, created fresh on every handle() invocation. Advances through the middleware list, delegates to the final handler when exhausted.
+- The pipeline instance itself is now stateless across requests — only `frozen` (immutable after first handle) and the middleware list remain.
+- Added 2 tests: `testReentrantHandleDoesNotCorruptCursor` (middleware that recursively calls handle()) and `testConsecutiveRequestsAreIndependent` (long-lived worker pattern — middleware called exactly once per request, no cursor carryover).
+
+## Fix 2: HelloController moved to application namespace (Finding 4)
+- Created `app/Controller/HelloController.php` in the `App\Controller` namespace. Returns 200 + "Hello World" body.
+- Root `composer.json` already has `"App\\": "app/"` PSR-4 mapping — no composer.json change needed.
+- Updated `public/index.php`: changed `controllerClass` from `\SovereignStack\Core\Kernel\Tests\Fixtures\HelloController::class` to `App\Controller\HelloController::class`.
+- The kernel's own test fixtures (`HelloWorldController`) are unchanged — they're used by the kernel's tests, not by production code.
+
+## Fix 3: Missing routerFactory argument (action plan item 1)
+- Added `routerFactory: fn () => new Router()` to the Kernel constructor call in `public/index.php`.
+- The Kernel constructor requires 7 factory closures (container, config, errorHandler, providerRegistry, eventDispatcher, logger, router). The public/index.php was only passing 6 — a fatal TypeError.
+
+## Fix 4: Namespace ownership cleanup (Finding 9/Boundary concern)
+- Deleted 3 stub Router files from `packages/core/middleware/src/`:
+  - `RouterInterface.php` (stub — the real one lives in `packages/core/router/src/`)
+  - `RouteResult.php` (stub)
+  - `Route.php` (stub)
+- These were created before core-router shipped as a separate package. Now that core-router exists, the stubs create a namespace ownership conflict (both packages map `SovereignStack\Core\Router\` to their src/).
+- Updated `packages/core/middleware/composer.json`:
+  - Removed `"SovereignStack\\Core\\Router\\": "src/"` from autoload PSR-4
+  - Added `"sovereign-stack/core-router": "^0.1"` to require
+  - Added path repository for `../router`
+- The `SovereignStack\Core\Router\` namespace now has a single owner: `packages/core/router/`.
+
+Stage Summary:
+- 4 fixes applied: re-entrant pipeline, application-namespace controller, missing routerFactory, namespace ownership cleanup.
+- 1 new source file: `PerRequestHandler.php` (internal class for per-request cursor isolation).
+- 1 new application file: `app/Controller/HelloController.php` (production controller, not a test fixture).
+- 3 stub Router files deleted from middleware/src/.
+- 2 new tests: re-entrancy + consecutive-requests independence.
+- CI validation pending.
