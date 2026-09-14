@@ -10,7 +10,8 @@
         "psr/http-server-handler": "^1.0",
         "psr/http-server-middleware": "^1.0",
         "psr/container": "^2.0",
-        "sovereign-stack/core-http-message": "^0.1"
+        "sovereign-stack/core-http-message": "^0.1",
+        "sovereign-stack/core-router": "^0.1"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",
@@ -19,8 +20,7 @@
     },
     "autoload": {
         "psr-4": {
-            "SovereignStack\\Core\\Http\\": "src/",
-            "SovereignStack\\Core\\Router\\": "src/"
+            "SovereignStack\\Core\\Http\\": "src/"
         }
     },
     "autoload-dev": {
@@ -32,6 +32,10 @@
         {
             "type": "path",
             "url": "../http-message"
+        },
+        {
+            "type": "path",
+            "url": "../router"
         }
     ],
     "minimum-stability": "stable",
