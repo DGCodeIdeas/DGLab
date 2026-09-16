@@ -84,10 +84,20 @@ final class UploadedFile implements UploadedFileInterface
             throw new \InvalidArgumentException('Target path cannot be empty.');
         }
 
-        // Path-traversal guard: reject if the target path contains traversal sequences.
-        if (str_contains($targetPath, '/../') || str_contains($targetPath, '/./')) {
+        // Path-traversal guard: reject paths that escape the current directory.
+        // Checks: /../, /./, ../, ..\, absolute paths, and backslash variants.
+        if (
+            str_contains($targetPath, '/../')
+            || str_contains($targetPath, '/./')
+            || str_starts_with($targetPath, '../')
+            || str_starts_with($targetPath, '..\\')
+            || str_contains($targetPath, '\\..\\')
+            || DIRECTORY_SEPARATOR === '\\' && str_contains($targetPath, '/../')
+            // Reject absolute paths unless explicitly allowed by the caller.
+            || preg_match('#^[/\\\\]|[a-zA-Z]:[\\\\/]#', $targetPath) === 1
+        ) {
             throw new \InvalidArgumentException(
-                "Target path '{$targetPath}' contains a path-traversal sequence (CWE-22)."
+                "Target path '{$targetPath}' contains a path-traversal or absolute-path sequence (CWE-22)."
             );
         }
 
