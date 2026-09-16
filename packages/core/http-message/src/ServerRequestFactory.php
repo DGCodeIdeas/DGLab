@@ -177,6 +177,7 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
                 continue;
             }
             if (is_array($value) && isset($value['tmp_name']) && is_string($value['tmp_name'])) {
+                // Standard single-file structure: tmp_name is a string.
                 $normalized[$key] = new UploadedFile(
                     $value['tmp_name'],
                     isset($value['size']) ? (int) $value['size'] : null,
@@ -184,6 +185,22 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
                     isset($value['name']) ? (string) $value['name'] : null,
                     isset($value['type']) ? (string) $value['type'] : null,
                 );
+            } elseif (is_array($value) && isset($value['tmp_name']) && is_array($value['tmp_name'])) {
+                // Multi-file structure: <input name="files[]" multiple> produces
+                // $_FILES['files']['tmp_name'] = [0 => '/tmp/aaa', 1 => '/tmp/bbb']
+                // Must transpose the parallel arrays into individual UploadedFile instances.
+                $count = count($value['tmp_name']);
+                $sub = [];
+                for ($i = 0; $i < $count; $i++) {
+                    $sub[$i] = new UploadedFile(
+                        $value['tmp_name'][$i],
+                        isset($value['size'][$i]) ? (int) $value['size'][$i] : null,
+                        isset($value['error'][$i]) ? (int) $value['error'][$i] : \UPLOAD_ERR_OK,
+                        isset($value['name'][$i]) ? (string) $value['name'][$i] : null,
+                        isset($value['type'][$i]) ? (string) $value['type'][$i] : null,
+                    );
+                }
+                $normalized[$key] = $sub;
             } elseif (is_array($value)) {
                 $normalized[$key] = self::normalizeUploadedFiles($value);
             }

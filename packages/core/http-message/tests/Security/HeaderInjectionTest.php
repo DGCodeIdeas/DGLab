@@ -158,4 +158,27 @@ final class HeaderInjectionTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $res->withAddedHeader('X-Test', ['safe', "evil\r\n"]);
     }
+
+    /**
+     * Security fix: URI-derived Host header must be validated for CRLF.
+     * Previously, Request::__construct and withUri set the Host header from
+     * the URI authority without calling assertNoCrlf(), allowing header injection.
+     */
+    public function testUriHostWithCrlfThrowsInConstructor(): void
+    {
+        $uri = new \SovereignStack\Core\Http\Uri('http://evil.com');
+        $uri = $uri->withHost("evil.com\r\nX-Injected: yes");
+
+        $this->expectException(\InvalidArgumentException::class);
+        new Request('GET', $uri);
+    }
+
+    public function testUriHostWithCrlfThrowsInWithUri(): void
+    {
+        $request = new Request('GET', 'http://example.com');
+        $uri = (new \SovereignStack\Core\Http\Uri())->withHost("evil.com\r\nX-Injected: yes");
+
+        $this->expectException(\InvalidArgumentException::class);
+        $request->withUri($uri);
+    }
 }
