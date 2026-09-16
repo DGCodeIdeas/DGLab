@@ -119,7 +119,7 @@ class Request implements RequestInterface
         $new = clone $this;
         $new->uri = $uri;
 
-        if (!$preserveHost || !isset($this->headerNames['host'])) {
+        if (!$preserveHost || !isset($this->headerNames['host']) || $this->getHeaderLine('Host') === '') {
             $host = $uri->getHost();
             if ($host !== '') {
                 $authority = $uri->getAuthority();
