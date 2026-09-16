@@ -86,16 +86,15 @@ final class UploadedFile implements UploadedFileInterface
 
         // Path-traversal guard: reject paths that escape the current directory.
         // Checks: /../, /./, ../, ..\, absolute paths, and backslash variants.
-        if (
-            str_contains($targetPath, '/../')
+        $isTraversal = str_contains($targetPath, '/../')
             || str_contains($targetPath, '/./')
             || str_starts_with($targetPath, '../')
             || str_starts_with($targetPath, '..\\')
-            || str_contains($targetPath, '\\..\\')
-            || DIRECTORY_SEPARATOR === '\\' && str_contains($targetPath, '/../')
-            // Reject absolute paths unless explicitly allowed by the caller.
-            || preg_match('#^[/\\\\]|[a-zA-Z]:[\\\\/]#', $targetPath) === 1
-        ) {
+            || str_contains($targetPath, '\\..\\');
+        // Reject absolute paths (Unix: /path, Windows: C:\path).
+        $isAbsolute = preg_match('#^[/\\\\]|[a-zA-Z]:[\\\\/]#', $targetPath) === 1;
+
+        if ($isTraversal || $isAbsolute) {
             throw new \InvalidArgumentException(
                 "Target path '{$targetPath}' contains a path-traversal or absolute-path sequence (CWE-22)."
             );
