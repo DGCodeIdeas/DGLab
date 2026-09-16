@@ -153,7 +153,6 @@ final class ConfigRepositoryTest extends TestCase
         self::assertNull($repo->get('app.name'));
         self::assertNull($repo->get('app.name', 'default')); // null IS the value, not absent
     }
-}
 
     public function testAllRedactsSecrets(): void
     {
