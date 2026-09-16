@@ -195,9 +195,12 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
 
         // Per-Fiber cycle detection (ADR-017 Fiber safety fix).
-        $resolvingState = $this->getResolvingState();
-        $resolving = &$resolvingState['resolving'];
-        $resolvingChain = &$resolvingState['chain'];
+        $fiberId = $this->getCurrentFiberId();
+        if (!isset($this->fiberResolving[$fiberId])) {
+            $this->fiberResolving[$fiberId] = ['resolving' => [], 'chain' => []];
+        }
+        $resolving = &$this->fiberResolving[$fiberId]['resolving'];
+        $resolvingChain = &$this->fiberResolving[$fiberId]['chain'];
 
         if (isset($resolving[$resolutionKey])) {
             $chain = array_map(
@@ -334,44 +337,10 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
     }
 
-    /**
-     * Main-context fallback for cycle detection (used when no Fiber is active).
-     *
-     * @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
-     */
-    private array $mainResolvingState = ['resolving' => [], 'chain' => []];
-
-    /**
-     * Get the per-Fiber cycle-detection state.
-     *
-     * If inside a Fiber (ADR-017 cooperative runtime), returns the state
-     * stored in the WeakMap keyed on the current Fiber. If the Fiber hasn't
-     * been seen before, initializes a fresh state.
-     *
-     * Outside any Fiber (main context), returns the fallback main-context state.
-     *
-     * @return array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
-     */
-    private function &getResolvingState(): array
+    private function getCurrentFiberId(): int
     {
         $fiber = \Fiber::getCurrent();
-
-        if ($fiber === null) {
-            // Main context: use the fallback arrays.
-            return $this->mainResolvingState;
-        }
-
-        // Fiber context: use the per-Fiber array keyed by spl_object_id.
-        $fiberId = spl_object_id($fiber);
-
-        if (!isset($this->fiberResolving[$fiberId])) {
-            $this->fiberResolving[$fiberId] = [
-                'resolving' => [],
-                'chain' => [],
-            ];
-        }
-
-        return $this->fiberResolving[$fiberId];
+        return $fiber !== null ? spl_object_id($fiber) : 0;
     }
 
     /**
