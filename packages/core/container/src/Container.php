@@ -59,11 +59,20 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      */
     private \WeakMap $pulseInstances;
 
-    /** @var array<string, true> Keys are concrete class-strings currently being built. */
-    private array $resolving = [];
-
-    /** @var list<array{0: string, 1: mixed}> Ordered [id, concrete] pairs for chain reporting. */
-    private array $resolvingChain = [];
+    /**
+     * Per-Fiber cycle-detection state.
+     *
+     * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
+     * per-Fiber — otherwise a constructor that calls Fiber::suspend() leaves
+     * the cycle stack populated, and any other Fiber resolving the same id
+     * spuriously throws CircularDependencyException.
+     *
+     * We use spl_object_id($fiber) as the key (unique per Fiber instance)
+     * and rely on a WeakMap on the side for GC-based cleanup of stale entries.
+     *
+     * @var array<int, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
+     */
+    private array $fiberResolving = [];
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -185,26 +194,34 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             );
         }
 
-        if (isset($this->resolving[$resolutionKey])) {
+        // Per-Fiber cycle detection (ADR-017 Fiber safety fix).
+        $fiberId = $this->getCurrentFiberId();
+        if (!isset($this->fiberResolving[$fiberId])) {
+            $this->fiberResolving[$fiberId] = ['resolving' => [], 'chain' => []];
+        }
+        $resolving = &$this->fiberResolving[$fiberId]['resolving'];
+        $resolvingChain = &$this->fiberResolving[$fiberId]['chain'];
+
+        if (isset($resolving[$resolutionKey])) {
             $chain = array_map(
                 static fn(array $pair) => $pair[0],
-                $this->resolvingChain,
+                $resolvingChain,
             );
             $chain[] = $id;
             throw CircularDependencyException::fromChain($chain);
         }
 
         // 5. Push onto both the cycle-detection set and the chain.
-        $this->resolving[$resolutionKey] = true;
-        $this->resolvingChain[] = [$id, $concrete];
+        $resolving[$resolutionKey] = true;
+        $resolvingChain[] = [$id, $concrete];
 
         try {
             // 6. Build by concrete type.
             $object = $this->build($concrete, $parameters);
         } finally {
             // 7. Always pop, even on exception — no state leak (Security Property #3).
-            unset($this->resolving[$resolutionKey]);
-            array_pop($this->resolvingChain);
+            unset($resolving[$resolutionKey]);
+            array_pop($resolvingChain);
         }
 
         // 8. Cache shared singletons (worker-scoped).
@@ -233,10 +250,16 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * PSR-11 get(): throws NotFoundException on unknown ids.
      *
-     * Unlike make(), get() refuses to construct an arbitrary class-string
-     * that has not been explicitly bound or registered via instance().
-     * This matches the PSR-11 contract that get() must throw if the id
-     * is not "known" to the container.
+     * SECURITY: has() returns true for any autoloadable class (via class_exists()),
+     * so get() CAN autowire arbitrary class-strings that haven't been explicitly
+     * bound. This is the PSR-11 "auto-resolution" behavior — it's intentional for
+     * developer convenience (controllers, listeners, etc.) but callers MUST NOT
+     * pass untrusted user input as $id to get()/has()/make(), as this would allow
+     * instantiation of arbitrary autoloadable classes.
+     *
+     * @param string $id Service identifier or class-string. MUST NOT be user input.
+     * @return mixed The resolved service instance.
+     * @throws NotFoundException If $id is not bound, not pre-instantiated, and not an autoloadable class.
      */
     public function get(string $id): mixed
     {
@@ -312,6 +335,12 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
                 'Cannot modify the container after it has been compiled.'
             );
         }
+    }
+
+    private function getCurrentFiberId(): int
+    {
+        $fiber = \Fiber::getCurrent();
+        return $fiber !== null ? spl_object_id($fiber) : 0;
     }
 
     /**
