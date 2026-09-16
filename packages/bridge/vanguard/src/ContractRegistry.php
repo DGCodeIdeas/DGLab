@@ -20,7 +20,9 @@ final class ContractRegistry
     private bool $frozen = false;
 
     /**
-     * @param string $contractId Route identifier matching ^[a-z0-9_.\/]{3,128}$.
+     * @param string $contractId Route identifier matching ^[a-z0-9_.\/]{1,128}$.
+     *   Minimum 1 char so the root route '/' is a valid contract ID. The
+     *   Vanguard resolves contracts by URI path, so '/' must be registerable.
      * @throws \InvalidArgumentException If $contractId is malformed.
      * @throws \LogicException If called after the first resolve() call.
      */
@@ -33,9 +35,9 @@ final class ContractRegistry
             );
         }
 
-        if (!preg_match('/^[a-z0-9_.\/]{3,128}$/', $contractId)) {
+        if (!preg_match('/^[a-z0-9_.\/]{1,128}$/', $contractId)) {
             throw new \InvalidArgumentException(
-                \sprintf('Contract ID [%s] does not match required pattern ^[a-z0-9_.\/]{3,128}$.', $contractId),
+                \sprintf('Contract ID [%s] does not match required pattern ^[a-z0-9_.\/]{1,128}$.', $contractId),
             );
         }
 

@@ -31,6 +31,26 @@ final class ContractRegistryTest extends TestCase
         self::assertSame($transformer, $registry->resolve('/api/users'));
     }
 
+    /**
+     * The root route '/' is a valid contract ID — the Vanguard resolves
+     * contracts by URI path, and '/' is the root path. The regex minimum
+     * length is 1 char so '/' is registerable.
+     *
+     * Regression test for the bug where registerContract('/') threw
+     * InvalidArgumentException because the regex was {3,128} (rejected
+     * single-char IDs). public/index.php registers '/' as the Hello World
+     * contract, which is the Milestone 0 success criterion route.
+     */
+    public function testRootRouteContractIsAccepted(): void
+    {
+        $registry = new ContractRegistry();
+        $transformer = new DefaultDtoTransformer();
+        $registry->registerContract('/', $transformer);
+
+        self::assertTrue($registry->has('/'));
+        self::assertSame($transformer, $registry->resolve('/'));
+    }
+
     public function testRegistryFreezesAfterFirstResolve(): void
     {
         $registry = new ContractRegistry();
