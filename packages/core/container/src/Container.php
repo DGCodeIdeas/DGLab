@@ -59,8 +59,20 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      */
     private \WeakMap $pulseInstances;
 
-    /** @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}> */
-    private \WeakMap $fiberResolving;
+    /**
+     * Per-Fiber cycle-detection state.
+     *
+     * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
+     * per-Fiber — otherwise a constructor that calls Fiber::suspend() leaves
+     * the cycle stack populated, and any other Fiber resolving the same id
+     * spuriously throws CircularDependencyException.
+     *
+     * We use spl_object_id($fiber) as the key (unique per Fiber instance)
+     * and rely on a WeakMap on the side for GC-based cleanup of stale entries.
+     *
+     * @var array<int, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
+     */
+    private array $fiberResolving = [];
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -70,7 +82,6 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     public function __construct()
     {
         $this->pulseInstances = new \WeakMap();
-        $this->fiberResolving = new \WeakMap();
     }
 
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
@@ -350,18 +361,17 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             return $this->mainResolvingState;
         }
 
-        // Fiber context: use the WeakMap.
-        // $fiber is guaranteed non-null here — PHPStan's assert-true check
-        // is overly strict with Fiber|null narrowing on WeakMap access.
-        if (!isset($this->fiberResolving[$fiber])) {
-            /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $fresh */
-            $fresh = ['resolving' => [], 'chain' => []];
-            $this->fiberResolving[$fiber] = $fresh;
+        // Fiber context: use the per-Fiber array keyed by spl_object_id.
+        $fiberId = spl_object_id($fiber);
+
+        if (!isset($this->fiberResolving[$fiberId])) {
+            $this->fiberResolving[$fiberId] = [
+                'resolving' => [],
+                'chain' => [],
+            ];
         }
 
-        /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $state */
-        $state = $this->fiberResolving[$fiber];
-        return $state;
+        return $this->fiberResolving[$fiberId];
     }
 
     /**
