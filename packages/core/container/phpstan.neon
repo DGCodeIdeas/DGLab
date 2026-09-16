@@ -1,15 +1,5 @@
-includes:
-    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
-
 parameters:
     level: max
     paths:
         - src/
         - tests/
-    reportUnmatchedIgnoredErrors: true
-    ignoreErrors:
-        # WeakMap offset assignment with Fiber|null narrowed to Fiber — PHPStan
-        # bleedingEdge doesn't correctly infer the non-null branch after the
-        # null check. This is a known PHPStan limitation with WeakMap + Fiber.
-        - '#Cannot assign offset Fiber to WeakMap#'
-        - '#Property .*::\$fiberResolving .* does not accept mixed#'
