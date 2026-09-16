@@ -59,21 +59,8 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      */
     private \WeakMap $pulseInstances;
 
-    /**
-     * Per-Fiber cycle-detection state.
-     *
-     * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
-     * per-Fiber — otherwise a constructor that calls Fiber::suspend() leaves
-     * the cycle stack populated, and any other Fiber resolving the same id
-     * spuriously throws CircularDependencyException.
-     *
-     * WeakMap<Fiber, array{resolving: array<string, true>, chain: list<array{0:string, 1:mixed}>}>
-     * When a Fiber is GC'd, its cycle-detection state is automatically evicted.
-     * Outside any Fiber (main context), a fallback array is used.
-     *
-     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>|array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
-     */
-    private \WeakMap|array $fiberResolving;
+    /** @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}> */
+    private \WeakMap $fiberResolving;
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
