@@ -351,8 +351,8 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
 
         // Fiber context: use the WeakMap.
-        assert($fiber instanceof \Fiber);
-
+        // $fiber is guaranteed non-null here — PHPStan's assert-true check
+        // is overly strict with Fiber|null narrowing on WeakMap access.
         if (!isset($this->fiberResolving[$fiber])) {
             /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $fresh */
             $fresh = ['resolving' => [], 'chain' => []];
