@@ -158,7 +158,6 @@ final class HeaderInjectionTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $res->withAddedHeader('X-Test', ['safe', "evil\r\n"]);
     }
-}
 
     /**
      * Security fix: URI-derived Host header must be validated for CRLF.
