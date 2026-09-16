@@ -25,7 +25,7 @@ use SovereignStack\Core\Config\Exception\MissingConfigurationException;
 final class ConfigRepository implements ConfigInterface
 {
     /**
-     * @param array<string, mixed> $data Frozen, merged configuration tree.
+     * @param array<mixed, mixed> $data Frozen, merged configuration tree.
      */
     public function __construct(
         private readonly array $data,

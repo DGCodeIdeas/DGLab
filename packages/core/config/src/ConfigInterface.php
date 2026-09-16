@@ -69,7 +69,7 @@ interface ConfigInterface
      * endpoints. For the unredacted tree (trusted callers only), use
      * {@see allRaw()}.
      *
-     * @return array<string, mixed>
+     * @return array<mixed, mixed>
      */
     public function all(): array;
 
@@ -81,7 +81,7 @@ interface ConfigInterface
      * actual value (e.g. establishing a DB connection). NEVER log the
      * return value or expose it to clients.
      *
-     * @return array<string, mixed>
+     * @return array<mixed, mixed>
      */
     public function allRaw(): array;
 }
