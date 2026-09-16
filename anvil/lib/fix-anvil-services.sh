@@ -249,43 +249,51 @@ echo ">>> Step 7: Reset and restart FrankenPHP"
 systemctl stop anvil-frankenphp@blue 2>/dev/null || true
 systemctl reset-failed anvil-frankenphp@blue 2>/dev/null || true
 
-# Patch the FrankenPHP systemd unit for dev mode:
-# 1. Remove ProtectHome=true — it blocks access to /home/dgi/www/DGLab
-#    (the symlink target of /opt/anvil/current)
-# 2. Add ReadWritePaths for the actual repo path
-# 3. Add StartLimitBurst/StartLimitIntervalSec for restart tolerance
+# The systemd unit file is mangled from multiple sed patches. Write it
+# cleanly from scratch instead of patching.
 FRANKENPHP_UNIT="/etc/systemd/system/anvil-frankenphp@.service"
-if [[ -f "$FRANKENPHP_UNIT" ]]; then
-    # Remove ProtectHome=true (dev mode — app lives in /home/dgi/)
-    if grep -q 'ProtectHome=true' "$FRANKENPHP_UNIT"; then
-        sed -i 's/^ProtectHome=true/ProtectHome=false/' "$FRANKENPHP_UNIT"
-        echo "  ✅ Patched: ProtectHome=false (dev mode)"
-    fi
-    # Rewrite the entire ReadWritePaths line — the original has a comment
-    # on the same line (# App writes...) that breaks sed substitution.
-    # Also: /opt/anvil/current/var doesn't exist in dev mode — use the
-    # resolved repo path instead.
-    if grep -q '^# App writes' "$FRANKENPHP_UNIT"; then
-        # Remove the comment-only line
-        sed -i '/^# App writes/d' "$FRANKENPHP_UNIT"
-    fi
-    # Replace any ReadWritePaths line with the correct dev paths
-    sed -i "s|^ReadWritePaths=.*|ReadWritePaths=${RESOLVED}|" "$FRANKENPHP_UNIT"
-    echo "  ✅ Patched: ReadWritePaths=${RESOLVED}"
+echo "  Writing clean systemd unit for dev mode..."
+cat > "$FRANKENPHP_UNIT" << FRANKENPHP_EOF
+# /etc/systemd/system/anvil-frankenphp@.service — Anvil v3 app server (FrankenPHP)
+# Rewritten by fix-anvil-services.sh for dev mode.
+[Unit]
+Description=Anvil v3 app server (FrankenPHP %i)
+After=network-online.target
+StartLimitBurst=10
+StartLimitIntervalSec=30
 
-    # Add start-limit tolerance
-    if ! grep -q 'StartLimitBurst' "$FRANKENPHP_UNIT"; then
-        sed -i '/^\[Service\]/i StartLimitBurst=10\nStartLimitIntervalSec=30' "$FRANKENPHP_UNIT"
-        echo "  ✅ Patched: StartLimitBurst=10, StartLimitIntervalSec=30"
-    fi
-    systemctl daemon-reload
-fi
+[Service]
+Type=notify
+User=anvil
+Group=anvil
+WorkingDirectory=${RESOLVED}
+EnvironmentFile=/etc/anvil/secrets.env
+ExecStart=/usr/local/bin/frankenphp run --config /etc/anvil/app/Caddyfile.%i
+ExecReload=/usr/local/bin/frankenphp reload --config /etc/anvil/app/Caddyfile.%i
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=2s
+LimitNOFILE=65535
+# Dev mode: no hardening — the app lives in /home/dgi/www/DGLab
+# which requires home access and write access to the repo tree.
+FRANKENPHP_EOF
 
-# Ensure the var/ directory exists (ReadWritePaths requires the path to exist)
+systemctl daemon-reload
+echo "  ✅ Clean unit written: WorkingDirectory=${RESOLVED}"
+
+# Ensure the var/ directory exists
 install -d -m 0755 -o anvil -g anvil "${RESOLVED}/var/cache" 2>/dev/null || true
 install -d -m 0755 -o anvil -g anvil "${RESOLVED}/var/log" 2>/dev/null || true
 
-# Also ensure /etc/anvil/secrets.env exists (FrankenPHP unit requires it)
+# Fix permissions: anvil user needs execute (traverse) on the repo path.
+# /home/dgi may be 0700 — anvil can't traverse it.
+chmod o+x /home/dgi 2>/dev/null || true
+chmod o+x /home/dgi/www 2>/dev/null || true
+chmod -R o+rX "${RESOLVED}" 2>/dev/null || true
+echo "  ✅ Fixed directory permissions for anvil user traversal"
+
+# Also ensure /etc/anvil/secrets.env exists
 if [[ ! -f /etc/anvil/secrets.env ]]; then
     echo "  Creating /etc/anvil/secrets.env (empty placeholder)..."
     echo "# Anvil secrets — populated by anvil-secrets.service or manually" > /etc/anvil/secrets.env
