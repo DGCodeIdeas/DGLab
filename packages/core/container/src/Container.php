@@ -327,6 +327,22 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * Guard: mutation methods must not run after compile().
      */
+    private function assertNotCompiled(): void
+    {
+        if ($this->compiled) {
+            throw new \LogicException(
+                'Cannot modify the container after it has been compiled.'
+            );
+        }
+    }
+
+    /**
+     * Main-context fallback for cycle detection (used when no Fiber is active).
+     *
+     * @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
+     */
+    private array $mainResolvingState = ['resolving' => [], 'chain' => []];
+
     /**
      * Get the per-Fiber cycle-detection state.
      *
@@ -335,8 +351,6 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * been seen before, initializes a fresh state.
      *
      * Outside any Fiber (main context), returns the fallback main-context state.
-     * This ensures cycle detection works correctly in both modes without
-     * cross-Fiber interference.
      *
      * @return array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
      */
@@ -357,23 +371,9 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             ];
         }
 
-        return $this->fiberResolving[$fiber];
-    }
-
-    /**
-     * Main-context fallback for cycle detection (used when no Fiber is active).
-     *
-     * @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
-     */
-    private array $mainResolvingState = ['resolving' => [], 'chain' => []];
-
-    private function assertNotCompiled(): void
-    {
-        if ($this->compiled) {
-            throw new \LogicException(
-                'Cannot modify the container after it has been compiled.'
-            );
-        }
+        /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $state */
+        $state = $this->fiberResolving[$fiber];
+        return $state;
     }
 
     /**
