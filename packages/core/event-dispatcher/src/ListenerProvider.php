@@ -64,8 +64,17 @@ final class ListenerProvider implements ListenerProviderInterface
 
         $this->listeners[$eventClass][$priority][] = $listener;
 
-        // Invalidate cache for this event class and all its children
-        $this->resolvedCache = [];
+        // Invalidate only the cache entries that include this event class
+        // (the event itself and all its subtypes). Previously this nuked the
+        // entire cache, which is wasteful for boot-time registration.
+        unset($this->resolvedCache[$eventClass]);
+        // Also invalidate any cached entries for parent classes — a listener
+        // registered for a parent event type will fire for child events.
+        foreach (array_keys($this->resolvedCache) as $cachedClass) {
+            if (is_subclass_of($cachedClass, $eventClass)) {
+                unset($this->resolvedCache[$cachedClass]);
+            }
+        }
     }
 
     /**
@@ -135,6 +144,11 @@ final class ListenerProvider implements ListenerProviderInterface
         }
 
         return $callables;
+    }
+
+    public function clearCache(): void
+    {
+        $this->resolvedCache = [];
     }
 
     /**

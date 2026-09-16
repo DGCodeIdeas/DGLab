@@ -35,4 +35,14 @@ interface ListenerProviderInterface extends PsrListenerProviderInterface
      * @return iterable<callable> Prioritized list of listener callables.
      */
     public function getListenersForEvent(object $event): iterable;
+
+    /**
+     * Clear the listener resolution cache.
+     *
+     * For long-lived workers (FrankenPHP, RoadRunner), the listener cache
+     * can grow stale if the container's bindings change (e.g. after a deploy
+     * that re-registers listeners). Call this method to force re-resolution
+     * of all listeners on the next dispatch.
+     */
+    public function clearCache(): void;
 }
