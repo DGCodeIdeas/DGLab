@@ -25,7 +25,7 @@ use SovereignStack\Core\Config\Exception\MissingConfigurationException;
 final class ConfigRepository implements ConfigInterface
 {
     /**
-     * @param array<string, mixed> $data Frozen, merged configuration tree.
+     * @param array<mixed, mixed> $data Frozen, merged configuration tree.
      */
     public function __construct(
         private readonly array $data,
@@ -79,7 +79,37 @@ final class ConfigRepository implements ConfigInterface
 
     public function all(): array
     {
+        return $this->redact($this->data);
+    }
+
+    public function allRaw(): array
+    {
         return $this->data;
+    }
+
+    /**
+     * Recursively redact sensitive keys from a configuration array.
+     *
+     * Any key matching {@see ConfigInterface::SECRET_PATTERN} has its
+     * value replaced with '***REDACTED***'. Nested arrays are walked
+     * recursively.
+     *
+     * @param array<mixed, mixed> $data
+     * @return array<mixed, mixed>
+     */
+    private function redact(array $data): array
+    {
+        $result = [];
+        foreach ($data as $key => $value) {
+            if (is_string($key) && preg_match(ConfigInterface::SECRET_PATTERN, $key) === 1) {
+                $result[$key] = '***REDACTED***';
+            } elseif (is_array($value)) {
+                $result[$key] = $this->redact($value);
+            } else {
+                $result[$key] = $value;
+            }
+        }
+        return $result;
     }
 
     /**
