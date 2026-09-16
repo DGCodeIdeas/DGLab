@@ -81,19 +81,52 @@ REPO_ROOT="$(dirname "$ANVIL_ROOT")"
 echo "  ANVIL_ROOT: $ANVIL_ROOT"
 echo "  REPO_ROOT:  $REPO_ROOT"
 
-# Always re-create the symlink (ln -sf overwrites existing)
+# Create /opt/anvil/ if it doesn't exist
 install -d -m 0755 "$(dirname "$ANVIL_CURRENT_SYMLINK")"
-ln -sfn "$REPO_ROOT" "$ANVIL_CURRENT_SYMLINK"
-echo "  ✅ Symlinked $ANVIL_CURRENT_SYMLINK → $REPO_ROOT"
 
-# Verify the symlink resolves and has composer.json
-RESOLVED=$(readlink -f "$ANVIL_CURRENT_SYMLINK")
+# Remove existing file/dir/symlink at the symlink path — ln -sfn fails
+# silently if the target is a directory (not a symlink).
+if [[ -e "$ANVIL_CURRENT_SYMLINK" || -L "$ANVIL_CURRENT_SYMLINK" ]]; then
+    if [[ -L "$ANVIL_CURRENT_SYMLINK" ]]; then
+        echo "  Existing symlink found, replacing..."
+        rm -f "$ANVIL_CURRENT_SYMLINK"
+    elif [[ -d "$ANVIL_CURRENT_SYMLINK" ]]; then
+        echo "  ⚠️  $ANVIL_CURRENT_SYMLINK is a directory (not a symlink). Removing..."
+        rm -rf "$ANVIL_CURRENT_SYMLINK"
+    else
+        echo "  ⚠️  $ANVIL_CURRENT_SYMLINK is a file. Removing..."
+        rm -f "$ANVIL_CURRENT_SYMLINK"
+    fi
+fi
+
+ln -s "$REPO_ROOT" "$ANVIL_CURRENT_SYMLINK"
+if [[ -L "$ANVIL_CURRENT_SYMLINK" ]]; then
+    echo "  ✅ Symlinked $ANVIL_CURRENT_SYMLINK → $REPO_ROOT"
+else
+    echo "  ❌ Failed to create symlink. Trying with ln -sf..."
+    ln -sf "$REPO_ROOT" "$ANVIL_CURRENT_SYMLINK"
+fi
+
+# Verify: readlink (not readlink -f) shows the target
+SYMLINK_TARGET=$(readlink "$ANVIL_CURRENT_SYMLINK" 2>/dev/null || echo "")
+echo "  Symlink target: $SYMLINK_TARGET"
+
+# RESOLVED = the actual real path (follows symlinks)
+RESOLVED=$(readlink -f "$ANVIL_CURRENT_SYMLINK" 2>/dev/null || echo "")
 echo "  Resolved: $RESOLVED"
+
+# If readlink -f returned the symlink path itself, the symlink is broken
+if [[ "$RESOLVED" == "$ANVIL_CURRENT_SYMLINK" || -z "$RESOLVED" ]]; then
+    echo "  ⚠️  Symlink not resolving. Using REPO_ROOT directly."
+    RESOLVED="$REPO_ROOT"
+fi
+
 if [[ -f "${RESOLVED}/composer.json" ]]; then
     echo "  ✅ composer.json found at ${RESOLVED}/composer.json"
 else
     echo "  ❌ composer.json NOT found at ${RESOLVED}/composer.json"
-    echo "  The symlink target may be wrong. Expected: $REPO_ROOT"
+    echo "  Expected at: ${REPO_ROOT}/composer.json"
+    ls -la "$REPO_ROOT"/composer.json 2>/dev/null || echo "  File does not exist."
 fi
 
 # --- 5. Ensure PHP CLI is available + composer autoload ---
@@ -150,10 +183,28 @@ fi
 # --- 6. Reset Tengine failure counter + restart ---
 echo ""
 echo ">>> Step 6: Reset and restart Tengine"
+
+# Stop the service first (even if already stopped) to clear the rate-limit
+systemctl stop anvil-tengine 2>/dev/null || true
+
+# Reset the failure counter — this is the key step that was missing.
+# Without this, systemd remembers the 5 previous fast restarts and
+# refuses to start with "Start request repeated too quickly".
 systemctl reset-failed anvil-tengine 2>/dev/null || true
 
-# Also clear the restart-rate-limit counter
+# Reload systemd to pick up any unit file changes
 systemctl daemon-reload
+
+# Also patch the systemd unit to run nginx -t as root (the + prefix).
+# When running as the tengine user, nginx -t fails because it can't
+# write to the log directory during the config test.
+UNIT_FILE="/etc/systemd/system/anvil-tengine.service"
+if [[ -f "$UNIT_FILE" ]] && ! grep -q 'ExecStartPre=+/usr/local/tengine/sbin/nginx -t' "$UNIT_FILE"; then
+    echo "  Patching systemd unit: nginx -t runs as root (+prefix)..."
+    sed -i 's|ExecStartPre=/usr/local/tengine/sbin/nginx -t|ExecStartPre=+/usr/local/tengine/sbin/nginx -t|' "$UNIT_FILE"
+    systemctl daemon-reload
+    echo "  ✅ Patched: ExecStartPre now runs as root"
+fi
 
 systemctl start anvil-tengine 2>/dev/null || true
 sleep 2
@@ -168,15 +219,13 @@ else
     echo "  --- journalctl (last 10 lines) ---"
     journalctl -u anvil-tengine --no-pager -n 10 2>&1
     echo ""
-    echo "  --- tengine config test ---"
-    /usr/local/tengine/sbin/nginx -t -c "$ANVIL_LB_TENGINE_CONF" 2>&1
+    echo "  --- tengine config test (as tengine user) ---"
+    sudo -u tengine /usr/local/tengine/sbin/nginx -t -c "$ANVIL_LB_TENGINE_CONF" 2>&1 || \
+        echo "  ⚠️  Config test fails as tengine user. Try running as root:"
+        echo "    /usr/local/tengine/sbin/nginx -t -c $ANVIL_LB_TENGINE_CONF"
     echo ""
-    echo "  Common fixes:"
-    echo "    1. Check /var/log/anvil/tengine-error.log for runtime errors"
-    echo "    2. Ensure /run/anvil/ is writable by tengine:tengine"
-    echo "    3. If systemd says 'Start request repeated too quickly':"
-    echo "       sudo systemctl reset-failed anvil-tengine"
-    echo "       sudo systemctl start anvil-tengine"
+    echo "  --- tengine config test (as root) ---"
+    /usr/local/tengine/sbin/nginx -t -c "$ANVIL_LB_TENGINE_CONF" 2>&1
 fi
 
 # --- 7. Reset FrankenPHP failure counter + restart ---
