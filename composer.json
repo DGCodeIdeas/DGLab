@@ -12,7 +12,19 @@
     },
     "autoload": {
         "psr-4": {
-            "App\\": "app/"
+            "App\\": "app/",
+            "SovereignStack\\Core\\Container\\": "packages/core/container/src/",
+            "SovereignStack\\Core\\EventDispatcher\\": "packages/core/event-dispatcher/src/",
+            "SovereignStack\\Core\\Http\\": "packages/core/http-message/src/",
+            "SovereignStack\\Core\\Router\\": "packages/core/router/src/",
+            "SovereignStack\\Core\\Config\\": "packages/core/config/src/",
+            "SovereignStack\\Core\\Logger\\": "packages/core/logger/src/",
+            "SovereignStack\\Core\\ErrorHandler\\": "packages/core/error-handler/src/",
+            "SovereignStack\\Core\\Kernel\\": "packages/core/kernel/src/",
+            "SovereignStack\\Hub\\Config\\": "packages/hub/config/src/",
+            "SovereignStack\\Bridge\\": "packages/bridge/vanguard/src/",
+            "SovereignStack\\Internal\\Codex\\": "packages/spoke/internal/codex/src/",
+            "SovereignStack\\External\\Canvas\\": "packages/spoke/external/canvas/src/"
         }
     },
     "autoload-dev": {
