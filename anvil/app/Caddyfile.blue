@@ -54,9 +54,7 @@
         php_ini "opcache.enable" "1"
         php_ini "opcache.memory_consumption" "256"
         php_ini "opcache.max_accelerated_files" "20000"
-        php_ini "opcache.validate_timestamps" "0"   # releases are immutable
-        php_ini "opcache.preload" "__APP_ROOT__/config/preload.php"  # ADR-010
-        php_ini "opcache.preload_user" "anvil"
+        php_ini "opcache.validate_timestamps" "1"   # dev: recheck file changes
         php_ini "expose_php" "0"
         php_ini "memory_limit" "256M"
     }
