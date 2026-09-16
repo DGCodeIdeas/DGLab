@@ -178,12 +178,14 @@ final class Kernel implements KernelInterface
             KernelState::Terminated => throw KernelException::handleAfterTerminate(),
         };
 
-        $this->state = KernelState::Handling;
-
+        // Resolve services BEFORE transitioning state — if either is null,
+        // throw before $this->state = Handling (P2: state-recovery gap fix).
         $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
         $pipeline = $this->pipeline ?? throw new \LogicException(
             'Middleware pipeline is not configured. Register the HttpBootstrapper.',
         );
+
+        $this->state = KernelState::Handling;
 
         try {
             // Dispatch RequestReceivedEvent (listeners may enrich the request).
@@ -300,7 +302,7 @@ final class Kernel implements KernelInterface
     public function setPipeline(MiddlewarePipelineInterface $pipeline): void
     {
         if ($this->state !== KernelState::Booting) {
-            throw new \LogicException(
+            throw new KernelException(
                 'setPipeline() can only be called during boot() (inside a bootstrapper). '
                 . 'Current state: ' . $this->state->value,
             );
@@ -324,9 +326,16 @@ final class Kernel implements KernelInterface
     private function assertBooted(): void
     {
         // Allow access during Booting (bootstrappers need it) and Booted/Handling.
-        // Reject Unbooted (nothing initialized yet) and Terminated (torn down).
+        // Reject Unbooted (nothing initialized yet), Terminating (in teardown),
+        // and Terminated (torn down).
         if ($this->state === KernelState::Unbooted) {
             throw KernelException::handleBeforeBoot();
+        }
+        if ($this->state === KernelState::Terminating) {
+            throw new KernelException(
+                'Cannot access kernel services during terminate(). '
+                . 'Listeners should not resolve services from the kernel.'
+            );
         }
         if ($this->state === KernelState::Terminated) {
             throw KernelException::handleAfterTerminate();
