@@ -154,3 +154,93 @@ final class ConfigRepositoryTest extends TestCase
         self::assertNull($repo->get('app.name', 'default')); // null IS the value, not absent
     }
 }
+
+    public function testAllRedactsSecrets(): void
+    {
+        $repo = new ConfigRepository([
+            'app' => ['name' => 'DGLab', 'secret' => 'super-secret-key'],
+            'database' => [
+                'host' => 'localhost',
+                'password' => 'hunter2',
+                'port' => 3306,
+            ],
+            'api' => ['token' => 'Bearer abc123', 'key' => 'private-key-data'],
+        ]);
+
+        $all = $repo->all();
+
+        // Secrets are redacted.
+        self::assertSame('***REDACTED***', $all['app']['secret']);
+        self::assertSame('***REDACTED***', $all['database']['password']);
+        self::assertSame('***REDACTED***', $all['api']['token']);
+        self::assertSame('***REDACTED***', $all['api']['key']);
+
+        // Non-secrets are preserved.
+        self::assertSame('DGLab', $all['app']['name']);
+        self::assertSame('localhost', $all['database']['host']);
+        self::assertSame(3306, $all['database']['port']);
+    }
+
+    public function testAllRawReturnsUnredactedSecrets(): void
+    {
+        $repo = new ConfigRepository([
+            'database' => ['password' => 'hunter2', 'host' => 'localhost'],
+        ]);
+
+        $raw = $repo->allRaw();
+
+        // Secrets are NOT redacted in allRaw().
+        self::assertSame('hunter2', $raw['database']['password']);
+        self::assertSame('localhost', $raw['database']['host']);
+    }
+
+    public function testGetReturnsRawSecretValue(): void
+    {
+        // get() returns the raw value — secrets are NOT redacted on direct lookup.
+        // This is intentional: callers that need the actual secret value (e.g.
+        // establishing a DB connection) use get(), not all().
+        $repo = new ConfigRepository([
+            'database' => ['password' => 'hunter2'],
+        ]);
+
+        self::assertSame('hunter2', $repo->get('database.password'));
+    }
+
+    public function testAllRedactsNestedSecrets(): void
+    {
+        $repo = new ConfigRepository([
+            'connections' => [
+                'primary' => [
+                    'host' => 'db1.internal',
+                    'password' => 'secret123',
+                ],
+                'secondary' => [
+                    'host' => 'db2.internal',
+                    'api_key' => 'key-abc',
+                ],
+            ],
+        ]);
+
+        $all = $repo->all();
+
+        self::assertSame('db1.internal', $all['connections']['primary']['host']);
+        self::assertSame('***REDACTED***', $all['connections']['primary']['password']);
+        self::assertSame('db2.internal', $all['connections']['secondary']['host']);
+        self::assertSame('***REDACTED***', $all['connections']['secondary']['api_key']);
+    }
+
+    public function testAllRedactsCaseInsensitively(): void
+    {
+        $repo = new ConfigRepository([
+            'auth' => [
+                'TOKEN' => 'Bearer xyz',
+                'Password' => 'p@ssw0rd',
+            ],
+        ]);
+
+        $all = $repo->all();
+
+        self::assertSame('***REDACTED***', $all['auth']['TOKEN']);
+        self::assertSame('***REDACTED***', $all['auth']['Password']);
+    }
+}
