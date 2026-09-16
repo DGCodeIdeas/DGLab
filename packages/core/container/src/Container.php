@@ -96,6 +96,9 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             shared: $singleton,
             tags: [],
         );
+
+        // Invalidate cached instance — re-binding must not return stale.
+        unset($this->instances[$id]);
     }
 
     public function singleton(string $id, mixed $concrete = null): void
@@ -116,6 +119,9 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             pulseScoped: true,
             tags: [],
         );
+
+        // Invalidate cached instance — re-binding must not return stale.
+        unset($this->instances[$id]);
     }
 
     public function instance(string $id, object $instance): void

@@ -44,6 +44,10 @@ final class EventDispatcher implements EventDispatcherInterface
             try {
                 $listener($event);
             } catch (\Throwable $e) {
+                // Error isolation: catch \Throwable (not just \Exception)
+                // to also handle \Error subtypes (TypeError, OutOfMemoryError).
+                // However, we still log and continue — a single failing listener
+                // never crashes the dispatcher.
                 $this->handleListenerFailure($event, $listener, $e);
 
                 // Continue to the next listener — error isolation
@@ -79,15 +83,23 @@ final class EventDispatcher implements EventDispatcherInterface
             (int) $exception->getCode()
         );
 
-        $this->logger->error(
-            $dispatchException->getMessage(),
-            [
-                'event' => $event::class,
-                'listener' => $listenerDescription,
-                'exception' => $exception::class,
-                'trace' => $exception->getTraceAsString(),
-            ]
-        );
+        // Wrap the logger call in its own try/catch — if the logger itself
+        // throws (transport down, serialization failure), we MUST swallow it.
+        // The error-isolation guarantee is: a failing listener never crashes
+        // the dispatcher. That includes the logger's failure path.
+        try {
+            $this->logger->error(
+                $dispatchException->getMessage(),
+                [
+                    'event' => $event::class,
+                    'listener' => $listenerDescription,
+                    'exception' => $exception::class,
+                    'trace' => $exception->getTraceAsString(),
+                ]
+            );
+        } catch (\Throwable) {
+            // Logger failed — silently swallow. No recursive error handling.
+        }
     }
 
     /**
