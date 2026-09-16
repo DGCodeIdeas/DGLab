@@ -58,6 +58,10 @@
         {
             "type": "path",
             "url": "packages/*/*"
+        },
+        {
+            "type": "path",
+            "url": "packages/*/*/*"
         }
     ],
     "minimum-stability": "dev",
