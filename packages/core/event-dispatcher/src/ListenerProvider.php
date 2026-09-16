@@ -146,17 +146,17 @@ final class ListenerProvider implements ListenerProviderInterface
         return $callables;
     }
 
+    public function clearCache(): void
+    {
+        $this->resolvedCache = [];
+    }
+
     /**
      * Get the full type hierarchy (class + parents + interfaces) for a class.
      *
      * @param class-string $class
      * @return list<class-string>
      */
-    public function clearCache(): void
-    {
-        $this->resolvedCache = [];
-    }
-
     private function getTypeHierarchy(string $class): array
     {
         $hierarchy = [];
