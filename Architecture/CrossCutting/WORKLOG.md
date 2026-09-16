@@ -1086,3 +1086,75 @@ Stage Summary:
 - 3 stub Router files deleted from middleware/src/.
 - 2 new tests: re-entrancy + consecutive-requests independence.
 - CI validation pending.
+
+---
+Task ID: 36
+Agent: main (Super Z)
+Task: Fix composer install failure — root composer.json path repo glob missed 3-level deep spoke packages
+
+Work Log:
+- User pasted terminal output from /home/dgi/www/DGLab: `composer install` failed with:
+  ```
+  Problem 1: sovereign-stack/spoke-codex not found
+  Problem 2: sovereign-stack/spoke-canvas not found
+  ```
+  Followed by FrankenPHP worker crashes: `Failed to open stream: vendor/autoload.php` (because composer install never produced vendor/).
+- Diagnosed against origin/main HEAD (f1a9708 — "fix(composer): require all SovereignStack packages + PSR deps in root (#192)").
+- The root composer.json requires 13 SovereignStack packages + 7 PSR packages. All 7 PSR + 11 of the 13 SovereignStack packages resolved successfully (they live at 2-level deep paths like `packages/core/config/`).
+- Two spoke packages failed to resolve:
+  - `sovereign-stack/spoke-codex` lives at `packages/spoke/internal/codex/composer.json` (3 levels deep)
+  - `sovereign-stack/spoke-canvas` lives at `packages/spoke/external/canvas/composer.json` (3 levels deep)
+- Root cause: `repositories` section had only one path repo entry `"url": "packages/*/*"`. The glob `packages/*/*` matches exactly 2-level deep directories. The spokes sit at 3 levels (`spoke/<internal|external>/<name>/`) because of the Internal/External namespace split per ADR-016.
+- Verified both spoke packages exist on origin/main with correct `name` fields in their composer.json:
+  - `packages/spoke/internal/codex/composer.json` → `"name": "sovereign-stack/spoke-codex"`, `"version": "0.1.0.0"`
+  - `packages/spoke/external/canvas/composer.json` → `"name": "sovereign-stack/spoke-canvas"`, `"version": "0.1.0.0"`
+- Verified version constraint `^0.1` matches package version `0.1.0.0`.
+- Verified sub-package `repositories` paths (`../../../core/...` from spokes) are correctly relative — they were not the cause.
+
+## Fix
+- Added a second path repository entry to root `composer.json`:
+  ```json
+  { "type": "path", "url": "packages/*/*/*" }
+  ```
+  This matches the 3-level spoke paths. The 2-level entry is kept for the existing core/hub/bridge packages.
+- Considered `packages/**` (matches any depth) but explicit two-entry pattern is faster — Composer doesn't walk into every `src/`, `tests/`, `ci/` subdirectory.
+
+## PAT Workflow (per established pattern since PR #156)
+- User pasted a fresh PAT (`repo` + `workflow` scopes).
+- Used one-shot token URL `https://x-access-token:<PAT>@github.com/DGCodeIdeas/DGLab.git` for git push — never persisted to git config, never written to any file.
+- Used PAT in `Authorization: token` header for GitHub API calls (PR creation, workflow dispatch, status polling, squash-merge).
+- Pre-flight check before commit: grepped the staged diff for the PAT prefix patterns — clean.
+- Post-merge full-commit check: grepped `git show HEAD` for the PAT prefix patterns — clean.
+- No GitHub Push Protection block this time (lesson from PR #156 applied).
+
+## CI Validation
+- Initial PR #193 had only pr-title-lint run automatically (Architecture Lint and Packages CI are path-filtered to `Architecture/**`, `packages/**`, etc. — composer.json-only changes don't trigger them).
+- Triggered both workflows manually via `workflow_dispatch` API on the PR branch:
+  - Architecture Lint: ✅ success
+  - Packages CI: ✅ all 14 package jobs passed (PHPUnit + PHPStan)
+    - core/container, core/event-dispatcher, core/http-message, core/middleware, core/router, core/config, core/logger, core/error-handler, core/kernel
+    - hub/config
+    - bridge/vanguard
+    - spoke/internal/codex, spoke/external/canvas
+    - orchestrator
+  - PR Title Lint: ✅ success
+- Squash-merged as `a7bee1a` — "fix(composer): path repo glob must match 3-level deep spokes (#193)".
+
+## release.yml behavior
+- release.yml did NOT auto-tag on this merge — it's path-scoped to `packages/**` (and gated on `LOOM_RELEASE_ENABLED=1`).
+- This is consistent with PRs #191 and #192 (also composer.json-only changes that didn't produce new tags).
+- The next `packages/**` change will produce `v0.1.20.0+<sha>` (prerelease).
+
+## Impact
+- `composer install` on /home/dgi/www/DGLab will now resolve all 13 SovereignStack packages + 7 PSR packages → `vendor/autoload.php` exists.
+- FrankenPHP workers can boot (no more `Failed to open stream: vendor/autoload.php`).
+- The Pulse trace can proceed — next layer of issues (real application-level) will surface.
+
+Stage Summary:
+- PR #193 squash-merged as `a7bee1a`.
+- 4-line addition to root composer.json (new path repo glob `packages/*/*/*`).
+- 16/16 CI checks green (1 PR Title Lint + 1 Architecture Lint + 14 Packages CI jobs).
+- MUWV flip remains UNAUTHORIZED — everything stays `v0.*` prerelease.
+- PAT workflow: one-shot token URL, no leak, no Push Protection block.
+- Next step: user runs `git pull && sudo bash anvil/lib/fix-anvil-services.sh` on /home/dgi/www/DGLab; FrankenPHP should boot; any further errors will be real application-level issues (not infrastructure).
+- Audit fix tally unchanged: P0 4/4, P1 18/18, P2 15/38, P3 0/54. Remaining P2s (23) + P3s (54) can resume once Anvil is verified working.
