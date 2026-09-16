@@ -84,20 +84,51 @@ else
     echo "  ✅ Already exists: $ANVIL_CURRENT_SYMLINK → $CURRENT_TARGET"
 fi
 
-# --- 5. Ensure composer autoload is generated ---
+# --- 5. Ensure PHP CLI is available + composer autoload ---
 echo ""
-echo ">>> Step 5: Ensure composer autoload"
+echo ">>> Step 5: Ensure PHP CLI + composer autoload"
+
+# Check if php is in PATH
+if ! command -v php &>/dev/null; then
+    echo "  ⚠️  PHP CLI not found in PATH. Installing php8.3-cli..."
+    apt-get update -qq && apt-get install -y -qq php8.3-cli php8.3-mbstring php8.3-xml php8.3-curl 2>/dev/null || {
+        echo "  ❌ Failed to install php8.3-cli. Trying php8.2..."
+        apt-get install -y -qq php8.2-cli php8.2-mbstring php8.2-xml php8.2-curl 2>/dev/null || {
+            echo "  ❌ Could not install PHP CLI automatically."
+            echo "  Run: sudo apt install php8.3-cli php8.3-mbstring php8.3-xml php8.3-curl"
+            echo "  Then re-run this script."
+            exit 1
+        }
+    }
+    echo "  ✅ PHP CLI installed: $(php -v | head -1)"
+fi
+
+# Check if composer is available
+if ! command -v composer &>/dev/null; then
+    echo "  ⚠️  Composer not found. Installing..."
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer 2>/dev/null || {
+        echo "  ❌ Failed to install composer."
+        echo "  Run: curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer"
+        exit 1
+    }
+    echo "  ✅ Composer installed: $(composer --version 2>/dev/null | head -1)"
+fi
+
 if [[ ! -f "${ANVIL_CURRENT_SYMLINK}/vendor/autoload.php" ]]; then
     echo "  Running composer install at ${ANVIL_CURRENT_SYMLINK}..."
     cd "${ANVIL_CURRENT_SYMLINK}"
-    composer install --no-interaction --prefer-dist --no-dev 2>/dev/null || \
-    composer install --no-interaction --prefer-dist 2>/dev/null || \
-    echo "  ⚠️  composer install failed — run manually: cd ${ANVIL_CURRENT_SYMLINK} && composer install"
+    composer install --no-interaction --prefer-dist 2>&1 | tail -5 || {
+        echo "  ⚠️  composer install failed — trying with --ignore-platform-reqs..."
+        composer install --no-interaction --prefer-dist --ignore-platform-reqs 2>&1 | tail -5 || {
+            echo "  ❌ composer install failed. Run manually:"
+            echo "    cd ${ANVIL_CURRENT_SYMLINK} && composer install"
+        }
+    }
 fi
 if [[ -f "${ANVIL_CURRENT_SYMLINK}/vendor/autoload.php" ]]; then
     echo "  ✅ Autoload exists: ${ANVIL_CURRENT_SYMLINK}/vendor/autoload.php"
 else
-    echo "  ❌ Missing vendor/autoload.php — run: cd ${ANVIL_CURRENT_SYMLINK} && composer install"
+    echo "  ❌ Still missing vendor/autoload.php"
 fi
 
 # --- 6. Reset Tengine failure counter + restart ---
