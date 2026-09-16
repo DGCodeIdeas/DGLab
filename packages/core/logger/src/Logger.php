@@ -35,7 +35,7 @@ final class Logger implements LoggerInterface
         private readonly string $threshold = LogLevel::DEBUG,
     ) {
         if (!in_array($threshold, LogRecord::LEVELS_BY_SEVERITY, true)) {
-            throw new \InvalidArgumentException(
+            throw new \Psr\Log\InvalidArgumentException(
                 "Invalid threshold '{$threshold}'. Must be one of: " . implode(', ', LogRecord::LEVELS_BY_SEVERITY),
             );
         }
@@ -77,7 +77,7 @@ final class Logger implements LoggerInterface
     public function log($level, string|Stringable $message, array $context = []): void
     {
         if (!is_string($level) || !in_array($level, LogRecord::LEVELS_BY_SEVERITY, true)) {
-            throw new \InvalidArgumentException(
+            throw new \Psr\Log\InvalidArgumentException(
                 "Invalid log level " . get_debug_type($level) . ". Must be one of: "
                 . implode(', ', LogRecord::LEVELS_BY_SEVERITY),
             );

@@ -121,12 +121,21 @@ final class Router implements RouterInterface
             $encoded = \rawurlencode($value);
 
             // Substitute the FIRST {placeholder} (or {placeholder:constraint}).
-            $path = \preg_replace(
-                '/\{' . \preg_quote($placeholder, '/') . '(?::[^}]+)?\}/',
-                $encoded,
-                $path,
-                1,
-            ) ?? $path;
+            // Use str_replace with the literal {placeholder} pattern first
+            // (covers the common case), then fall back to regex for
+            // {placeholder:constraint} syntax.
+            $literalToken = '{' . $placeholder . '}';
+            if (\str_contains($path, $literalToken)) {
+                $path = \str_replace($literalToken, $encoded, $path);
+            } else {
+                // Handle {placeholder:constraint} syntax via regex.
+                $path = \preg_replace(
+                    '/\{' . \preg_quote($placeholder, '/') . '(?::[^}]+)?\}/',
+                    $encoded,
+                    $path,
+                    1,
+                ) ?? $path;
+            }
         }
 
         // Remaining parameters and explicit query both append as RFC-3986 query string.
