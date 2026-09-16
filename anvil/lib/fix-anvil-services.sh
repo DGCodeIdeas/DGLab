@@ -74,14 +74,26 @@ fi
 # --- 4. Ensure /opt/anvil/current points to the repo (dev mode) ---
 echo ""
 echo ">>> Step 4: Ensure /opt/anvil/current symlink"
-if [[ ! -L "$ANVIL_CURRENT_SYMLINK" ]]; then
-    # Point it at the DGLab repo root (dev mode)
-    REPO_ROOT="$(dirname "$ANVIL_ROOT")"
-    ln -sf "$REPO_ROOT" "$ANVIL_CURRENT_SYMLINK"
-    echo "  ✅ Symlinked $ANVIL_CURRENT_SYMLINK → $REPO_ROOT"
+
+# Compute the actual repo root (parent of anvil/).
+# ANVIL_ROOT is the anvil/ directory; the repo root is its parent.
+REPO_ROOT="$(dirname "$ANVIL_ROOT")"
+echo "  ANVIL_ROOT: $ANVIL_ROOT"
+echo "  REPO_ROOT:  $REPO_ROOT"
+
+# Always re-create the symlink (ln -sf overwrites existing)
+install -d -m 0755 "$(dirname "$ANVIL_CURRENT_SYMLINK")"
+ln -sfn "$REPO_ROOT" "$ANVIL_CURRENT_SYMLINK"
+echo "  ✅ Symlinked $ANVIL_CURRENT_SYMLINK → $REPO_ROOT"
+
+# Verify the symlink resolves and has composer.json
+RESOLVED=$(readlink -f "$ANVIL_CURRENT_SYMLINK")
+echo "  Resolved: $RESOLVED"
+if [[ -f "${RESOLVED}/composer.json" ]]; then
+    echo "  ✅ composer.json found at ${RESOLVED}/composer.json"
 else
-    CURRENT_TARGET=$(readlink -f "$ANVIL_CURRENT_SYMLINK")
-    echo "  ✅ Already exists: $ANVIL_CURRENT_SYMLINK → $CURRENT_TARGET"
+    echo "  ❌ composer.json NOT found at ${RESOLVED}/composer.json"
+    echo "  The symlink target may be wrong. Expected: $REPO_ROOT"
 fi
 
 # --- 5. Ensure PHP CLI is available + composer autoload ---
@@ -114,34 +126,57 @@ if ! command -v composer &>/dev/null; then
     echo "  ✅ Composer installed: $(composer --version 2>/dev/null | head -1)"
 fi
 
-if [[ ! -f "${ANVIL_CURRENT_SYMLINK}/vendor/autoload.php" ]]; then
-    echo "  Running composer install at ${ANVIL_CURRENT_SYMLINK}..."
-    cd "${ANVIL_CURRENT_SYMLINK}"
-    composer install --no-interaction --prefer-dist 2>&1 | tail -5 || {
-        echo "  ⚠️  composer install failed — trying with --ignore-platform-reqs..."
-        composer install --no-interaction --prefer-dist --ignore-platform-reqs 2>&1 | tail -5 || {
-            echo "  ❌ composer install failed. Run manually:"
-            echo "    cd ${ANVIL_CURRENT_SYMLINK} && composer install"
-        }
+# Run composer install at the RESOLVED path (not the symlink path)
+# — composer doesn't follow symlinks reliably for finding composer.json
+echo "  Running composer install at ${RESOLVED}..."
+cd "$RESOLVED" || {
+    echo "  ❌ Failed to cd to ${RESOLVED}"
+    exit 1
+}
+composer install --no-interaction --prefer-dist 2>&1 | tail -10 || {
+    echo "  ⚠️  composer install failed — trying with --ignore-platform-reqs..."
+    composer install --no-interaction --prefer-dist --ignore-platform-reqs 2>&1 | tail -10 || {
+        echo "  ❌ composer install failed. Run manually:"
+        echo "    cd ${RESOLVED} && composer install"
     }
-fi
-if [[ -f "${ANVIL_CURRENT_SYMLINK}/vendor/autoload.php" ]]; then
-    echo "  ✅ Autoload exists: ${ANVIL_CURRENT_SYMLINK}/vendor/autoload.php"
+}
+
+if [[ -f "${RESOLVED}/vendor/autoload.php" ]]; then
+    echo "  ✅ Autoload exists: ${RESOLVED}/vendor/autoload.php"
 else
-    echo "  ❌ Still missing vendor/autoload.php"
+    echo "  ❌ Still missing vendor/autoload.php at ${RESOLVED}"
 fi
 
 # --- 6. Reset Tengine failure counter + restart ---
 echo ""
 echo ">>> Step 6: Reset and restart Tengine"
 systemctl reset-failed anvil-tengine 2>/dev/null || true
-systemctl restart anvil-tengine
-sleep 1
+
+# Also clear the restart-rate-limit counter
+systemctl daemon-reload
+
+systemctl start anvil-tengine 2>/dev/null || true
+sleep 2
 if systemctl is-active --quiet anvil-tengine; then
     echo "  ✅ anvil-tengine: active"
 else
     echo "  ❌ anvil-tengine: still failing"
-    systemctl status anvil-tengine --no-pager -l | tail -10
+    echo ""
+    echo "  --- systemctl status ---"
+    systemctl status anvil-tengine --no-pager -l 2>&1 | tail -15
+    echo ""
+    echo "  --- journalctl (last 10 lines) ---"
+    journalctl -u anvil-tengine --no-pager -n 10 2>&1
+    echo ""
+    echo "  --- tengine config test ---"
+    /usr/local/tengine/sbin/nginx -t -c "$ANVIL_LB_TENGINE_CONF" 2>&1
+    echo ""
+    echo "  Common fixes:"
+    echo "    1. Check /var/log/anvil/tengine-error.log for runtime errors"
+    echo "    2. Ensure /run/anvil/ is writable by tengine:tengine"
+    echo "    3. If systemd says 'Start request repeated too quickly':"
+    echo "       sudo systemctl reset-failed anvil-tengine"
+    echo "       sudo systemctl start anvil-tengine"
 fi
 
 # --- 7. Reset FrankenPHP failure counter + restart ---
