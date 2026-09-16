@@ -25,7 +25,7 @@ interface ConfigInterface
      * Regex pattern for keys whose values must be redacted in {@see all()}.
      * Matches: password, passwd, secret, key, token, authorization, cookie.
      */
-    public const SECRET_PATTERN = '/password|passwd|secret|token|authorization|cookie|private_key|api_key/i';
+    public const SECRET_PATTERN = '/password|passwd|secret|token|authorization|cookie|private_key|api_key|secret_key|\bkey\b/i';
 
     /**
      * Retrieve a configuration value using dot-notation.
