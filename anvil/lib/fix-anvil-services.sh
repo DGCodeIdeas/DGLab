@@ -244,21 +244,76 @@ fi
 # --- 7. Reset FrankenPHP failure counter + restart ---
 echo ""
 echo ">>> Step 7: Reset and restart FrankenPHP"
+
+# Stop first to clear the rate-limit
+systemctl stop anvil-frankenphp@blue 2>/dev/null || true
 systemctl reset-failed anvil-frankenphp@blue 2>/dev/null || true
-systemctl restart anvil-frankenphp@blue
-sleep 2
+
+# Patch the FrankenPHP systemd unit for dev mode:
+# 1. Remove ProtectHome=true — it blocks access to /home/dgi/www/DGLab
+#    (the symlink target of /opt/anvil/current)
+# 2. Add ReadWritePaths for the actual repo path
+# 3. Add StartLimitBurst/StartLimitIntervalSec for restart tolerance
+FRANKENPHP_UNIT="/etc/systemd/system/anvil-frankenphp@.service"
+if [[ -f "$FRANKENPHP_UNIT" ]]; then
+    # Remove ProtectHome=true (dev mode — app lives in /home/dgi/)
+    if grep -q 'ProtectHome=true' "$FRANKENPHP_UNIT"; then
+        sed -i 's/^ProtectHome=true/ProtectHome=false/' "$FRANKENPHP_UNIT"
+        echo "  ✅ Patched: ProtectHome=false (dev mode)"
+    fi
+    # Add ReadWritePaths for the repo root (var/cache, var/log)
+    if ! grep -q 'ReadWritePaths=/home/dgi' "$FRANKENPHP_UNIT"; then
+        sed -i "s|ReadWritePaths=/opt/anvil/current/var|ReadWritePaths=/opt/anvil/current/var ${RESOLVED}/var|" "$FRANKENPHP_UNIT"
+        echo "  ✅ Patched: ReadWritePaths includes ${RESOLVED}/var"
+    fi
+    # Add start-limit tolerance
+    if ! grep -q 'StartLimitBurst' "$FRANKENPHP_UNIT"; then
+        sed -i '/^\[Service\]/i StartLimitBurst=10\nStartLimitIntervalSec=30' "$FRANKENPHP_UNIT"
+        echo "  ✅ Patched: StartLimitBurst=10, StartLimitIntervalSec=30"
+    fi
+    systemctl daemon-reload
+fi
+
+# Also ensure /etc/anvil/secrets.env exists (FrankenPHP unit requires it)
+if [[ ! -f /etc/anvil/secrets.env ]]; then
+    echo "  Creating /etc/anvil/secrets.env (empty placeholder)..."
+    echo "# Anvil secrets — populated by anvil-secrets.service or manually" > /etc/anvil/secrets.env
+    echo "# No secrets needed for dev mode" >> /etc/anvil/secrets.env
+    chmod 0640 /etc/anvil/secrets.env
+    chown anvil:anvil /etc/anvil/secrets.env 2>/dev/null || true
+fi
+
+# Also ensure /etc/anvil/app/Caddyfile.blue exists with correct APP_ROOT
+if [[ ! -f /etc/anvil/app/Caddyfile.blue ]]; then
+    echo "  Creating Caddyfile.blue with dev config..."
+    install -d -m 0755 /etc/anvil/app
+    sed -e "s|__LISTEN_PORT__|${FRANKENPHP_BLUE_PORT:-8090}|g" \
+        -e "s|__ADMIN_PORT__|${FRANKENPHP_BLUE_ADMIN_PORT:-2019}|g" \
+        -e "s|__WORKERS__|${ANVIL_DEV_WORKERS:-2}|g" \
+        -e "s|__APP_ROOT__|${RESOLVED}|g" \
+        -e "s|__TRUSTED_PROXIES__|127.0.0.1|g" \
+        -e "s|__APP_ENV__|dev|g" \
+        "${ANVIL_ROOT}/app/Caddyfile.blue" > /etc/anvil/app/Caddyfile.blue
+    echo "  ✅ Created Caddyfile.blue (APP_ROOT=${RESOLVED})"
+fi
+
+systemctl start anvil-frankenphp@blue 2>/dev/null || true
+sleep 3
 if systemctl is-active --quiet anvil-frankenphp@blue; then
     echo "  ✅ anvil-frankenphp@blue: active"
 else
     echo "  ❌ anvil-frankenphp@blue: still failing"
-    echo "  Check: journalctl -u anvil-frankenphp@blue --no-pager -n 20"
     echo ""
-    echo "  If the error is 'failed to initialize workers: too many consecutive failures':"
-    echo "    The new public/index.php uses frankenphp_handle_request() for worker mode."
-    echo "    Make sure the repo at $ANVIL_CURRENT_SYMLINK has the updated public/index.php:"
-    echo "      cd $ANVIL_CURRENT_SYMLINK && git pull"
-    echo "      cd $ANVIL_CURRENT_SYMLINK && composer install"
-    echo "      sudo systemctl restart anvil-frankenphp@blue"
+    echo "  --- journalctl (last 15 lines) ---"
+    journalctl -u anvil-frankenphp@blue --no-pager -n 15 2>&1
+    echo ""
+    echo "  Common fixes:"
+    echo "    1. Check /etc/anvil/app/Caddyfile.blue exists and has correct APP_ROOT"
+    echo "    2. Check /etc/anvil/secrets.env exists"
+    echo "    3. Check that anvil user can read ${RESOLVED}/public/index.php"
+    echo "       sudo -u anvil cat ${RESOLVED}/public/index.php"
+    echo "    4. Verify Caddyfile.blue APP_ROOT:"
+    echo "       grep APP_ROOT /etc/anvil/app/Caddyfile.blue"
 fi
 
 # --- 8. Restart Caddy ---
