@@ -351,11 +351,12 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
 
         // Fiber context: use the WeakMap.
+        assert($fiber instanceof \Fiber);
+
         if (!isset($this->fiberResolving[$fiber])) {
-            $this->fiberResolving[$fiber] = [
-                'resolving' => [],
-                'chain' => [],
-            ];
+            /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $fresh */
+            $fresh = ['resolving' => [], 'chain' => []];
+            $this->fiberResolving[$fiber] = $fresh;
         }
 
         /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $state */
