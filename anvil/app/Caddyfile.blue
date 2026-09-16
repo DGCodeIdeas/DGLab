@@ -41,10 +41,10 @@
             name dglab
             # Secrets NEVER live here — they arrive via the systemd unit's
             # EnvironmentFile (SSM-sourced, §7.8 of v3 doc) and are inherited by workers.
-            env APP_ENV=__APP_ENV__
-            env APP_URL=https://__APP_ROOT__
-            env TRUSTED_PROXIES=__TRUSTED_PROXIES__
-            max_consecutive_failures 10     # auto-restart flapping workers
+            env APP_ENV __APP_ENV__
+            env APP_URL https://__APP_ROOT__
+            env TRUSTED_PROXIES __TRUSTED_PROXIES__
+            max_consecutive_failures 10
         }
 
         # Global thread recycling — bounds leaks in long-lived workers
@@ -54,7 +54,7 @@
         php_ini "opcache.enable" "1"
         php_ini "opcache.memory_consumption" "256"
         php_ini "opcache.max_accelerated_files" "20000"
-        php_ini "opcache.validate_timestamps" "1"   # dev: recheck file changes
+        php_ini "opcache.validate_timestamps" "1"
         php_ini "expose_php" "0"
         php_ini "memory_limit" "256M"
     }
