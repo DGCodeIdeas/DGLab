@@ -187,25 +187,36 @@ echo ">>> Step 6: Reset and restart Tengine"
 # Stop the service first (even if already stopped) to clear the rate-limit
 systemctl stop anvil-tengine 2>/dev/null || true
 
-# Reset the failure counter — this is the key step that was missing.
-# Without this, systemd remembers the 5 previous fast restarts and
-# refuses to start with "Start request repeated too quickly".
+# Reset the failure counter
 systemctl reset-failed anvil-tengine 2>/dev/null || true
 
-# Reload systemd to pick up any unit file changes
-systemctl daemon-reload
-
-# Also patch the systemd unit to run nginx -t as root (the + prefix).
-# When running as the tengine user, nginx -t fails because it can't
-# write to the log directory during the config test.
+# Patch the systemd unit: increase rate-limit tolerance + run ExecStartPre as root
 UNIT_FILE="/etc/systemd/system/anvil-tengine.service"
-if [[ -f "$UNIT_FILE" ]] && ! grep -q 'ExecStartPre=+/usr/local/tengine/sbin/nginx -t' "$UNIT_FILE"; then
-    echo "  Patching systemd unit: nginx -t runs as root (+prefix)..."
-    sed -i 's|ExecStartPre=/usr/local/tengine/sbin/nginx -t|ExecStartPre=+/usr/local/tengine/sbin/nginx -t|' "$UNIT_FILE"
+if [[ -f "$UNIT_FILE" ]]; then
+    # Add StartLimitBurst/StartLimitIntervalSec if not present
+    if ! grep -q 'StartLimitBurst' "$UNIT_FILE"; then
+        sed -i '/^\[Service\]/i StartLimitBurst=10\nStartLimitIntervalSec=30' "$UNIT_FILE"
+        echo "  ✅ Patched: StartLimitBurst=10, StartLimitIntervalSec=30"
+    fi
+    # Run ExecStartPre as root (+ prefix) — tengine user can't write logs during config test
+    if ! grep -q 'ExecStartPre=+/usr/local/tengine/sbin/nginx -t' "$UNIT_FILE"; then
+        sed -i 's|ExecStartPre=/usr/local/tengine/sbin/nginx -t|ExecStartPre=+/usr/local/tengine/sbin/nginx -t|' "$UNIT_FILE"
+        echo "  ✅ Patched: ExecStartPre runs as root (+prefix)"
+    fi
+    # Also run ExecStart as root — Tengine as tengine user fails on PID/log writes
+    # under ProtectSystem=strict. Running as root + dropping privileges inside
+    # nginx.conf (user tengine;) is the correct pattern.
+    if ! grep -q 'ExecStart=+/usr/local/tengine/sbin/nginx' "$UNIT_FILE"; then
+        sed -i 's|ExecStart=/usr/local/tengine/sbin/nginx|ExecStart=+/usr/local/tengine/sbin/nginx|' "$UNIT_FILE"
+        echo "  ✅ Patched: ExecStart runs as root (+prefix)"
+    fi
     systemctl daemon-reload
-    echo "  ✅ Patched: ExecStartPre now runs as root"
 fi
 
+# Clear any stale PID file
+rm -f /run/anvil/tengine.pid 2>/dev/null || true
+
+# Try starting
 systemctl start anvil-tengine 2>/dev/null || true
 sleep 2
 if systemctl is-active --quiet anvil-tengine; then
@@ -213,19 +224,21 @@ if systemctl is-active --quiet anvil-tengine; then
 else
     echo "  ❌ anvil-tengine: still failing"
     echo ""
+    echo "  --- Tengine error log (last 10 lines) ---"
+    tail -10 /var/log/anvil/tengine-error.log 2>/dev/null || echo "  (no error log found)"
+    echo ""
+    echo "  --- Running nginx directly (as root) for diagnostics ---"
+    /usr/local/tengine/sbin/nginx -c "$ANVIL_LB_TENGINE_CONF" 2>&1 || true
+    sleep 1
+    /usr/local/tengine/sbin/nginx -s stop -c "$ANVIL_LB_TENGINE_CONF" 2>/dev/null || true
+    echo ""
     echo "  --- systemctl status ---"
-    systemctl status anvil-tengine --no-pager -l 2>&1 | tail -15
+    systemctl status anvil-tengine --no-pager -l 2>&1 | tail -10
     echo ""
-    echo "  --- journalctl (last 10 lines) ---"
-    journalctl -u anvil-tengine --no-pager -n 10 2>&1
-    echo ""
-    echo "  --- tengine config test (as tengine user) ---"
-    sudo -u tengine /usr/local/tengine/sbin/nginx -t -c "$ANVIL_LB_TENGINE_CONF" 2>&1 || \
-        echo "  ⚠️  Config test fails as tengine user. Try running as root:"
-        echo "    /usr/local/tengine/sbin/nginx -t -c $ANVIL_LB_TENGINE_CONF"
-    echo ""
-    echo "  --- tengine config test (as root) ---"
-    /usr/local/tengine/sbin/nginx -t -c "$ANVIL_LB_TENGINE_CONF" 2>&1
+    echo "  If nginx starts fine as root but systemd still fails:"
+    echo "    The issue is likely User=tengine in the unit file. The + prefix"
+    echo "    on ExecStart should make it run as root. Verify with:"
+    echo "      systemctl cat anvil-tengine"
 fi
 
 # --- 7. Reset FrankenPHP failure counter + restart ---
