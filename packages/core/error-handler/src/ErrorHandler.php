@@ -109,21 +109,31 @@ final class ErrorHandler implements ErrorHandlerInterface
         }
 
         $level = $this->severityToLevel($severity);
+        $ee = new \ErrorException($message, 0, $severity, $file, $line);
 
-        $this->logger->log(
-            $level,
-            '{message} in {file}:{line}',
-            [
-                'message' => $message,
-                'file' => $file,
-                'line' => $line,
-                'severity' => $severity,
-                'exception' => new \ErrorException($message, 0, $severity, $file, $line),
-            ],
-        );
+        // Wrap the logger call in try/catch — if the logger throws (disk full,
+        // broken handler), the exception propagates to handleException(), which
+        // would re-enter logThrowable() and call the same logger again.
+        // The recursion guard eventually catches it, but the original error
+        // information is lost. Better to swallow the logger failure here.
+        try {
+            $this->logger->log(
+                $level,
+                '{message} in {file}:{line}',
+                [
+                    'message' => $message,
+                    'file' => $file,
+                    'line' => $line,
+                    'severity' => $severity,
+                    'exception' => $ee,
+                ],
+            );
+        } catch (\Throwable) {
+            // Logger failed — silently swallow to prevent recursion.
+        }
 
         // Convert to ErrorException so callers can catch warnings/notices as exceptions.
-        throw new \ErrorException($message, 0, $severity, $file, $line);
+        throw $ee;
     }
 
     public function handleFatal(): void
