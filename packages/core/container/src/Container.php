@@ -59,11 +59,21 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      */
     private \WeakMap $pulseInstances;
 
-    /** @var array<string, true> Keys are concrete class-strings currently being built. */
-    private array $resolving = [];
-
-    /** @var list<array{0: string, 1: mixed}> Ordered [id, concrete] pairs for chain reporting. */
-    private array $resolvingChain = [];
+    /**
+     * Per-Fiber cycle-detection state.
+     *
+     * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
+     * per-Fiber — otherwise a constructor that calls Fiber::suspend() leaves
+     * the cycle stack populated, and any other Fiber resolving the same id
+     * spuriously throws CircularDependencyException.
+     *
+     * WeakMap<Fiber, array{resolving: array<string, true>, chain: list<array{0:string, 1:mixed}>}>
+     * When a Fiber is GC'd, its cycle-detection state is automatically evicted.
+     * Outside any Fiber (main context), a fallback array is used.
+     *
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>|array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
+     */
+    private \WeakMap|array $fiberResolving;
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -73,6 +83,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     public function __construct()
     {
         $this->pulseInstances = new \WeakMap();
+        $this->fiberResolving = new \WeakMap();
     }
 
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
@@ -185,26 +196,31 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             );
         }
 
-        if (isset($this->resolving[$resolutionKey])) {
+        // Per-Fiber cycle detection (ADR-017 Fiber safety fix).
+        $resolvingState = $this->getResolvingState();
+        $resolving = &$resolvingState['resolving'];
+        $resolvingChain = &$resolvingState['chain'];
+
+        if (isset($resolving[$resolutionKey])) {
             $chain = array_map(
                 static fn(array $pair) => $pair[0],
-                $this->resolvingChain,
+                $resolvingChain,
             );
             $chain[] = $id;
             throw CircularDependencyException::fromChain($chain);
         }
 
         // 5. Push onto both the cycle-detection set and the chain.
-        $this->resolving[$resolutionKey] = true;
-        $this->resolvingChain[] = [$id, $concrete];
+        $resolving[$resolutionKey] = true;
+        $resolvingChain[] = [$id, $concrete];
 
         try {
             // 6. Build by concrete type.
             $object = $this->build($concrete, $parameters);
         } finally {
             // 7. Always pop, even on exception — no state leak (Security Property #3).
-            unset($this->resolving[$resolutionKey]);
-            array_pop($this->resolvingChain);
+            unset($resolving[$resolutionKey]);
+            array_pop($resolvingChain);
         }
 
         // 8. Cache shared singletons (worker-scoped).
@@ -233,10 +249,16 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * PSR-11 get(): throws NotFoundException on unknown ids.
      *
-     * Unlike make(), get() refuses to construct an arbitrary class-string
-     * that has not been explicitly bound or registered via instance().
-     * This matches the PSR-11 contract that get() must throw if the id
-     * is not "known" to the container.
+     * SECURITY: has() returns true for any autoloadable class (via class_exists()),
+     * so get() CAN autowire arbitrary class-strings that haven't been explicitly
+     * bound. This is the PSR-11 "auto-resolution" behavior — it's intentional for
+     * developer convenience (controllers, listeners, etc.) but callers MUST NOT
+     * pass untrusted user input as $id to get()/has()/make(), as this would allow
+     * instantiation of arbitrary autoloadable classes.
+     *
+     * @param string $id Service identifier or class-string. MUST NOT be user input.
+     * @return mixed The resolved service instance.
+     * @throws NotFoundException If $id is not bound, not pre-instantiated, and not an autoloadable class.
      */
     public function get(string $id): mixed
     {
@@ -305,6 +327,46 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * Guard: mutation methods must not run after compile().
      */
+    /**
+     * Get the per-Fiber cycle-detection state.
+     *
+     * If inside a Fiber (ADR-017 cooperative runtime), returns the state
+     * stored in the WeakMap keyed on the current Fiber. If the Fiber hasn't
+     * been seen before, initializes a fresh state.
+     *
+     * Outside any Fiber (main context), returns the fallback main-context state.
+     * This ensures cycle detection works correctly in both modes without
+     * cross-Fiber interference.
+     *
+     * @return array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
+     */
+    private function &getResolvingState(): array
+    {
+        $fiber = \Fiber::getCurrent();
+
+        if ($fiber === null) {
+            // Main context: use the fallback arrays.
+            return $this->mainResolvingState;
+        }
+
+        // Fiber context: use the WeakMap.
+        if (!isset($this->fiberResolving[$fiber])) {
+            $this->fiberResolving[$fiber] = [
+                'resolving' => [],
+                'chain' => [],
+            ];
+        }
+
+        return $this->fiberResolving[$fiber];
+    }
+
+    /**
+     * Main-context fallback for cycle detection (used when no Fiber is active).
+     *
+     * @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
+     */
+    private array $mainResolvingState = ['resolving' => [], 'chain' => []];
+
     private function assertNotCompiled(): void
     {
         if ($this->compiled) {
