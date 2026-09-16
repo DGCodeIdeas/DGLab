@@ -28,6 +28,13 @@ final class AttributeRouteLoader
             $reflection = new \ReflectionClass($class);
 
             foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+                // Skip inherited methods — only load routes declared on THIS class.
+                // Prevents duplicate registration when a subclass inherits routes
+                // from a base controller (P2 fix from Core audit).
+                if ($method->getDeclaringClass()->getName() !== $class) {
+                    continue;
+                }
+
                 $attributes = $method->getAttributes(RouteAttribute::class, \ReflectionAttribute::IS_INSTANCEOF);
 
                 foreach ($attributes as $attribute) {
