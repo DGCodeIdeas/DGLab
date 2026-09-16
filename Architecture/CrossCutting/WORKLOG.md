@@ -1158,3 +1158,78 @@ Stage Summary:
 - PAT workflow: one-shot token URL, no leak, no Push Protection block.
 - Next step: user runs `git pull && sudo bash anvil/lib/fix-anvil-services.sh` on /home/dgi/www/DGLab; FrankenPHP should boot; any further errors will be real application-level issues (not infrastructure).
 - Audit fix tally unchanged: P0 4/4, P1 18/18, P2 15/38, P3 0/54. Remaining P2s (23) + P3s (54) can resume once Anvil is verified working.
+
+---
+Task ID: 37
+Agent: main (Super Z)
+Task: Fix Vanguard ContractRegistry regex — root route '/' was rejected as too short
+
+Work Log:
+- User pulled main (post-PR #194), ran `sudo rm -rf vendor composer.lock && composer install` — succeeded! All 13 SovereignStack packages + 7 PSR packages installed (10 symlinked from `packages/*`, 33 from Packagist).
+- Ran `sudo bash anvil/lib/fix-anvil-services.sh` — Tengine active, Caddy active, FrankenPHP workers crashed with:
+  ```
+  Uncaught InvalidArgumentException: ContractID [/] does not match required pattern ^[a-z0-9_.\/]{3,128}$.
+    in /home/dgi/www/DGLab/packages/bridge/vanguard/src/ContractRegistry.php:37
+  Stack trace:
+  #0 /home/dgi/www/DGLab/public/index.php(82): SovereignStack\Bridger\ContractRegistry->registerContract('/', ...)
+  #1 {main}
+  ```
+
+## Root cause
+- `ContractRegistry::registerContract()` regex required `^[a-z0-9_.\/]{3,128}$` — minimum 3 chars.
+- `public/index.php:82` calls `registerContract('/', new DefaultDtoTransformer())` for the Hello World contract — `'/'` is 1 char, fails the minimum length check.
+- The Vanguard resolves contracts by URI path (`Vanguard::process()` line 46: `$route = $request->getUri()->getPath()`). The root path `'/'` is a perfectly valid HTTP route, so the regex minimum should be 1, not 3.
+- All existing tests used 3+ char contract IDs (`/hello`, `/api/users`, `/route1`, etc.) — no test ever hit the minimum-length check. The existing `testMalformedContractIdRejected` uses `'UPPER CASE'` which violates the character class, not the length. So the bug was hidden by incomplete test coverage.
+- The Kernel's `Router` already accepts `'/'` (it explicitly carves out the root in `Router::match()` line 55: "Normalize trailing slashes (except root)"). Only the Vanguard's ContractRegistry had the over-strict minimum.
+
+## Fix
+- `packages/bridge/vanguard/src/ContractRegistry.php`: changed `{3,128}` → `{1,128}` in three places:
+  - The `preg_match` regex on line 38 (was line 36)
+  - The exception message sprintf on line 40 (was line 38)
+  - The docstring `@param` annotation on line 23 (was line 23)
+- Added a comment to the docstring explaining why minimum 1 char is needed: root route '/' must be registerable because the Vanguard resolves contracts by URI path.
+
+## Regression test
+- Added `testRootRouteContractIsAccepted()` to `packages/bridge/vanguard/tests/ContractRegistryTest.php`:
+  - Calls `registerContract('/', $transformer)`
+  - Asserts `has('/')` returns true
+  - Asserts `resolve('/')` returns the same transformer instance
+- This locks in the root-route contract pattern and prevents future regressions if someone "tightens" the regex back to `{3,128}`.
+
+## Verification
+- Pre-flight: grepped staged diff for PAT patterns — clean.
+- Post-commit: grepped full commit for PAT patterns — clean.
+- Existing `testMalformedContractIdRejected('UPPER CASE')` still passes — it violates the character class `[a-z0-9_.\\/]`, not the length minimum.
+- No existing test uses a 1-char contract ID — lowering the minimum breaks nothing.
+
+## CI status
+- PR #195: 29 check runs (push + PR events), all green on the first try. No iterations needed.
+  - pr-title-lint ✅
+  - Packages CI (14 packages) ✅ — including `bridge/vanguard` (the package being fixed)
+- This PR touched `packages/**` so Packages CI auto-triggered (unlike PRs #193/#194 which were composer.json-only and required manual `workflow_dispatch`).
+- Squash-merged as `2cdce9b` — "fix(vanguard): allow 1-char contract IDs so / (root route) is valid (#195)".
+
+## release.yml auto-tag
+- This PR touched `packages/**` so release.yml auto-triggered on merge.
+- Created `v0.1.20.0+2cdce9b` (prerelease) — the first new tag since `v0.1.19.0+0ac9f59` (5 PRs ago).
+- The 4-PR gap (#191 composer autoload mappings, #192 composer require, #193 path repo glob, #194 worklog) produced no tags because none touched `packages/**`.
+- Release workflow logs confirm: "Create monorepo tag and release" step succeeded.
+
+## Impact
+- FrankenPHP workers should now boot past the Vanguard initialization.
+- The Milestone 0 success criterion — "a real HTTP request enters at the Outer Rim (Vanguard), crosses the Inner Rim (Kernel pipeline + router), resolves against the Inner Spoke (HelloController), and returns" — should now actually work end-to-end.
+- User should run `git pull && sudo bash anvil/lib/fix-anvil-services.sh` to verify.
+
+## Discovery context
+- This bug was hidden behind the composer install failure that PR #193 fixed.
+- The Vanguard is the outermost middleware — it runs before the Kernel pipeline, so contract registration happens at boot, before any HTTP request.
+- Once `vendor/autoload.php` existed and FrankenPHP workers started, the contract ID validation fired immediately on the first worker boot.
+
+Stage Summary:
+- PR #195 squash-merged as `2cdce9b`.
+- 2-file change: `ContractRegistry.php` (regex + error message + docstring) + `ContractRegistryTest.php` (regression test).
+- 29/29 CI checks green on the first try.
+- Auto-tagged `v0.1.20.0+2cdce9b` (prerelease) — release.yml working correctly.
+- MUWV flip remains UNAUTHORIZED.
+- PAT workflow: reused the PAT from Task 36 (still valid). One-shot token URL, no leak.
+- Audit fix tally unchanged from Task 36: P0 4/4, P1 18/18, P2 15/38, P3 0/54.
