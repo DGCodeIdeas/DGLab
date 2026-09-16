@@ -302,19 +302,18 @@ if [[ ! -f /etc/anvil/secrets.env ]]; then
     chown anvil:anvil /etc/anvil/secrets.env 2>/dev/null || true
 fi
 
-# Also ensure /etc/anvil/app/Caddyfile.blue exists with correct APP_ROOT
-if [[ ! -f /etc/anvil/app/Caddyfile.blue ]]; then
-    echo "  Creating Caddyfile.blue with dev config..."
-    install -d -m 0755 /etc/anvil/app
-    sed -e "s|__LISTEN_PORT__|${FRANKENPHP_BLUE_PORT:-8090}|g" \
-        -e "s|__ADMIN_PORT__|${FRANKENPHP_BLUE_ADMIN_PORT:-2019}|g" \
-        -e "s|__WORKERS__|${ANVIL_DEV_WORKERS:-2}|g" \
-        -e "s|__APP_ROOT__|${RESOLVED}|g" \
-        -e "s|__TRUSTED_PROXIES__|127.0.0.1|g" \
-        -e "s|__APP_ENV__|dev|g" \
-        "${ANVIL_ROOT}/app/Caddyfile.blue" > /etc/anvil/app/Caddyfile.blue
-    echo "  ✅ Created Caddyfile.blue (APP_ROOT=${RESOLVED})"
-fi
+# Always re-render Caddyfile.blue from the template (ensures latest config
+# with dev-mode php_ini settings — no opcache.preload, validate_timestamps=1)
+echo "  Rendering Caddyfile.blue from template..."
+install -d -m 0755 /etc/anvil/app
+sed -e "s|__LISTEN_PORT__|${FRANKENPHP_BLUE_PORT:-8090}|g" \
+    -e "s|__ADMIN_PORT__|${FRANKENPHP_BLUE_ADMIN_PORT:-2019}|g" \
+    -e "s|__WORKERS__|${ANVIL_DEV_WORKERS:-2}|g" \
+    -e "s|__APP_ROOT__|${RESOLVED}|g" \
+    -e "s|__TRUSTED_PROXIES__|127.0.0.1|g" \
+    -e "s|__APP_ENV__|dev|g" \
+    "${ANVIL_ROOT}/app/Caddyfile.blue" > /etc/anvil/app/Caddyfile.blue
+echo "  ✅ Caddyfile.blue rendered (APP_ROOT=${RESOLVED})"
 
 systemctl start anvil-frankenphp@blue 2>/dev/null || true
 sleep 3
