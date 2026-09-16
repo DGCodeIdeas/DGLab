@@ -41,7 +41,8 @@ final class RendererTest extends TestCase
         $output = (new JsonRenderer())->render($e, debug: false);
 
         $decoded = json_decode($output, true);
-        self::assertSame('RuntimeException', $decoded['error']['type']);
+        // Security: exception class name is NOT emitted in production mode.
+        self::assertArrayNotHasKey('type', $decoded['error']);
         self::assertSame('Internal server error', $decoded['error']['message']);
         self::assertArrayNotHasKey('file', $decoded['error']);
         self::assertArrayNotHasKey('line', $decoded['error']);

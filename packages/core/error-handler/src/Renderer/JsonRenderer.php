@@ -32,12 +32,15 @@ final class JsonRenderer implements RendererInterface
     {
         $payload = [
             'error' => [
-                'type' => $throwable::class,
                 'message' => $debug ? $throwable->getMessage() : $this->genericMessage($throwable),
             ],
         ];
 
+        // Security: suppress exception class name in production mode.
+        // Internal class names (e.g. Doctrine\DBAL\Exception\UniqueConstraintViolationException)
+        // leak implementation details to API clients.
         if ($debug) {
+            $payload['error']['type'] = $throwable::class;
             $payload['error']['file'] = $throwable->getFile();
             $payload['error']['line'] = $throwable->getLine();
             $payload['error']['trace'] = $this->sanitizeTrace($throwable->getTraceAsString());
@@ -95,8 +98,31 @@ final class JsonRenderer implements RendererInterface
      */
     private function sanitizeTrace(string $trace): string
     {
-        // Strip absolute paths outside the project root, if any.
-        // For now, this is a passthrough — the trace is only emitted in debug mode.
+        // Redact common secret patterns from the trace string.
+        // Even in debug mode, traces can contain passwords, tokens, and
+        // authorization headers in function arguments.
+        $patterns = [
+            '/password\s*[=: ]\s*["\'][^"\']*["\']/i',
+            '/password\s*[=: ]\s*\S+/i',
+            '/Bearer\s+[A-Za-z0-9\-._~+\/=]+/i',
+            '/Authorization:\s*Basic\s+[A-Za-z0-9+\/=]+/i',
+            '/Authorization:\s*Bearer\s+[A-Za-z0-9\-._~+\/=]+/i',
+            '/api[_-]?key\s*[=: ]\s*["\'][^"\']*["\']/i',
+            '/api[_-]?key\s*[=: ]\s*\S+/i',
+            '/secret\s*[=: ]\s*["\'][^"\']*["\']/i',
+            '/secret\s*[=: ]\s*\S+/i',
+            '/token\s*[=: ]\s*["\'][^"\']*["\']/i',
+            '/token\s*[=: ]\s*\S+/i',
+        ];
+        $trace = preg_replace($patterns, '***REDACTED***', $trace) ?? $trace;
+
+        // Replace absolute file paths with project-relative ones.
+        $trace = preg_replace(
+            '/\/home\/[^\/]+\/www\/DGLab\//',
+            '',
+            $trace,
+        ) ?? $trace;
+
         return $trace;
     }
 }

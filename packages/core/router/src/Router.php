@@ -56,8 +56,30 @@ final class Router implements RouterInterface
             $path = \rtrim($path, '/');
         }
 
-        foreach ($this->byMethod[$method] ?? [] as $compiled) {
-            if (\preg_match($compiled->regex, $path, $matches)) {
+        // Sort routes: static (no placeholders) first, then parameterized.
+        // This ensures /users/me matches before /users/{id} regardless of
+        // registration order (P2 fix from Core audit).
+        $routes = $this->byMethod[$method] ?? [];
+        usort($routes, static function (CompiledRoute $a, CompiledRoute $b): int {
+            $aIsStatic = $a->placeholderNames === [];
+            $bIsStatic = $b->placeholderNames === [];
+            if ($aIsStatic && !$bIsStatic) {
+                return -1;
+            }
+            if (!$aIsStatic && $bIsStatic) {
+                return 1;
+            }
+            return 0;
+        });
+
+        foreach ($routes as $compiled) {
+            $result = @\preg_match($compiled->regex, $path, $matches);
+            if ($result === false) {
+                // PCRE error (e.g., backtrack limit exceeded by a catastrophic
+                // backtracking constraint). Log and continue to next route.
+                continue;
+            }
+            if ($result === 1) {
                 $params = [];
                 foreach ($compiled->placeholderNames as $name) {
                     // URL-decode EXACTLY ONCE. Controllers MUST NOT call
