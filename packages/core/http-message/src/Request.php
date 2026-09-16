@@ -63,6 +63,9 @@ class Request implements RequestInterface
         if ($host !== '' && !isset($this->headerNames['host'])) {
             $authority = $this->uri->getAuthority();
             if ($authority !== '') {
+                // Security: validate the URI-derived Host header for CRLF
+                // (CWE-113). The URI host may contain injected \r\n.
+                $this->assertNoCrlf('Host', [$authority]);
                 $normalized['host'] = [$authority];
                 $names['host'] = 'Host';
             }
@@ -121,6 +124,9 @@ class Request implements RequestInterface
             if ($host !== '') {
                 $authority = $uri->getAuthority();
                 if ($authority !== '') {
+                    // Security: validate the URI-derived Host header for CRLF
+                    // (CWE-113). The URI host may contain injected \r\n.
+                    $new->assertNoCrlf('Host', [$authority]);
                     $new->headers['host'] = [$authority];
                     $new->headerNames['host'] = 'Host';
                 }
