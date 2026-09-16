@@ -126,8 +126,11 @@ final class MultiFileUploadTest extends TestCase
 
     /**
      * Call the private static normalizeUploadedFiles via reflection.
+     *
+     * @param array<string, mixed> $files
+     * @return array<string, mixed>
      */
-    private function callNormalizeUploadedFiles(array $files): array // @phpstan-ignore-next-line
+    private function callNormalizeUploadedFiles(array $files): array
     {
         $method = new \ReflectionMethod(ServerRequestFactory::class, 'normalizeUploadedFiles');
         $method->setAccessible(true);
