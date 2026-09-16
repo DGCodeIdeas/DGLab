@@ -12,6 +12,12 @@
  * request enters at the Outer Rim, crosses the Inner Rim, resolves against
  * the Inner Spoke, and returns — the actual synchronous-radial Pulse trace."
  *
+ * FrankenPHP worker mode: when running under FrankenPHP's worker{} directive,
+ * this file is loaded ONCE as the worker bootstrap. The Kernel is booted
+ * once, then frankenphp_handle_request() loops the handler for each request.
+ * Under PHP-FPM (no frankenphp_handle_request function), falls back to the
+ * traditional per-request bootstrap.
+ *
  * Depth-2 scope: the Vanguard enforces contract lookup (default-deny 403)
  * and WAF inspection. JWT verification, rate limiting, and HUB-06 audit are
  * pass-through stubs. When HUB-02/HUB-04/HUB-06 land, the stubs are replaced
@@ -41,8 +47,10 @@ use SovereignStack\Bridge\DefaultDtoTransformer;
 use SovereignStack\Core\Http\ResponseFactory;
 use App\Controller\HelloController;
 use Psr\Log\NullLogger;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
-// --- 1. Build the Kernel dependencies ---
+// --- 1. Build the Kernel dependencies (runs once in worker mode) ---
 
 $container = new Container();
 $provider  = new ListenerProvider();
@@ -80,7 +88,7 @@ $vanguard = new Vanguard(
     logger: new NullLogger(),
 );
 
-// --- 3. Boot the Kernel ---
+// --- 3. Boot the Kernel (runs once in worker mode) ---
 
 $kernel = new Kernel(
     containerFactory: fn () => $container,
@@ -126,21 +134,45 @@ $kernel = new Kernel(
 
 $kernel->boot();
 
-// --- 4. Handle the request ---
+// --- 4. Request handler (runs per-request in worker mode) ---
 
-$request = ServerRequestFactory::fromGlobals();
-$response = $kernel->handle($request);
+/**
+ * Handle a single HTTP request through the Kernel pipeline.
+ * Returns the PSR-7 Response for the caller to emit.
+ */
+$handleRequest = function (ServerRequestInterface $request) use ($kernel): ResponseInterface {
+    return $kernel->handle($request);
+};
 
-// --- 5. Emit the response ---
-
-http_response_code($response->getStatusCode());
-foreach ($response->getHeaders() as $name => $values) {
-    foreach ($values as $value) {
-        header($name . ': ' . $value, false);
+/**
+ * Emit a PSR-7 Response to the SAPI (headers + body).
+ * In FrankenPHP worker mode, the response is returned to the worker
+ * and FrankenPHP handles emission — so this is only used in FPM mode.
+ */
+$emitResponse = function (ResponseInterface $response): void {
+    http_response_code($response->getStatusCode());
+    foreach ($response->getHeaders() as $name => $values) {
+        foreach ($values as $value) {
+            header($name . ': ' . $value, false);
+        }
     }
+    echo $response->getBody();
+};
+
+// --- 5. Dispatch: FrankenPHP worker mode OR PHP-FPM fallback ---
+
+if (function_exists('frankenphp_handle_request')) {
+    // FrankenPHP worker mode: the handler is called in a loop by FrankenPHP.
+    // The Kernel is booted once above; each request gets handle() + the
+    // response is returned to FrankenPHP which handles SAPI emission.
+    frankenphp_handle_request($handleRequest);
+
+    // After the worker loop exits (shutdown signal), terminate the Kernel.
+    $kernel->terminate();
+} else {
+    // PHP-FPM / CLI fallback: handle one request, emit, terminate.
+    $request = ServerRequestFactory::fromGlobals();
+    $response = $handleRequest($request);
+    $emitResponse($response);
+    $kernel->terminate();
 }
-echo $response->getBody();
-
-// --- 6. Terminate ---
-
-$kernel->terminate();

@@ -120,42 +120,51 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Booting;
 
-        // Initialize core dependencies via factories. Each factory returns a
-        // non-null instance; we assign to local variables first so PHPStan
-        // can narrow the types before storing on the nullable properties.
-        $container = ($this->containerFactory)();
-        $config = ($this->configFactory)();
-        $logger = ($this->loggerFactory)();
-        $errorHandler = ($this->errorHandlerFactory)();
-        $providerRegistry = ($this->providerRegistryFactory)();
-        $eventDispatcher = ($this->eventDispatcherFactory)();
-        $router = ($this->routerFactory)();
+        try {
+            // Initialize core dependencies via factories. Each factory returns a
+            // non-null instance; we assign to local variables first so PHPStan
+            // can narrow the types before storing on the nullable properties.
+            $container = ($this->containerFactory)();
+            $config = ($this->configFactory)();
+            $logger = ($this->loggerFactory)();
+            $errorHandler = ($this->errorHandlerFactory)();
+            $providerRegistry = ($this->providerRegistryFactory)();
+            $eventDispatcher = ($this->eventDispatcherFactory)();
+            $router = ($this->routerFactory)();
 
-        $this->container = $container;
-        $this->config = $config;
-        $this->logger = $logger;
-        $this->errorHandler = $errorHandler;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->router = $router;
+            $this->container = $container;
+            $this->config = $config;
+            $this->logger = $logger;
+            $this->errorHandler = $errorHandler;
+            $this->eventDispatcher = $eventDispatcher;
+            $this->router = $router;
 
-        // Register the error handler (forces display_errors=Off per CORE-08).
-        $errorHandler->register();
+            // Register the error handler (forces display_errors=Off per CORE-08).
+            $errorHandler->register();
 
-        // Register service providers into the container.
-        $providerRegistry->registerAll($container);
+            // Register service providers into the container.
+            $providerRegistry->registerAll($container);
 
-        // Run bootstrappers (they wire the pipeline, router, final handler, etc.).
-        foreach ($this->bootstrappers as $bootstrapper) {
-            $bootstrapper->bootstrap($this);
+            // Run bootstrappers (they wire the pipeline, router, final handler, etc.).
+            foreach ($this->bootstrappers as $bootstrapper) {
+                $bootstrapper->bootstrap($this);
+            }
+
+            // Boot service providers (post-bootstrapper initialization).
+            $providerRegistry->bootAll($container);
+
+            $this->state = KernelState::Booted;
+
+            // Dispatch BootEvent.
+            $eventDispatcher->dispatch(new BootEvent($this));
+        } catch (\Throwable $e) {
+            // Boot failure: transition to Terminated so the Kernel is unusable
+            // and can be safely discarded. Without this, the Kernel would be
+            // stuck in Booting forever — no handle(), no terminate(), no recovery.
+            $this->state = KernelState::Terminated;
+            $this->releaseReferences();
+            throw $e;
         }
-
-        // Boot service providers (post-bootstrapper initialization).
-        $providerRegistry->bootAll($container);
-
-        $this->state = KernelState::Booted;
-
-        // Dispatch BootEvent.
-        $eventDispatcher->dispatch(new BootEvent($this));
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -209,16 +218,23 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Terminating;
 
-        $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
-        $errorHandler = $this->errorHandler ?? throw $this->notInitialized('error handler');
+        try {
+            $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
+            $errorHandler = $this->errorHandler ?? throw $this->notInitialized('error handler');
 
-        // Dispatch TerminateEvent (listeners flush logs, close connections, etc.).
-        $eventDispatcher->dispatch(new TerminateEvent($this));
+            // Dispatch TerminateEvent (listeners flush logs, close connections, etc.).
+            $eventDispatcher->dispatch(new TerminateEvent($this));
 
-        // Unregister the error handler.
-        $errorHandler->unregister();
-
-        $this->state = KernelState::Terminated;
+            // Unregister the error handler.
+            $errorHandler->unregister();
+        } finally {
+            // Release all service references so PHP's GC can reclaim the entire
+            // boot graph. This is critical for long-lived workers that re-boot
+            // the Kernel (e.g., during a deploy). Without this, the old Kernel's
+            // container, router, pipeline, logger, etc. leak until process exit.
+            $this->state = KernelState::Terminated;
+            $this->releaseReferences();
+        }
     }
 
     public function getState(): KernelState
@@ -329,5 +345,24 @@ final class Kernel implements KernelInterface
             "Kernel {$property} is not initialized. This should not happen — "
             . 'assertBooted() should have prevented this call.',
         );
+    }
+
+    /**
+     * Release all service references so PHP's GC can reclaim the entire
+     * boot graph (container, router, pipeline, logger, etc.).
+     *
+     * Called from terminate() and from boot()'s catch block. The factory
+     * closures are NOT nulled — they're cheap and needed if the Kernel is
+     * re-booted (though that's currently prevented by the state machine).
+     */
+    private function releaseReferences(): void
+    {
+        $this->container = null;
+        $this->config = null;
+        $this->logger = null;
+        $this->errorHandler = null;
+        $this->eventDispatcher = null;
+        $this->router = null;
+        $this->pipeline = null;
     }
 }
