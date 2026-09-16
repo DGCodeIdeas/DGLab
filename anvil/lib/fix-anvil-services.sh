@@ -261,11 +261,18 @@ if [[ -f "$FRANKENPHP_UNIT" ]]; then
         sed -i 's/^ProtectHome=true/ProtectHome=false/' "$FRANKENPHP_UNIT"
         echo "  ✅ Patched: ProtectHome=false (dev mode)"
     fi
-    # Add ReadWritePaths for the repo root (var/cache, var/log)
-    if ! grep -q 'ReadWritePaths=/home/dgi' "$FRANKENPHP_UNIT"; then
-        sed -i "s|ReadWritePaths=/opt/anvil/current/var|ReadWritePaths=/opt/anvil/current/var ${RESOLVED}/var|" "$FRANKENPHP_UNIT"
-        echo "  ✅ Patched: ReadWritePaths includes ${RESOLVED}/var"
+    # Rewrite the entire ReadWritePaths line — the original has a comment
+    # on the same line (# App writes...) that breaks sed substitution.
+    # Also: /opt/anvil/current/var doesn't exist in dev mode — use the
+    # resolved repo path instead.
+    if grep -q '^# App writes' "$FRANKENPHP_UNIT"; then
+        # Remove the comment-only line
+        sed -i '/^# App writes/d' "$FRANKENPHP_UNIT"
     fi
+    # Replace any ReadWritePaths line with the correct dev paths
+    sed -i "s|^ReadWritePaths=.*|ReadWritePaths=${RESOLVED}|" "$FRANKENPHP_UNIT"
+    echo "  ✅ Patched: ReadWritePaths=${RESOLVED}"
+
     # Add start-limit tolerance
     if ! grep -q 'StartLimitBurst' "$FRANKENPHP_UNIT"; then
         sed -i '/^\[Service\]/i StartLimitBurst=10\nStartLimitIntervalSec=30' "$FRANKENPHP_UNIT"
@@ -273,6 +280,10 @@ if [[ -f "$FRANKENPHP_UNIT" ]]; then
     fi
     systemctl daemon-reload
 fi
+
+# Ensure the var/ directory exists (ReadWritePaths requires the path to exist)
+install -d -m 0755 -o anvil -g anvil "${RESOLVED}/var/cache" 2>/dev/null || true
+install -d -m 0755 -o anvil -g anvil "${RESOLVED}/var/log" 2>/dev/null || true
 
 # Also ensure /etc/anvil/secrets.env exists (FrankenPHP unit requires it)
 if [[ ! -f /etc/anvil/secrets.env ]]; then
