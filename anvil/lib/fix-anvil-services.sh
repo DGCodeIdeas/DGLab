@@ -363,8 +363,15 @@ if [[ -f "$EDGE_TEMPLATE" ]]; then
         -e "s|__PRIMARY_FQDN__|dglab.example.com|g" \
         "$EDGE_TEMPLATE" > /tmp/anvil-edge-caddyfile.stage1
 
-    sed -e "/__DEV_LOCALHOST_BLOCK__/r ${DEV_LOCALHOST_BLOCK_FILE}" \
-        -e "/__DEV_LOCALHOST_BLOCK__/d" \
+    # Anchor the pattern with ^...$ so it matches ONLY the placeholder line
+    # (exactly "__DEV_LOCALHOST_BLOCK__" on its own line), NOT the comment
+    # two lines above which mentions the token by name:
+    #   # Token: __DEV_LOCALHOST_BLOCK__ — empty in prod, ...   ← comment, starts with #
+    #   __DEV_LOCALHOST_BLOCK__                                 ← placeholder, the only line that should match
+    # Without the anchor, /r and /d both match the comment too, inserting the
+    # block twice → "ambiguous site definition: localhost" in Caddy.
+    sed -e "/^__DEV_LOCALHOST_BLOCK__$/r ${DEV_LOCALHOST_BLOCK_FILE}" \
+        -e "/^__DEV_LOCALHOST_BLOCK__$/d" \
         /tmp/anvil-edge-caddyfile.stage1 > /etc/anvil/edge/Caddyfile
 
     rm -f /tmp/anvil-edge-caddyfile.stage1 "$DEV_LOCALHOST_BLOCK_FILE"
