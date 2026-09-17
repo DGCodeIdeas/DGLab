@@ -36,11 +36,11 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
      * @param array<string, mixed> $files Override $_FILES.
      */
     public static function fromGlobals(
-        array $server = null,
-        array $get = null,
-        array $post = null,
-        array $cookie = null,
-        array $files = null,
+        ?array $server = null,
+        ?array $get = null,
+        ?array $post = null,
+        ?array $cookie = null,
+        ?array $files = null,
     ): ServerRequestInterface {
         $server ??= $_SERVER;
         $get ??= $_GET;
