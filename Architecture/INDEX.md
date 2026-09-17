@@ -75,9 +75,9 @@ copied from them into `Architecture/` without re-verifying it against this index
 | CORE-05 | PSR-15 Middleware & Request Handler | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-middleware-v1.0.0 (PR #140) |
 | CORE-06 | Attribute-Based Router | `SovereignStack\Core\Router` | — | ✅ Depth 2 — Tagged core-router-v1.0.0 (PR #141) |
 | CORE-07 | SuperPHP Lexer | `SovereignStack\Core\SuperPHP\Lexer` | — | 📝 Not started |
-| CORE-08 | Global Error & Exception Handler | `SovereignStack\Core\Error` | — | 📝 Not started |
-| CORE-09 | **PSR-3 Logging Service** | `SovereignStack\Core\Logging` | — | 📝 Not started |
-| CORE-10 | Configuration & Environment Loader | `SovereignStack\Core\Config` | — | 📝 Not started |
+| CORE-08 | Global Error & Exception Handler | `SovereignStack\Core\ErrorHandler` | `packages/core/error-handler/` | ✅ Implemented |
+| CORE-09 | **PSR-3 Logging Service** | `SovereignStack\Core\Logger` | `packages/core/logger/` | ✅ Implemented |
+| CORE-10 | Configuration & Environment Loader | `SovereignStack\Core\Config` | `packages/core/config/` | ✅ Implemented |
 | CORE-11 | SuperPHP Parser | `SovereignStack\Core\SuperPHP\Parser` | — | 📝 Not started |
 | CORE-12 | SuperPHP Compiler | `SovereignStack\Core\SuperPHP\Compiler` | — | 📝 Not started |
 | CORE-13 | CLI Engine (Console) | `SovereignStack\Core\Console` | — | 📝 Not started |
@@ -85,7 +85,7 @@ copied from them into `Architecture/` without re-verifying it against this index
 | CORE-15 | Cache Abstraction (PSR-6/16) | `SovereignStack\Core\Cache` | — | 📝 Not started |
 | CORE-16 | **Binary Encryption Envelope** | `SovereignStack\Core\Crypto` | — | 📝 Not started |
 | CORE-17 | Service Provider System | `SovereignStack\Core\Providers` | — | 📝 Not started |
-| CORE-18 | Core Kernel & Lifecycle | `SovereignStack\Core\Kernel` | — | 📝 Not started |
+| CORE-18 | Core Kernel & Lifecycle | `SovereignStack\Core\Kernel` | `packages/core/kernel/` | ✅ Implemented |
 | CORE-19 | Database Abstraction Layer | `SovereignStack\Core\Database` | — | 📝 Not started |
 | CORE-20 | Sovereign Forge (Developer CLI Toolchain) | `SovereignStack\Forge` | — | 📝 Not started |
 
