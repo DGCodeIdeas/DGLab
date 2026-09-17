@@ -37,7 +37,7 @@ use SovereignStack\Core\Http\ServerRequestFactory;
 use SovereignStack\Core\Logger\Logger;
 use SovereignStack\Core\Kernel\Kernel;
 use SovereignStack\Core\Kernel\BootstrapperInterface;
-use SovereignStack\Core\Providers\ProviderRegistry;
+use SovereignStack\Core\Kernel\Stub\EmptyProviderRegistry;
 use SovereignStack\Core\Router\Router;
 use SovereignStack\Core\Router\Route;
 use SovereignStack\Bridge\Vanguard;
@@ -94,7 +94,7 @@ $kernel = new Kernel(
     containerFactory: fn () => $container,
     configFactory: fn () => new ConfigRepository([]),
     errorHandlerFactory: fn () => $errorHandler,
-    providerRegistryFactory: fn () => new ProviderRegistry(),
+    providerRegistryFactory: fn () => new EmptyProviderRegistry(),
     eventDispatcherFactory: fn () => $dispatcher,
     loggerFactory: fn () => $logger,
     routerFactory: fn () => new Router(),
