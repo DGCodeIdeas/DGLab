@@ -37,17 +37,45 @@ final class MiddlewareResolver implements MiddlewareResolverInterface
             return $resolved;
         }
 
-        if (\is_callable($entry)) {
-            return new CallableMiddlewareAdapter($entry);
+        if (\is_string($entry)) {
+            // P2 fix: previously this branch fell through to an unreachable
+            // TypeError with a misleading "got string" message. Now we
+            // explicitly try direct instantiation (works when the class has
+            // a no-arg constructor) and throw a clear LogicException when
+            // that's not possible.
+            if (!class_exists($entry)) {
+                throw new \LogicException(\sprintf(
+                    'Cannot resolve middleware class-string "%s": class does not exist.',
+                    $entry,
+                ));
+            }
+
+            try {
+                $resolved = new $entry();
+            } catch (\Throwable $e) {
+                throw new \LogicException(\sprintf(
+                    'Cannot resolve middleware class-string "%s" without a container: %s. '
+                    . 'Pass a ContainerInterface to MiddlewareResolver::__construct() '
+                    . 'to enable lazy resolution of class-string middleware with dependencies.',
+                    $entry,
+                    $e->getMessage(),
+                ), 0, $e);
+            }
+
+            if (! $resolved instanceof MiddlewareInterface) {
+                throw new \TypeError(\sprintf(
+                    'Class "%s" instantiated directly does not implement %s.',
+                    $entry,
+                    MiddlewareInterface::class,
+                ));
+            }
+            return $resolved;
         }
 
-        // Unreachable: the union type MiddlewareInterface|string|callable
-        // is exhaustive. PHPStan proves this at level 8+.
-        throw new \TypeError(\sprintf(
-            'Middleware must be %s, callable, or class-string; got %s.',
-            MiddlewareInterface::class,
-            \get_debug_type($entry),
-        ));
+        // At this point, $entry has been narrowed from MiddlewareInterface|string|callable
+        // to just callable (MiddlewareInterface and string cases handled above).
+        // No is_callable() check needed — PHPStan knows it's always callable here.
+        return new CallableMiddlewareAdapter($entry);
     }
 }
 
