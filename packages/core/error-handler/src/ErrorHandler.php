@@ -28,6 +28,20 @@ final class ErrorHandler implements ErrorHandlerInterface
 {
     private bool $registered = false;
 
+    /**
+     * Tracks whether {@see register_shutdown_function()} has been called.
+     *
+     * PHP's shutdown-function registry is process-global and cannot be
+     * undone. {@see unregister()} flips {@see $registered} back to false
+     * but leaves the shutdown callback in place — the next fatal error
+     * after unregister would still call {@see handleFatal()}. The
+     * early-return guard at the top of handleFatal() turns the stale
+     * callback into a no-op once unregistered. This flag is set true on
+     * first register() and never reset, so callers can detect that the
+     * shutdown hook is still live.
+     */
+    private bool $shutdownRegistered = false;
+
     /** @var string|null The original display_errors ini value, restored on unregister(). */
     private ?string $originalDisplayErrors = null;
 
@@ -56,9 +70,13 @@ final class ErrorHandler implements ErrorHandlerInterface
 
         set_exception_handler($this->handleException(...));
         set_error_handler($this->handleError(...));
+        // NOTE: register_shutdown_function() cannot be undone by unregister().
+        // The handleFatal() guard on $this->registered ensures a stale shutdown
+        // callback is a no-op after unregister().
         register_shutdown_function($this->handleFatal(...));
 
         $this->registered = true;
+        $this->shutdownRegistered = true;
     }
 
     public function unregister(): void
@@ -138,6 +156,19 @@ final class ErrorHandler implements ErrorHandlerInterface
 
     public function handleFatal(): void
     {
+        // Stale-shutdown guard. PHP's register_shutdown_function() cannot be
+        // undone, so after unregister() the callback is still live. We check
+        // both flags defensively:
+        //   - $shutdownRegistered confirms register_shutdown_function() was
+        //     actually called (always true after a successful register()).
+        //   - $registered confirms we have not since been unregistered.
+        // If either is false, treat this invocation as a no-op so a stale
+        // callback does not call logThrowable() + emitOutput() against a
+        // torn-down logger/renderer.
+        if (!$this->shutdownRegistered || !$this->registered) {
+            return;
+        }
+
         $error = error_get_last();
         if ($error === null) {
             return;
@@ -162,6 +193,20 @@ final class ErrorHandler implements ErrorHandlerInterface
     public function isRegistered(): bool
     {
         return $this->registered;
+    }
+
+    /**
+     * Whether register_shutdown_function() has been called on this handler.
+     *
+     * Distinct from {@see isRegistered()}: this flag is set on the first
+     * {@see register()} call and never reset, because PHP's shutdown
+     * registry is process-global and cannot be undone. Returns true even
+     * after {@see unregister()}, which can be useful for diagnostic tools
+     * that need to know whether a fatal-error callback is still wired.
+     */
+    public function isShutdownRegistered(): bool
+    {
+        return $this->shutdownRegistered;
     }
 
     public function logger(): LoggerInterface

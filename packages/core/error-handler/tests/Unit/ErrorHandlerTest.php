@@ -172,6 +172,65 @@ final class ErrorHandlerTest extends TestCase
         self::assertSame('', $logContents);
     }
 
+    /**
+     * Stale-shutdown-callback guard: register_shutdown_function() cannot
+     * be undone by unregister(), so handleFatal() must early-return when
+     * $registered has been flipped back to false. Otherwise a fatal error
+     * occurring AFTER unregister() would invoke logThrowable()/emitOutput()
+     * against a torn-down logger/renderer (e.g. the one from a previous
+     * worker that has been torn down), which may itself throw or produce
+     * confusing output. See CORE-08 §stale-shutdown.
+     */
+    public function testHandleFatalIsNoOpAfterUnregister(): void
+    {
+        $handler = $this->buildHandler();
+        $handler->register();
+        $handler->unregister();
+        self::assertFalse($handler->isRegistered());
+        // shutdownRegistered stays true: PHP's shutdown registry is
+        // process-global and cannot be undone. The flag is the audit
+        // trail that register_shutdown_function() was once called.
+        self::assertTrue($handler->isShutdownRegistered());
+
+        // After unregister(), a stale handleFatal() invocation MUST be a no-op.
+        $handler->handleFatal();
+
+        $logContents = file_get_contents($this->tempFile) ?: '';
+        self::assertSame('', $logContents, 'handleFatal() must not log after unregister().');
+    }
+
+    /**
+     * Before register() is ever called, neither flag is set: the handler
+     * is unregistered AND no shutdown function has been wired. handleFatal()
+     * must no-op in this state too.
+     */
+    public function testHandleFatalIsNoOpBeforeRegister(): void
+    {
+        $handler = $this->buildHandler();
+        self::assertFalse($handler->isRegistered());
+        self::assertFalse($handler->isShutdownRegistered());
+
+        $handler->handleFatal();
+
+        $logContents = file_get_contents($this->tempFile) ?: '';
+        self::assertSame('', $logContents);
+    }
+
+    /**
+     * After register() (but before unregister), both flags are true.
+     */
+    public function testFlagsAfterRegister(): void
+    {
+        $handler = $this->buildHandler();
+        $handler->register();
+        try {
+            self::assertTrue($handler->isRegistered());
+            self::assertTrue($handler->isShutdownRegistered());
+        } finally {
+            $handler->unregister();
+        }
+    }
+
     public function testLoggerAndRendererAccessors(): void
     {
         $logger = $this->buildLogger();

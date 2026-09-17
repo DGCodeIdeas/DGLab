@@ -12,6 +12,13 @@ use Psr\Http\Message\UriInterface;
  * methods return a new instance; the original is never mutated. Scheme and
  * host are lowercased on construction. Standard ports (80 for http, 443 for
  * https) are omitted from getAuthority() and getPort() returns null.
+ *
+ * Security: scheme, userInfo, and host are validated for CR/LF on every
+ * construction and with*() setter (CWE-93/113). A Uri built from user
+ * input is often serialized into the Location header of a redirect
+ * Response; an injected \r\n in those components would split the header
+ * line and allow response splitting. Path/query/fragment are
+ * percent-encoded by the normalizers so cannot carry raw \r\n.
  */
 final class Uri implements UriInterface
 {
@@ -49,6 +56,9 @@ final class Uri implements UriInterface
         $this->scheme = isset($parts['scheme']) ? strtolower($parts['scheme']) : '';
         $this->userInfo = $this->buildUserInfo($parts['user'] ?? null, $parts['pass'] ?? null);
         $this->host = isset($parts['host']) ? strtolower($parts['host']) : '';
+        $this->assertNoCrlf('scheme', $this->scheme);
+        $this->assertNoCrlf('userInfo', $this->userInfo);
+        $this->assertNoCrlf('host', $this->host);
         $this->port = isset($parts['port']) ? $this->filterPort((int) $parts['port'], $this->scheme) : null;
         $this->path = $this->normalizePath($parts['path'] ?? '');
         $this->query = $this->normalizeQuery($parts['query'] ?? '');
@@ -128,6 +138,7 @@ final class Uri implements UriInterface
     public function withScheme($scheme): UriInterface
     {
         $scheme = strtolower((string) $scheme);
+        $this->assertNoCrlf('scheme', $scheme);
         $new = clone $this;
         $new->scheme = $scheme;
         $new->port = $this->port !== null ? $this->filterPort($this->port, $scheme) : null;
@@ -136,15 +147,19 @@ final class Uri implements UriInterface
 
     public function withUserInfo($user, $password = null): UriInterface
     {
+        $userInfo = $this->buildUserInfo($user, $password);
+        $this->assertNoCrlf('userInfo', $userInfo);
         $new = clone $this;
-        $new->userInfo = $this->buildUserInfo($user, $password);
+        $new->userInfo = $userInfo;
         return $new;
     }
 
     public function withHost($host): UriInterface
     {
+        $host = strtolower((string) $host);
+        $this->assertNoCrlf('host', $host);
         $new = clone $this;
-        $new->host = strtolower((string) $host);
+        $new->host = $host;
         return $new;
     }
 
@@ -261,5 +276,23 @@ final class Uri implements UriInterface
             },
             $fragment
         ) ?? '';
+    }
+
+    /**
+     * Reject CR/LF in the scheme, userInfo, and host components (CWE-93/113).
+     *
+     * These three URI components are serialized verbatim into __toString()
+     * (no percent-encoding). A \r or \n in any of them would carry through
+     * unchanged when the Uri is rendered into a redirect Location header,
+     * enabling response splitting. Path/query/fragment are percent-encoded
+     * by their normalizers, so raw \r\n cannot survive there.
+     */
+    private function assertNoCrlf(string $component, string $value): void
+    {
+        if (preg_match('/[\r\n]/', $value)) {
+            throw new \InvalidArgumentException(
+                "URI {$component} contains CR or LF; refusing to set (CWE-93/113)"
+            );
+        }
     }
 }

@@ -92,8 +92,10 @@ class Request implements RequestInterface
 
     public function withRequestTarget($requestTarget): RequestInterface
     {
+        $target = (string) $requestTarget;
+        $this->assertNoCrlf('request-target', [$target]);
         $new = clone $this;
-        $new->requestTarget = (string) $requestTarget;
+        $new->requestTarget = $target;
         return $new;
     }
 

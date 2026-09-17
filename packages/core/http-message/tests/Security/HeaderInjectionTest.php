@@ -161,24 +161,72 @@ final class HeaderInjectionTest extends TestCase
 
     /**
      * Security fix: URI-derived Host header must be validated for CRLF.
-     * Previously, Request::__construct and withUri set the Host header from
-     * the URI authority without calling assertNoCrlf(), allowing header injection.
+     * The Uri value object itself rejects CRLF in scheme/userInfo/host at
+     * construction time (CWE-93/113), so a malicious URI can never reach
+     * the Request constructor. These tests verify the defense-in-depth
+     * chain: the Uri throws before the Request even sees the malicious value.
      */
     public function testUriHostWithCrlfThrowsInConstructor(): void
     {
-        $uri = new \SovereignStack\Core\Http\Uri('http://evil.com');
-        $uri = $uri->withHost("evil.com\r\nX-Injected: yes");
-
+        // expectException MUST be set before the line that throws, because
+        // Uri::withHost() now throws before the Request is constructed.
         $this->expectException(\InvalidArgumentException::class);
+        $uri = (new \SovereignStack\Core\Http\Uri('http://evil.com'))
+            ->withHost("evil.com\r\nX-Injected: yes");
         new Request('GET', $uri);
     }
 
     public function testUriHostWithCrlfThrowsInWithUri(): void
     {
         $request = new Request('GET', 'http://example.com');
-        $uri = (new \SovereignStack\Core\Http\Uri())->withHost("evil.com\r\nX-Injected: yes");
 
         $this->expectException(\InvalidArgumentException::class);
+        $uri = (new \SovereignStack\Core\Http\Uri())->withHost("evil.com\r\nX-Injected: yes");
         $request->withUri($uri);
+    }
+
+    // -----------------------------------------------------------------------
+    // Uri — direct CRLF rejection on scheme / userInfo / host
+    // -----------------------------------------------------------------------
+
+    /**
+     * The three verbatim-serialized URI components (scheme, userInfo, host)
+     * MUST reject CR/LF at the value-object layer. Path/query/fragment are
+     * percent-encoded by the normalizers and so cannot carry raw \r\n.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function crlfComponentProvider(): array
+    {
+        $payloads = ["evil\r", "evil\n", "evil\r\n", "evil\n\r", "\revil", "\nevil"];
+        $out = [];
+        foreach ($payloads as $i => $p) {
+            $out["host#{$i}"]    = ['withHost', $p];
+            $out["scheme#{$i}"]  = ['withScheme', $p];
+            $out["userInfo#{$i}"] = ['withUserInfo', $p];
+        }
+        return $out;
+    }
+
+    /**
+     * @param string $method withHost|withScheme|withUserInfo
+     */
+    #[DataProvider('crlfComponentProvider')]
+    public function testUriRejectsCrlfInHostSchemeAndUserInfo(string $method, string $payload): void
+    {
+        $uri = new \SovereignStack\Core\Http\Uri('http://user:pass@example.com/');
+        $this->expectException(\InvalidArgumentException::class);
+        $uri->{$method}($payload);
+    }
+
+    // -----------------------------------------------------------------------
+    // Request::withRequestTarget — CRLF rejection
+    // -----------------------------------------------------------------------
+
+    public function testRequestWithRequestTargetRejectsCrlf(): void
+    {
+        $req = new Request('GET', 'http://example.com');
+        $this->expectException(\InvalidArgumentException::class);
+        $req->withRequestTarget("/path\r\nX-Injected: yes");
     }
 }

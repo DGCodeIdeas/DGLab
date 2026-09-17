@@ -140,7 +140,7 @@ final class KernelStateMachineTest extends TestCase
         $kernel = TestKernelFactory::create();
 
         $this->expectException(KernelException::class);
-        $this->expectExceptionMessage('Cannot handle() before boot()');
+        $this->expectExceptionMessage('Cannot access kernel services before boot()');
 
         $kernel->getContainer();
     }
@@ -155,5 +155,32 @@ final class KernelStateMachineTest extends TestCase
         $this->expectExceptionMessage('Cannot handle() after terminate()');
 
         $kernel->getContainer();
+    }
+
+    /**
+     * Recursive handle() (state already Handling) MUST throw
+     * handleDuringHandling() — the new named exception with the
+     * "Cannot handle() while already handling" message. Previously
+     * this threw handleDuringBoot() with a misleading message.
+     */
+    public function testHandleDuringHandlingThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+
+        // Force the kernel into the Handling state. In production this
+        // arises when a middleware or controller re-enters $kernel->handle()
+        // from inside the active request; using reflection here avoids the
+        // ceremony of wiring a recursive middleware just to set up the
+        // state machine corner case.
+        $state = new \ReflectionProperty(\SovereignStack\Core\Kernel\Kernel::class, 'state');
+        $state->setValue($kernel, KernelState::Handling);
+
+        $request = TestKernelFactory::createServerRequest('GET', '/');
+
+        $this->expectException(KernelException::class);
+        $this->expectExceptionMessage('Cannot handle() while already handling');
+
+        $kernel->handle($request);
     }
 }

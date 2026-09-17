@@ -45,6 +45,22 @@ class KernelException extends \RuntimeException
         );
     }
 
+    public static function handleDuringHandling(): self
+    {
+        return new self(
+            'Cannot handle() while already handling a request. Recursive handle() calls are not allowed '
+            . '— the kernel is not re-entrant within a single request. Wait for the outer handle() to return.',
+        );
+    }
+
+    public static function accessBeforeBoot(): self
+    {
+        return new self(
+            'Cannot access kernel services before boot(). Call boot() first to initialize the container, '
+            . 'register service providers, and run bootstrappers.',
+        );
+    }
+
     public static function terminateBeforeBoot(): self
     {
         return new self(

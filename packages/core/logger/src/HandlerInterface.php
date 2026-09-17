@@ -31,9 +31,17 @@ interface HandlerInterface
      * Process the record.
      *
      * Implementations should format via {@see FormatterInterface} and
-     * emit to the destination. Returns true if the record was handled
-     * (used by some handlers to signal "stop propagation" — though
-     * HandlerStack's default does not stop on true).
+     * emit to the destination.
+     *
+     * Propagation contract: returns `true` to continue propagating the
+     * record to downstream handlers; returns `false` to stop propagation
+     * (the record is "swallowed" by this handler and no later handler
+     * receives it). The Logger iterates handlers in registration order
+     * and stops at the first handler whose {@see handle()} returns
+     * `false`. The default StreamHandler returns `true` for any record
+     * that passes {@see isHandling()}, so propagation continues through
+     * the entire stack by default — matching the Monolog `bubble`-true
+     * convention.
      */
     public function handle(LogRecord $record): bool;
 

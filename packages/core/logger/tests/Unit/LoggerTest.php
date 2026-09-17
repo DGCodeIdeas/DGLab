@@ -187,4 +187,90 @@ final class LoggerTest extends TestCase
             }
         }
     }
+
+    /**
+     * Propagation contract: when a handler's handle() returns false, the
+     * Logger stops iterating downstream handlers (the record is "swallowed"
+     * by the returning-false handler). This matches the HandlerInterface
+     * docstring and the Monolog `bubble=false` convention.
+     */
+    public function testHandlerReturningFalseStopsPropagation(): void
+    {
+        $first = new class implements HandlerInterface {
+            public bool $called = false;
+            public function isHandling(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                return true;
+            }
+            public function handle(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                $this->called = true;
+                return false; // Stop propagation per the contract.
+            }
+            public function handleBatch(array $records): void {}
+            public function close(): void {}
+        };
+        $downstream = new class implements HandlerInterface {
+            public bool $called = false;
+            public function isHandling(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                return true;
+            }
+            public function handle(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                $this->called = true;
+                return true;
+            }
+            public function handleBatch(array $records): void {}
+            public function close(): void {}
+        };
+
+        $logger = new Logger([$first, $downstream]);
+        $logger->info('swallowed');
+
+        self::assertTrue($first->called, 'First handler must always be called.');
+        self::assertFalse($downstream->called, 'Downstream handler must NOT be called when upstream returned false.');
+    }
+
+    /**
+     * Propagation contract: when a handler's handle() returns true, the
+     * Logger continues to the next handler. (Default StreamHandler path.)
+     */
+    public function testHandlerReturningTrueContinuesPropagation(): void
+    {
+        $first = new class implements HandlerInterface {
+            public bool $called = false;
+            public function isHandling(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                return true;
+            }
+            public function handle(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                $this->called = true;
+                return true; // Continue propagation per the contract.
+            }
+            public function handleBatch(array $records): void {}
+            public function close(): void {}
+        };
+        $downstream = new class implements HandlerInterface {
+            public bool $called = false;
+            public function isHandling(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                return true;
+            }
+            public function handle(\SovereignStack\Core\Logger\LogRecord $record): bool
+            {
+                $this->called = true;
+                return true;
+            }
+            public function handleBatch(array $records): void {}
+            public function close(): void {}
+        };
+
+        $logger = new Logger([$first, $downstream]);
+        $logger->info('continues');
+
+        self::assertTrue($first->called);
+        self::assertTrue($downstream->called, 'Downstream handler MUST be called when upstream returned true.');
+    }
 }

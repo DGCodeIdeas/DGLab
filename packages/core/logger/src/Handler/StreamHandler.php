@@ -141,8 +141,11 @@ final class StreamHandler implements HandlerInterface
 
         try {
             $written = fwrite($stream, $data);
-            if ($written === false || $written === 0) {
+            if ($written === false) {
                 // Write failed — log to error_log so the failure is visible.
+                // NOTE: a 0-byte write is a legitimate success case (e.g. when
+                // $data is the empty string). Only `false` signals a real
+                // fwrite failure (broken pipe, disk full mid-write, etc.).
                 error_log("StreamHandler: fwrite failed to [{$this->streamSpec}]");
             }
         } finally {
