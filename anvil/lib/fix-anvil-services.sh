@@ -343,20 +343,31 @@ EDGE_TEMPLATE="${ANVIL_ROOT}/edge/Caddyfile"
 if [[ -f "$EDGE_TEMPLATE" ]]; then
     # In dev mode, add a localhost site block with tls internal (self-signed cert)
     # so curl -k https://localhost/ works. In prod, this block is empty.
-    DEV_LOCALHOST_BLOCK=""
+    # NOTE: DEV_LOCALHOST_BLOCK is multi-line. Inlining a newline-containing
+    # variable into sed's s|||g breaks the command (the shell expands the
+    # variable before sed sees it, splitting one s/// across several raw
+    # lines -> "unterminated `s' command"). Use the read-file+delete idiom
+    # instead, which is newline-safe by construction.
+    DEV_LOCALHOST_BLOCK_FILE="$(mktemp)"
     if [[ "${APP_ENV:-dev}" == "dev" ]]; then
-        DEV_LOCALHOST_BLOCK='localhost {
-    tls internal
-    reverse_proxy 127.0.0.1:8081
-}'
+        printf 'localhost {\n    tls internal\n    reverse_proxy 127.0.0.1:8081\n}\n' \
+            > "$DEV_LOCALHOST_BLOCK_FILE"
+    else
+        : > "$DEV_LOCALHOST_BLOCK_FILE"
     fi
+
     sed -e "s|__CADDY_ADMIN_PORT__|2020|g" \
         -e "s|__TENGINE_LISTEN_PORT__|8081|g" \
         -e "s|__ACME_CA_LINE__||g" \
         -e "s|__ACME_EMAIL__|ops@dglab.example|g" \
         -e "s|__PRIMARY_FQDN__|dglab.example.com|g" \
-        -e "s|__DEV_LOCALHOST_BLOCK__|${DEV_LOCALHOST_BLOCK}|g" \
-        "$EDGE_TEMPLATE" > /etc/anvil/edge/Caddyfile
+        "$EDGE_TEMPLATE" > /tmp/anvil-edge-caddyfile.stage1
+
+    sed -e "/__DEV_LOCALHOST_BLOCK__/r ${DEV_LOCALHOST_BLOCK_FILE}" \
+        -e "/__DEV_LOCALHOST_BLOCK__/d" \
+        /tmp/anvil-edge-caddyfile.stage1 > /etc/anvil/edge/Caddyfile
+
+    rm -f /tmp/anvil-edge-caddyfile.stage1 "$DEV_LOCALHOST_BLOCK_FILE"
     echo "  ✅ Edge Caddyfile rendered (dev_localhost=${APP_ENV:-dev})"
 fi
 
