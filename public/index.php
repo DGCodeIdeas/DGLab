@@ -27,15 +27,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// === DIAGNOSTIC INSTRUMENTATION (Task 40) ===
-// Comprehensive error_log() tracing to pinpoint where execution stops.
-// All output goes to STDERR → FrankenPHP captures → journald.
-error_log('[DGLab] === public/index.php LOADED ===');
-error_log('[DGLab] APP_ENV env: ' . ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: '(unset)'));
-error_log('[DGLab] frankenphp_handle_request exists: ' . (function_exists('frankenphp_handle_request') ? 'YES' : 'NO'));
-error_log('[DGLab] PHP version: ' . PHP_VERSION);
-error_log('[DGLab] SAPI: ' . PHP_SAPI);
-
 use SovereignStack\Core\Container\Container;
 use SovereignStack\Core\Config\ConfigRepository;
 use SovereignStack\Core\ErrorHandler\ErrorHandler;
@@ -57,7 +48,6 @@ use SovereignStack\Core\Http\ResponseFactory;
 use App\Controller\HelloController;
 use Psr\Log\NullLogger;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 
 // --- 1. Build the Kernel dependencies (runs once in worker mode) ---
 
@@ -142,56 +132,41 @@ $kernel = new Kernel(
 );
 
 $kernel->boot();
-error_log('[DGLab] === Kernel booted successfully ===');
 
 // --- 4. Request handler (runs per-request in worker mode) ---
 
 /**
- * Handle a single HTTP request through the Kernel pipeline.
- * Returns the PSR-7 Response for the caller to emit.
- *
- * CRITICAL: Under FrankenPHP worker mode, exceptions thrown inside
- * frankenphp_handle_request() are intercepted by FrankenPHP's runtime
- * BEFORE reaching PHP's set_exception_handler. The ErrorHandler's
- * registered handler never fires — FrankenPHP converts the exception
- * to "Internal server error" with an empty body, and the actual error
- * is silently lost. This try/catch is the ONLY place the exception
- * can be captured, logged, and converted to a proper PSR-7 Response.
- */
-$isDevMode = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
-
-/**
  * FrankenPHP worker handler.
  *
- * CRITICAL: Per the official FrankenPHP worker documentation, the handler
- * takes NO arguments. FrankenPHP calls it with zero parameters. The request
- * must be created from superglobals INSIDE the handler via
- * ServerRequestFactory::fromGlobals(). The response must be emitted via
- * echo + http_response_code() + header() — NOT returned.
+ * Per the official FrankenPHP worker documentation, the handler:
+ *   1. Takes NO arguments (FrankenPHP calls it with zero parameters)
+ *   2. Creates the request from superglobals INSIDE via fromGlobals()
+ *   3. Emits the response via echo + http_response_code() + header()
+ *      (NOT by returning a Response — the handler returns void)
  *
  * Exceptions thrown inside frankenphp_handle_request() are intercepted by
  * FrankenPHP BEFORE reaching PHP's set_exception_handler (per docs:
  * "set_exception_handler is called only when the worker script ends").
  * This try/catch is the ONLY place to capture + log + render exceptions.
  */
+$isDevMode = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
+
 $handler = static function () use ($kernel, $responseFactory, $isDevMode): void {
-    error_log('[DGLab] >>> handler closure ENTERED');
-    @file_put_contents('/tmp/dglab-closure.log', date('c') . ' ENTERED' . "\n", FILE_APPEND);
-
     try {
-        // Create the PSR-7 ServerRequest from superglobals.
-        // FrankenPHP resets superglobals ($_GET, $_POST, $_SERVER, etc.)
-        // before calling the handler.
         $request = ServerRequestFactory::fromGlobals();
-        error_log('[DGLab] request: ' . $request->getMethod() . ' ' . $request->getUri()->getPath());
-
         $response = $kernel->handle($request);
-        error_log('[DGLab] kernel->handle() returned status: ' . $response->getStatusCode());
     } catch (\Throwable $e) {
-        error_log('[DGLab] !!! CAUGHT exception: ' . $e::class . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
-        $trace = $e->getTraceAsString();
-        error_log('[DGLab] Stack trace:' . PHP_EOL . $trace);
+        // Log the exception — FrankenPHP captures error_log() as JSON.
+        error_log(sprintf(
+            '[DGLab] Uncaught %s: %s at %s:%d',
+            $e::class,
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine(),
+        ));
 
+        // Build a PSR-7 500 response. In dev mode, include the error
+        // details so curl/journalctl show the actual problem.
         $response = $responseFactory->createResponse(500);
         if ($isDevMode) {
             $body = sprintf(
@@ -200,13 +175,12 @@ $handler = static function () use ($kernel, $responseFactory, $isDevMode): void 
                 $e->getMessage(),
                 $e->getFile(),
                 $e->getLine(),
-                $trace,
+                $e->getTraceAsString(),
             );
             $response = $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
         } else {
-            $body = 'Internal Server Error';
+            $response->getBody()->write('Internal Server Error');
         }
-        $response->getBody()->write($body);
     }
 
     // Emit the response via SAPI functions (echo + headers).
@@ -238,24 +212,15 @@ $emitResponse = function (ResponseInterface $response): void {
 // --- 5. Dispatch: FrankenPHP worker mode OR PHP-FPM fallback ---
 
 if (function_exists('frankenphp_handle_request')) {
-    error_log('[DGLab] === Dispatching: WORKER MODE (frankenphp_handle_request) ===');
     // Official FrankenPHP worker pattern (per docs):
     //   https://frankenphp.dev/docs/worker/
     //
-    // The handler takes NO arguments and must NOT return a value.
-    // It creates the request from superglobals, handles it, and emits
-    // the response via echo + http_response_code() + header().
-    //
-    // frankenphp_handle_request() returns true when the worker should
-    // continue (request was handled), false when the worker should exit.
     // The for loop with MAX_REQUESTS bounds memory leaks in long-lived
     // workers — PHP libraries were not originally designed for long-running
     // processes, so restarting after N requests is a known mitigation.
     $maxRequests = (int)($_SERVER['MAX_REQUESTS'] ?? 0);
     for ($nbRequests = 0; !$maxRequests || $nbRequests < $maxRequests; ++$nbRequests) {
-        error_log('[DGLab] worker iteration ' . ($nbRequests + 1) . '/' . ($maxRequests ?: '∞'));
         $keepRunning = frankenphp_handle_request($handler);
-        error_log('[DGLab] request handled, keepRunning=' . ($keepRunning ? 'true' : 'false'));
 
         // Call the garbage collector to reduce the chances of it being
         // triggered in the middle of a page generation.
@@ -265,15 +230,20 @@ if (function_exists('frankenphp_handle_request')) {
             break;
         }
     }
-    error_log('[DGLab] worker loop exited (shutdown signal), terminating kernel...');
     $kernel->terminate();
 } else {
-    error_log('[DGLab] === Dispatching: FPM FALLBACK MODE ===');
+    // PHP-FPM / CLI fallback: handle one request, emit, terminate.
     $request = ServerRequestFactory::fromGlobals();
     try {
         $response = $kernel->handle($request);
     } catch (\Throwable $e) {
-        error_log('[DGLab] !!! CAUGHT (FPM): ' . $e::class . ': ' . $e->getMessage());
+        error_log(sprintf(
+            '[DGLab] Uncaught %s: %s at %s:%d',
+            $e::class,
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine(),
+        ));
         $response = $responseFactory->createResponse(500);
         $response->getBody()->write($isDevMode ? $e->getMessage() : 'Internal Server Error');
     }
