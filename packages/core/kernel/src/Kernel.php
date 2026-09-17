@@ -173,7 +173,7 @@ final class Kernel implements KernelInterface
             KernelState::Booted => null,
             KernelState::Unbooted => throw KernelException::handleBeforeBoot(),
             KernelState::Booting => throw KernelException::handleDuringBoot(),
-            KernelState::Handling => throw KernelException::handleDuringBoot(),
+            KernelState::Handling => throw KernelException::handleDuringHandling(),
             KernelState::Terminating => throw KernelException::terminateDuringBoot(),
             KernelState::Terminated => throw KernelException::handleAfterTerminate(),
         };
@@ -329,7 +329,10 @@ final class Kernel implements KernelInterface
         // Reject Unbooted (nothing initialized yet), Terminating (in teardown),
         // and Terminated (torn down).
         if ($this->state === KernelState::Unbooted) {
-            throw KernelException::handleBeforeBoot();
+            // Use a service-access-specific message rather than the misleading
+            // "Cannot handle() before boot()" — the caller never called handle()
+            // here, they called getContainer()/getRouter()/getLogger()/etc.
+            throw KernelException::accessBeforeBoot();
         }
         if ($this->state === KernelState::Terminating) {
             throw new KernelException(
