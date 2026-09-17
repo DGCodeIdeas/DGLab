@@ -1,0 +1,494 @@
+     1→# INDEX — Governance & Numbering Authority
+     2→
+     3→**Status:** Canonical.
+     4→**Scope:** the polyrepo, tier-isolated Sovereign Stack (Core → Hub → Bridge → Spokes → Deploy).
+     5→**Last verified against `main`:** 2026-08-12.
+     6→**Merged from:** `01_MASTER_INDEX(4).md` (governance rules, DAG, build sequence, fidelity bar) and
+     7→`01_MASTER_INDEX(5).md` (the eight cross-reference drift patterns, HUB-31 registration, Finding 15).
+     8→Five other `01_MASTER_INDEX*` revisions are archived under `Analysis_Critiques_Rewrites/`.
+     9→
+    10→This document is the **single source of truth** for the DGLab Sovereign Stack architecture. If any
+    11→other document disagrees with this index on an ID→component mapping, a tier count, or a
+    12→cross-reference, **this index is correct and the other document is stale** (Governance Rule 1).
+    13→
+    14→---
+    15→
+    16→## §1. Single-source-of-truth declaration
+    17→
+    18→### Canonical (active development)
+    19→
+    20→| Path | Contents |
+    21→|---|---|
+    22→| `Architecture/Core/CORE-01..20` | 20 Core-tier blueprints |
+    23→| `Architecture/Hub/HUB-01..31` | 31 Hub-tier blueprints |
+    24→| `Architecture/Spoke/Internal/ISPOKE-01..27` | 27 Internal Spoke blueprints (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26/27 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
+    25→| `Architecture/Spoke/External/ESPOKE-01..18` | 18 External Spoke blueprints (ESPOKE-16/17/18 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
+    26→| `Architecture/Spoke/Bridge/BRIDGE-01` | 1 Bridge blueprint |
+    27→| `Architecture/Deploy/DEPLOY-00..04` | 5 Deploy blueprints (all documented; 00 renamed, 02/03/04 promoted from stubs on 2026-08-05) |
+    28→| `Architecture/ADRs/ADR-001..010` | 10 Accepted Architecture Decision Records |
+    29→| `Architecture/ADRs/ADR-012` | **Accepted** (2026-08-12) — post-quantum JWT algorithm-agility roadmap; 3-phase plan (Phase 0: configurable `alg` allowlist; Phase 1: hybrid ES256+ML-DSA-65; Phase 2: PQ-only). Records the OD-02 decision. Extends (does not supersede) ADR-003. |
+    30→| `Architecture/ADRs/ADR-013` | **Accepted** (2026-08-05) — MySQL 8 (InnoDB) primary datastore; **supersedes ADR-007** (PostgreSQL), which is now relegated behind the CORE-19 driver (disabled by default) |
+    31→| `Architecture/ADRs/ADR-014` | **Accepted** (2026-08-12) — ratifies SDLC-AGRD v3.4(3) Spiral Deepening as the canonical SDLC; anchors `MEMORY-GOVERNANCE.md` Tier-3 rule. Closes D-06. |
+    32→| `Architecture/ADRs/ADR-015` | **Proposed** (2026-08-12; ratification deferred until V1 ships against Bet 3 Hub Full) — promotes the 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) from design-only to canonical; count 96 → 101. Closes D-02 and D-15. |
+    33→| `Architecture/ADRs/ADR-011` | 1 **Proposed** ADR (HUB-31) — not accepted, not counted |
+    34→| `Architecture/CrossCutting/` | STRUCTURE-01..09, OBSERVABILITY, GLOSSARY, THREAT_MODEL |
+    35→| `orchestrator/` | CORE-01 reference implementation (real, tested) |
+    36→| `packages/core/event-dispatcher/` | CORE-03 reference implementation (real, tested) |
+    37→| `packages/core/container/` | CORE-02 reference implementation — **stub only (`.gitkeep`)**; full spec in `Core/CORE-02.md` |
+    38→
+    39→### Archived — read-only, banner-only, never merged
+    40→
+    41→Each of these trees carries an `ARCHIVED.md`. They are preserved for provenance. **No content may be
+    42→copied from them into `Architecture/` without re-verifying it against this index.**
+    43→
+    44→| Path | Reason |
+    45→|---|---|
+    46→| `Arc/` | Direct predecessor of `Architecture/`; superseded in full |
+    47→| `Analysis_Critiques_Rewrites/` | The provenance corpus (critiques, rewrites, chat exports); contained a plaintext GitHub PAT — see the security note in its `ARCHIVED.md` |
+    48→| `docs/blueprints/` | A **third, incompatible** CORE numbering, and cites `thephpleague/event` which is not a dependency (Finding 20). **Never merge content from here.** |
+    49→| `docs/architecture/origin/` | Vision A — the CMS-Studio monolith rebuild; contradicts Vision B on every tier boundary (Findings 1, 5, 6, 7) |
+    50→| `docs/evaluation/` | Scores a Core tier that no longer exists (Finding 2) |
+    51→| `Legacy/` | Vision A code |
+    52→
+    53→### Replaced (root-level artefacts)
+    54→
+    55→| Path | Replacement |
+    56→|---|---|
+    57→| Root `Dockerfile` | Serves the *legacy* docs (Finding 18) — replaced by `Deploy/DEPLOY-00.md` (docs, pointing at `Architecture/`) and `Deploy/DEPLOY-01.md` (application image) |
+    58→| Root `render.yaml` | Free-tier docs hosting — replaced by `Deploy/DEPLOY-00.md` |
+    59→| Root `docker-compose.yml` | Empty (Finding 17) — replaced by the dev-environment compose file in `Deploy/DEPLOY-01.md` |
+    60→
+    61→---
+    62→
+    63→## §2. Canonical ID → component map
+    64→
+    65→**This section is the only place a Core/Hub/Spoke/Bridge/Deploy ID's identity is defined.**
+    66→
+    67→### §2.1 Core tier
+    68→
+    69→| ID | Component | Namespace | Real implementation | Build status |
+    70→|---|---|---|---|---|
+    71→| CORE-01 | Polyrepo Orchestrator ("Loom") | `SovereignStack\Orchestrator` | `orchestrator/` | ✅ Implemented + tested |
+    72→| CORE-02 | Dependency Injection Container | `SovereignStack\Core\Container` | `packages/core/container/` | ✅ **Implemented + tested, v1.0.0, 97.2% coverage, PSR-11 conformance** |
+    73→| CORE-03 | PSR-14 Event Dispatcher | `SovereignStack\Core\EventDispatcher` | `packages/core/event-dispatcher/` | ✅ Implemented + tested |
+    74→| CORE-04 | PSR-7 HTTP Message & Factory | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-http-message-v1.0.0 (PR #127) |
+    75→| CORE-05 | PSR-15 Middleware & Request Handler | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-middleware-v1.0.0 (PR #140) |
+    76→| CORE-06 | Attribute-Based Router | `SovereignStack\Core\Router` | — | ✅ Depth 2 — Tagged core-router-v1.0.0 (PR #141) |
+    77→| CORE-07 | SuperPHP Lexer | `SovereignStack\Core\SuperPHP\Lexer` | — | 📝 Not started |
+    78→| CORE-08 | Global Error & Exception Handler | `SovereignStack\Core\Error` | — | 📝 Not started |
+    79→| CORE-09 | **PSR-3 Logging Service** | `SovereignStack\Core\Logging` | — | 📝 Not started |
+    80→| CORE-10 | Configuration & Environment Loader | `SovereignStack\Core\Config` | — | 📝 Not started |
+    81→| CORE-11 | SuperPHP Parser | `SovereignStack\Core\SuperPHP\Parser` | — | 📝 Not started |
+    82→| CORE-12 | SuperPHP Compiler | `SovereignStack\Core\SuperPHP\Compiler` | — | 📝 Not started |
+    83→| CORE-13 | CLI Engine (Console) | `SovereignStack\Core\Console` | — | 📝 Not started |
+    84→| CORE-14 | Filesystem Abstraction | `SovereignStack\Core\Filesystem` | — | 📝 Not started |
+    85→| CORE-15 | Cache Abstraction (PSR-6/16) | `SovereignStack\Core\Cache` | — | 📝 Not started |
+    86→| CORE-16 | **Binary Encryption Envelope** | `SovereignStack\Core\Crypto` | — | 📝 Not started |
+    87→| CORE-17 | Service Provider System | `SovereignStack\Core\Providers` | — | 📝 Not started |
+    88→| CORE-18 | Core Kernel & Lifecycle | `SovereignStack\Core\Kernel` | — | 📝 Not started |
+    89→| CORE-19 | Database Abstraction Layer | `SovereignStack\Core\Database` | — | 📝 Not started |
+    90→| CORE-20 | Sovereign Forge (Developer CLI Toolchain) | `SovereignStack\Forge` | — | 📝 Not started |
+    91→
+    92→> **CORE-09 is logging. CORE-16 is cryptography.** These two are the single most-confused pair in the
+    93→> corpus (Finding 3, Pattern A — 14 files). Any document that cites `CORE-09` for hashing, encryption,
+    94→> signing, or payload verification is wrong, and `Verification/lint/run.php` fails the build on it.
+    95→
+    96→**Stale evaluation-layer mapping — do not use:** CORE-01="Bootstrapper & Kernel", CORE-02="Lifecycle
+    97→Hooks", CORE-03="Service Container", CORE-04="Encryption Primitives", CORE-05="Router & Dispatch",
+    98→CORE-06, CORE-07="Middleware Pipeline", CORE-08, CORE-09="Error Handling", CORE-11="ORM & Query
+    99→Builder", CORE-14="Caching Layer", CORE-15="Validation Engine", CORE-16="Logging & Observability",
+   100→CORE-17, CORE-18="Event System", CORE-19="Service Locator". All wrong (Finding 2).
+   101→
+   102→**Critical-path correction:** the true build-blocking dependency is **CORE-02**, not the kernel
+   103→(CORE-18) and not the orchestrator (CORE-01, already done). Nearly every Hub blueprint lists CORE-02 as
+   104→a dependency and is therefore blocked. §5 makes closing CORE-02 the top priority.
+   105→
+   106→### §2.2 Hub tier
+   107→
+   108→Full descriptions and categories: `CrossCutting/GLOSSARY.md` §1.2.
+   109→
+   110→| ID | Component | ID | Component |
+   111→|---|---|---|---|
+   112→| HUB-01 | Sovereign Hub Config & Flags | HUB-16 | Sovereign Hub Weaver |
+   113→| HUB-02 | Sovereign Cache & State | HUB-17 | Sovereign Webhook Nexus |
+   114→| HUB-03 | Sovereign Asset Engine | HUB-18 | Sovereign Media Forge |
+   115→| HUB-04 | Sovereign Identity & Authentication | HUB-19 | Sovereign Guard (Validation) |
+   116→| HUB-05 | Sovereign Guardian (RBAC) | HUB-20 | Sovereign Vault |
+   117→| HUB-06 | Sovereign Auditor | HUB-21 | Sovereign Nexus (Tenancy) |
+   118→| HUB-07 | Sovereign Throttle | HUB-22 | Sovereign Ledger (Billing) |
+   119→| HUB-08 | Sovereign Gateway | HUB-23 | Sovereign Reporter |
+   120→| **HUB-09** | **Sovereign Signal (Event Bus)** — *renamed from "Sovereign Pulse"* | HUB-24 | Sovereign GraphQL Registry |
+   121→| HUB-10 | Sovereign Queue | HUB-25 | Sovereign Chronos (Scheduler) |
+   122→| HUB-11 | Sovereign Cloud Storage | HUB-26 | Sovereign UI (Elements) |
+   123→| HUB-12 | Sovereign Notify | HUB-27 | Sovereign Sentinel (Headers) |
+   124→| HUB-13 | Sovereign Translator | **HUB-28** | **Sovereign Versioner** — API versioning, *not* analytics |
+   125→| HUB-14 | Sovereign Search | HUB-29 | Sovereign Hub Spec (Testing) |
+   126→| HUB-15 | Sovereign Pulse (Health Check & Service Discovery) | HUB-30 | Sovereign Hub-CLI |
+   127→
+   128→| Proposed | Component | Status |
+   129→|---|---|---|
+   130→| — | — | — |
+   131→
+   132→> **HUB-28 is API versioning.** Five spoke blueprints cited `HUB-28: Distributed Ledger & Analytics
+   133→> Engine`, which never existed (Pattern B). All five are corrected — three to `HUB-31 (pending)`, one
+   134→> to `HUB-23`, one dropped.
+   135→>
+   136→> **"Sovereign Pulse" is reserved for `HUB-15`.** `HUB-09` was renamed **Sovereign Signal** because the
+   137→> bare word *Pulse* is the reserved architectural noun for a unit of runtime work
+   138→> (`CrossCutting/STRUCTURE-01-Wheel.md` §B.1).
+   139→
+   140→### §2.3 Spoke, Bridge, and Deploy tiers
+   141→
+   142→Full name tables: `CrossCutting/GLOSSARY.md` §1.3–§1.5.
+   143→
+   144→- **Internal Spokes** — `ISPOKE-01..27` documented (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26 Sovereign Reservations and ISPOKE-27 Sovereign Front Desk promoted from the hospitality-vertical design on 2026-08-12 per ADR-015).
+   145→- **External Spokes** — `ESPOKE-01..18`, all documented (ESPOKE-16 Sovereign Booking Portal, ESPOKE-17 Sovereign Concierge, ESPOKE-18 Sovereign Mobile Check-in promoted from the hospitality-vertical design on 2026-08-12 per ADR-015).
+   146→- **Bridge** — `BRIDGE-01` (The Vanguard), `SovereignStack\Bridge`.
+   147→- **Deploy** — `DEPLOY-00` (Documentation Site, renamed), `DEPLOY-01` (Core & Hub Service Deployment),
+   148→  `DEPLOY-02`/`03`/`04` (documented, promoted from stubs on 2026-08-05).
+   149→
+   150→**Namespace rule.** Every PHP namespace in this architecture starts with `SovereignStack\`. Internal
+   151→Spokes are `SovereignStack\Internal\<Name>`; External Spokes `SovereignStack\External\<Name>`; Hub
+   152→`SovereignStack\Hub\<Name>`; Core `SovereignStack\Core\<Name>` (except `SovereignStack\Orchestrator`
+   153→and `SovereignStack\Forge`). The bare `Sovereign\` prefix used by seven predecessor files is
+   154→withdrawn.
+   155→
+   156→---
+   157→
+   158→## §3. Cross-reference corrections (Findings 3 and 15)
+   159→
+   160→What began as a single fix (`BRIDGE-01`'s `CORE-09`) turned out to be **eight recurring,
+   161→independently-introduced mislabelling patterns** once the full Spoke tiers were read. This table is the
+   162→single correction reference for all of them.
+   163→
+   164→| Pattern | Wrong reference | Corrected reference | Files originally affected |
+   165→|---|---|---|---|
+   166→| **A** | `CORE-09: Cryptography & Hashing` | `CORE-16: Binary Encryption Envelope` | `BRIDGE-01`, `ISPOKE-05`,`06`,`10`,`13`,`15`, `ESPOKE-02`,`03`,`07`,`08`,`09`,`10`,`13`,`14` |
+   167→| **B** | `HUB-28: Distributed Ledger & Analytics Engine` | Split three ways — see §2.2 and ADR-011 | `ISPOKE-05`,`10`,`12`,`13`,`15`, `ESPOKE-05` |
+   168→| **C** | Queue attributed to `HUB-11` or `HUB-14` | `HUB-10: Sovereign Queue` (`HUB-11` is Cloud Storage) | `SOLUTIONS_TO_WEAKNESSES.md`, `ISPOKE-07`,`09`, `ESPOKE-06`,`13` |
+   169→| **D** | `HUB-12` used for Event Bus / pub-sub | `HUB-09: Sovereign Signal (Event Bus)` (`HUB-12` is Notify) | `ISPOKE-07`,`08`,`15`, `ESPOKE-06` |
+   170→| **E** | `HUB-13`/`HUB-14` swapped for Search/Media | `HUB-14` = Search; Media is `HUB-18`; `HUB-13` is Translator | `ISPOKE-09`,`14`, `ESPOKE-04` |
+   171→| **F** | `CORE-07` used for Event Dispatcher or HTTP Message | `CORE-07` is SuperPHP Lexer; Event Dispatcher is `CORE-03`; HTTP Message is `CORE-04` | `ESPOKE-02`,`13`,`15` |
+   172→| **G** | Reference to a Core "phase" that was never real | No mapping exists — dropped, not redirected | `ESPOKE-02` (`CORE-08` as HTTP Client), `ESPOKE-15` (`CORE-15` as Process Management) |
+   173→| **H** | Wrong Internal Spoke ID referenced from External Spokes | `ISPOKE-05`=Insight, `ISPOKE-13`=Ledger (Billing), `ISPOKE-14`=Nexus (Tenancy) | `ESPOKE-09`,`10`, `ESPOKE-14` |
+   174→
+   175→Two further corrections outside the pattern set:
+   176→
+   177→| Source | Wrong reference | Correct reference | Finding |
+   178→|---|---|---|---|
+   179→| `BRIDGE-01` | `CORE-01: Polyrepo Orchestrator (Enforcement Logic)` | *(removed — CORE-01 is the release tool, not an enforcement component)* | 3 |
+   180→| `BRIDGE-01` | `CORE-06: Router (Gateway Routing)` | `HUB-08: Sovereign Gateway` | 3 |
+   181→| `CORE-03` | "referencing CORE-08" for listener exception logging | `CORE-09: PSR-3 Logging Service` | 20 |
+   182→| `CORE-03` | "Reference: `thephpleague/event`" | *(removed — only `psr/event-dispatcher` is a dependency)* | 20 |
+   183→
+   184→**This class of bug is now mechanically prevented.** `Verification/lint/run.php` re-derives every
+   185→`CORE-/HUB-/ISPOKE-/ESPOKE-/BRIDGE-/DEPLOY-` reference against this section and fails the build on a
+   186→mismatch.
+   187→
+   188→---
+   189→
+   190→## §4. Tier inventory
+   191→
+   192→| Tier | Documented | Placeholder-only | **Total files** |
+   193→|---|---|---|---|
+   194→| Core | 20 | 0 | **20** |
+   195→| Hub | 31 | 0 | **31** |
+   196→| Internal Spoke | 27 | 0 | **27** |
+   197→| External Spoke | 18 | 0 | **18** |
+   198→| Bridge | 1 | 0 | **1** |
+   199→| Deploy | 5 | 0 | **5** |
+   200→| **Total** | **102** | **0** | **102** |
+   201→
+   202→**HUB-31 is accepted** per `ADR-011` (2026-08-13). Hub tier: 31 blueprints. Total canonical: **102**.
+   203→The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) *are* counted — they were promoted
+   204→from design-only to canonical on 2026-08-12 per ADR-015 (Proposed, ratification deferred until the
+   205→hospitality V1 track ships against Bet 3 Hub Full).
+   206→
+   207→**Hub criticality distribution** (corrected from Finding 14: the taxonomy claimed "Medium | 6" while
+   208→listing 5, and totalled 31 against 30 rows):
+   209→
+   210→| Criticality | Count | Blueprints |
+   211→|---|---|---|
+   212→| Critical | 10 | HUB-01, 02, 04, 05, 08, 09, 10, 19, 20, 21 |
+   213→| High | 15 | HUB-03, 06, 07, 11, 12, 14, 15, 17, 22, 24, 25, 26, 27, 29, 30 |
+   214→| Medium | 6 | HUB-13, 16, 18, 23, 28, 31 |
+   215→| **Total** | **31** | |
+   216→
+   217→**Timeline impact.** Every "32-week total timeline" claim in the archived evaluation layer assumed 15
+   218→Internal Spokes. With 27 (25 + 2 hospitality), Phase 3 re-estimates at roughly 1.7×, or is split into Phase 3a (the 15
+   219→documented spokes), Phase 3b (`ISPOKE-16`–`25`, now all documented), and Phase 3c (`ISPOKE-26/27` +
+   220→`ESPOKE-16/17/18` hospitality vertical, wk 17–29 per `HOSPITALITY-VERTICAL.md` §3). See `Migration/04_MIGRATION_PLAN.md`; the realistic
+   221→end-to-end figure is **40–48 weeks** with a 3-person team (Finding 15), not 32 — and the hospitality
+   222→vertical is a parallel track that starts after Bet 3 Hub Full, not on the critical path.
+   223→
+   224→---
+   225→
+   226→## §5. Tier dependency DAG & build sequence
+   227→
+   228→### §5.1 Edge-direction convention (binding)
+   229→
+   230→Every blueprint's `Dependency Status` section uses these two words with exactly these meanings — the
+   231→same meanings as `AUTHORING_GUIDE.md`:
+   232→
+   233→- **Upward** — the IDs **this component consumes**.
+   234→- **Downward** — the IDs that **consume this component**.
+   235→
+   236→A pair of components that each list the other as *Downward* is a **cycle** and a broken build, even if
+   237→the intent was harmless. `Verification/lint/run.php` detects mutual-downward pairs. Two such pairs
+   238→existed before consolidation and are fixed: `HUB-03`↔`HUB-11` and the `Upward`/`Downward` label
+   239→inversion inside `DEPLOY-01`'s Integration Strategy.
+   240→
+   241→**Tier order is absolute** (ADR-004): `Core → Hub → Bridge → Spoke → Deploy`. A Deploy blueprint may
+   242→never appear in a Core blueprint's *Upward* list; `CORE-01` is upstream of `DEPLOY-01`, never the
+   243→reverse.
+   244→
+   245→### §5.2 Dependency DAG
+   246→
+   247→```mermaid
+   248→graph TD
+   249→    %% Core tier (foundational)
+   250→    C02[CORE-02 DI Container]
+   251→    C10[CORE-10 Config]
+   252→    C09[CORE-09 Logging]
+   253→    C08[CORE-08 Error Handler]
+   254→    C18[CORE-18 Kernel]
+   255→    C04[CORE-04 HTTP Message]
+   256→    C05[CORE-05 Middleware]
+   257→    C06[CORE-06 Router]
+   258→    C19[CORE-19 DBAL]
+   259→    C15[CORE-15 Cache Abstraction]
+   260→    C14[CORE-14 Filesystem]
+   261→    C16[CORE-16 Encryption]
+   262→    C07[CORE-07 SuperPHP Lexer]
+   263→    C11[CORE-11 SuperPHP Parser]
+   264→    C12[CORE-12 SuperPHP Compiler]
+   265→    C13[CORE-13 CLI Engine]
+   266→    C17[CORE-17 Service Providers]
+   267→    C20[CORE-20 Dev CLI/Forge]
+   268→    C03[CORE-03 Event Dispatcher]
+   269→    C01[CORE-01 Polyrepo Orchestrator]
+   270→
+   271→    C02 --> C10
+   272→    C02 --> C09
+   273→    C02 --> C17
+   274→    C10 --> C08
+   275→    C09 --> C18
+   276→    C08 --> C18
+   277→    C02 --> C18
+   278→    C03 --> C18
+   279→    C04 --> C05
+   280→    C05 --> C06
+   281→    C18 --> C06
+   282→    C10 --> C19
+   283→    C15 --> C14
+   284→    C16 --> C15
+   285→    C07 --> C11
+   286→    C11 --> C12
+   287→    C17 --> C13
+   288→    C20 --> C13
+   289→
+   290→    %% Hub tier (selected critical)
+   291→    H01[HUB-01 Config & Flags]
+   292→    H02[HUB-02 Cache & State]
+   293→    H03[HUB-03 Asset Engine]
+   294→    H04[HUB-04 Identity]
+   295→    H06[HUB-06 Auditor]
+   296→    H08[HUB-08 Gateway]
+   297→    H11[HUB-11 Cloud Storage]
+   298→    H15[HUB-15 Health]
+   299→    H19[HUB-19 Validation]
+   300→    H20[HUB-20 Vault]
+   301→
+   302→    C10 --> H01
+   303→    C02 --> H01
+   304→    C19 --> H01
+   305→    C15 --> H02
+   306→    C02 --> H02
+   307→    C16 --> H02
+   308→    C14 --> H11
+   309→    C10 --> H11
+   310→    H11 --> H03
+   311→    C14 --> H03
+   312→    C10 --> H03
+   313→    C19 --> H04
+   314→    C16 --> H04
+   315→    H02 --> H04
+   316→    C19 --> H06
+   317→    H04 --> H06
+   318→    C03 --> H06
+   319→    C06 --> H08
+   320→    H04 --> H08
+   321→    C10 --> H15
+   322→    C14 --> H15
+   323→    H02 --> H15
+   324→    C19 --> H19
+   325→    C16 --> H20
+   326→    C19 --> H20
+   327→
+   328→    %% Bridge & Spokes
+   329→    B01[BRIDGE-01 Vanguard]
+   330→    H08 --> B01
+   331→    H04 --> B01
+   332→    H06 --> B01
+   333→    H15 --> B01
+   334→    C16 --> B01
+   335→
+   336→    IS01[ISPOKE-01 Command Center]
+   337→    H01 --> IS01
+   338→    H04 --> IS01
+   339→    H06 --> IS01
+   340→    H15 --> IS01
+   341→
+   342→    ES01[ESPOKE-01 Sovereign Canvas]
+   343→    B01 --> ES01
+   344→    H01 --> ES01
+   345→    H04 --> ES01
+   346→
+   347→    %% Deploy is terminal
+   348→    D01[DEPLOY-01 Core & Hub Deployment]
+   349→    C01 --> D01
+   350→    C18 --> D01
+   351→    H15 --> D01
+   352→    D02[DEPLOY-02 Datastores]
+   353→    D03[DEPLOY-03 Edge]
+   354→    D04[DEPLOY-04 Promotion]
+   355→    D01 --> D02
+   356→    D01 --> D03
+   357→    D01 --> D04
+   358→    D02 --> D04
+   359→    D03 --> D04
+   360→
+   361→    classDef core fill:#EFF6FF,stroke:#1E40AF
+   362→    classDef hub fill:#F0FDF4,stroke:#166534
+   363→    classDef bridge fill:#FEF3C7,stroke:#92400E
+   364→    classDef spoke fill:#FDF2F8,stroke:#9D174D
+   365→    classDef deploy fill:#F5F3FF,stroke:#5B21B6
+   366→    class C01,C02,C03,C04,C05,C06,C07,C08,C09,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20 core
+   367→    class H01,H02,H03,H04,H06,H08,H11,H15,H19,H20 hub
+   368→    class B01 bridge
+   369→    class IS01,ES01 spoke
+   370→    class D01,D02,D03,D04 deploy
+   371→```
+   372→
+   373→### §5.3 Build sequence (11 steps)
+   374→
+   375→The archived evaluation's sequence (`CORE-01 → 02 → 03 → 05 → 06 → 07 → 10`) is derived from the stale
+   376→Core numbering and is wrong (Finding 2). The correct *order*, derived from the DAG above, still holds
+   377→and is kept below for reference.
+   378→
+   379→**The effort estimates and "parallelizable" labels in the table below assume multi-person capacity and
+   380→are superseded.** `ADR-014` (Accepted) ratifies `Architecture/CrossCutting/SDLC-AGRD.md` as the
+   381→canonical methodology for the current solo-tech-lead team composition — under that model there is no
+   382→parallel engineering capacity, "parallelizable" steps run sequentially like everything else, and no
+   383→fixed week-count is trustworthy before `SDLC-AGRD.md`'s Milestone 0 produces a measured throughput
+   384→figure (§5 of that document). This table's *step order* is still a correct DAG reference; its
+   385→*durations* are not. Read the sequence, not the arithmetic.
+   386→
+   387→| Step | Work items | Entry criteria | Exit criteria | Est. effort |
+   388→|---|---|---|---|---|
+   389→| 1 | **CORE-02** (DI Container) | None — foundational leaf | Container compiles, autowires, detects cycles, passes PSR-11 suite | 1 week |
+   390→| 2 | **CORE-10, CORE-09, CORE-08** — parallelizable | Step 1 lands | All three pass CI; Config loads `.env` + JSON; Logging writes structured JSON; Error Handler converts all PHP errors to exceptions | 2 weeks |
+   391→| 3 | **CORE-18** (Kernel) | Steps 1–2 land | Kernel boots, runs boot-phase events via CORE-03, terminates cleanly | 1 week |
+   392→| 4 | **CORE-04 → CORE-05 → CORE-06** — sequential | Step 3 lands | A "Hello World" request completes the full pipeline | 2 weeks |
+   393→| 5 | **CORE-19, CORE-15, CORE-14, CORE-16** — parallelizable | Step 1 lands (Kernel not required) | Each passes CI; DBAL targets **MySQL 8 (InnoDB)** (ADR-013); Cache is PSR-6/16 over **Redis 7** (ADR-006); Filesystem abstracts local + S3; Encryption is AES-256-GCM + Argon2id (ADR-008) | 3 weeks |
+   394→| 6 | **CORE-07 → CORE-11 → CORE-12** (SuperPHP) — sequential | None | SuperPHP renders a template with variables and conditionals (ADR-005: Blade/Twig are rejected) | 3 weeks |
+   395→| 7 | **CORE-13, CORE-17, CORE-20** — parallelizable | Steps 1–3 land | CLI runs commands; providers register bindings; Forge scaffolds a new Hub service | 2 weeks |
+   396→| 8 | **Hub tier** (30 blueprints) | Steps 1–7 land | All 30 pass CI; HUB-15 reports all Hub services healthy | 12 weeks |
+   397→| 9 | **BRIDGE-01** (Vanguard) | Step 8 lands (minimum HUB-04, HUB-06, HUB-08, HUB-15) | Default-deny enforced; DTO transformation works; zero-exposure test passes | 2 weeks |
+   398→| 10 | **Internal Spokes 01–15**, then **16–25** (Phase 3b) | Step 9 lands | All 25 pass CI; admin panel operational | 12 weeks |
+   399→| 11 | **External Spokes 01–15** | Step 9 lands (may parallel Step 10 if the Bridge is stable) | All 15 pass CI; public CMS serves traffic through the Bridge | 8 weeks |
+   400→
+   401→**Minimum critical path (step order only, 3-person-era estimate, not current):** Steps 1 → 2 → 3 → 4
+   402→→ 8 → 9 → 11, with Steps 5–7 originally assumed overlapping Step 4 and Step 10 overlapping Step 11 —
+   403→that overlap required a second and third engineer that no longer exist on this project. The **28-week**
+   404→and **"40–48 weeks with a 3-person team" (Finding 15)** figures are both historical estimates from
+   405→before the solo-tech-lead pivot and are not current planning inputs. **Current timeline: none stated
+   406→until `SDLC-AGRD.md` §5's Milestone 0 measurement lands — see that document, not this figure, for
+   407→anything schedule-related.**
+   408→
+   409→---
+   410→
+   411→## §6. Deploy tier
+   412→
+   413→The original `DEPLOY-01` deployed only Markdown documentation (Finding 9) — and the *legacy*
+   414→documentation at that (Finding 18). The tier is 5 blueprints:
+   415→
+   416→| ID | Component | Origin | Status |
+   417→|---|---|---|---|
+   418→| DEPLOY-00 | Documentation Site | Renamed from the docs-only `DEPLOY-01`; document root corrected to `Architecture/` | Documented |
+   419→| DEPLOY-01 | Core & Hub Service Deployment | New — containerized Core+Hub, one OCI image per Hub service, health checks wired to `HUB-15` | Documented |
+   420→| DEPLOY-02 | Datastore Provisioning | New — **MySQL 8 (InnoDB)** + **Redis 7** + queue broker; secrets via `HUB-20`/sealed-secrets; backup/restore | Documented |
+   421→| DEPLOY-03 | Bridge & External Spoke Deployment | New — public tier, CDN/edge caching via `HUB-02`, network-policy enforcement of the Zero-Exposure Test, 3-replica Vanguard | Documented |
+   422→| DEPLOY-04 | Multi-Environment & Promotion Pipeline | New — dev → staging → production across 50+ repos; ties into `CORE-01` (Loom); immutable image-digest promotion | Documented |
+   423→
+   424→---
+   425→
+   426→## §7. Governance rules
+   427→
+   428→Binding on all contributions. `Verification/lint/run.php` enforces the mechanical subset.
+   429→
+   430→**Rule 1 — One numbering authority.** §2 is the only place a Core/Hub/Spoke/Bridge/Deploy ID's identity
+   431→is defined. A blueprint that changes a component's ID, name, or scope must update §2 in the same
+   432→commit. A blueprint and this index disagreeing is a **broken build**.
+   433→
+   434→**Rule 2 — No performance target without a method.** Every performance target must name its
+   435→**harness** (e.g. PHPUnit `--group performance`, `wrk`, `k6`), its **baseline** (hardware/runtime,
+   436→e.g. GitHub Actions `ubuntu-latest`, PHP 8.3, opcache on, Xdebug off), and its **load model**
+   437→(concurrency, request mix, dataset size). A target that cannot meet this bar must be written
+   438→**"provisional, unverified"**. Bare millisecond claims are forbidden (Finding 10).
+   439→
+   440→**Rule 3 — Evaluation docs are dated snapshots.** Any evaluation document must carry
+   441→`Valid as of commit <sha>. Do not use for planning without re-verification.` The archived
+   442→`docs/evaluation/` tree is valid as of an unknown pre-renumbering commit and must not be used
+   443→(Finding 2).
+   444→
+   445→**Rule 4 — Rejections need a real reason.** A `disapproved/` entry must state specifically what was
+   446→rejected and why. The single boilerplate line *"Varying from the original blueprints"* covering 74
+   447→files is insufficient (Finding 12).
+   448→
+   449→**Rule 5 — Solutions must land in the artefact, not beside it.** A weakness write-up is not resolved
+   450→until the referenced blueprint file is edited (Finding 11).
+   451→
+   452→**Rule 6 — Duplicate directories require a diff check.** Nothing named `*_Optimized`, `*_v2`,
+   453→`*_mobile`, or similar may be committed without CI verifying it is not byte-identical (or within a 5%
+   454→size delta) to its source (Findings 5, 18).
+   455→
+   456→**Rule 7 — Blueprint fidelity bar.** See `AUTHORING_GUIDE.md`. Placeholder and stub blueprints are
+   457→explicitly exempt and must say so in their first paragraph; everything else is gated.
+   458→
+   459→**Rule 8 — ADRs are required for non-obvious decisions.** Any decision with a viable alternative is
+   460→recorded in `ADRs/` in Nygard format before the corresponding blueprint merges (Finding 19).
+   461→
+   462→**Rule 9 — Open questions are recorded, never silently resolved.** Any fork this consolidation could
+   463→not close is in `OPEN-DECISIONS.md` with an owner and a decision route. Picking one silently is a
+   464→governance violation.
+   465→
+   466→---
+   467→
+   468→## §8. Verification
+   469→
+   470→| Artefact | Purpose |
+   471→|---|---|
+   472→| `Verification/INCONSISTENCIES.md` | Human-readable scan report: every contradiction found, its resolution, and its status |
+   473→| `Verification/lint/run.php` | The machine-readable mirror; exits non-zero with `file:line + rule-id` on any violation |
+   474→| `Verification/lint/architecture-lint.yml` | GitHub Actions wiring — runs on every PR touching `Architecture/**` |
+   475→
+   476→Run locally:
+   477→
+   478→```bash
+   479→php Architecture/Verification/lint/run.php
+   480→```
+   481→
+   482→---
+   483→
+   484→## §9. Change log
+   485→
+   486→| Date | Change | Author |
+   487→|---|---|---|
+   488→| 2026-08-04 | Initial canonical declaration; supersedes the stale evaluation layer | Independent re-analysis |
+   489→| 2026-08-05 | Consolidation: merged `01_MASTER_INDEX(4)`+`(5)`; `Architecture/` declared sole source of truth; 4 legacy trees archived; 20 documented inconsistencies reconciled (see `Verification/INCONSISTENCIES.md`); `HUB-09` renamed; `DEPLOY-00` rename executed; `ISPOKE-16..25` and `DEPLOY-02..04` materialised; ADR-011 (HUB-31) filed as Proposed; CI lint added | Consolidation pass |
+   490→| 2026-08-05 | Blueprint promotion: `ISPOKE-16`–`25` (10 Internal Spokes) and `DEPLOY-02`–`04` (3 Deploy) promoted from placeholders/stubs to full-fidelity, implementation-ready blueprints; `ISPOKE-21` renamed Sovereign Scan to avoid the `HUB-27` "Sentinel" collision; `GLOSSARY`/`INDEX` §4 counts updated (96 documented, 0 placeholder); CI lint green | Promotion pass |
+   491→| 2026-08-05 | Decision shift: `ADR-013` revised — **MySQL 8 (InnoDB) is now the primary datastore**; PostgreSQL is relegated behind the CORE-19 driver and disabled by default (re-enabled only at the next decision scale). `ADR-007` marked Superseded. `STRUCTURE-05`, `CORE-19`, `STRUCTURE-07/08/09`, `DEPLOY-02`, the spoke/datastore blueprints, and `GLOSSARY` realigned to MySQL; `INCONSISTENCIES.md` #1 updated | Datastore reversal |
+   492→| 2026-08-12 | OD resolution pass (PR #104): **ADR-012** (post-quantum JWT agility) and **ADR-014** (ratify AGRD as canonical SDLC) authored and **Accepted**. All 6 Open Decisions resolved — OD-01 (HUB-31 acceptance noted in ADR-011, still Proposed), OD-02 (ADR-012), OD-03 (CI lint reality corrected), OD-04 (ISPOKE-01/ESPOKE-01 qualified as Internal/External Exemplars), OD-05 (Sovereign Forge collision resolved — ISPOKE-02→A1 Atlas, ISPOKE-11→B1 Penumbra, ESPOKE-12→C1 Pulsar), OD-06 (provisional flag). `OPEN-DECISIONS.md` rewritten with all 6 resolutions. | OD resolution pass |
+   493→| 2026-08-12 | D-12 PostgreSQL leftover fix + hospitality vertical promotion (PR #103): **D-12 fixed across 14 canonical files** (10 Spoke + 3 Hub + 1 Cross-cutting) — all PG-isms (`jsonb`, `timestamptz`, `now()`, `bytea`, `BIGSERIAL`, PG `CHECK`, PG partial indexes, PG RLS, PG `PARTITION OF`) converted to MySQL 8 (InnoDB) per ADR-013. **ADR-015** (hospitality vertical promotion) authored and **Proposed** (ratification deferred until V1 ships against Bet 3 Hub Full). **5 blueprints promoted from design-only to canonical** — `ISPOKE-26` (Sovereign Reservations), `ISPOKE-27` (Sovereign Front Desk), `ESPOKE-16` (Sovereign Booking Portal), `ESPOKE-17` (Sovereign Concierge), `ESPOKE-18` (Sovereign Mobile Check-in). `INDEX.md` §1/§2.3/§4 canonical ranges extended (`ISPOKE-01..27`, `ESPOKE-01..18`); canonical count **96 → 101**. `Verification/lint/run.php` `buildValidIds()` + `checkStructure()` extended to cover the new ranges — check 1 now passes on every doc that references the hospitality IDs (D-15 mechanically resolved). `DISCREPANCY-REGISTER.md` D-02 and D-15 marked **Resolved 2026-08-12**. CI workflow file `.github/workflows/architecture-lint.yml` restored from commit `33deaed` (was lost in PR #102 merge). | Discrepancy closure + hospitality promotion |
+   494→
