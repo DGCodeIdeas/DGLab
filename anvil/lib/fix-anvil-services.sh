@@ -334,9 +334,32 @@ else
     echo "       grep APP_ROOT /etc/anvil/app/Caddyfile.blue"
 fi
 
-# --- 8. Restart Caddy ---
+# --- 8. Re-render edge Caddyfile + restart Caddy ---
 echo ""
 echo ">>> Step 8: Restart Caddy"
+
+# Re-render the edge Caddyfile from the template (adds dev-mode localhost block).
+EDGE_TEMPLATE="${ANVIL_ROOT}/edge/Caddyfile"
+if [[ -f "$EDGE_TEMPLATE" ]]; then
+    # In dev mode, add a localhost site block with tls internal (self-signed cert)
+    # so curl -k https://localhost/ works. In prod, this block is empty.
+    DEV_LOCALHOST_BLOCK=""
+    if [[ "${APP_ENV:-dev}" == "dev" ]]; then
+        DEV_LOCALHOST_BLOCK='localhost {
+    tls internal
+    reverse_proxy 127.0.0.1:8081
+}'
+    fi
+    sed -e "s|__CADDY_ADMIN_PORT__|2020|g" \
+        -e "s|__TENGINE_LISTEN_PORT__|8081|g" \
+        -e "s|__ACME_CA_LINE__||g" \
+        -e "s|__ACME_EMAIL__|ops@dglab.example|g" \
+        -e "s|__PRIMARY_FQDN__|dglab.example.com|g" \
+        -e "s|__DEV_LOCALHOST_BLOCK__|${DEV_LOCALHOST_BLOCK}|g" \
+        "$EDGE_TEMPLATE" > /etc/anvil/edge/Caddyfile
+    echo "  ✅ Edge Caddyfile rendered (dev_localhost=${APP_ENV:-dev})"
+fi
+
 systemctl reset-failed anvil-caddy 2>/dev/null || true
 systemctl restart anvil-caddy
 sleep 1
