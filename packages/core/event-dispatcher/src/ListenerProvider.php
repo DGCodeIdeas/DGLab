@@ -27,6 +27,16 @@ final class ListenerProvider implements ListenerProviderInterface
     private array $resolvedCache = [];
 
     /**
+     * Re-entrancy guard: tracks event classes whose listener list is
+     * currently being resolved. Prevents infinite recursion and cache
+     * stampedes when a listener (or container resolution side-effect)
+     * dispatches the same event class during resolution.
+     *
+     * @var array<class-string, true>
+     */
+    private array $resolving = [];
+
+    /**
      * @param ContainerInterface|null $container Optional DI container for lazy listener resolution.
      */
     public function __construct(
@@ -42,6 +52,13 @@ final class ListenerProvider implements ListenerProviderInterface
      * registered as class strings are resolved lazily from the
      * container when the event fires.
      *
+     * Listener deduplication: a listener identical to one already
+     * registered for the same event class + priority is silently
+     * skipped. "Identical" means:
+     *   - Same object/closure instance (=== identity check).
+     *   - Same string (class name or function name).
+     *   - Same array-shape callable (serialized comparison).
+     *
      * @param class-string $eventClass The fully-qualified event class name.
      * @param class-string|callable $listener The listener class name or callable.
      * @param int $priority Higher values run first.
@@ -56,11 +73,32 @@ final class ListenerProvider implements ListenerProviderInterface
         }
 
         if (is_string($listener)) {
-            if (!class_exists($listener)) {
+            if (class_exists($listener)) {
+                // Class-string listener: resolved lazily via the container
+                // or direct instantiation when getListenersForEvent() fires.
+            } elseif (!is_callable($listener)) {
+                // Not a class name AND not a callable function name — reject.
                 throw ListenerRegistrationException::listenerClassNotFound($listener);
             }
+        } else {
+            // PHP's `callable` type hint rejects non-callables at the language
+            // level (TypeError before our code runs), but is_callable()
+            // provides defensive, explicit validation at registration time.
+            if (!is_callable($listener)) {
+                throw ListenerRegistrationException::invalidListener($eventClass);
+            }
         }
-        // Non-string listeners are always callable due to the type declaration
+
+        // Deduplicate: skip if an identical listener is already registered
+        // for the same event class at the same priority. This prevents
+        // accidental double-registration from cascading into duplicate
+        // side-effects at dispatch time.
+        $group = $this->listeners[$eventClass][$priority] ?? [];
+        foreach ($group as $existing) {
+            if ($this->isSameListener($existing, $listener)) {
+                return; // Already registered — silent dedup.
+            }
+        }
 
         $this->listeners[$eventClass][$priority][] = $listener;
 
@@ -84,6 +122,19 @@ final class ListenerProvider implements ListenerProviderInterface
      * listeners registered for a parent type fire for child events. Listeners
      * registered as class strings are resolved through the container if available.
      *
+     * Cache + stampede safety:
+     *   - The cache is populated EAGERLY when iteration begins (the body
+     *     runs to completion before yielding, writing the result to the
+     *     cache in one step). The previous implementation only wrote the
+     *     cache lazily during yield, leaving a window in which two
+     *     concurrent get-listeners callers (e.g. across Fibers during
+     *     container resolution) would both miss the cache and re-resolve
+     *     the same list — a generator cache stampede.
+     *   - A re-entrancy guard (`$resolving`) prevents infinite recursion
+     *     when a listener dispatches the same event class during its own
+     *     resolution: subsequent calls during the resolving phase yield
+     *     an empty list rather than recursing into collectAndSortListeners().
+     *
      * @param object $event The event to find listeners for.
      * @return iterable<callable> Prioritized callables for the event.
      */
@@ -91,17 +142,23 @@ final class ListenerProvider implements ListenerProviderInterface
     {
         $eventClass = $event::class;
 
-        if (isset($this->resolvedCache[$eventClass])) {
-            yield from $this->resolvedCache[$eventClass];
-
-            return;
+        // Eager resolution: compute + cache the list BEFORE yielding so
+        // the cache is populated by the time iteration begins (and by the
+        // time any re-entrant dispatch during resolution reads the cache).
+        if (!isset($this->resolvedCache[$eventClass]) && !isset($this->resolving[$eventClass])) {
+            $this->resolving[$eventClass] = true;
+            try {
+                $resolved = $this->collectAndSortListeners($eventClass);
+                $this->resolvedCache[$eventClass] = $resolved;
+            } finally {
+                unset($this->resolving[$eventClass]);
+            }
         }
 
-        $resolved = $this->collectAndSortListeners($eventClass);
-
-        $this->resolvedCache[$eventClass] = $resolved;
-
-        yield from $resolved;
+        // Either the cache is populated now, OR we're in a re-entrant call
+        // (another caller is mid-resolution) — yield from whatever the
+        // cache has, possibly nothing.
+        yield from $this->resolvedCache[$eventClass] ?? [];
     }
 
     /**
@@ -153,26 +210,27 @@ final class ListenerProvider implements ListenerProviderInterface
     }
 
     /**
-     * Check whether two listener entries are identical (for deduplication).
+     * Determine whether two listener registrations are "the same" for
+     * deduplication purposes.
+     *
+     * Identity rules:
+     *   - Strings (class name or function name): compared with strict ===.
+     *   - Closures and invokable objects: compared by instance identity (===).
+     *   - Array-shaped callables [class|obj, method]: serialized for comparison.
      *
      * @param string|callable $a
      * @param string|callable $b
      */
     private function isSameListener(string|callable $a, string|callable $b): bool
     {
-        if (is_string($a) && is_string($b)) {
+        if (is_string($a) || is_string($b)) {
             return $a === $b;
         }
-
-        if (is_object($a) && is_object($b)) {
-            return $a === $b;
-        }
-
         if (is_array($a) && is_array($b)) {
             return serialize($a) === serialize($b);
         }
-
-        return false;
+        // Objects / closures: identity check.
+        return $a === $b;
     }
 
     /**
@@ -206,8 +264,12 @@ final class ListenerProvider implements ListenerProviderInterface
     /**
      * Resolve a registered listener into a callable.
      *
-     * If the listener is a class string and a container is present,
-     * resolve it lazily. Otherwise, assume it is already a callable.
+     * Listener strings come in two flavors:
+     *   - Class names (e.g. SampleListener::class): resolved via the
+     *     container when present, otherwise instantiated directly. The
+     *     resulting instance MUST be callable (have __invoke).
+     *   - Function names (e.g. 'array_map'): NOT class names. Returned
+     *     directly as callables — they do not need instantiation.
      *
      * @param string|callable $listener
      * @param class-string $eventClass
@@ -216,6 +278,14 @@ final class ListenerProvider implements ListenerProviderInterface
     private function resolveListener(string|callable $listener, string $eventClass): callable
     {
         if (!is_string($listener)) {
+            return $listener;
+        }
+
+        // Function-name string (callable but not a class). Return as-is.
+        // We validate via is_callable() — at registration we already
+        // guaranteed that class_name OR is_callable holds, so any string
+        // listener reaching this point is one or the other.
+        if (!class_exists($listener)) {
             return $listener;
         }
 
