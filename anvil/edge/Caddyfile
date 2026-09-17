@@ -104,6 +104,15 @@ https:// {
     }
 }
 
+# ---------- dev mode: localhost with self-signed cert ----------
+# In production, this block is empty (the on-demand TLS catch-all handles
+# everything). In dev, hitting https://localhost/ triggers on-demand TLS
+# which asks /_anvil/tls-allowed → 403 (no contract) → cert denied →
+# TLS internal error. This block uses Caddy's internal CA (self-signed)
+# so curl -k https://localhost/ works in dev.
+# Token: __DEV_LOCALHOST_BLOCK__ — empty in prod, "localhost {" block in dev.
+__DEV_LOCALHOST_BLOCK__
+
 # HTTP/80 exists only to redirect (and to answer ACME HTTP-01 if ever needed).
 http:// {
     redir https://{host}{uri} permanent
