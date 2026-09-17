@@ -149,6 +149,30 @@ final class ListenerProvider implements ListenerProviderInterface
     public function clearCache(): void
     {
         $this->resolvedCache = [];
+        $this->resolving = [];
+    }
+
+    /**
+     * Check whether two listener entries are identical (for deduplication).
+     *
+     * @param string|callable $a
+     * @param string|callable $b
+     */
+    private function isSameListener(string|callable $a, string|callable $b): bool
+    {
+        if (is_string($a) && is_string($b)) {
+            return $a === $b;
+        }
+
+        if (is_object($a) && is_object($b)) {
+            return $a === $b;
+        }
+
+        if (is_array($a) && is_array($b)) {
+            return serialize($a) === serialize($b);
+        }
+
+        return false;
     }
 
     /**
