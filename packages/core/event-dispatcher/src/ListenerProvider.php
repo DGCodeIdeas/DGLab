@@ -73,21 +73,12 @@ final class ListenerProvider implements ListenerProviderInterface
         }
 
         if (is_string($listener)) {
-            if (class_exists($listener)) {
-                // Class-string listener: resolved lazily via the container
-                // or direct instantiation when getListenersForEvent() fires.
-            } elseif (!is_callable($listener)) {
+            if (!class_exists($listener) && !is_callable($listener)) {
                 // Not a class name AND not a callable function name — reject.
                 throw ListenerRegistrationException::listenerClassNotFound($listener);
             }
-        } else {
-            // PHP's `callable` type hint rejects non-callables at the language
-            // level (TypeError before our code runs), but is_callable()
-            // provides defensive, explicit validation at registration time.
-            if (!is_callable($listener)) {
-                throw ListenerRegistrationException::invalidListener($eventClass);
-            }
         }
+        // Non-string listeners are guaranteed callable by PHP's type declaration.
 
         // Deduplicate: skip if an identical listener is already registered
         // for the same event class at the same priority. This prevents
@@ -282,10 +273,16 @@ final class ListenerProvider implements ListenerProviderInterface
         }
 
         // Function-name string (callable but not a class). Return as-is.
-        // We validate via is_callable() — at registration we already
-        // guaranteed that class_name OR is_callable holds, so any string
-        // listener reaching this point is one or the other.
+        // The is_callable() check narrows the string type to callable-string
+        // for PHPStan; at registration we already guaranteed callability.
         if (!class_exists($listener)) {
+            if (!is_callable($listener)) {
+                throw EventDispatchException::listenerFailed(
+                    $eventClass,
+                    $listener,
+                    'Listener function not found.'
+                );
+            }
             return $listener;
         }
 
