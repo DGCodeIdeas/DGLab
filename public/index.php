@@ -165,6 +165,11 @@ $handleRequest = function ($request) use ($kernel, $responseFactory, $isDevMode)
     // PSR-7 implementation which may NOT implement Psr\Http\Message\ServerRequestInterface.
     // A type hint mismatch would throw TypeError BEFORE the function body
     // executes, bypassing the try/catch below. We validate inside instead.
+
+    // File-write diagnostic (belt-and-suspenders): in case error_log()
+    // behaves differently inside the closure vs. outside.
+    @file_put_contents('/tmp/dglab-closure.log', date('c') . ' ENTERED' . "\n", FILE_APPEND);
+
     error_log('[DGLab] >>> handleRequest closure ENTERED');
     error_log('[DGLab] request type: ' . get_class($request));
     error_log('[DGLab] implements ServerRequestInterface: ' . (is_a($request, ServerRequestInterface::class) ? 'YES' : 'NO'));

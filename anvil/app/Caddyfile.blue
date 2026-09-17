@@ -65,8 +65,11 @@
     # file_server stays as the correctness fallback for anything the LB's
     # regex misses (e.g. dotfiles, unusual extensions).
     root * __APP_ROOT__/public
-    php_server {
-        try_files {path} {path}/index.php index.php
-    }
+    # IMPORTANT: Use `php` (NOT `php_server`) in worker mode.
+    # `php_server` always executes PHP files per-request (FPM-like),
+    # bypassing the worker entirely — frankenphp_handle_request() returns
+    # true but the worker's closure is never called.
+    # `php` routes requests through the worker if one is configured.
+    php
     file_server
 }
