@@ -27,6 +27,15 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// === DIAGNOSTIC INSTRUMENTATION (Task 40) ===
+// Comprehensive error_log() tracing to pinpoint where execution stops.
+// All output goes to STDERR → FrankenPHP captures → journald.
+error_log('[DGLab] === public/index.php LOADED ===');
+error_log('[DGLab] APP_ENV env: ' . ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: '(unset)'));
+error_log('[DGLab] frankenphp_handle_request exists: ' . (function_exists('frankenphp_handle_request') ? 'YES' : 'NO'));
+error_log('[DGLab] PHP version: ' . PHP_VERSION);
+error_log('[DGLab] SAPI: ' . PHP_SAPI);
+
 use SovereignStack\Core\Container\Container;
 use SovereignStack\Core\Config\ConfigRepository;
 use SovereignStack\Core\ErrorHandler\ErrorHandler;
@@ -133,6 +142,7 @@ $kernel = new Kernel(
 );
 
 $kernel->boot();
+error_log('[DGLab] === Kernel booted successfully ===');
 
 // --- 4. Request handler (runs per-request in worker mode) ---
 
@@ -151,9 +161,14 @@ $kernel->boot();
 $isDevMode = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
 
 $handleRequest = function (ServerRequestInterface $request) use ($kernel, $responseFactory, $isDevMode): ResponseInterface {
+    error_log('[DGLab] >>> handleRequest closure ENTERED for: ' . $request->getMethod() . ' ' . $request->getUri()->getPath());
     try {
-        return $kernel->handle($request);
+        error_log('[DGLab] calling kernel->handle()...');
+        $response = $kernel->handle($request);
+        error_log('[DGLab] kernel->handle() returned status: ' . $response->getStatusCode());
+        return $response;
     } catch (\Throwable $e) {
+        error_log('[DGLab] !!! CAUGHT exception: ' . $e::class . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
         // Log to STDERR — FrankenPHP captures this and routes to journald.
         // This is the ONLY way to see the actual exception in worker mode.
         $trace = $e->getTraceAsString();
@@ -205,15 +220,12 @@ $emitResponse = function (ResponseInterface $response): void {
 // --- 5. Dispatch: FrankenPHP worker mode OR PHP-FPM fallback ---
 
 if (function_exists('frankenphp_handle_request')) {
-    // FrankenPHP worker mode: the handler is called in a loop by FrankenPHP.
-    // The Kernel is booted once above; each request gets handle() + the
-    // response is returned to FrankenPHP which handles SAPI emission.
+    error_log('[DGLab] === Dispatching: WORKER MODE (frankenphp_handle_request) ===');
     frankenphp_handle_request($handleRequest);
-
-    // After the worker loop exits (shutdown signal), terminate the Kernel.
+    error_log('[DGLab] worker loop exited, terminating kernel...');
     $kernel->terminate();
 } else {
-    // PHP-FPM / CLI fallback: handle one request, emit, terminate.
+    error_log('[DGLab] === Dispatching: FPM FALLBACK MODE ===');
     $request = ServerRequestFactory::fromGlobals();
     $response = $handleRequest($request);
     $emitResponse($response);
