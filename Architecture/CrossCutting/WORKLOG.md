@@ -1319,3 +1319,96 @@ Stage Summary:
 - MUWV flip remains UNAUTHORIZED.
 - PAT workflow: reused the PAT from Task 36 (still valid). One-shot token URL, no leak.
 - Audit fix tally unchanged: P0 4/4, P1 18/18, P2 15/38, P3 0/54.
+
+---
+Task ID: 39
+Agent: main (Super Z)
+Task: Fix public/index.php — catch exceptions in FrankenPHP worker mode (set_exception_handler never fires)
+
+Work Log:
+- User pulled main (post-PR #198) and ran `sudo bash anvil/lib/fix-anvil-services.sh`.
+- All three services showed **active** for the first time ever:
+  - anvil-tengine: active
+  - anvil-frankenphp@blue: active
+  - anvil-caddy: active
+- But curl to `http://localhost:8081/health` returned **502 Bad Gateway** (Tengine → FrankenPHP).
+- curl to `http://127.0.0.1:8090/` (direct to FrankenPHP, bypassing Tengine) returned:
+  ```
+  HTTP/1.1 500 Internal Server Error
+  Content-Type: text/html; charset=UTF-8
+  Server: FrankenPHP Caddy
+  Content-Length: 0
+  ```
+- journalctl showed only `"Internal server error"` repeated many times (from Tengine's 3-second health checks hitting FrankenPHP) — **no PHP error detail, no exception class, no stack trace**.
+- Port listeners verified:
+  - Tengine: `127.0.0.1:8081` (5 nginx workers)
+  - FrankenPHP: `*:8090` (1 process)
+  - Caddy: `*:443` + `*:80`
+
+## Root cause
+- Under **FrankenPHP worker mode**, exceptions thrown inside `frankenphp_handle_request()` are intercepted by **FrankenPHP's runtime BEFORE reaching PHP's `set_exception_handler`**.
+- The ErrorHandler registers `set_exception_handler($this->handleException(...))` which logs + renders the error. But in worker mode, this handler **never fires** — FrankenPHP catches the exception first, converts it to HTTP 500 with empty body, and the ErrorHandler's logging is bypassed entirely.
+- This is a known behavioral difference between FrankenPHP worker mode and PHP-FPM:
+  - **PHP-FPM**: Uncaught exceptions bubble to PHP's global handler → `set_exception_handler` catches it → ErrorHandler logs + renders
+  - **FrankenPHP worker mode**: Uncaught exceptions in the request handler are caught by FrankenPHP → converted to 500 + empty body → `set_exception_handler` is NOT invoked
+- The Kernel's `handle()` method does NOT catch exceptions (by design — the pipeline's `FinalRequestHandler` should handle controller exceptions). But middleware, router, and controller exceptions can all escape if the pipeline isn't wired correctly.
+
+## Fix
+- Wrapped `$kernel->handle($request)` in a `try/catch` inside the `$handleRequest` closure in `public/index.php`:
+  1. `error_log()` the full exception (class, message, file, line, trace) to STDERR — FrankenPHP captures this and routes to journald
+  2. Return a PSR-7 500 Response (not let FrankenPHP generate one)
+  3. In dev mode (`APP_ENV=dev`, which is set in Caddyfile.blue), include the exception message + trace in the response body so curl shows the actual error
+- This is both:
+  - A **diagnostic fix**: the actual exception will now appear in `journalctl` AND in the curl response body (in dev mode)
+  - A **production fix**: the entry point should never let exceptions escape to FrankenPHP — proper PSR-7 error responses are returned
+
+## Why the ErrorHandler can't be used directly in worker mode
+- `ErrorHandler::handleException()` calls `emitOutput()` which does `echo` + `http_response_code()` — this is the SAPI pattern for PHP-FPM.
+- Under FrankenPHP worker mode, you must **return a PSR-7 Response**, not echo. The ErrorHandler's `emitOutput()` can't be used directly.
+- The catch in `public/index.php` is the correct place to bridge that gap — it's the boundary between worker-mode execution and PSR-7 Response return.
+- The ErrorHandler's `logThrowable()` could be called for PSR-3 logging, but `error_log()` is simpler and guaranteed to reach journald without any logger configuration issues.
+
+## CI status
+- PR #199: 16 check runs, all green on the first try.
+  - pr-title-lint ✅
+  - Architecture Lint ✅ (manually dispatched via `workflow_dispatch` — `public/index.php` is not under `Architecture/**`)
+  - Packages CI ✅ (manually dispatched — `public/index.php` is not under `packages/**`)
+    - All 14 package jobs passed
+- This PR did NOT auto-trigger Packages CI or Architecture Lint because `public/index.php` is not under any watched path.
+- Squash-merged as `3ffc7a1` — "fix(index): catch exceptions in worker mode — FrankenPHP swallows them silently (#199)".
+
+## release.yml behavior
+- This PR did NOT auto-tag — release.yml is path-scoped to `packages/**` and `public/index.php` is not under that path.
+- Consistent with PRs #191-#194, #197 (composer.json / index.php / worklog-only changes).
+- Next `packages/**` change will produce `v0.1.21.0+<sha>`.
+
+## Discovery chain — the layer-cake continues
+1. **PR #193** — composer path repo glob missed 3-level spokes → composer install failed
+2. **PR #195** — Vanguard contract regex rejected `/` (1 char) → workers crashed at boot (Vanguard init)
+3. **PR #197** — public/index.php referenced nonexistent `SovereignStack\Core\Providers` namespace → workers crashed at boot (Kernel construction)
+4. **PR #199** (this PR) — exceptions in request handling silently swallowed by FrankenPHP → 500 + empty body, no error detail visible
+
+Each fix exposed the next layer. This PR is the **first request-time fix** (the previous three were boot-time fixes). After this lands, the actual request-handling exception will be visible in journalctl + curl output, revealing the next layer of the Pulse trace.
+
+## Impact
+- After the user runs `git pull && sudo bash anvil/lib/fix-anvil-services.sh`:
+  - `curl http://127.0.0.1:8090/` will show the **actual** error message + stack trace (because APP_ENV=dev)
+  - `journalctl -u anvil-frankenphp@blue` will show `[DGLab] Uncaught <ExceptionClass>: <message>` lines
+- This will reveal whatever is actually failing in the request handling pipeline — likely a middleware wiring issue, router matching issue, or controller dispatch issue.
+
+## Caddyfile.blue / Caddyfile observations (secondary)
+- The edge Caddyfile uses `dglab.example.com` as the primary FQDN — hitting `https://localhost/` triggers on-demand TLS which fails because FrankenPHP can't respond to the `/_anvil/tls-allowed` ask endpoint (500 error). This is a dev-mode config issue, not a code bug. For local dev, the user should either:
+  - Use `curl -k https://localhost/` with self-signed certs, OR
+  - Use `curl http://localhost/` (which Caddy redirects to HTTPS), OR
+  - The edge Caddyfile should have a dev-mode variant that uses HTTP-only or mkcert certs
+- This is a separate issue from the 500 error — even if FrankenPHP works perfectly, the TLS config needs a dev-mode adjustment. Noted for future work.
+
+Stage Summary:
+- PR #199 squash-merged as `3ffc7a1`.
+- 45-line addition to `public/index.php` (try/catch + error_log + PSR-7 500 Response).
+- 16/16 CI checks green on the first try.
+- No new tag (release.yml path-scoped to `packages/**`).
+- MUWV flip remains UNAUTHORIZED.
+- PAT workflow: reused the PAT from Task 36 (still valid). One-shot token URL, no leak.
+- Audit fix tally unchanged: P0 4/4, P1 18/18, P2 15/38, P3 0/54.
+- **This is the first request-time fix** — all previous fixes (PRs #193, #195, #197) were boot-time. The Pulse trace is now surfacing request-handling issues.
