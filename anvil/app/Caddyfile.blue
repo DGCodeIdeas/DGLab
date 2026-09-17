@@ -65,6 +65,13 @@
     # file_server stays as the correctness fallback for anything the LB's
     # regex misses (e.g. dotfiles, unusual extensions).
     root * __APP_ROOT__/public
+    # Resolve the request URI to a file before the php directive tries to
+    # execute it. Without try_files, a request for "/" resolves to the
+    # root directory itself, and PHP's require fails with:
+    #   "Failed opening required '/path/to/public' (include_path='.:')"
+    # try_files checks {path} first, then {path}/index.php, then /index.php
+    # as the final fallback. This ensures "/" resolves to /index.php.
+    try_files {path} {path}/index.php /index.php
     # IMPORTANT: Use `php` (NOT `php_server`) in worker mode.
     # `php_server` always executes PHP files per-request (FPM-like),
     # bypassing the worker entirely — frankenphp_handle_request() returns
