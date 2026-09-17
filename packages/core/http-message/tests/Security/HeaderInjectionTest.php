@@ -193,6 +193,8 @@ final class HeaderInjectionTest extends TestCase
      * The three verbatim-serialized URI components (scheme, userInfo, host)
      * MUST reject CR/LF at the value-object layer. Path/query/fragment are
      * percent-encoded by the normalizers and so cannot carry raw \r\n.
+     *
+     * @return array<string, array{0: string, 1: string}>
      */
     public static function crlfComponentProvider(): array
     {
