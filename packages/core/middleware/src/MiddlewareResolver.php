@@ -74,7 +74,6 @@ final class MiddlewareResolver implements MiddlewareResolverInterface
 
         // At this point, $entry has been narrowed from MiddlewareInterface|string|callable
         // to just callable (MiddlewareInterface and string cases handled above).
-        // No is_callable() check needed — PHPStan knows it's always callable here.
         return new CallableMiddlewareAdapter($entry);
     }
 }
