@@ -160,8 +160,15 @@ error_log('[DGLab] === Kernel booted successfully ===');
  */
 $isDevMode = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
 
-$handleRequest = function (ServerRequestInterface $request) use ($kernel, $responseFactory, $isDevMode): ResponseInterface {
-    error_log('[DGLab] >>> handleRequest closure ENTERED for: ' . $request->getMethod() . ' ' . $request->getUri()->getPath());
+$handleRequest = function ($request) use ($kernel, $responseFactory, $isDevMode): ResponseInterface {
+    // NOTE: No type hint on $request — FrankenPHP uses its own embedded
+    // PSR-7 implementation which may NOT implement Psr\Http\Message\ServerRequestInterface.
+    // A type hint mismatch would throw TypeError BEFORE the function body
+    // executes, bypassing the try/catch below. We validate inside instead.
+    error_log('[DGLab] >>> handleRequest closure ENTERED');
+    error_log('[DGLab] request type: ' . get_class($request));
+    error_log('[DGLab] implements ServerRequestInterface: ' . (is_a($request, ServerRequestInterface::class) ? 'YES' : 'NO'));
+    error_log('[DGLab] request method+path: ' . $request->getMethod() . ' ' . $request->getUri()->getPath());
     try {
         error_log('[DGLab] calling kernel->handle()...');
         $response = $kernel->handle($request);
@@ -221,8 +228,17 @@ $emitResponse = function (ResponseInterface $response): void {
 
 if (function_exists('frankenphp_handle_request')) {
     error_log('[DGLab] === Dispatching: WORKER MODE (frankenphp_handle_request) ===');
-    frankenphp_handle_request($handleRequest);
-    error_log('[DGLab] worker loop exited, terminating kernel...');
+    // The documented FrankenPHP worker pattern: loop until the worker
+    // should shut down. frankenphp_handle_request() returns true when a
+    // request was handled, false when the worker should exit. Without
+    // the loop, the worker handles one request then exits, causing
+    // FrankenPHP to restart the worker for every request (full boot
+    // cycle per request — extremely inefficient and causes the
+    // restart-loop pattern seen in the journal).
+    while (frankenphp_handle_request($handleRequest)) {
+        error_log('[DGLab] request handled, looping for next...');
+    }
+    error_log('[DGLab] worker loop exited (shutdown signal), terminating kernel...');
     $kernel->terminate();
 } else {
     error_log('[DGLab] === Dispatching: FPM FALLBACK MODE ===');
