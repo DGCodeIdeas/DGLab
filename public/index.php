@@ -139,9 +139,52 @@ $kernel->boot();
 /**
  * Handle a single HTTP request through the Kernel pipeline.
  * Returns the PSR-7 Response for the caller to emit.
+ *
+ * CRITICAL: Under FrankenPHP worker mode, exceptions thrown inside
+ * frankenphp_handle_request() are intercepted by FrankenPHP's runtime
+ * BEFORE reaching PHP's set_exception_handler. The ErrorHandler's
+ * registered handler never fires — FrankenPHP converts the exception
+ * to "Internal server error" with an empty body, and the actual error
+ * is silently lost. This try/catch is the ONLY place the exception
+ * can be captured, logged, and converted to a proper PSR-7 Response.
  */
-$handleRequest = function (ServerRequestInterface $request) use ($kernel): ResponseInterface {
-    return $kernel->handle($request);
+$isDevMode = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
+
+$handleRequest = function (ServerRequestInterface $request) use ($kernel, $responseFactory, $isDevMode): ResponseInterface {
+    try {
+        return $kernel->handle($request);
+    } catch (\Throwable $e) {
+        // Log to STDERR — FrankenPHP captures this and routes to journald.
+        // This is the ONLY way to see the actual exception in worker mode.
+        $trace = $e->getTraceAsString();
+        error_log(sprintf(
+            '[DGLab] Uncaught %s: %s at %s:%d',
+            $e::class,
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine(),
+        ));
+        error_log('[DGLab] Stack trace:' . PHP_EOL . $trace);
+
+        // Build a PSR-7 500 response. In dev mode, include the error
+        // message so curl shows it without needing journalctl.
+        $response = $responseFactory->createResponse(500);
+        if ($isDevMode) {
+            $body = sprintf(
+                "Internal Server Error\n\n%s: %s\n\nat %s:%d\n\nStack trace:\n%s\n",
+                $e::class,
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                $trace,
+            );
+            $response = $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        } else {
+            $body = 'Internal Server Error';
+        }
+        $response->getBody()->write($body);
+        return $response;
+    }
 };
 
 /**
