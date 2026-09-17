@@ -45,6 +45,7 @@ use SovereignStack\Bridge\ContractRegistry;
 use SovereignStack\Bridge\WafInspector;
 use SovereignStack\Bridge\DefaultDtoTransformer;
 use SovereignStack\Core\Http\ResponseFactory;
+use App\Controller\HealthController;
 use App\Controller\HelloController;
 use Psr\Log\NullLogger;
 use Psr\Http\Message\ResponseInterface;
@@ -79,6 +80,10 @@ $responseFactory = new ResponseFactory();
 
 // Register the root contract — the "Hello World" route.
 $contractRegistry->registerContract('/', new DefaultDtoTransformer());
+
+// Register the /health contract — used by Tengine's active health check
+// and future monitoring systems. Pass-through DTO transformer.
+$contractRegistry->registerContract('/health', new DefaultDtoTransformer());
 
 $vanguard = new Vanguard(
     contracts: $contractRegistry,
@@ -124,8 +129,18 @@ $kernel = new Kernel(
                     controllerMethod: 'handle',
                 ));
 
-                // Bind the controller into the container.
+                // Register the /health route (Tengine health check + monitoring).
+                $router->addRoute(new Route(
+                    path: '/health',
+                    methods: ['GET'],
+                    name: 'health',
+                    controllerClass: HealthController::class,
+                    controllerMethod: 'handle',
+                ));
+
+                // Bind the controllers into the container.
                 $kernel->getContainer()->bind(HelloController::class);
+                $kernel->getContainer()->bind(HealthController::class);
             }
         },
     ],
