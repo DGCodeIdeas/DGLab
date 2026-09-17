@@ -1233,3 +1233,89 @@ Stage Summary:
 - MUWV flip remains UNAUTHORIZED.
 - PAT workflow: reused the PAT from Task 36 (still valid). One-shot token URL, no leak.
 - Audit fix tally unchanged from Task 36: P0 4/4, P1 18/18, P2 15/38, P3 0/54.
+
+---
+Task ID: 38
+Agent: main (Super Z)
+Task: Fix public/index.php — referenced nonexistent SovereignStack\Core\Providers namespace
+
+Work Log:
+- User pulled main (post-PR #196) and ran `sudo bash anvil/lib/fix-anvil-services.sh`.
+- FrankenPHP workers crashed with a new error (different from Task 37):
+  ```
+  Uncaught Error: Class "SovereignStack\Core\Providers\ProviderRegistry" not found
+    in /home/dgi/www/DGLab/public/index.php:97
+
+  Stack trace:
+  #0 /home/dgi/www/DGLab/packages/core/kernel/src/Kernel.php(131):
+     {closure:/home/dgi/www/DGLab/public/index.php:97}()
+  #1 /home/dgi/www/DGLab/public/index.php(135):
+     SovereignStack\Core\Kernel\Kernel->boot()
+  #2 {main}
+  ```
+
+## Root cause
+- `public/index.php:40` had `use SovereignStack\Core\Providers\ProviderRegistry;`
+- `public/index.php:97` had `providerRegistryFactory: fn () => new ProviderRegistry()`
+- The namespace `SovereignStack\Core\Providers\` **does not exist anywhere in the monorepo**.
+- Verified by grepping `packages/`, `app/`, `tests/`, `public/` — no other file references that namespace.
+- The actual stub class lives at `packages/core/kernel/src/Stub/EmptyProviderRegistry.php` in the `SovereignStack\Core\Kernel\Stub` namespace.
+- The Kernel itself is correct — `Kernel.php:20` imports `SovereignStack\Core\Kernel\Stub\ProviderRegistryInterface` (which exists).
+- `public/index.php` was the only consumer using the wrong namespace.
+
+## Why this happened
+- This is a **Task 25 (PR #156 — CORE-18 Kernel ship)** bug.
+- Task 25's plan called for a separate `packages/core/providers/` package (CORE-17 stub). The actual implementation shipped the stub **inside the kernel** at `packages/core/kernel/src/Stub/` (not as a separate package).
+- `public/index.php` was written based on the original plan and never updated to match the as-shipped location.
+- The Kernel's `providerRegistryFactory` parameter type-hints `ProviderRegistryInterface` — `EmptyProviderRegistry` implements that interface, so it's the correct concrete class.
+
+## Why this was never caught
+- PHPUnit tests use `TestKernelFactory` which correctly instantiates `EmptyProviderRegistry`.
+- The integration test `HelloWorldTest::testHelloWorldRoundTrip` builds its own kernel via the factory, not via `public/index.php`.
+- The runtime `public/index.php` was never exercised end-to-end — it was only checked at PR merge time when the integration test passed.
+- This is exactly the kind of bug the AGRD §4 criterion catches: *"the actual synchronous-radial Pulse trace, not a diagram of it."* The test passed but the production entry point never ran.
+- Only now that FrankenPHP workers actually boot (after PRs #193 + #195 unblocked composer install + Vanguard contract registration) does the production code path get exercised.
+
+## Fix
+- Two changes to `public/index.php`:
+  - Line 40: `use SovereignStack\Core\Providers\ProviderRegistry;` → `use SovereignStack\Core\Kernel\Stub\EmptyProviderRegistry;`
+  - Line 97: `providerRegistryFactory: fn () => new ProviderRegistry()` → `providerRegistryFactory: fn () => new EmptyProviderRegistry()`
+- `EmptyProviderRegistry` is a `final class` that implements `ProviderRegistryInterface` (both in the `Stub` namespace) — no-op default, exactly what the Kernel expects when no real service providers are registered.
+- When CORE-17 ships as a real package, the stub will be deleted and the kernel will switch to the real `ServiceProviderRegistry` via DI binding.
+
+## CI status
+- PR #197: 16 check runs, all green on the first try.
+  - pr-title-lint ✅
+  - Architecture Lint ✅ (manually dispatched via `workflow_dispatch` — `public/index.php` is not under `Architecture/**`)
+  - Packages CI ✅ (manually dispatched — `public/index.php` is not under `packages/**`)
+    - All 14 package jobs passed, including `core/kernel` (the package that ships the stub class)
+- This PR did NOT auto-trigger Packages CI or Architecture Lint because `public/index.php` is not under any watched path.
+- Squash-merged as `8ce9712` — "fix(index): use EmptyProviderRegistry from kernel stub, not nonexistent namespace (#197)".
+
+## release.yml behavior
+- This PR did NOT auto-tag — release.yml is path-scoped to `packages/**` and `public/index.php` is not under that path.
+- Consistent with PRs #191, #192, #193, #194 (composer.json / index.php / worklog-only changes).
+- Next `packages/**` change will produce `v0.1.21.0+<sha>`.
+
+## Discovery chain — the layer-cake of hidden bugs
+1. **PR #193** — composer path repo glob missed 3-level spokes → composer install failed entirely
+2. **PR #195** — Vanguard contract regex rejected `/` (1 char) as too short → FrankenPHP workers crashed at boot
+3. **PR #197** (this PR) — public/index.php referenced nonexistent namespace → FrankenPHP workers crashed at boot (one layer deeper)
+
+Each bug was hidden behind the previous one. The composer install failure masked the Vanguard bug; the Vanguard bug masked the namespace bug. Only by fixing each in sequence can the next layer be exposed.
+
+This is the natural pattern when a project has never been exercised end-to-end. The AGRD §4 criterion exists precisely to force this kind of layer-by-layer discovery — "the actual synchronous-radial Pulse trace, not a diagram of it."
+
+## Impact
+- FrankenPHP workers should now boot past Kernel construction.
+- The Kernel's `boot()` method calls `providerRegistryFactory` (which now correctly returns an `EmptyProviderRegistry`), then runs the bootstrappers (which wire the Vanguard + router + HelloController route).
+- The next failure (if any) will be even deeper — likely in the actual request handling pipeline (router matching, controller dispatch, response emission).
+
+Stage Summary:
+- PR #197 squash-merged as `8ce9712`.
+- 2-line change to `public/index.php` (use statement + instantiation).
+- 16/16 CI checks green on the first try (1 pr-title-lint + 1 architecture-lint + 14 packages CI jobs).
+- No new tag (release.yml path-scoped to `packages/**`).
+- MUWV flip remains UNAUTHORIZED.
+- PAT workflow: reused the PAT from Task 36 (still valid). One-shot token URL, no leak.
+- Audit fix tally unchanged: P0 4/4, P1 18/18, P2 15/38, P3 0/54.
