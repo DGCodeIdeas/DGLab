@@ -45,6 +45,8 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     /**
      * Pulse-scoped instance cache, keyed on the Fiber object itself.
      *
+     * @var \WeakMap<\Fiber, array<string, mixed>>
+     *
      * WeakMap<Fiber, array<string, mixed>> — when a Fiber is garbage-collected
      * (Pulse completes), PHP automatically evicts the entire inner array for
      * that Fiber. No manual cleanup, no scheduler coupling, no memory leak
@@ -55,6 +57,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * This is intentional: pulse() is defined as per-Pulse, and the main context
      * is not a Pulse.
      */
+    // @phpstan-ignore-next-line — WeakMap<Fiber, array> generics can't be fully specified
     private \WeakMap $pulseInstances;
 
     /**
@@ -71,7 +74,10 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * GC'd and a new Fiber is allocated the same id) cannot inherit stale
      * `resolving` state from a previous, dead Fiber. Same pattern as
      * {@see $pulseInstances}.
+     *
+     * @var \WeakMap<\Fiber, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
      */
+    // @phpstan-ignore-next-line — WeakMap<Fiber, array> generics can't be fully specified
     private \WeakMap $fiberResolving;
 
     /**
@@ -173,6 +179,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
             $fiber = \Fiber::getCurrent();
             if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
+                // @phpstan-ignore-next-line — WeakMap offsetGet returns mixed
                 return $this->pulseInstances[$fiber][$id];
             }
         }
@@ -244,7 +251,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         // chained $state['resolving'] / $state['chain'] accesses below
         // fail with "Cannot access offset on mixed". Re-assert the array
         // shape so the per-Fiber cycle-detection state is properly typed.
-        /** @phpstan-var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $state */
+        /** @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>} $state */
 
         if (isset($state['resolving'][$resolutionKey])) {
             $chain = array_map(
@@ -407,6 +414,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     private function invalidatePulseInstances(string $id): void
     {
         foreach ($this->pulseInstances as $fiber => $entry) {
+            // @phpstan-ignore-next-line — WeakMap offsetGet returns mixed
             if (array_key_exists($id, $entry)) {
                 unset($entry[$id]);
                 $this->pulseInstances[$fiber] = $entry;
