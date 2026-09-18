@@ -307,4 +307,54 @@ final class ErrorHandlerTest extends TestCase
         $this->expectNotToPerformAssertions();
         $handler->unregister();
     }
+
+    // --- P3 Batch 8: Severity mapping (with error_reporting pinned) ---
+
+    public function testHandleErrorMapsEDeprecatedToInfoLevel(): void
+    {
+        $handler = $this->buildHandler();
+        $handler->register();
+
+        $originalErrorReporting = error_reporting();
+        error_reporting(E_ALL);
+
+        try {
+            try {
+                $handler->handleError(E_DEPRECATED, 'deprecated feature', __FILE__, __LINE__);
+                $this->fail('handleError should throw ErrorException for E_DEPRECATED');
+            } catch (\ErrorException $e) {
+                self::assertSame(E_DEPRECATED, $e->getSeverity());
+            }
+
+            $logContents = file_get_contents($this->tempFile) ?: '';
+            self::assertStringContainsString('info', $logContents, 'E_DEPRECATED should log at INFO level');
+        } finally {
+            error_reporting($originalErrorReporting);
+            $handler->unregister();
+        }
+    }
+
+    public function testHandleErrorMapsEStrictToNoticeLevel(): void
+    {
+        $handler = $this->buildHandler();
+        $handler->register();
+
+        $originalErrorReporting = error_reporting();
+        error_reporting(E_ALL);
+
+        try {
+            try {
+                $handler->handleError(E_STRICT, 'strict notice', __FILE__, __LINE__);
+                $this->fail('handleError should throw ErrorException for E_STRICT');
+            } catch (\ErrorException $e) {
+                self::assertSame(E_STRICT, $e->getSeverity());
+            }
+
+            $logContents = file_get_contents($this->tempFile) ?: '';
+            self::assertStringContainsString('notice', $logContents, 'E_STRICT should log at NOTICE level');
+        } finally {
+            error_reporting($originalErrorReporting);
+            $handler->unregister();
+        }
+    }
 }
