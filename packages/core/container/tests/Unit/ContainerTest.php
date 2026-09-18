@@ -323,7 +323,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
     public function testGetThrowsNotFoundExceptionForNonExistentClass(): void
     {
         $container = new Container();
-        $this->expectException(\SovereignStack\Core\Container\Exception\NotFoundException::class);
+        $this->expectException(\SovereignStack\Core\Container\NotFoundException::class);
         $container->get('ThisClassDoesNotExistAnywhere');
     }
 

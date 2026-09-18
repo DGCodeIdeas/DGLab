@@ -264,7 +264,7 @@ final class EventDispatcherTest extends TestCase
 
         $dispatcher = new EventDispatcher($provider);
         $event = new TestStoppableEvent();
-        $event->stop(); // pre-stop before dispatch
+        $event->stopPropagation(); // pre-stop before dispatch
 
         $result = $dispatcher->dispatch($event);
         $this->assertSame($event, $result, 'Pre-stopped event returns itself');
