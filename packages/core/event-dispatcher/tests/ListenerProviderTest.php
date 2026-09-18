@@ -202,4 +202,19 @@ final class ListenerProviderTest extends TestCase
         $listeners = iterator_to_array($provider->getListenersForEvent($event), false);
         $this->assertCount(1, $listeners, 'Duplicate listener at same priority should be deduped');
     }
+
+    // --- P3 Batch 7 ---
+
+    public function testAddListenerAtDifferentPrioritiesDoesNotDedup(): void
+    {
+        $provider = new ListenerProvider();
+        $listener = static function () {};
+
+        $provider->addListener(TestEvent::class, $listener, 10);
+        $provider->addListener(TestEvent::class, $listener, 0); // different priority
+
+        $event = new TestEvent('test');
+        $listeners = iterator_to_array($provider->getListenersForEvent($event), false);
+        $this->assertCount(2, $listeners, 'Same listener at different priorities should NOT be deduped');
+    }
 }
