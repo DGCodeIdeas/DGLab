@@ -121,19 +121,21 @@ final class EventDispatcher implements EventDispatcherInterface
             return $listener::class;
         }
 
-        if (is_array($listener) && isset($listener[0], $listener[1])) {
+        if (is_array($listener)) {
+            // PHPStan 2.x: array-shaped callables always have [0] and [1],
+            // so isset() is redundant. Direct access is safe.
             $classPart = $listener[0];
             $methodPart = $listener[1];
 
             if (is_object($classPart)) {
                 $class = $classPart::class;
-            } elseif (is_scalar($classPart)) {
-                $class = (string) $classPart;
             } else {
-                return 'Unknown listener';
+                // After is_object() is false, $classPart is a string (class name)
+                $class = (string) $classPart;
             }
 
-            $method = is_string($methodPart) ? $methodPart : 'unknown';
+            // $methodPart is always a string in array-shaped callables
+            $method = $methodPart;
 
             return $class . '::' . $method;
         }
