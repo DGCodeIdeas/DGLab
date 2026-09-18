@@ -219,7 +219,6 @@ jobs:
           gh release create "$TAG_NAME" \
             --title "${TIER} v${{ steps.bump.outputs.new_version }}+${SHORT_SHA}" \
             --generate-notes \
-
             --target main
 
       - name: Show generated repos.json (on failure)
@@ -259,9 +258,9 @@ jobs:
         id: mono
         run: |
           # ADR-019: monorepo version is v<MUWV>.<Milestone>.<Lap>.<Patch>+<sha>
-          # Currently pre-MUWV: MUWV=0, Milestone 0 = segment 1.
-          # The flip to v1.* is NOT yet authorized (see ADR-019 §8 — requires
-          # all 8 Milestone 0 blueprints + real HTTP request through the full Rim).
+          # Post-MUWV (flipped 2026-09-18): MUWV=1, Milestone 1 = segment 2.
+          # The flip was authorized after all 8 Milestone 0 blueprints shipped
+          # and the full Pulse trace was verified (see ADR-019 §8 Flip Log).
           #
           # IMPORTANT: only match 4-segment ADR-019 tags (vX.Y.Z.W).
           # The old deprecated 3-segment tags (v1.0.0, release-1.X.0) sort
@@ -315,7 +314,6 @@ jobs:
           gh release create "$TAG_NAME" \
             --title "DGLab v${{ steps.mono.outputs.new_version }}+${SHORT_SHA}" \
             --notes "$(printf '%b' "$BODY")" \
-
             --target main
 
   summary:
