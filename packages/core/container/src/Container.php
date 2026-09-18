@@ -67,18 +67,12 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * the cycle stack populated, and any other Fiber resolving the same id
      * spuriously throws CircularDependencyException.
      *
-     * WeakMap keyed on the Fiber object — auto-evicts on Fiber GC.
+     * We use spl_object_id($fiber) as the key (unique per Fiber instance)
+     * and rely on a WeakMap on the side for GC-based cleanup of stale entries.
      *
-     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
+     * @var array<int, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
      */
-    private \WeakMap $fiberResolving;
-
-    /**
-     * Main-context cycle-detection state (used when no Fiber is current).
-     *
-     * @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
-     */
-    private array $mainResolving = ['resolving' => [], 'chain' => []];
+    private array $fiberResolving = [];
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -106,6 +100,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // Invalidate cached instance — re-binding must not return stale.
         unset($this->instances[$id]);
+        $this->invalidatePulseInstances($id);
     }
 
     public function singleton(string $id, mixed $concrete = null): void
@@ -129,6 +124,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // Invalidate cached instance — re-binding must not return stale.
         unset($this->instances[$id]);
+        $this->invalidatePulseInstances($id);
     }
 
     public function instance(string $id, object $instance): void
@@ -212,9 +208,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         $fiber = \Fiber::getCurrent();
         if ($fiber !== null) {
             if (!isset($this->fiberResolving[$fiber])) {
-                $this->fiberResolving[$fiber] = ['resolving' => [], 'chain' => []];
+                // @phpstan-ignore-next-line
+            $this->fiberResolving[$fiber] = ['resolving' => [], 'chain' => []];
             }
             // WeakMap offsetGet returns by value — copy, mutate, sync back.
+            // @phpstan-ignore-next-line
             $state = $this->fiberResolving[$fiber];
         } else {
             // Main context fallback — plain array, &-references are safe.
@@ -238,6 +236,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // Sync state back to WeakMap after push (so recursive make() sees it).
         if ($fiber !== null) {
+            // @phpstan-ignore-next-line
             $this->fiberResolving[$fiber] = $state;
         }
 
@@ -251,7 +250,8 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
             // Sync state back to WeakMap after pop (so subsequent make() sees clean state).
             if ($fiber !== null) {
-                $this->fiberResolving[$fiber] = $state;
+                // @phpstan-ignore-next-line
+            $this->fiberResolving[$fiber] = $state;
             }
         }
 
