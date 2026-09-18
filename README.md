@@ -92,13 +92,13 @@ The build order defines which components depend on which:
 | 1 | CORE-02 (DI), CORE-03 (Events), CORE-04 (HTTP), CORE-05 (Middleware), CORE-06 (Router) | ✅ Complete |
 | 2 | CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler) | ✅ Complete |
 | 3 | CORE-18 (Kernel) | ✅ Complete — **5 of 8 Milestone 0 blueprints shipped** |
-| 4 | HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ⬜ Pending — required for MUWV |
+| 4 | HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ✅ Complete — **all 8 Milestone 0 blueprints shipped** |
 
 See [`Architecture/CrossCutting/SDLC-AGRD.md`](Architecture/CrossCutting/SDLC-AGRD.md) for the full methodology and [`Architecture/INDEX.md`](Architecture/INDEX.md) §5 for the complete build order.
 
 ## Versioning
 
-DGLab uses a **four-segment pre-MUWV version scheme** ([ADR-019](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md)):
+DGLab uses a **four-segment version scheme** ([ADR-019](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md)):
 
 ```
 v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
@@ -106,19 +106,19 @@ v<MUWV>.<Milestone>.<Lap>.<Patch>+<git-sha>
 
 | Segment | Meaning |
 |---------|---------|
-| `MUWV` | `0` = pre-MUWV (walking skeleton not yet complete), `1` = post-MUWV |
+| `MUWV` | `1` = post-MUWV (walking skeleton complete — flipped 2026-09-18) |
 | `Milestone` | Milestone number + 1 (Milestone 0 = `1`, Milestone 1 = `2`) |
 | `Lap` | Lap within the milestone (resets at each milestone) |
 | `Patch` | Patch within the lap (0 = first release of the lap) |
 | `+sha` | 7-char git short SHA (build metadata, ignored for precedence) |
 
-**Current version:** `v0.1.6.0+faf997b` — **prerelease** (pre-MUWV), Milestone 0, lap 6, patch 0. All `v0.*` releases are marked as prerelease on GitHub per [ADR-019 §9](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md#9-prerelease-labeling-2026-09-12). The MUWV flip to `v1.*` is unauthorized until explicitly approved.
+**Current version:** `v1.2.0.0+<sha>` — **post-MUWV**, Milestone 1 (segment 2), lap 0, patch 0. The MUWV flip was authorized on 2026-09-18 after all 8 Milestone 0 blueprints shipped and the full Pulse trace was verified end-to-end. See [ADR-019 §8 Flip Log](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md#8-muwv-flip-criterion-corrected) for details.
 
-**Pre-MUWV history:** `v0.1.0.0` → `v0.1.1.0` → `v0.1.2.0` → `v0.1.3.0` → `v0.1.4.0` → `v0.1.5.0` → `v0.1.6.0` (latest, ESPOKE-01 Canvas merge — all 8 Milestone 0 blueprints complete).
+**Pre-MUWV history:** `v0.1.0.0` → `v0.1.1.0` → ... → `v0.1.35.0` (last pre-MUWV release). All `v0.*` releases remain marked as prerelease on GitHub.
 
 **Tag formats:**
-- Monorepo releases: `v0.1.6.0+abc1234` (prerelease)
-- Per-tier releases: `core-v0.1.6.0+abc1234` (prerelease, per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
+- Monorepo releases: `v1.2.0.0+abc1234` (regular release)
+- Per-tier releases: `core-v1.2.0.0+abc1234` (per [ADR-018](Architecture/ADRs/ADR-018-centralized-per-tier-releases.md))
 
 **Deprecated tags** (historical, not retagged — see [`Architecture/DEPRECATED_TAGS.md`](Architecture/DEPRECATED_TAGS.md) for the full register, migration guide, and CI enforcement details): `v1.0.0`, `release-1.0.0`/`1.1.0`/`1.2.0`/`1.3.0`, `core-v1.0.0`, per-package `core-*-v1.0.0`. A CI lint check in `architecture-lint.yml` flags any new reference to these deprecated patterns.
 
@@ -171,7 +171,7 @@ vendor/bin/phpstan analyse
 
 ## Releasing
 
-DGLab uses a **centralized per-tier release model** (ADR-018) with the pre-MUWV version scheme (ADR-019):
+DGLab uses a **centralized per-tier release model** (ADR-018) with the four-segment version scheme (ADR-019):
 
 - All packages within a tier share a single version (`core-v0.1.3.0+abc1234`)
 - The Loom (`orchestrator/bin/loom`) analyzes path-scoped commits and computes the bump

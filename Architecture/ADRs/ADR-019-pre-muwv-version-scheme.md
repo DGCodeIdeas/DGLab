@@ -1,6 +1,6 @@
 # ADR-019: Pre-MUWV version scheme (v0.X.Y.Z)
 
-**Status:** Accepted — **pre-MUWV (flip criterion NOT yet met — see §8)**
+**Status:** Accepted — **MUWV FLIPPED (2026-09-18) — see §8 Flip Log**
 **Date:** 2026-09-11
 **Decided by:** Architecture lead (DGCI)
 
@@ -140,19 +140,41 @@ The MUWV segment flips from `0` to `1` exactly once: when the **complete AGRD §
 
 This requires **all 8 Milestone 0 blueprints** to be shipped at depth 1–2:
 
-| # | Blueprint | Step | Status (as of 2026-09-12) |
-|---|-----------|------|---------------------------|
+| # | Blueprint | Step | Status |
+|---|-----------|------|--------|
 | 1 | CORE-02 (DI Container) | 1 | ✅ Depth 2 |
 | 2 | CORE-04 (HTTP Message) | 4 | ✅ Depth 2 |
 | 3 | CORE-05 (Middleware) | 4 | ✅ Depth 2 |
 | 4 | CORE-06 (Router) | 4 | ✅ Depth 2 |
 | 5 | CORE-18 (Kernel) | 3 | ✅ Depth 2 |
-| 6 | HUB-01 (Hub Config & Flags) | 8 | ⬜ Not started |
-| 7 | BRIDGE-01 (Vanguard) | 9 | ⬜ Not started |
-| 8 | ISPOKE-09 (Codex) | 10 | ⬜ Not started |
-| 9 | ESPOKE-01 (Canvas) | 11 | ⬜ Not started |
+| 6 | HUB-01 (Hub Config & Flags) | 8 | ✅ Depth 2 (PR #162) |
+| 7 | BRIDGE-01 (Vanguard) | 9 | ✅ Depth 2 (PR #163) |
+| 8 | ISPOKE-09 (Codex) | 10 | ✅ Depth 2 (PR #164) |
+| 9 | ESPOKE-01 (Canvas) | 11 | ✅ Depth 2 (PR #165) |
 
-**5 of 8 shipped. The flip is NOT yet authorized.** The integration test (`KernelHelloWorldIntegrationTest::testHelloWorldRoundTrip`) passing proves the architectural wiring works through Kernel → middleware → router → controller, but it does not satisfy AGRD §4 — that requires a real HTTP request through the full Rim (Outer Rim → Inner Rim → Inner Spoke → return), which needs HUB-01, BRIDGE-01, ISPOKE-09, and ESPOKE-01 to be shipped.
+**All 8 Milestone 0 blueprints shipped. The flip criterion IS met.**
+
+### Flip Log — 2026-09-18
+
+**Authorized by:** Architecture lead (DGCI) — user explicitly said "flip" after verifying:
+- All 8 Milestone 0 blueprints shipped at depth 2 ✅
+- `public/index.php` wired to boot the Kernel via BRIDGE-01 Vanguard ✅
+- Real HTTP round-trip through the full Rim verified: `curl → 200 Hello World`
+  through Caddy → Tengine → FrankenPHP → Kernel → Vanguard → Router → HelloController ✅
+- Health endpoint `/health` returns 200 `{"status":"ok"}` ✅
+- P0 (4/4), P1 (18/18), P2 (38/38) audit findings all fixed ✅
+- P3 (~52/54) substantially complete ✅
+- PHP 8.4 + PHPUnit 11 + PHPStan 2.2 with strict-rules ✅
+- FROZEN-CONTRACTS.md registry (32 declarations) ✅
+
+**Flip actions:**
+1. ADR-019 status: pre-MUWV → **MUWV FLIPPED**
+2. `release.yml`: removed `--prerelease` flag (see below)
+3. First post-MUWV tag: `v1.2.0.0+<sha>` (Milestone 1 = second milestone, Lap 0, Patch 0)
+4. ADR-020 stable/edge branch model activated
+5. All future releases are regular (non-prerelease) GitHub Releases
+
+**The flip is a one-time governance action — it cannot be reversed.**
 
 ### Premature flip event (2026-09-12) — reverted
 

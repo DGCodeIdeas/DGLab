@@ -219,7 +219,7 @@ jobs:
           gh release create "$TAG_NAME" \
             --title "${TIER} v${{ steps.bump.outputs.new_version }}+${SHORT_SHA}" \
             --generate-notes \
-            --prerelease \
+
             --target main
 
       - name: Show generated repos.json (on failure)
@@ -315,7 +315,7 @@ jobs:
           gh release create "$TAG_NAME" \
             --title "DGLab v${{ steps.mono.outputs.new_version }}+${SHORT_SHA}" \
             --notes "$(printf '%b' "$BODY")" \
-            --prerelease \
+
             --target main
 
   summary:
