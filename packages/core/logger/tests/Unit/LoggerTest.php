@@ -273,4 +273,23 @@ final class LoggerTest extends TestCase
         self::assertTrue($first->called);
         self::assertTrue($downstream->called, 'Downstream handler MUST be called when upstream returned true.');
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testLogWithEmptyMessageIsFormattedAndLogged(): void
+    {
+        $handler = new StreamHandler($this->tempFile);
+        $logger = new Logger([$handler]);
+        $logger->log(LogLevel::INFO, '');
+        $content = file_get_contents($this->tempFile) ?: '';
+        self::assertNotEmpty($content, 'Empty message should still produce a log line');
+    }
+
+    public function testLogWithNoHandlersRegisteredIsSilentNoOp(): void
+    {
+        $logger = new Logger([]);
+        // Should not throw, should not error
+        $logger->log(LogLevel::INFO, 'test message');
+        $this->expectNotToPerformAssertions();
+    }
 }

@@ -295,4 +295,16 @@ final class ErrorHandlerTest extends TestCase
         $handler = new StreamHandler($this->tempFile);
         return new Logger([$handler]);
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testHandleFatalIsNoOpForNonFatalErrorType(): void
+    {
+        $handler = $this->buildHandler();
+        $handler->register();
+        // handleFatal checks error_get_last(); with no error, it's a no-op
+        $handler->handleFatal();
+        $this->expectNotToPerformAssertions();
+        $handler->unregister();
+    }
 }
