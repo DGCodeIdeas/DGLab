@@ -4,7 +4,7 @@
     "type": "project",
     "license": "proprietary",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "czproject/git-php": "^4.1",
         "php-http/discovery": "^1.19",
         "psr/http-message": "^2.0",
