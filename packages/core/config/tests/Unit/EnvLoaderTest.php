@@ -217,4 +217,34 @@ final class EnvLoaderTest extends TestCase
             unset($_ENV['KEY']);
         }
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testLoadReturnsEmptyArrayForEmptyFile(): void
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'env_test_');
+        file_put_contents($tmpFile, '');
+
+        try {
+            $loader = new EnvLoader();
+            $loaded = $loader->load($tmpFile);
+            self::assertSame([], $loaded);
+        } finally {
+            unlink($tmpFile);
+        }
+    }
+
+    public function testLoadReturnsEmptyArrayForCommentsOnly(): void
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'env_test_');
+        file_put_contents($tmpFile, "# comment\n\n# another comment\n");
+
+        try {
+            $loader = new EnvLoader();
+            $loaded = $loader->load($tmpFile);
+            self::assertSame([], $loaded);
+        } finally {
+            unlink($tmpFile);
+        }
+    }
 }

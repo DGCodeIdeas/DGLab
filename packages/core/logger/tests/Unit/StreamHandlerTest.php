@@ -199,4 +199,14 @@ final class StreamHandlerTest extends TestCase
             );
         }
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testHandleBatchWithEmptyRecordsArrayEarlyReturns(): void
+    {
+        $handler = new StreamHandler($this->tempFile, LogLevel::WARNING);
+        $handler->handleBatch([]);
+        // No file should be created for an empty batch
+        $this->expectNotToPerformAssertions();
+    }
 }

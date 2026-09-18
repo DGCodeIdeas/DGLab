@@ -121,4 +121,15 @@ final class RendererTest extends TestCase
 
         self::assertSame($first, $second, 'Same input must produce identical output across calls.');
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testPlainTextRendererRendersEmptyMessage(): void
+    {
+        $e = new \RuntimeException('');
+        $renderer = new PlainTextRenderer();
+        $output = $renderer->render($e, false);
+        self::assertStringContainsString('RuntimeException', $output);
+        self::assertStringContainsString(__FILE__, $output);
+    }
 }
