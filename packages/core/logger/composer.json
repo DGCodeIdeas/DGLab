@@ -5,7 +5,7 @@
     "license": "MIT",
     "version": "0.1.0.0",
     "require": {
-        "php": "^8.4",
+        "php": "^8.3",
         "psr/log": "^3.0",
         "sovereign-stack/core-config": "^0.1"
     },
