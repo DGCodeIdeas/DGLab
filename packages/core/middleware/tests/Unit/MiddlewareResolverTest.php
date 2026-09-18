@@ -74,4 +74,15 @@ final class MiddlewareResolverTest extends TestCase
         /** @phpstan-ignore-next-line intentional type violation for testing */
         $resolver->resolve(42);
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testResolveNonExistentClassStringWithoutContainerThrowsLogicException(): void
+    {
+        // No container — class-string middleware can't be resolved
+        $resolver = new MiddlewareResolver(null);
+
+        $this->expectException(\LogicException::class);
+        $resolver->resolve('NonExistentMiddlewareClass');
+    }
 }
