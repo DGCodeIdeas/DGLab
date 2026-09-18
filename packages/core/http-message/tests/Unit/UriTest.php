@@ -153,4 +153,19 @@ final class UriTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $uri->withPort(-1);
     }
+
+    // --- P3 Batch 7 ---
+
+    public function testWithUserInfoEmptyUserAndPassword(): void
+    {
+        $uri = new Uri('http://example.com');
+        $new = $uri->withUserInfo('', '');
+        self::assertSame('', $new->getUserInfo());
+    }
+
+    public function testToStringRendersFullUri(): void
+    {
+        $uri = new Uri('https://user:pass@example.com:8443/path?query=value#fragment');
+        self::assertSame('https://user:pass@example.com:8443/path?query=value#fragment', (string) $uri);
+    }
 }

@@ -188,4 +188,22 @@ final class ConfigBuilderTest extends TestCase
         self::assertSame($builder, $builder->loadFile($this->fixturesDir . '/app.php'));
         self::assertSame($builder, $builder->withOverride('foo', 'bar'));
     }
+
+    // --- P3 Batch 7 ---
+
+    public function testBuildWithNoDataReturnsEmptyRepository(): void
+    {
+        $builder = new ConfigBuilder();
+        $repo = $builder->build();
+        self::assertSame([], $repo->all());
+    }
+
+    public function testWithOverrideReplacesExistingValue(): void
+    {
+        $builder = new ConfigBuilder();
+        $builder->withOverride('app.name', 'original');
+        $builder->withOverride('app.name', 'replaced');
+        $repo = $builder->build();
+        self::assertSame('replaced', $repo->get('app.name'));
+    }
 }

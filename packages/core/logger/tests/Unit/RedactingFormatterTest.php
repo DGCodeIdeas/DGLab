@@ -115,4 +115,32 @@ final class RedactingFormatterTest extends TestCase
         self::assertStringContainsString('10.0.0.1', $output);
         self::assertStringNotContainsString('***REDACTED***', $output);
     }
+
+    // --- P3 Batch 7 ---
+
+    public function testRedactsApiKeyInContext(): void
+    {
+        $record = \SovereignStack\Core\Logger\LogRecord::create(
+            level: 'info',
+            message: 'API call',
+            context: ['api_key' => 'sk-1234567890abcdef'],
+        );
+        $formatter = new \SovereignStack\Core\Logger\Formatter\RedactingFormatter(new \SovereignStack\Core\Logger\Formatter\LineFormatter());
+        $output = $formatter->format($record);
+        self::assertStringContainsString('***REDACTED***', $output);
+        self::assertStringNotContainsString('sk-1234567890abcdef', $output);
+    }
+
+    public function testDoesNotRedactNonSensitiveKeys(): void
+    {
+        $record = \SovereignStack\Core\Logger\LogRecord::create(
+            level: 'info',
+            message: 'User action',
+            context: ['username' => 'dgi', 'action' => 'login'],
+        );
+        $formatter = new \SovereignStack\Core\Logger\Formatter\RedactingFormatter(new \SovereignStack\Core\Logger\Formatter\LineFormatter());
+        $output = $formatter->format($record);
+        self::assertStringContainsString('dgi', $output);
+        self::assertStringContainsString('login', $output);
+    }
 }
