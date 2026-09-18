@@ -286,4 +286,36 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertInstanceOf(WithParams::class, $service);
     }
 
+    // --- P3 Edge-Case Tests ---
+
+    public function testRebindingSameIdInvalidatesSingletonCache(): void
+    {
+        $container = new Container();
+        $container->singleton(WithParams::class);
+        $first = $container->make(WithParams::class);
+        $container->singleton(WithParams::class, WithParams::class);
+        $second = $container->make(WithParams::class);
+        $this->assertNotSame($first, $second, 'Re-binding must invalidate cached singleton');
+    }
+
+    public function testInstanceReplacesAlreadyResolvedSingleton(): void
+    {
+        $container = new Container();
+        $container->singleton(WithParams::class);
+        $first = $container->make(WithParams::class);
+        $replacement = new WithParams('replacement');
+        $container->instance(WithParams::class, $replacement);
+        $this->assertSame($replacement, $container->get(WithParams::class));
+    }
+
+    public function testAddCompilerPassAfterCompileThrows(): void
+    {
+        $container = new Container();
+        $container->compile();
+        $this->expectException(\LogicException::class);
+        $container->addCompilerPass(new class implements \SovereignStack\Core\Container\CompilerPassInterface {
+            public function process(\SovereignStack\Core\Container\ContainerBuilderInterface $builder): void {}
+        });
+    }
+
 }

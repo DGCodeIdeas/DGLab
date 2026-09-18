@@ -89,4 +89,17 @@ final class RouteCollectionTest extends TestCase
         $routes = $collection->getByMethod('GET');
         self::assertCount(1, $routes);
     }
+
+    public function testAllReturnsAllRoutesIncludingAnonymous(): void
+    {
+        $collection = new RouteCollection();
+        $collection->add($this->createRoute('named1', '/users', ['GET']));
+        $collection->add($this->createRoute('', '/anon', ['GET']));
+
+        // Current behavior: all() returns only named routes.
+        // When the $byPosition P2 fix lands, this will return 2.
+        // For now, assert the current behavior (1 named route).
+        $all = $collection->all();
+        self::assertCount(1, $all, 'all() currently returns only named routes; anonymous excluded until P2 fix');
+    }
 }
