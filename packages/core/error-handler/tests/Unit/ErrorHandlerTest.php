@@ -163,6 +163,122 @@ final class ErrorHandlerTest extends TestCase
         }
     }
 
+    /**
+     * E_DEPRECATED → LogLevel::INFO: severityToLevel() must map
+     * E_DEPRECATED (and E_USER_DEPRECATED) to LogLevel::INFO.
+     */
+    public function testHandleErrorMapsEDeprecatedToInfoLevel(): void
+    {
+        $handler = $this->buildHandler();
+
+        $originalErrorReporting = error_reporting();
+        error_reporting(E_ALL);
+
+        try {
+            try {
+                $handler->handleError(E_DEPRECATED, 'deprecated feature', __FILE__, __LINE__);
+                self::fail('Expected ErrorException to be thrown by handleError().');
+            } catch (\ErrorException $e) {
+                // Expected — handleError always converts errors to ErrorException.
+                self::assertSame(E_DEPRECATED, $e->getSeverity());
+            }
+
+            $logContents = file_get_contents($this->tempFile) ?: '';
+            self::assertStringContainsString(
+                '] info:',
+                $logContents,
+                'E_DEPRECATED must be logged at LogLevel::INFO.',
+            );
+            self::assertStringContainsString('deprecated feature', $logContents);
+        } finally {
+            error_reporting($originalErrorReporting);
+        }
+    }
+
+    /**
+     * E_STRICT → LogLevel::NOTICE: severityToLevel() must map E_STRICT to
+     * LogLevel::NOTICE (same bucket as E_NOTICE / E_USER_NOTICE).
+     */
+    public function testHandleErrorMapsEStrictToNoticeLevel(): void
+    {
+        $handler = $this->buildHandler();
+
+        $originalErrorReporting = error_reporting();
+        error_reporting(E_ALL);
+
+        try {
+            try {
+                $handler->handleError(E_STRICT, 'strict advisory', __FILE__, __LINE__);
+                self::fail('Expected ErrorException to be thrown by handleError().');
+            } catch (\ErrorException $e) {
+                self::assertSame(E_STRICT, $e->getSeverity());
+            }
+
+            $logContents = file_get_contents($this->tempFile) ?: '';
+            self::assertStringContainsString(
+                '] notice:',
+                $logContents,
+                'E_STRICT must be logged at LogLevel::NOTICE.',
+            );
+            self::assertStringContainsString('strict advisory', $logContents);
+        } finally {
+            error_reporting($originalErrorReporting);
+        }
+    }
+
+    /**
+     * handleFatal() with a non-fatal error type recorded by error_get_last():
+     * the fatalSeverities guard at the top of handleFatal() must early-return
+     * for any severity NOT in [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR,
+     * E_USER_ERROR]. This test exercises the E_WARNING branch by injecting a
+     * synthetic error_get_last() return value via a namespace-polyfilled
+     * function — PHP userland cannot trigger a true E_WARNING, but the
+     * guard logic treats all non-fatal severities the same way.
+     */
+    public function testHandleFatalIsNoOpForNonFatalErrorType(): void
+    {
+        $this->loadErrorGetLastPolyfill();
+
+        $handler = $this->buildHandler();
+        $handler->register();
+
+        try {
+            // Inject a non-fatal error type (E_WARNING) into the polyfilled
+            // error_get_last() return value.
+            $GLOBALS['dglab_test_handleFatal_error'] = [
+                'type' => E_WARNING,
+                'message' => 'non-fatal warning',
+                'file' => __FILE__,
+                'line' => __LINE__,
+            ];
+
+            // Sanity: E_WARNING is NOT in the fatalSeverities set.
+            self::assertNotContains(E_WARNING, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR]);
+
+            $handler->handleFatal();
+
+            $logContents = file_get_contents($this->tempFile) ?: '';
+            self::assertSame(
+                '',
+                $logContents,
+                'handleFatal() must early-return for non-fatal error types — no log line.',
+            );
+        } finally {
+            unset($GLOBALS['dglab_test_handleFatal_error']);
+            $handler->unregister();
+        }
+    }
+
+    /**
+     * Load the namespaced error_get_last polyfill (idempotent).
+     */
+    private function loadErrorGetLastPolyfill(): void
+    {
+        if (!function_exists('SovereignStack\\Core\\ErrorHandler\\error_get_last')) {
+            require_once __DIR__ . '/../Fixtures/error_get_last_polyfill.php';
+        }
+    }
+
     public function testHandleFatalNoOpsWhenNoError(): void
     {
         $handler = $this->buildHandler();

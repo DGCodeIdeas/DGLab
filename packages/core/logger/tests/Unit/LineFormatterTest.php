@@ -109,4 +109,28 @@ final class LineFormatterTest extends TestCase
 
         self::assertStringContainsString('tags=["a","b","c"]', $formatted);
     }
+
+    /**
+     * Empty-message + empty-context minimal output: the line shape reduces
+     * to `[timestamp] level: ` with no payload segment and no trailing
+     * context/extra. The empty-context branch is skipped entirely
+     * (no ` {}` appended), and the empty message renders as the literal
+     * empty string between `: ` and the line terminator.
+     */
+    public function testFormatWithEmptyMessageAndEmptyContextProducesMinimalLine(): void
+    {
+        $record = LogRecord::create(LogLevel::INFO, '', []);
+        $formatted = (new LineFormatter())->format($record);
+
+        // Minimal shape: `[timestamp] info: ` with the empty message payload.
+        self::assertMatchesRegularExpression(
+            '/^\[\d{4}-\d{2}-\d{2}T.+info: $/',
+            $formatted,
+            'Empty message + empty context must produce the minimal line shape ending in `: `.',
+        );
+        // No context segment is appended for empty context.
+        self::assertStringNotContainsString('{}', $formatted);
+        // No multi-line exception block (no 'exception' key in context).
+        self::assertStringNotContainsString('Exception:', $formatted);
+    }
 }

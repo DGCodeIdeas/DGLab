@@ -170,6 +170,47 @@ final class StreamHandlerTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    /**
+     * Empty-records handleBatch: an empty records array must early-return
+     * before invoking the formatter or opening the stream. Verifies the
+     * `if ($filtered === []) return;` guard.
+     */
+    public function testHandleBatchWithEmptyRecordsArrayEarlyReturns(): void
+    {
+        // Spy formatter: formatBatch() should NEVER be called for empty records.
+        $formatter = new class implements \SovereignStack\Core\Logger\FormatterInterface {
+            public bool $formatBatchCalled = false;
+            public bool $formatCalled = false;
+
+            public function format(LogRecord $record): string
+            {
+                $this->formatCalled = true;
+                return '';
+            }
+
+            public function formatBatch(array $records): string
+            {
+                $this->formatBatchCalled = true;
+                return '';
+            }
+        };
+
+        $handler = new StreamHandler($this->tempFile, formatter: $formatter);
+        $handler->handleBatch([]); // Empty records.
+        $handler->close();
+
+        self::assertFalse(
+            $formatter->formatBatchCalled,
+            'formatBatch() must NOT be called for empty records (early return).',
+        );
+        self::assertFalse(
+            $formatter->formatCalled,
+            'format() must NOT be called for empty records (early return).',
+        );
+        // The stream must not even be opened — no file on disk.
+        self::assertFileDoesNotExist($this->tempFile, 'Stream must not be opened for empty records.');
+    }
+
     public function testConcurrentWritesDoNotCorruptLines(): void
     {
         // Simulate concurrent writes by interleaving two handlers on the same file.

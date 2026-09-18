@@ -217,4 +217,46 @@ final class EnvLoaderTest extends TestCase
             unset($_ENV['KEY']);
         }
     }
+
+    /**
+     * Empty file: a zero-byte .env file yields no key/value pairs and
+     * returns an empty array. load() must not throw.
+     */
+    public function testLoadReturnsEmptyArrayForEmptyFile(): void
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'env_test_');
+        file_put_contents($tmpFile, '');
+
+        try {
+            $loader = new EnvLoader();
+            $loaded = $loader->load($tmpFile);
+
+            self::assertSame([], $loaded);
+        } finally {
+            unlink($tmpFile);
+        }
+    }
+
+    /**
+     * Comments-only file: a .env file containing only blank lines and
+     * `#`-prefixed comment lines yields no key/value pairs. The lines()
+     * generator skips both shapes via the early-continue guard.
+     */
+    public function testLoadReturnsEmptyArrayForFileContainingOnlyComments(): void
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'env_test_');
+        file_put_contents(
+            $tmpFile,
+            "# This is a comment\n\n# Another comment\n   # Indented comment\n",
+        );
+
+        try {
+            $loader = new EnvLoader();
+            $loaded = $loader->load($tmpFile);
+
+            self::assertSame([], $loaded);
+        } finally {
+            unlink($tmpFile);
+        }
+    }
 }

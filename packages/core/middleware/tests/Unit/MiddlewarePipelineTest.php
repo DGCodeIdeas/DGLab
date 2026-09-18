@@ -248,4 +248,101 @@ final class MiddlewarePipelineTest extends TestCase
         $pipeline->handle($request);
         self::assertSame(2, $callCount, 'Middleware should be called exactly once on second request (no cursor carryover).');
     }
+
+    /**
+     * Same-middleware-instance-twice: piping the SAME MiddlewareInterface
+     * instance twice into a pipeline must execute it twice per request —
+     * the pipeline does NOT deduplicate middleware by identity (unlike
+     * ListenerProvider, which dedups listeners at addListener time).
+     */
+    public function testPipeSameMiddlewareInstanceTwiceExecutesTwice(): void
+    {
+        $finalHandler = new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        $pipeline = new MiddlewarePipeline($finalHandler, new MiddlewareResolver());
+
+        $countingMiddleware = new class implements MiddlewareInterface {
+            public int $processCount = 0;
+            public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+            {
+                $this->processCount++;
+                return $handler->handle($request);
+            }
+        };
+
+        // Pipe the SAME instance twice — the pipeline should NOT deduplicate it.
+        $pipeline->pipe($countingMiddleware);
+        $pipeline->pipe($countingMiddleware);
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $pipeline->handle($request);
+
+        self::assertSame(
+            2,
+            $countingMiddleware->processCount,
+            'Piping the same middleware instance twice must execute it twice per request.',
+        );
+    }
+
+    /**
+     * Stronger re-entrancy variant: three consecutive requests, each seeing
+     * the full middleware stack, with cumulative assertions on each call.
+     * The earlier testConsecutiveRequestsAreIndependent() verifies the
+     * "no cursor carryover" claim with two requests and a single middleware;
+     * this variant stacks two middlewares and asserts each is invoked
+     * exactly 3 times across 3 requests (in FIFO order on the way in).
+     */
+    public function testThreeConsecutiveRequestsEachRunFullStackInOrder(): void
+    {
+        $finalHandler = new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        $pipeline = new MiddlewarePipeline($finalHandler, new MiddlewareResolver());
+
+        $trace = [];
+        $pipeline->pipe(function (ServerRequestInterface $req, RequestHandlerInterface $handler) use (&$trace): ResponseInterface {
+            $trace[] = 'A-in';
+            $response = $handler->handle($req);
+            $trace[] = 'A-out';
+            return $response;
+        });
+        $pipeline->pipe(function (ServerRequestInterface $req, RequestHandlerInterface $handler) use (&$trace): ResponseInterface {
+            $trace[] = 'B-in';
+            $response = $handler->handle($req);
+            $trace[] = 'B-out';
+            return $response;
+        });
+
+        $request = $this->createMock(ServerRequestInterface::class);
+
+        // Request 1
+        $pipeline->handle($request);
+        self::assertSame(
+            ['A-in', 'B-in', 'B-out', 'A-out'],
+            $trace,
+            'Request 1 must run the full stack in FIFO-in / LIFO-out order.',
+        );
+
+        // Request 2 — trace appends, no carryover from request 1's state.
+        $pipeline->handle($request);
+        self::assertSame(
+            ['A-in', 'B-in', 'B-out', 'A-out', 'A-in', 'B-in', 'B-out', 'A-out'],
+            $trace,
+            'Request 2 must run the full stack from the beginning.',
+        );
+
+        // Request 3 — still no carryover.
+        $pipeline->handle($request);
+        self::assertCount(12, $trace, 'Three requests × 4 trace entries each = 12 total entries.');
+        self::assertSame('A-out', $trace[11], 'Third request must complete the full outward pass.');
+    }
 }

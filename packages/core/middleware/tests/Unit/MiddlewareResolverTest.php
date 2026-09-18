@@ -74,4 +74,23 @@ final class MiddlewareResolverTest extends TestCase
         /** @phpstan-ignore-next-line intentional type violation for testing */
         $resolver->resolve(42);
     }
+
+    /**
+     * Class-string of a NON-EXISTENT class WITHOUT a container: the
+     * container-less string branch in resolve() explicitly checks
+     * class_exists() and throws a LogicException with a clear "class
+     * does not exist" message. Previously this path fell through to an
+     * unreachable TypeError with a misleading "got string" message;
+     * the P2 fix added the explicit class_exists() guard.
+     */
+    public function testResolveNonExistentClassStringWithoutContainerThrowsLogicException(): void
+    {
+        // No container passed — exercises the container-less string branch.
+        $resolver = new MiddlewareResolver(null);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('class does not exist');
+
+        $resolver->resolve('SovereignStack\\Core\\Http\\Tests\\Fixture\\NonExistentMiddleware');
+    }
 }

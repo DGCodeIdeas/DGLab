@@ -252,4 +252,43 @@ final class EventDispatcherTest extends TestCase
         // Dispatch completes normally — error isolation in action
         $this->assertSame($event, $result);
     }
+
+    /**
+     * Pre-stopped stoppable event: when isPropagationStopped() returns
+     * true BEFORE the first listener runs, the dispatcher's foreach loop
+     * must break on the very first iteration without invoking any
+     * listener. Verifies the guard at the top of the foreach body —
+     * the check is performed BEFORE $listener($event), not after.
+     */
+    public function testDispatchWithPreStoppedStoppableEventRunsZeroListeners(): void
+    {
+        $provider = new ListenerProvider();
+
+        $shouldNeverRun1 = function (TestStoppableEvent $event): void {
+            $event->markCalled('first-must-not-run');
+        };
+        $shouldNeverRun2 = function (TestStoppableEvent $event): void {
+            $event->markCalled('second-must-not-run');
+        };
+
+        $provider->addListener(TestStoppableEvent::class, $shouldNeverRun1, 1000);
+        $provider->addListener(TestStoppableEvent::class, $shouldNeverRun2, 0);
+
+        $dispatcher = new EventDispatcher($provider);
+        $event = new TestStoppableEvent();
+
+        // Pre-stop BEFORE dispatch — the event is already in the stopped
+        // state when the dispatcher reads it.
+        $event->stopPropagation();
+        $this->assertTrue($event->isPropagationStopped());
+
+        $result = $dispatcher->dispatch($event);
+
+        $this->assertSame($event, $result);
+        $this->assertEmpty(
+            $event->calledBy,
+            'Zero listeners must run when isPropagationStopped() is true before the first listener.',
+        );
+        $this->assertTrue($event->isPropagationStopped(), 'Propagation flag must remain set.');
+    }
 }

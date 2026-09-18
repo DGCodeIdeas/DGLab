@@ -67,4 +67,28 @@ final class CallableMiddlewareAdapterTest extends TestCase
 
         self::assertSame($expectedResponse, $result);
     }
+
+    /**
+     * Exception propagation: when the wrapped callable throws, the adapter
+     * must NOT swallow the exception — it must propagate to the caller
+     * (the pipeline's PerRequestHandler), which can then surface it to
+     * outer middleware for catch-and-render. This is the contract that
+     * ExceptionPropagationTest::testExceptionFromInnerMiddlewareReachesOuterMiddleware
+     * relies on.
+     */
+    public function testProcessPropagatesExceptionFromCallable(): void
+    {
+        $callable = static function (ServerRequestInterface $req, RequestHandlerInterface $handler): ResponseInterface {
+            throw new \RuntimeException('callable exploded');
+        };
+
+        $adapter = new CallableMiddlewareAdapter($callable);
+        $request = $this->createMock(ServerRequestInterface::class);
+        $handler = $this->createMock(RequestHandlerInterface::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('callable exploded');
+
+        $adapter->process($request, $handler);
+    }
 }

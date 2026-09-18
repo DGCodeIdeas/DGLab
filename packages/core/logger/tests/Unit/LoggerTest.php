@@ -233,6 +233,47 @@ final class LoggerTest extends TestCase
     }
 
     /**
+     * Empty-message log call: an empty message string is a valid record.
+     * The Logger must not crash, must not throw, and must produce a log
+     * line whose payload segment is the empty string (rendered as
+     * `[timestamp] info: \n`).
+     */
+    public function testLogWithEmptyMessageIsFormattedAndLogged(): void
+    {
+        $handler = new StreamHandler($this->tempFile);
+        $logger = new Logger([$handler]);
+
+        $logger->log(LogLevel::INFO, '');
+        $handler->close();
+
+        $contents = file_get_contents($this->tempFile);
+        self::assertNotFalse($contents, 'Log file must be readable after the call.');
+        self::assertNotEmpty($contents, 'Empty message must still produce a log line.');
+        self::assertStringContainsString('info: ', $contents);
+        // The line shape is "[timestamp] info: " followed by the empty message
+        // and a trailing newline — no payload after the colon-space.
+        self::assertMatchesRegularExpression('/\] info: \n$/', $contents);
+    }
+
+    /**
+     * No-handler no-op: a Logger constructed with an empty handler list
+     * must accept log() calls without throwing and without producing any
+     * side-effects. The threshold filter and the (empty) handler iteration
+     * both short-circuit, making the call a true silent no-op.
+     */
+    public function testLogWithNoHandlersRegisteredIsSilentNoOp(): void
+    {
+        $logger = new Logger(); // No handlers; default threshold is DEBUG.
+
+        // Must not throw, must not produce output. There are no handlers to
+        // assert on, so we rely on expectNotToPerformAssertions() to make
+        // the no-op contract explicit.
+        $logger->log(LogLevel::INFO, 'no handlers present');
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
      * Propagation contract: when a handler's handle() returns true, the
      * Logger continues to the next handler. (Default StreamHandler path.)
      */

@@ -121,4 +121,35 @@ final class RendererTest extends TestCase
 
         self::assertSame($first, $second, 'Same input must produce identical output across calls.');
     }
+
+    /**
+     * Empty-message render: an exception with an empty message still
+     * produces the standard header shape "{class}: {message} in {file}:{line}".
+     *
+     * The empty message renders as the zero-length segment between `: ` and
+     * ` in` — that is, the literal substring `:  in` (colon-space-empty-space-in).
+     *
+     * NOTE: PlainTextRenderer does NOT single-quote the message (unlike
+     * LineFormatter::formatException which wraps the message in quotes).
+     * This documents the current renderer behavior: with an empty message,
+     * the segment between `:` and `in` collapses to a double space. This
+     * is intentionally left as-is to keep the renderer output grep-friendly;
+     * the empty-segment artifact is the visual signal of an empty message.
+     */
+    public function testPlainTextRendererRendersEmptyMessageInHeaderShape(): void
+    {
+        $e = new \RuntimeException('');
+        $output = (new PlainTextRenderer())->render($e, debug: true);
+
+        // The empty message renders as a zero-length segment between `: ` and ` in`,
+        // producing the visible double-space pattern in the header line.
+        self::assertMatchesRegularExpression(
+            '/^RuntimeException:  in .+:\d+$/m',
+            $output,
+            'Empty message should render as the empty segment between `: ` and ` in` (visible double space).',
+        );
+        // The full stack trace block must still be present even with an empty message.
+        self::assertStringContainsString('Stack trace:', $output);
+        self::assertNotEmpty($e->getTraceAsString());
+    }
 }

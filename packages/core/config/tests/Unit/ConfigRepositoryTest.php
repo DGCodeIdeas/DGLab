@@ -124,6 +124,35 @@ final class ConfigRepositoryTest extends TestCase
         $repo->get('app..name');
     }
 
+    /**
+     * Leading-dot key (e.g. '.app'): explode('.', '.app') produces the
+     * segments ['', 'app'], the first of which is the empty string. The
+     * segments() guard rejects this with the same "contains an empty
+     * segment" InvalidArgumentException as consecutive dots — both are
+     * malformed-key typos.
+     */
+    public function testLeadingDotKeyThrowsForEmptySegment(): void
+    {
+        $repo = new ConfigRepository(['app' => ['name' => 'DGLab']]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("contains an empty segment");
+
+        $repo->get('.app');
+    }
+
+    /**
+     * all() on empty data: an empty configuration tree must round-trip as
+     * an empty array, not as null or as a single-secret redaction shell.
+     */
+    public function testAllReturnsEmptyArrayWhenConstructedWithEmptyData(): void
+    {
+        $repo = new ConfigRepository([]);
+
+        self::assertSame([], $repo->all());
+        self::assertSame([], $repo->allRaw());
+    }
+
     public function testGetSupportsScalarRootValues(): void
     {
         $repo = new ConfigRepository(['debug' => true, 'count' => 42, 'name' => 'DGLab']);
