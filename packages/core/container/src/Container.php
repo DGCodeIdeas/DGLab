@@ -67,12 +67,18 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * the cycle stack populated, and any other Fiber resolving the same id
      * spuriously throws CircularDependencyException.
      *
-     * We use spl_object_id($fiber) as the key (unique per Fiber instance)
-     * and rely on a WeakMap on the side for GC-based cleanup of stale entries.
+     * WeakMap keyed on the Fiber object — auto-evicts on Fiber GC.
      *
-     * @var array<int, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
      */
-    private array $fiberResolving = [];
+    private \WeakMap $fiberResolving;
+
+    /**
+     * Main-context cycle-detection state (used when no Fiber is current).
+     *
+     * @var array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}
+     */
+    private array $mainResolving = ['resolving' => [], 'chain' => []];
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -82,6 +88,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     public function __construct()
     {
         $this->pulseInstances = new \WeakMap();
+        $this->fiberResolving = new \WeakMap();
     }
 
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
