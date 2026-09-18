@@ -214,4 +214,34 @@ final class KernelStateMachineTest extends TestCase
 
         $kernel->setPipeline($this->createMock(\SovereignStack\Core\Http\MiddlewarePipelineInterface::class));
     }
+
+    // --- P3 Batch 5 ---
+
+    public function testHandleAfterTerminateThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+        $kernel->terminate();
+
+        $this->expectException(KernelException::class);
+        $kernel->handle(TestKernelFactory::createServerRequest('GET', '/'));
+    }
+
+    public function testTerminateBeforeBootThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+
+        $this->expectException(KernelException::class);
+        $kernel->terminate();
+    }
+
+    public function testDoubleTerminateThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+        $kernel->terminate();
+
+        $this->expectException(KernelException::class);
+        $kernel->terminate();
+    }
 }

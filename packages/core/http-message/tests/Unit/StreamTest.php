@@ -428,4 +428,23 @@ final class StreamTest extends TestCase
         $fds = scandir('/proc/self/fd');
         return $fds === false ? 0 : count($fds) - 2; // subtract . and ..
     }
+
+    // --- P3 Batch 5 ---
+
+    public function testWriteEmptyStringReturnsZeroBytes(): void
+    {
+        $stream = new Stream('php://temp', 'r+');
+        $written = $stream->write('');
+        self::assertSame(0, $written, 'Writing empty string returns 0 bytes');
+    }
+
+    public function testReadAtEofReturnsEmptyString(): void
+    {
+        $stream = new Stream('php://temp', 'r+');
+        $stream->write('hello');
+        $stream->rewind();
+        $stream->getContents(); // consume all
+        $result = $stream->read(100);
+        self::assertSame('', $result, 'Reading at EOF returns empty string');
+    }
 }

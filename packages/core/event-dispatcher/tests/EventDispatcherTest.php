@@ -252,4 +252,37 @@ final class EventDispatcherTest extends TestCase
         // Dispatch completes normally — error isolation in action
         $this->assertSame($event, $result);
     }
+
+    // --- P3 Batch 5 ---
+
+    public function testDispatchPreStoppedStoppableEventRunsZeroListeners(): void
+    {
+        $provider = new ListenerProvider();
+        $provider->addListener(TestEvent::class, function () {
+            throw new \RuntimeException('Should not be called');
+        });
+
+        $dispatcher = new EventDispatcher($provider);
+        $event = new TestStoppableEvent();
+        $event->stop(); // pre-stop before dispatch
+
+        $result = $dispatcher->dispatch($event);
+        $this->assertSame($event, $result, 'Pre-stopped event returns itself');
+    }
+
+    public function testDispatchNonEventObjectStillWorks(): void
+    {
+        // PSR-14 dispatches any object, not just Event subclasses
+        $provider = new ListenerProvider();
+        $called = false;
+        $provider->addListener(\stdClass::class, function () use (&$called) {
+            $called = true;
+        });
+
+        $dispatcher = new EventDispatcher($provider);
+        $event = new \stdClass();
+        $dispatcher->dispatch($event);
+
+        $this->assertTrue($called, 'Listener for stdClass should fire');
+    }
 }

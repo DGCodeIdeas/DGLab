@@ -318,4 +318,13 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         });
     }
 
+    // --- P3 Batch 5 ---
+
+    public function testGetThrowsNotFoundExceptionForNonExistentClass(): void
+    {
+        $container = new Container();
+        $this->expectException(\SovereignStack\Core\Container\Exception\NotFoundException::class);
+        $container->get('ThisClassDoesNotExistAnywhere');
+    }
+
 }
