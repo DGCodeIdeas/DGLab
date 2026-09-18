@@ -204,7 +204,7 @@ final class StreamHandlerTest extends TestCase
 
     public function testHandleBatchWithEmptyRecordsArrayEarlyReturns(): void
     {
-        $handler = new StreamHandler($this->tempFile, LogLevel::WARNING);
+        $handler = new StreamHandler($this->tempFile, threshold: LogLevel::WARNING);
         $handler->handleBatch([]);
         // No file should be created for an empty batch
         $this->expectNotToPerformAssertions();

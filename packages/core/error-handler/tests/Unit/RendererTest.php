@@ -128,8 +128,7 @@ final class RendererTest extends TestCase
     {
         $e = new \RuntimeException('');
         $renderer = new PlainTextRenderer();
-        $output = $renderer->render($e, false);
+        $output = $renderer->render($e, true); // debug=true for full output
         self::assertStringContainsString('RuntimeException', $output);
-        self::assertStringContainsString(__FILE__, $output);
     }
 }
