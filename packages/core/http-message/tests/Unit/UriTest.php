@@ -137,4 +137,20 @@ final class UriTest extends TestCase
         $new = $uri->withUserInfo('');
         self::assertSame('', $new->getUserInfo());
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testWithPortNullClearsPort(): void
+    {
+        $uri = new Uri('http://example.com:8080');
+        $new = $uri->withPort(null);
+        self::assertNull($new->getPort());
+    }
+
+    public function testWithPortNegativeThrows(): void
+    {
+        $uri = new Uri('http://example.com');
+        $this->expectException(\InvalidArgumentException::class);
+        $uri->withPort(-1);
+    }
 }
