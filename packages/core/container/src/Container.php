@@ -201,12 +201,20 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
 
         // Per-Fiber cycle detection (ADR-017 Fiber safety fix).
-        $fiberId = $this->getCurrentFiberId();
-        if (!isset($this->fiberResolving[$fiberId])) {
-            $this->fiberResolving[$fiberId] = ['resolving' => [], 'chain' => []];
+        // WeakMap keyed on Fiber object — auto-evicts on GC.
+        $fiber = \Fiber::getCurrent();
+        if ($fiber !== null) {
+            if (!isset($this->fiberResolving[$fiber])) {
+                $this->fiberResolving[$fiber] = ['resolving' => [], 'chain' => []];
+            }
+            // WeakMap offsetGet returns by value — copy, mutate, sync back.
+            $state = $this->fiberResolving[$fiber];
+        } else {
+            // Main context fallback — plain array, &-references are safe.
+            $state = &$this->mainResolving;
         }
-        $resolving = &$this->fiberResolving[$fiberId]['resolving'];
-        $resolvingChain = &$this->fiberResolving[$fiberId]['chain'];
+        $resolving = &$state['resolving'];
+        $resolvingChain = &$state['chain'];
 
         if (isset($resolving[$resolutionKey])) {
             $chain = array_map(
@@ -221,6 +229,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         $resolving[$resolutionKey] = true;
         $resolvingChain[] = [$id, $concrete];
 
+        // Sync state back to WeakMap after push (so recursive make() sees it).
+        if ($fiber !== null) {
+            $this->fiberResolving[$fiber] = $state;
+        }
+
         try {
             // 6. Build by concrete type.
             $object = $this->build($concrete, $parameters);
@@ -228,6 +241,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             // 7. Always pop, even on exception — no state leak (Security Property #3).
             unset($resolving[$resolutionKey]);
             array_pop($resolvingChain);
+
+            // Sync state back to WeakMap after pop (so subsequent make() sees clean state).
+            if ($fiber !== null) {
+                $this->fiberResolving[$fiber] = $state;
+            }
         }
 
         // 8. Cache shared singletons (worker-scoped).
@@ -343,10 +361,19 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
     }
 
-    private function getCurrentFiberId(): int
+    /**
+     * Invalidate pulse-scoped instances for a given id across all in-flight Fibers.
+     * Called from bind()/pulse() to ensure re-binding doesn't return stale instances.
+     */
+    private function invalidatePulseInstances(string $id): void
     {
-        $fiber = \Fiber::getCurrent();
-        return $fiber !== null ? spl_object_id($fiber) : 0;
+        foreach ($this->pulseInstances as $fiber => $entry) {
+            /** @var array<string, mixed> $entry */
+            if (array_key_exists($id, $entry)) {
+                unset($entry[$id]);
+                $this->pulseInstances[$fiber] = $entry;
+            }
+        }
     }
 
     /**
