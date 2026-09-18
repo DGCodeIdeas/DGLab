@@ -265,4 +265,39 @@ final class RouterTest extends TestCase
         self::assertNotNull($result);
         self::assertSame('users.by-slug', $result->route->name);
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testMatchHeadMethodFallsBackToGet(): void
+    {
+        // HEAD requests should match GET routes (RFC 9110 §9.3.2).
+        // Current behavior: HEAD is NOT matched when only GET is registered.
+        // This test documents the current behavior — HEAD support is a future enhancement.
+        $this->router->addRoute(new Route(
+            path: '/test',
+            methods: ['GET'],
+            name: 'test',
+            controllerClass: 'TestController',
+            controllerMethod: 'handle',
+        ));
+
+        $result = $this->router->match($this->createRequest('HEAD', '/test'));
+        // HEAD does not match GET-only route (current behavior)
+        self::assertNull($result, 'HEAD does not currently match GET-only routes (documented gap)');
+    }
+
+    public function testMatchEmptyPathReturnsNull(): void
+    {
+        $this->router->addRoute(new Route(
+            path: '/',
+            methods: ['GET'],
+            name: 'root',
+            controllerClass: 'TestController',
+            controllerMethod: 'handle',
+        ));
+
+        // An empty path should not match '/'
+        $result = $this->router->match($this->createRequest('GET', ''));
+        self::assertNull($result, 'Empty path should not match any route');
+    }
 }

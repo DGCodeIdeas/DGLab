@@ -325,4 +325,18 @@ final class ResponseTest extends TestCase
             ["foo\n\rbar"],
         ];
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testNegativeStatusCodeThrows(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Response(-1);
+    }
+
+    public function testZeroStatusCodeThrows(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Response(0);
+    }
 }

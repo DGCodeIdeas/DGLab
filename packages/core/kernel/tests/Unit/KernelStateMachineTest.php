@@ -183,4 +183,35 @@ final class KernelStateMachineTest extends TestCase
 
         $kernel->handle($request);
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testGetRouterBeforeBootThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+
+        $this->expectException(KernelException::class);
+        $this->expectExceptionMessage('Cannot access kernel services before boot');
+
+        $kernel->getRouter();
+    }
+
+    public function testGetLoggerBeforeBootThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+
+        $this->expectException(KernelException::class);
+
+        $kernel->getLogger();
+    }
+
+    public function testSetPipelineDuringBootedThrows(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+
+        $this->expectException(KernelException::class);
+
+        $kernel->setPipeline($this->createMock(\SovereignStack\Core\Http\MiddlewarePipelineInterface::class));
+    }
 }
