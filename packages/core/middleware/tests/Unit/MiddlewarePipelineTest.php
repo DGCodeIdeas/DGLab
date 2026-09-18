@@ -248,4 +248,30 @@ final class MiddlewarePipelineTest extends TestCase
         $pipeline->handle($request);
         self::assertSame(2, $callCount, 'Middleware should be called exactly once on second request (no cursor carryover).');
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testPipeSameMiddlewareInstanceTwiceExecutesTwice(): void
+    {
+        $finalHandler = new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        $pipeline = new MiddlewarePipeline($finalHandler, new MiddlewareResolver());
+        $callCount = 0;
+        $middleware = function (ServerRequestInterface $req, RequestHandlerInterface $handler) use (&$callCount): ResponseInterface {
+            $callCount++;
+            return $handler->handle($req);
+        };
+
+        $pipeline->pipe($middleware);
+        $pipeline->pipe($middleware); // same instance again
+
+        $request = $this->createMock(ServerRequestInterface::class);
+        $pipeline->handle($request);
+        self::assertSame(2, $callCount, 'Same middleware piped twice should execute twice');
+    }
 }

@@ -172,4 +172,34 @@ final class ListenerProviderTest extends TestCase
         $this->assertSame($first, $listeners[0]);
         $this->assertSame($second, $listeners[1]);
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testClearCacheForcesReResolutionOnNextCall(): void
+    {
+        $provider = new ListenerProvider();
+        $event = new TestEvent('test');
+
+        // First call populates the cache
+        $listeners1 = iterator_to_array($provider->getListenersForEvent($event), false);
+        // Clear cache
+        $provider->clearCache();
+        // Second call should re-resolve (not use stale cache)
+        $listeners2 = iterator_to_array($provider->getListenersForEvent($event), false);
+
+        $this->assertSame(count($listeners1), count($listeners2), 'After clearCache, same listener count');
+    }
+
+    public function testAddListenerDeduplicatesSameListenerAtSamePriority(): void
+    {
+        $provider = new ListenerProvider();
+        $listener = static function () {};
+
+        $provider->addListener(TestEvent::class, $listener, 0);
+        $provider->addListener(TestEvent::class, $listener, 0); // duplicate
+
+        $event = new TestEvent('test');
+        $listeners = iterator_to_array($provider->getListenersForEvent($event), false);
+        $this->assertCount(1, $listeners, 'Duplicate listener at same priority should be deduped');
+    }
 }

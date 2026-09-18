@@ -242,4 +242,19 @@ final class ConfigRepositoryTest extends TestCase
         self::assertSame('***REDACTED***', $all['auth']['TOKEN']);
         self::assertSame('***REDACTED***', $all['auth']['Password']);
     }
+
+    // --- P3 Edge-Case Tests ---
+
+    public function testLeadingDotKeyThrowsForEmptySegment(): void
+    {
+        $repo = new ConfigRepository(['app' => 'test']);
+        $this->expectException(\InvalidArgumentException::class);
+        $repo->get('.app');
+    }
+
+    public function testAllReturnsEmptyArrayWhenConstructedWithEmptyData(): void
+    {
+        $repo = new ConfigRepository([]);
+        self::assertSame([], $repo->all());
+    }
 }
