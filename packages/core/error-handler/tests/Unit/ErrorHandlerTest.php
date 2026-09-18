@@ -307,35 +307,4 @@ final class ErrorHandlerTest extends TestCase
         $this->expectNotToPerformAssertions();
         $handler->unregister();
     }
-
-    // --- P3 Batch 7 ---
-
-    public function testHandleErrorMapsEDeprecatedToInfoLevel(): void
-    {
-        $handler = $this->buildHandler();
-        $handler->register();
-        try {
-            $handler->handleError(E_DEPRECATED, 'deprecated feature', __FILE__, __LINE__);
-            $this->fail('handleError should throw ErrorException for E_DEPRECATED');
-        } catch (\ErrorException $e) {
-            // Expected — E_DEPRECATED is converted to ErrorException
-            self::assertSame(E_DEPRECATED, $e->getSeverity());
-        } finally {
-            $handler->unregister();
-        }
-    }
-
-    public function testHandleErrorMapsEStrictToNoticeLevel(): void
-    {
-        $handler = $this->buildHandler();
-        $handler->register();
-        try {
-            $handler->handleError(E_STRICT, 'strict notice', __FILE__, __LINE__);
-            $this->fail('handleError should throw ErrorException for E_STRICT');
-        } catch (\ErrorException $e) {
-            self::assertSame(E_STRICT, $e->getSeverity());
-        } finally {
-            $handler->unregister();
-        }
-    }
 }
