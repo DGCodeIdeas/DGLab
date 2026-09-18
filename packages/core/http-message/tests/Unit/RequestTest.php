@@ -133,4 +133,26 @@ final class RequestTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $req->withHeader("X-Test\r\n", 'value');
     }
+
+    // --- P3 Batch 6 ---
+
+    public function testWithMethodEmptyString(): void
+    {
+        // Empty method is not validated — documents current behavior (RFC gap)
+        $req = new Request('GET');
+        $new = $req->withMethod('');
+        self::assertSame('', $new->getMethod());
+    }
+
+    public function testWithUriPreservesHostWhenHostHeaderExists(): void
+    {
+        $uri = new \SovereignStack\Core\Http\Uri('http://example.com/path');
+        $req = new Request('GET', $uri);
+        $req = $req->withHeader('Host', 'original.example.com');
+
+        $newUri = new \SovereignStack\Core\Http\Uri('http://other.com/path');
+        $new = $req->withUri($newUri, true); // preserveHost=true
+
+        self::assertSame('original.example.com', $new->getHeaderLine('Host'));
+    }
 }

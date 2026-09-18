@@ -109,4 +109,31 @@ final class LineFormatterTest extends TestCase
 
         self::assertStringContainsString('tags=["a","b","c"]', $formatted);
     }
+
+    // --- P3 Batch 6 ---
+
+    public function testFormatWithEmptyMessageAndEmptyContextProducesMinimalLine(): void
+    {
+        $record = \SovereignStack\Core\Logger\LogRecord::create(
+            level: 'info',
+            message: '',
+            context: [],
+        );
+        $formatter = new LineFormatter();
+        $formatted = $formatter->format($record);
+        self::assertNotEmpty($formatted, 'Empty message should still produce a log line');
+    }
+
+    public function testFormatSanitizesNewlinesInMessage(): void
+    {
+        $record = \SovereignStack\Core\Logger\LogRecord::create(
+            level: 'info',
+            message: "line1\nline2\rline3",
+            context: [],
+        );
+        $formatter = new LineFormatter();
+        $formatted = $formatter->format($record);
+        // Log injection prevention: no raw newlines in the formatted output
+        self::assertStringNotContainsString("\n", trim($formatted), 'Newlines should be sanitized');
+    }
 }

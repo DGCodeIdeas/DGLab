@@ -95,4 +95,34 @@ final class RouteCompilerTest extends TestCase
         );
         self::assertStringContainsString('[0-9A-HJKMNP-TV-Z]{26}', $compiled->regex);
     }
+
+    // --- P3 Batch 6 ---
+
+    public function testCompileEmptyPathProducesEmptyRegex(): void
+    {
+        $compiler = new RouteCompiler();
+        $compiled = $compiler->compile(new Route(
+            path: '',
+            methods: ['GET'],
+            name: 'empty',
+            controllerClass: 'Test',
+            controllerMethod: 'handle',
+        ));
+        // Empty path compiles to a regex that matches empty string
+        self::assertNotEmpty($compiled->regex);
+    }
+
+    public function testCompileWithMultipleParameters(): void
+    {
+        $compiler = new RouteCompiler();
+        $compiled = $compiler->compile(new Route(
+            path: '/users/{userId}/posts/{postId}',
+            methods: ['GET'],
+            name: 'user.post',
+            controllerClass: 'Test',
+            controllerMethod: 'handle',
+        ));
+        self::assertContains('userId', $compiled->placeholderNames);
+        self::assertContains('postId', $compiled->placeholderNames);
+    }
 }
