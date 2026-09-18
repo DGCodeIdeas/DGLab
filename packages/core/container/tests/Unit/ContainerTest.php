@@ -327,4 +327,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->get('ThisClassDoesNotExistAnywhere');
     }
 
+    public function testHasReturnsFalseForNonExistentClass(): void
+    {
+        $container = new Container();
+        self::assertFalse($container->has('ThisClassDoesNotExistAnywhere'));
+    }
+
 }
