@@ -11,8 +11,13 @@ namespace SovereignStack\Core\Container;
  *   - $definitions       : id -> ServiceDefinition (the binding table)
  *   - $instances         : id -> resolved object (shared-instance cache)
  *   - $pulseInstances    : WeakMap<Fiber, array<string, mixed>> (auto-evicts on Fiber GC)
- *   - $resolving         : concrete-key -> true (cycle detection set; presence == on stack)
- *   - $resolvingChain    : ordered list of [id, concrete] tuples for diagnostics
+ *   - $fiberResolving    : WeakMap<Fiber, {resolving, chain}> — per-Fiber cycle
+ *                          detection state (auto-evicts on Fiber GC)
+ *   - $mainResolving     : concrete-key -> true — cycle detection set for the
+ *                          main (non-Fiber) context; presence == on stack
+ *   - $mainResolvingChain: ordered list of [id, concrete] tuples for diagnostics,
+ *                          main context only (per-Fiber chains live inside
+ *                          $fiberResolving)
  *   - $compilerPasses    : list of passes to run during compile()
  *   - $compiled          : freeze flag; mutation methods assert false before running
  *
@@ -60,19 +65,37 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     private \WeakMap $pulseInstances;
 
     /**
-     * Per-Fiber cycle-detection state.
+     * Per-Fiber cycle-detection state, keyed on the Fiber object itself.
      *
      * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
      * per-Fiber — otherwise a constructor that calls Fiber::suspend() leaves
      * the cycle stack populated, and any other Fiber resolving the same id
      * spuriously throws CircularDependencyException.
      *
-     * We use spl_object_id($fiber) as the key (unique per Fiber instance)
-     * and rely on a WeakMap on the side for GC-based cleanup of stale entries.
+     * WeakMap<Fiber, ...> — when a Fiber is garbage-collected, PHP
+     * automatically evicts its cycle-detection state. Mirrors $pulseInstances
+     * (same rationale, same P2 fix — this was previously a plain
+     * `array<int, ...>` keyed on spl_object_id($fiber), which worked but
+     * never evicted stale entries for long-dead Fibers over a worker's
+     * lifetime).
      *
-     * @var array<int, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
      */
-    private array $fiberResolving = [];
+    private \WeakMap $fiberResolving;
+
+    /**
+     * Cycle-detection state for the main (non-Fiber) context.
+     *
+     * WeakMap requires an object key, so the main context — which has no
+     * Fiber to key on — is tracked separately here instead of the old
+     * "fiberId 0" bucket inside the array.
+     *
+     * @var array<string, true>
+     */
+    private array $mainResolving = [];
+
+    /** @var list<array{0: string, 1: mixed}> */
+    private array $mainResolvingChain = [];
 
     /** @var list<CompilerPassInterface> */
     private array $compilerPasses = [];
@@ -82,6 +105,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     public function __construct()
     {
         $this->pulseInstances = new \WeakMap();
+        $this->fiberResolving = new \WeakMap();
     }
 
     public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
@@ -99,6 +123,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // Invalidate cached instance — re-binding must not return stale.
         unset($this->instances[$id]);
+        $this->invalidatePulseInstances($id);
     }
 
     public function singleton(string $id, mixed $concrete = null): void
@@ -122,6 +147,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
         // Invalidate cached instance — re-binding must not return stale.
         unset($this->instances[$id]);
+        $this->invalidatePulseInstances($id);
     }
 
     public function instance(string $id, object $instance): void
@@ -135,6 +161,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             shared: true,
             tags: [],
         );
+        $this->invalidatePulseInstances($id);
     }
 
     public function make(string $id, array $parameters = []): mixed
@@ -200,13 +227,21 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             );
         }
 
-        // Per-Fiber cycle detection (ADR-017 Fiber safety fix).
-        $fiberId = $this->getCurrentFiberId();
-        if (!isset($this->fiberResolving[$fiberId])) {
-            $this->fiberResolving[$fiberId] = ['resolving' => [], 'chain' => []];
+        // Per-Fiber cycle detection (ADR-017 Fiber safety fix), via WeakMap.
+        // Outside any Fiber, fall back to the dedicated main-context state —
+        // WeakMap cannot be keyed on "no Fiber".
+        /** @var \Fiber<mixed, mixed, mixed, mixed>|null $cycleFiber */
+        $cycleFiber = \Fiber::getCurrent();
+        if ($cycleFiber !== null) {
+            if (!isset($this->fiberResolving[$cycleFiber])) {
+                $this->fiberResolving[$cycleFiber] = ['resolving' => [], 'chain' => []];
+            }
+            $resolving = &$this->fiberResolving[$cycleFiber]['resolving'];
+            $resolvingChain = &$this->fiberResolving[$cycleFiber]['chain'];
+        } else {
+            $resolving = &$this->mainResolving;
+            $resolvingChain = &$this->mainResolvingChain;
         }
-        $resolving = &$this->fiberResolving[$fiberId]['resolving'];
-        $resolvingChain = &$this->fiberResolving[$fiberId]['chain'];
 
         if (isset($resolving[$resolutionKey])) {
             $chain = array_map(
@@ -343,10 +378,25 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         }
     }
 
-    private function getCurrentFiberId(): int
+    /**
+     * Purge any pulse-scoped cached instance for $id across every live Fiber.
+     *
+     * bind()/pulse() already invalidate $instances[$id] on rebind; this is
+     * the equivalent for $pulseInstances. WeakMap does not support a direct
+     * nested unset() — `unset($this->pulseInstances[$fiber][$id])` silently
+     * no-ops (PHP raises "Indirect modification of overloaded element of
+     * WeakMap has no effect" and leaves the entry in place) — so each
+     * Fiber's inner array must be read out, modified, and written back.
+     */
+    private function invalidatePulseInstances(string $id): void
     {
-        $fiber = \Fiber::getCurrent();
-        return $fiber !== null ? spl_object_id($fiber) : 0;
+        /** @var \Fiber<mixed, mixed, mixed, mixed> $fiber */
+        foreach ($this->pulseInstances as $fiber => $cached) {
+            if (array_key_exists($id, $cached)) {
+                unset($cached[$id]);
+                $this->pulseInstances[$fiber] = $cached;
+            }
+        }
     }
 
     /**
