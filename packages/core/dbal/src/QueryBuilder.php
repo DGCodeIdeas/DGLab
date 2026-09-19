@@ -108,6 +108,9 @@ final class QueryBuilder implements QueryBuilderInterface
         return $this;
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function execute(): array
     {
         // Auto-inject tenant scoping.

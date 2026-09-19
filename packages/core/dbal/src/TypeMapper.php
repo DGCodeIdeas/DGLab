@@ -35,13 +35,15 @@ final class TypeMapper
             return null;
         }
 
+        $strValue = is_string($value) ? $value : (string) $value;
+
         return match ($sqlType) {
             'timestamp', 'datetime' => \DateTimeImmutable::createFromFormat(
                 'Y-m-d H:i:s.u',
-                $value,
-            ) ?: new \DateTimeImmutable($value),
-            'bool', 'tinyint' => (bool) (int) $value,
-            'json' => json_decode((string) $value, true) ?? [],
+                $strValue,
+            ) ?: new \DateTimeImmutable($strValue),
+            'bool', 'tinyint' => (bool) (int) $strValue,
+            'json' => json_decode($strValue, true) ?? [],
             default => $value,
         };
     }
