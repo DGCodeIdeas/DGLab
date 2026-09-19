@@ -229,6 +229,6 @@ final class QueryBuilder implements QueryBuilderInterface
 
     private static function hashSql(string $sql): string
     {
-        return hash('xxh3', $sql) ?: 'unknown';
+        return hash('xxh3', $sql);
     }
 }

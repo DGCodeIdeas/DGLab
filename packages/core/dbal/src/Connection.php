@@ -32,7 +32,7 @@ final class Connection implements ConnectionInterface
         string $dsn,
         ?string $username = null,
         ?string $password = null,
-        ?array $options = null,
+        ?array<string, mixed> $options = null,
         ?LoggerInterface $logger = null,
     ) {
         $this->logger = $logger ?? new NullLogger();
@@ -51,7 +51,7 @@ final class Connection implements ConnectionInterface
 
     public function prepare(string $sql): \PDOStatement
     {
-        $key = hash('xxh3', $sql) ?: md5($sql);
+        $key = self::hashSql($sql);
 
         if (isset($this->statementCache[$key])) {
             return $this->statementCache[$key];
@@ -74,13 +74,13 @@ final class Connection implements ConnectionInterface
             $elapsed = (int) ((microtime(true) - $start) * 1_000_000);
 
             $this->logger->debug('DBAL query executed', [
-                'sql_hash' => hash('xxh3', $sql) ?: 'unknown',
+                'sql_hash' => self::hashSql($sql),
                 'elapsed_us' => $elapsed,
             ]);
 
             return $stmt;
         } catch (\PDOException $e) {
-            throw DatabaseException::fromPdoError($e, hash('xxh3', $sql) ?: null);
+            throw DatabaseException::fromPdoError($e, self::hashSql($sql));
         }
     }
 
@@ -92,14 +92,14 @@ final class Connection implements ConnectionInterface
             $elapsed = (int) ((microtime(true) - $start) * 1_000_000);
 
             $this->logger->debug('DBAL exec', [
-                'sql_hash' => hash('xxh3', $sql) ?: 'unknown',
+                'sql_hash' => self::hashSql($sql),
                 'affected' => $count,
                 'elapsed_us' => $elapsed,
             ]);
 
             return $count;
         } catch (\PDOException $e) {
-            throw DatabaseException::fromPdoError($e, hash('xxh3', $sql) ?: null);
+            throw DatabaseException::fromPdoError($e, self::hashSql($sql));
         }
     }
 
@@ -183,7 +183,14 @@ final class Connection implements ConnectionInterface
 
     public function quote(mixed $value, int $type = \PDO::PARAM_STR): string
     {
-        return $this->pdo->quote((string) $value, $type);
+        $result = $this->pdo->quote(match(true) {
+            is_string($value) => $value,
+            is_int($value) => (string) $value,
+            is_bool($value) => $value ? '1' : '0',
+            $value === null => '',
+            default => (string) $value,
+        }, $type);
+        return $result !== false ? $result : "''";
     }
 
     public function getTransactionNestingLevel(): int
@@ -204,5 +211,10 @@ final class Connection implements ConnectionInterface
     public function isAborted(): bool
     {
         return $this->aborted;
+    }
+
+    private static function hashSql(string $sql): string
+    {
+        return hash('xxh3', $sql);
     }
 }
