@@ -32,7 +32,7 @@ final class Connection implements ConnectionInterface
         string $dsn,
         ?string $username = null,
         ?string $password = null,
-        ?array<string, mixed> $options = null,
+        ?array $options = null,
         ?LoggerInterface $logger = null,
     ) {
         $this->logger = $logger ?? new NullLogger();
