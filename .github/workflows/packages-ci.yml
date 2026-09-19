@@ -41,6 +41,8 @@ jobs:
             working-dir: packages/core/error-handler
           - package: core/kernel
             working-dir: packages/core/kernel
+          - package: core/dbal
+            working-dir: packages/core/dbal
           - package: hub/config
             working-dir: packages/hub/config
           - package: bridge/vanguard

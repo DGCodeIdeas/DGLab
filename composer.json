@@ -1,6 +1,6 @@
 {
     "name": "sovereign-stack/dglab",
-    "description": "Sovereign Stack — DGLab monorepo",
+    "description": "Sovereign Stack \u2014 DGLab monorepo",
     "type": "project",
     "license": "proprietary",
     "require": {
@@ -26,7 +26,8 @@
         "sovereign-stack/hub-config": "^0.1",
         "sovereign-stack/bridge-vanguard": "^0.1",
         "sovereign-stack/spoke-codex": "^0.1",
-        "sovereign-stack/spoke-canvas": "^0.1"
+        "sovereign-stack/spoke-canvas": "^0.1",
+        "sovereign-stack/core-dbal": "^0.1"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.4",
@@ -45,6 +46,7 @@
             "SovereignStack\\Core\\Logger\\": "packages/core/logger/src/",
             "SovereignStack\\Core\\ErrorHandler\\": "packages/core/error-handler/src/",
             "SovereignStack\\Core\\Kernel\\": "packages/core/kernel/src/",
+            "SovereignStack\\Core\\Database\\": "packages/core/dbal/src/",
             "SovereignStack\\Hub\\Config\\": "packages/hub/config/src/",
             "SovereignStack\\Bridge\\": "packages/bridge/vanguard/src/",
             "SovereignStack\\Internal\\Codex\\": "packages/spoke/internal/codex/src/",
