@@ -39,7 +39,7 @@ final class TypeMapperTest extends TestCase
         $mapper = new TypeMapper();
         $dt = new \DateTimeImmutable('2026-09-18T12:34:56.789000');
         $sql = $mapper->toSql($dt);
-        self::assertStringContainsString('2026-09-18 12:34:56', $sql);
+        self::assertStringContainsString('2026-09-18 12:34:56', is_string($sql) ? $sql : '');
     }
 
     public function testArrayToSql(): void
