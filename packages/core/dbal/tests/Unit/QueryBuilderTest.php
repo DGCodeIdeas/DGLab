@@ -84,8 +84,8 @@ final class QueryBuilderTest extends TestCase
     {
         $qb = new QueryBuilder($this->conn);
         $result = $qb->select('id')->from('users')->where('email', 'alice@example.com')->toSql();
-        self::assertStringContainsString(':param_1', is_string($result['sql']) ? $result['sql'] : '');
-        self::assertStringNotContainsString('alice@example.com', is_string($result['sql']) ? $result['sql'] : '');
+        self::assertStringContainsString(':param_1', $result['sql']);
+        self::assertStringNotContainsString('alice@example.com', $result['sql']);
         self::assertSame('alice@example.com', $result['params'][':param_1']);
     }
 
@@ -141,7 +141,7 @@ final class QueryBuilderTest extends TestCase
         $qb = new QueryBuilder($this->conn, new TypeMapper(), $tenant);
         $result = $qb->select('id')->from('users')->where('tenant_id', 'T2')->toSql();
         // Should NOT auto-inject tenant_id since an explicit one exists
-        self::assertStringNotContainsString(':tenant_id', is_string($result['sql']) ? $result['sql'] : '');
+        self::assertStringNotContainsString(':tenant_id', $result['sql']);
     }
 
     // --- SQL injection tests ---
@@ -151,8 +151,8 @@ final class QueryBuilderTest extends TestCase
         $qb = new QueryBuilder($this->conn);
         $result = $qb->select('id')->from('users')->where('email', "'; DROP TABLE users; --")->toSql();
         // The payload should be in params, NOT in the SQL string
-        self::assertStringNotContainsString('DROP TABLE', is_string($result['sql']) ? $result['sql'] : '');
-        self::assertStringNotContainsString('--', is_string($result['sql']) ? $result['sql'] : '');
+        self::assertStringNotContainsString('DROP TABLE', $result['sql']);
+        self::assertStringNotContainsString('--', $result['sql']);
     }
 
     public function testSqlInjectionPayloadDoesNotDropTable(): void

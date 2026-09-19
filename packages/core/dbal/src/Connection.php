@@ -201,7 +201,7 @@ final class Connection implements ConnectionInterface
             is_int($value) => (string) $value,
             is_bool($value) => $value ? '1' : '0',
             $value === null => '',
-            default => (string) $value,
+            default => "",
         };
         $result = $this->pdo->quote($strValue, $type);
         if ($result === false) {
