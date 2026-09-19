@@ -35,7 +35,12 @@ final class TypeMapper
             return null;
         }
 
-        $strValue = is_string($value) ? $value : (string) $value;
+        $strValue = match (true) {
+            is_string($value) => $value,
+            is_int($value), is_float($value) => (string) $value,
+            is_bool($value) => $value ? '1' : '0',
+            default => '',
+        };
 
         return match ($sqlType) {
             'timestamp', 'datetime' => \DateTimeImmutable::createFromFormat(
