@@ -138,7 +138,9 @@ final class QueryBuilder implements QueryBuilderInterface
                 $stmt->bindValue($name, $value, $this->pdoType($value));
             }
             $stmt->execute();
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            /** @var array<int, array<string, mixed>> $rows */
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            return $rows;
         } catch (\PDOException $e) {
             throw DatabaseException::fromPdoError($e, self::hashSql($sql));
         } finally {

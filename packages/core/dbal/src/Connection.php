@@ -74,7 +74,9 @@ final class Connection implements ConnectionInterface
         try {
             $start = microtime(true);
             $stmt = $this->pdo->query($sql);
-            // @phpstan-ignore-next-line — ERRMODE_EXCEPTION means query() never returns false
+            if ($stmt === false) {
+                throw new DatabaseException('PDO::query() returned false');
+            }
             $elapsed = (int) ((microtime(true) - $start) * 1_000_000);
 
             $this->logger->debug('DBAL query executed', [
@@ -82,7 +84,6 @@ final class Connection implements ConnectionInterface
                 'elapsed_us' => $elapsed,
             ]);
 
-            // @phpstan-ignore-next-line
             return $stmt;
         } catch (\PDOException $e) {
             throw DatabaseException::fromPdoError($e, self::hashSql($sql));
@@ -94,7 +95,9 @@ final class Connection implements ConnectionInterface
         try {
             $start = microtime(true);
             $count = $this->pdo->exec($sql);
-            // @phpstan-ignore-next-line — ERRMODE_EXCEPTION means exec() never returns false
+            if ($count === false) {
+                throw new DatabaseException('PDO::exec() returned false');
+            }
             $elapsed = (int) ((microtime(true) - $start) * 1_000_000);
 
             $this->logger->debug('DBAL exec', [
@@ -103,7 +106,6 @@ final class Connection implements ConnectionInterface
                 'elapsed_us' => $elapsed,
             ]);
 
-            // @phpstan-ignore-next-line
             return $count;
         } catch (\PDOException $e) {
             throw DatabaseException::fromPdoError($e, self::hashSql($sql));
@@ -183,7 +185,9 @@ final class Connection implements ConnectionInterface
     {
         try {
             $id = $this->pdo->lastInsertId($name);
-            // @phpstan-ignore-next-line — ERRMODE_EXCEPTION means lastInsertId() never returns false
+            if ($id === false) {
+                throw new DatabaseException('PDO::lastInsertId() returned false');
+            }
             return $id;
         } catch (\PDOException $e) {
             throw DatabaseException::fromPdoError($e);
@@ -200,8 +204,10 @@ final class Connection implements ConnectionInterface
             default => (string) $value,
         };
         $result = $this->pdo->quote($strValue, $type);
-        // @phpstan-ignore-next-line — ERRMODE_EXCEPTION
-        return $result !== false ? $result : "''";
+        if ($result === false) {
+            return "''";
+        }
+        return $result;
     }
 
     public function getTransactionNestingLevel(): int
