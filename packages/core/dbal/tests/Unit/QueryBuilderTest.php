@@ -169,8 +169,9 @@ final class QueryBuilderTest extends TestCase
         $rows = $qb->select('id')->from('users')->where('email', "' OR '1'='1")->execute();
         // Should return 0 rows (the payload doesn't match any email)
         self::assertCount(0, $rows);
-        // Table should still exist
-        $check = $qb->select('id')->from('users')->execute();
-        self::assertCount(3, $check);
+        // Table should still exist — use a FRESH QueryBuilder
+        $check = new QueryBuilder($this->conn);
+        $result = $check->select('id')->from('users')->execute();
+        self::assertCount(3, $result);
     }
 }

@@ -177,7 +177,12 @@ final class Connection implements ConnectionInterface
         }
 
         $this->transactionNesting--;
-        $this->aborted = true;
+        // Only mark as aborted when the outermost transaction is rolled back.
+        // Savepoint rollbacks (transactionNesting > 0) do NOT abort the
+        // outer transaction — they just undo the work within the savepoint.
+        if ($this->transactionNesting === 0) {
+            $this->aborted = true;
+        }
         return true;
     }
 
