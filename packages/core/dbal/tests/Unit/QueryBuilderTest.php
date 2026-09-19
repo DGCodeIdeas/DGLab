@@ -83,6 +83,7 @@ final class QueryBuilderTest extends TestCase
     public function testToSqlReturnsParameterizedQuery(): void
     {
         $qb = new QueryBuilder($this->conn);
+        /** @var array{sql: string, params: array<string, mixed>} $result */
         $result = $qb->select('id')->from('users')->where('email', 'alice@example.com')->toSql();
         self::assertStringContainsString(':param_1', $result['sql']);
         self::assertStringNotContainsString('alice@example.com', $result['sql']);
@@ -139,6 +140,7 @@ final class QueryBuilderTest extends TestCase
     {
         $tenant = new TenantContext('T1');
         $qb = new QueryBuilder($this->conn, new TypeMapper(), $tenant);
+        /** @var array{sql: string, params: array<string, mixed>} $result */
         $result = $qb->select('id')->from('users')->where('tenant_id', 'T2')->toSql();
         // Should NOT auto-inject tenant_id since an explicit one exists
         self::assertStringNotContainsString(':tenant_id', $result['sql']);
@@ -149,6 +151,7 @@ final class QueryBuilderTest extends TestCase
     public function testSqlInjectionPayloadIsBoundAsParameter(): void
     {
         $qb = new QueryBuilder($this->conn);
+        /** @var array{sql: string, params: array<string, mixed>} $result */
         $result = $qb->select('id')->from('users')->where('email', "'; DROP TABLE users; --")->toSql();
         // The payload should be in params, NOT in the SQL string
         self::assertStringNotContainsString('DROP TABLE', $result['sql']);
