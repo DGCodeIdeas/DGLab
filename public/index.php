@@ -27,6 +27,22 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+/**
+ * Structured logging helper — uses frankenphp_log() when available
+ * (FrankenPHP worker mode), falls back to error_log() in PHP-FPM mode.
+ *
+ * @param string $message The log message.
+ * @param array<string, mixed> $context Structured context data.
+ */
+$log = static function (string $message, array $context = []): void {
+    if (function_exists('frankenphp_log')) {
+        frankenphp_log($message, FRANKENPHP_LOG_LEVEL_ERROR, $context);
+    } else {
+        $contextStr = $context !== [] ? ' ' . json_encode($context, JSON_THROW_ON_ERROR) : '';
+        error_log('[DGLab] ' . $message . $contextStr);
+    }
+};
+
 use SovereignStack\Core\Container\Container;
 use SovereignStack\Core\Config\ConfigRepository;
 use SovereignStack\Core\ErrorHandler\ErrorHandler;
@@ -166,19 +182,14 @@ $kernel->boot();
  */
 $isDevMode = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
 
-$handler = static function () use ($kernel, $responseFactory, $isDevMode): void {
+$handler = static function () use ($kernel, $responseFactory, $isDevMode, $log): void {
     try {
         $request = ServerRequestFactory::fromGlobals();
         $response = $kernel->handle($request);
     } catch (\Throwable $e) {
-        // Log the exception — FrankenPHP captures error_log() as JSON.
-        error_log(sprintf(
-            '[DGLab] Uncaught %s: %s at %s:%d',
-            $e::class,
-            $e->getMessage(),
-            $e->getFile(),
-            $e->getLine(),
-        ));
+        $log(sprintf('Uncaught %s: %s at %s:%d',
+            $e::class, $e->getMessage(), $e->getFile(), $e->getLine()),
+            ['exception' => $e::class, 'file' => $e->getFile(), 'line' => $e->getLine()]);
 
         // Build a PSR-7 500 response. In dev mode, include the error
         // details so curl/journalctl show the actual problem.
@@ -252,13 +263,9 @@ if (function_exists('frankenphp_handle_request')) {
     try {
         $response = $kernel->handle($request);
     } catch (\Throwable $e) {
-        error_log(sprintf(
-            '[DGLab] Uncaught %s: %s at %s:%d',
-            $e::class,
-            $e->getMessage(),
-            $e->getFile(),
-            $e->getLine(),
-        ));
+        $log(sprintf('Uncaught %s: %s at %s:%d',
+            $e::class, $e->getMessage(), $e->getFile(), $e->getLine()),
+            ['exception' => $e::class, 'file' => $e->getFile(), 'line' => $e->getLine()]);
         $response = $responseFactory->createResponse(500);
         $response->getBody()->write($isDevMode ? $e->getMessage() : 'Internal Server Error');
     }
