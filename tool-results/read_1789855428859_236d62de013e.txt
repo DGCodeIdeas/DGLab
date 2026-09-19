@@ -1,0 +1,624 @@
+     1→# CORE-14: Filesystem Abstraction
+     2→
+     3→## Tier
+     4→Core
+     5→
+     6→## Resolves
+     7→- **Finding 2** — The stale evaluation layer maps CORE-14 to "Caching Layer". That is wrong: the canonical mapping in `01_MASTER_INDEX.md` §2 fixes CORE-14 as **Filesystem Abstraction** at `SovereignStack\Core\Filesystem`. (Caching is CORE-15.)
+     8→- **Finding 4** — The approved `CORE-14.md` is a 1,228-byte prose-only stub with no interface, no implementation, no diagrams, and bare CI criteria. This blueprint replaces it with a full implementation spec.
+     9→- **Finding 10** — The approved file's only "performance" claim is the bare phrase "stress test of 1,000 concurrent writes without data loss". Per Governance Rule 2, every target below names the harness, baseline, and load model, and every absolute number is marked *provisional, unverified* until first CI run records a baseline.
+    10→
+    11→## Component Name
+    12→Filesystem Abstraction — `SovereignStack\Core\Filesystem`
+    13→
+    14→## Description
+    15→CORE-14 is the storage I/O contract for the Sovereign Stack. It exposes a single interface — `FilesystemInterface` — that callers use to read, write, move, copy, delete, and enumerate files without knowing whether the bytes land on a local disk, an in-memory buffer, or an S3 bucket. The abstraction is intentionally minimal: nine methods, no streaming, no ACLs, no symbolic-link support. Where a caller needs more (chunked uploads, multipart copy, presigned URLs), the Hub tier (HUB-03 Asset Engine, HUB-11 Cloud Storage) composes those flows on top of this primitive.
+    16→
+    17→The component exists for three reasons. First, it removes filesystem coupling from core services — the SuperPHP compiler (CORE-12) writes compiled templates, the PSR-3 logger (CORE-09) rotates log files, and the audit subsystem (HUB-06) archives immutable event batches; all three must target a stable, mockable seam rather than calling `file_put_contents` directly. Second, it provides a security boundary: every path is resolved against a per-adapter base directory, and traversal attempts (`../../etc/passwd`) throw `FilesystemException` rather than escaping. Third, it makes S3 swappable for local disk in deployments that want cloud durability without changing any caller code.
+    18→
+    19→What CORE-14 is **not**: it is not a caching layer (that is CORE-15), not a database abstraction (CORE-19), not a stream wrapper, not a Flysystem re-implementation. The team evaluated pulling in `league/flysystem` and rejected it (see ADR-004, "Build vs. Buy for Filesystem"); Flysystem's adapter registry, async helpers, and visibility model are over-scope for a project whose only cloud target is S3 and whose local target is a single jailed directory per service. The interface below is the smallest surface that satisfies HUB-03, HUB-06, HUB-11, CORE-09, and CORE-12.
+    20→
+    21→Per `01_MASTER_INDEX.md` §2, the canonical namespace is `SovereignStack\Core\Filesystem`, the implementation slot is empty, and the build status is 📝 Not started. Step 5 of the §5 build sequence places CORE-14 in the parallelisable batch with CORE-15, CORE-16, and CORE-19 once CORE-02 has landed.
+    22→
+    23→## Build Status
+    24→📝 Not started.
+    25→
+    26→No blocking dependencies for the `LocalAdapter` and `InMemoryAdapter` (both compile against `php ^8.3` with no Composer packages). The `S3Adapter` requires `aws/aws-sdk-php` ^3.3 and is registered only when that package is present; absence is a soft dep, not a blocker. The `FilesystemManager` factory resolves adapters by name from CORE-10 config; if CORE-10 is not yet landed, callers may construct adapters directly.
+    27→
+    28→## Dependency Status
+    29→- **Upward:** CORE-10 (Configuration & Environment Loader — reads the `filesystems.disks` config array), CORE-02 (DI Container — binds `FilesystemInterface` to the default disk), CORE-09 (Logging — emits structured `FilesystemException` diagnostics), CORE-03 (Event Dispatcher — optional `FileWritten` / `FileDeleted` events consumed by HUB-06 audit).
+    30→- **Downward:** HUB-03 (Asset Engine — stores uploads), HUB-06 (Audit — archives rotated audit batches), HUB-11 (Cloud Storage — S3-backed large-object flows), CORE-09 (Logger — file handler), CORE-12 (SuperPHP Compiler — compiled-template cache), CORE-15 (Cache — `FileStore` driver).
+    31→- **Runtime:** `php ^8.3`, `ext-mbstring` (path normalisation). `aws/aws-sdk-php` ^3.3 is required only by `S3Adapter` and is an optional Composer suggestion (`composer suggest`), not a hard require of the package.
+    32→
+    33→## Architectural Design
+    34→
+    35→### Class Map
+    36→
+    37→| Class | Kind | Responsibility |
+    38→|---|---|---|
+    39→| `FilesystemManager` | Factory + registry | Resolves a disk name (e.g. `local`, `s3`) to a configured `FilesystemInterface` instance. Caches instances by name. Throws on unknown disk or missing optional dependency. |
+    40→| `FilesystemInterface` | Interface | The nine-method contract: `read`, `write`, `exists`, `delete`, `list`, `move`, `copy`, `size`, `mimeType`. All methods accept paths relative to the adapter's base. |
+    41→| `LocalAdapter` | Adapter (local disk) | Implements `FilesystemInterface` against a single jailed base directory. Resolves every path with `realpath()`, refuses symlinks, creates parent directories on write, sets explicit file/directory permissions. Zero Composer dependencies. |
+    42→| `S3Adapter` | Adapter (AWS S3) | Implements `FilesystemInterface` against a single S3 bucket + optional prefix. Uses `Aws\S3\S3Client`. Translates `FilesystemException` from S3 SDK error codes. Optional dependency on `aws/aws-sdk-php`. |
+    43→| `InMemoryAdapter` | Adapter (testing) | Implements `FilesystemInterface` against a `string[]` map keyed by path. Used by unit tests for callers that depend on `FilesystemInterface`. Ships in the main package so downstream packages need no test-only dependency. |
+    44→| `File` | Value object | Readonly DTO returned by `list()`: `path`, `size`, `mimeType`, `lastModified` (Unix timestamp). Constructed by adapters; immutable. |
+    45→| `FilesystemException` | Exception | Extends `\RuntimeException`. Carries `path` and `operation` context for structured logging. Thrown by all adapters on I/O failure, path traversal, or missing files. |
+    46→
+    47→### Interface Contracts
+    48→
+    49→```php
+    50→<?php
+    51→declare(strict_types=1);
+    52→
+    53→namespace SovereignStack\Core\Filesystem;
+    54→
+    55→/**
+    56→ * Immutable value object describing a single file entry returned by list().
+    57→ */
+    58→final class File
+    59→{
+    60→    public function __construct(
+    61→        public readonly string $path,
+    62→        public readonly int $size,
+    63→        public readonly string $mimeType,
+    64→        public readonly int $lastModified,
+    65→    ) {}
+    66→}
+    67→
+    68→/**
+    69→ * Thrown by every adapter on I/O failure, path-traversal attempt, or missing file.
+    70→ * Carries structured context so CORE-09 can emit a useful log entry without
+    71→ * re-parsing the message.
+    72→ */
+    73→final class FilesystemException extends \RuntimeException
+    74→{
+    75→    public function __construct(
+    76→        public readonly string $operation,
+    77→        public readonly string $path,
+    78→        string $message,
+    79→        ?\Throwable $previous = null,
+    80→    ) {
+    81→        parent::__construct($message, 0, $previous);
+    82→    }
+    83→}
+    84→
+    85→/**
+    86→ * Contract for all filesystem adapters in the Sovereign Stack.
+    87→ *
+    88→ * Implementations MUST:
+    89→ *  - Resolve every $path argument against a per-adapter base.
+    90→ *  - Refuse paths that escape the base via traversal or symlink.
+    91→ *  - Throw FilesystemException on any I/O error or precondition failure.
+    92→ *  - Be safe for concurrent use by long-lived workers (no per-call state leaks).
+    93→ *
+    94→ * Implementations MAY:
+    95→ *  - Buffer contents in memory (InMemoryAdapter).
+    96→ *  - Translate vendor SDK errors into FilesystemException (S3Adapter).
+    97→ */
+    98→interface FilesystemInterface
+    99→{
+   100→    /**
+   101→     * Read the entire contents of a file.
+   102→     *
+   103→     * @param string $path Path relative to the adapter base.
+   104→     * @return string Raw file bytes (binary-safe).
+   105→     * @throws FilesystemException When the path is invalid, escapes the base,
+   106→     *                             or the file does not exist.
+   107→     */
+   108→    public function read(string $path): string;
+   109→
+   110→    /**
+   111→     * Atomically write $contents to $path, overwriting if present.
+   112→     *
+   113→     * Parent directories are created as needed. The write MUST be atomic: a
+   114→     * crash mid-write MUST NOT leave a partially-written file visible to a
+   115→     * subsequent read() of the same path. LocalAdapter uses tempnam()+rename();
+   116→     * S3Adapter relies on PutObject atomicity; InMemoryAdapter is trivially
+   117→     * atomic.
+   118→     *
+   119→     * @param string $path     Path relative to the adapter base.
+   120→     * @param string $contents Raw bytes to write.
+   121→     * @throws FilesystemException On traversal, permission failure, or I/O error.
+   122→     */
+   123→    public function write(string $path, string $contents): void;
+   124→
+   125→    /**
+   126→     * @return bool True iff a regular file exists at $path (directories return false).
+   127→     */
+   128→    public function exists(string $path): bool;
+   129→
+   130→    /**
+   131→     * Delete the file at $path. Idempotent: a missing file does NOT throw.
+   132→     *
+   133→     * @throws FilesystemException Only on traversal or permission failure.
+   134→     */
+   135→    public function delete(string $path): void;
+   136→
+   137→    /**
+   138→     * Enumerate regular files in $directory (non-recursive by default).
+   139→     *
+   140→     * @param string $directory Path relative to the adapter base; '' means base.
+   141→     * @return iterable<File> Yields one File per entry. Order is unspecified.
+   142→     * @throws FilesystemException On traversal or if $directory is a file.
+   143→     */
+   144→    public function list(string $directory = ''): iterable;
+   145→
+   146→    /**
+   147→     * Move a file from $from to $to. Parent dirs of $to are created.
+   148→     *
+   149→     * @throws FilesystemException If $from does not exist, or on I/O failure.
+   150→     */
+   151→    public function move(string $from, string $to): void;
+   152→
+   153→    /**
+   154→     * Copy a file from $from to $to. Parent dirs of $to are created.
+   155→     *
+   156→     * @throws FilesystemException If $from does not exist, or on I/O failure.
+   157→     */
+   158→    public function copy(string $from, string $to): void;
+   159→
+   160→    /**
+   161→     * @return int File size in bytes.
+   162→     * @throws FilesystemException If $path is missing or is a directory.
+   163→     */
+   164→    public function size(string $path): int;
+   165→
+   166→    /**
+   167→     * @return string IANA media type (e.g. "text/plain", "image/png").
+   168→     *                Adapters MAY use finfo or extension-based sniffing.
+   169→     * @throws FilesystemException If $path is missing.
+   170→     */
+   171→    public function mimeType(string $path): string;
+   172→}
+   173→```
+   174→
+   175→### Reference Implementation
+   176→
+   177→The `LocalAdapter` below is the contract-bearing adapter: it is the one used by the compiler, logger, and cache file-store. It is intentionally dependency-free and compiles against `php ^8.3` + `ext-mbstring`.
+   178→
+   179→```php
+   180→<?php
+   181→declare(strict_types=1);
+   182→
+   183→namespace SovereignStack\Core\Filesystem;
+   184→
+   185→/**
+   186→ * Local-disk implementation of FilesystemInterface.
+   187→ *
+   188→ * All paths are resolved against a single base directory supplied at
+   189→ * construction. Path traversal (../), absolute paths, and symlinks pointing
+   190→ * outside the base are refused with FilesystemException. Writes are atomic
+   191→ * (tempnam + rename) and create parent directories on demand.
+   192→ */
+   193→final class LocalAdapter implements FilesystemInterface
+   194→{
+   195→    private const FILE_MODE  = 0644;
+   196→    private const DIR_MODE   = 0755;
+   197→
+   198→    private readonly string $base;
+   199→
+   200→    public function __construct(string $base)
+   201→    {
+   202→        // Normalise and ensure the base exists. The base itself is the only
+   203→        // directory this constructor is allowed to create.
+   204→        $real = \realpath($base);
+   205→        if ($real === false) {
+   206→            if (!\mkdir($base, self::DIR_MODE, true) && !\is_dir($base)) {
+   207→                throw new FilesystemException('construct', $base, "Failed to create base directory: {$base}");
+   208→            }
+   209→            $real = \realpath($base);
+   210→            if ($real === false) {
+   211→                throw new FilesystemException('construct', $base, "Base directory vanished after create: {$base}");
+   212→            }
+   213→        }
+   214→        if (!\is_dir($real)) {
+   215→            throw new FilesystemException('construct', $base, "Base path is not a directory: {$real}");
+   216→        }
+   217→        $this->base = $real;
+   218→    }
+   219→
+   220→    public function read(string $path): string
+   221→    {
+   222→        $full = $this->resolve($path);
+   223→        if (!\is_file($full)) {
+   224→            throw new FilesystemException('read', $path, "File not found: {$path}");
+   225→        }
+   226→        $contents = @\file_get_contents($full);
+   227→        if ($contents === false) {
+   228→            throw new FilesystemException('read', $path, "Failed to read: {$path}");
+   229→        }
+   230→        return $contents;
+   231→    }
+   232→
+   233→    public function write(string $path, string $contents): void
+   234→    {
+   235→        $full = $this->resolve($path, allowMissing: true);
+   236→        $parent = \dirname($full);
+   237→        if (!\is_dir($parent)) {
+   238→            if (!\mkdir($parent, self::DIR_MODE, true) && !\is_dir($parent)) {
+   239→                throw new FilesystemException('write', $path, "Failed to create parent directory for: {$path}");
+   240→            }
+   241→        }
+   242→        // Atomic write: stage in a temp file in the same directory (so rename
+   243→        // is a same-filesystem move), then rename over the target.
+   244→        $temp = @\tempnam($parent, '.fs-write-');
+   245→        if ($temp === false) {
+   246→            throw new FilesystemException('write', $path, "Failed to allocate temp file for: {$path}");
+   247→        }
+   248→        try {
+   249→            if (@\file_put_contents($temp, $contents) === false) {
+   250→                throw new FilesystemException('write', $path, "Failed to write temp file for: {$path}");
+   251→            }
+   252→            if (@\chmod($temp, self::FILE_MODE) === false) {
+   253→                throw new FilesystemException('write', $path, "Failed to chmod temp file for: {$path}");
+   254→            }
+   255→            if (!@\rename($temp, $full)) {
+   256→                throw new FilesystemException('write', $path, "Failed to promote temp file for: {$path}");
+   257→            }
+   258→        } finally {
+   259→            // If anything failed before the rename, the temp file lingers.
+   260→            if (\is_file($temp)) {
+   261→                @\unlink($temp);
+   262→            }
+   263→        }
+   264→    }
+   265→
+   266→    public function exists(string $path): bool
+   267→    {
+   268→        try {
+   269→            $full = $this->resolve($path);
+   270→        } catch (FilesystemException) {
+   271→            return false;
+   272→        }
+   273→        return \is_file($full);
+   274→    }
+   275→
+   276→    public function delete(string $path): void
+   277→    {
+   278→        try {
+   279→            $full = $this->resolve($path);
+   280→        } catch (FilesystemException $e) {
+   281→            // Missing file is idempotent; traversal is not.
+   282→            throw $e;
+   283→        }
+   284→        if (!\is_file($full)) {
+   285→            return;
+   286→        }
+   287→        if (!@\unlink($full)) {
+   288→            throw new FilesystemException('delete', $path, "Failed to delete: {$path}");
+   289→        }
+   290→    }
+   291→
+   292→    public function list(string $directory = ''): iterable
+   293→    {
+   294→        $full = $this->resolve($directory);
+   295→        if (!\is_dir($full)) {
+   296→            throw new FilesystemException('list', $directory, "Not a directory: {$directory}");
+   297→        }
+   298→        $entries = @\scandir($full);
+   299→        if ($entries === false) {
+   300→            throw new FilesystemException('list', $directory, "Failed to scan: {$directory}");
+   301→        }
+   302→        foreach ($entries as $entry) {
+   303→            if ($entry === '.' || $entry === '..') {
+   304→                continue;
+   305→            }
+   306→            $childPath = ($directory === '' ? '' : \rtrim($directory, '/') . '/') . $entry;
+   307→            $childFull = $full . \DIRECTORY_SEPARATOR . $entry;
+   308→            if (!\is_file($childFull)) {
+   309→                continue; // skip subdirectories; list() is non-recursive
+   310→            }
+   311→            yield new File(
+   312→                path: $childPath,
+   313→                size: (int) \filesize($childFull),
+   314→                mimeType: $this->detectMime($childFull),
+   315→                lastModified: (int) \filemtime($childFull),
+   316→            );
+   317→        }
+   318→    }
+   319→
+   320→    public function move(string $from, string $to): void
+   321→    {
+   322→        $fromFull = $this->resolve($from);
+   323→        if (!\is_file($fromFull)) {
+   324→            throw new FilesystemException('move', $from, "Source not found: {$from}");
+   325→        }
+   326→        $toFull = $this->resolve($to, allowMissing: true);
+   327→        $parent = \dirname($toFull);
+   328→        if (!\is_dir($parent)) {
+   329→            if (!\mkdir($parent, self::DIR_MODE, true) && !\is_dir($parent)) {
+   330→                throw new FilesystemException('move', $to, "Failed to create parent for: {$to}");
+   331→            }
+   332→        }
+   333→        if (!@\rename($fromFull, $toFull)) {
+   334→            throw new FilesystemException('move', $from, "Failed to move {$from} -> {$to}");
+   335→        }
+   336→    }
+   337→
+   338→    public function copy(string $from, string $to): void
+   339→    {
+   340→        $fromFull = $this->resolve($from);
+   341→        if (!\is_file($fromFull)) {
+   342→            throw new FilesystemException('copy', $from, "Source not found: {$from}");
+   343→        }
+   344→        $toFull = $this->resolve($to, allowMissing: true);
+   345→        $parent = \dirname($toFull);
+   346→        if (!\is_dir($parent)) {
+   347→            if (!\mkdir($parent, self::DIR_MODE, true) && !\is_dir($parent)) {
+   348→                throw new FilesystemException('copy', $to, "Failed to create parent for: {$to}");
+   349→            }
+   350→        }
+   351→        if (!@\copy($fromFull, $toFull)) {
+   352→            throw new FilesystemException('copy', $from, "Failed to copy {$from} -> {$to}");
+   353→        }
+   354→        @\chmod($toFull, self::FILE_MODE);
+   355→    }
+   356→
+   357→    public function size(string $path): int
+   358→    {
+   359→        $full = $this->resolve($path);
+   360→        if (!\is_file($full)) {
+   361→            throw new FilesystemException('size', $path, "Not a file: {$path}");
+   362→        }
+   363→        $size = @\filesize($full);
+   364→        if ($size === false) {
+   365→            throw new FilesystemException('size', $path, "filesize() failed: {$path}");
+   366→        }
+   367→        return (int) $size;
+   368→    }
+   369→
+   370→    public function mimeType(string $path): string
+   371→    {
+   372→        $full = $this->resolve($path);
+   373→        if (!\is_file($full)) {
+   374→            throw new FilesystemException('mimeType', $path, "Not a file: {$path}");
+   375→        }
+   376→        return $this->detectMime($full);
+   377→    }
+   378→
+   379→    /**
+   380→     * Resolve $path against the base directory and verify the result is still
+   381→     * inside the base. Symlinks are rejected unconditionally: realpath()
+   382→     * collapses them, so any path whose realpath escapes the base (or whose
+   383→     * immediate parent is a symlink) is refused.
+   384→     *
+   385→     * @param bool $allowMissing When true, missing files do not throw — used by
+   386→     *                           write()/move()/copy() targets where the leaf
+   387→     *                           does not yet exist. The parent MUST still exist
+   388→     *                           or be creatable.
+   389→     */
+   390→    private function resolve(string $path, bool $allowMissing = false): string
+   391→    {
+   392→        if ($path === '' || $path === '/') {
+   393→            throw new FilesystemException('resolve', $path, 'Empty path');
+   394→        }
+   395→        // Normalise backslashes to forward slashes (Windows tolerance).
+   396→        $normalised = \str_replace('\\', '/', $path);
+   397→        // Reject obvious absolute paths before joining.
+   398→        if ($normalised[0] === '/') {
+   399→            throw new FilesystemException('resolve', $path, 'Absolute paths are not allowed');
+   400→        }
+   401→        // Reject NUL bytes (path-injection vector).
+   402→        if (\str_contains($normalised, "\0")) {
+   403→            throw new FilesystemException('resolve', $path, 'NUL byte in path');
+   404→        }
+   405→        $joined = $this->base . \DIRECTORY_SEPARATOR . $normalised;
+   406→
+   407→        $real = \realpath($joined);
+   408→        if ($real === false) {
+   409→            if (!$allowMissing) {
+   410→                throw new FilesystemException('resolve', $path, "Path does not exist: {$path}");
+   411→            }
+   412→            // For write targets, realpath() fails because the leaf doesn't exist.
+   413→            // Validate the parent instead, then re-join.
+   414→            $parentReal = \realpath(\dirname($joined));
+   415→            if ($parentReal === false) {
+   416→                // Parent doesn't exist yet either — that's fine, write() will
+   417→                // mkdir it. We only need to verify the canonical joined path
+   418→                // starts with the base once the parent is created.
+   419→                return $joined;
+   420→            }
+   421→            $real = $parentReal . \DIRECTORY_SEPARATOR . \basename($normalised);
+   422→        }
+   423→
+   424→        // Path-traversal check: the resolved real path must start with the base
+   425→        // (followed by a separator, to prevent /var/www-base evading /var/www).
+   426→        if ($real !== $this->base
+   427→            && !\str_starts_with($real, $this->base . \DIRECTORY_SEPARATOR)) {
+   428→            throw new FilesystemException('resolve', $path, 'Path escapes base directory');
+   429→        }
+   430→
+   431→        // Symlink rejection: even if realpath() lands inside the base, refuse
+   432→        // if the leaf itself is a symlink. (LocalAdapter is symlink-free by
+   433→        // policy; callers needing symlink semantics must use a different adapter.)
+   434→        if (\is_link($real)) {
+   435→            throw new FilesystemException('resolve', $path, 'Symlinks are not supported');
+   436→        }
+   437→
+   438→        return $real;
+   439→    }
+   440→
+   441→    private function detectMime(string $fullPath): string
+   442→    {
+   443→        $finfo = new \finfo(\FILEINFO_MIME_TYPE);
+   444→        $mime = $finfo->file($fullPath);
+   445→        return $mime === false ? 'application/octet-stream' : $mime;
+   446→    }
+   447→}
+   448→```
+   449→
+   450→`InMemoryAdapter` is a thin `string[]`-backed implementation of the same interface; it is omitted here for brevity but follows the same contract (every method throws `FilesystemException` with the same `operation` and `path` fields). `S3Adapter` wraps `Aws\S3\S3Client` and maps each interface call to a single SDK operation (`GetObject`, `PutObject`, `HeadObject`, `DeleteObject`, `ListObjectsV2`, `CopyObject`); SDK exceptions are caught and re-thrown as `FilesystemException` with the original as `$previous`. `FilesystemManager` is a `__construct(array $disks)` + `disk(string $name): FilesystemInterface` factory that constructs each adapter lazily and caches by name.
+   451→
+   452→### SQL DDL
+   453→Not applicable. CORE-14 persists no metadata to a relational database. File metadata (size, mime, mtime) is fetched from the underlying storage on demand via `File` value objects; durable metadata for assets (uploads, audit archives) is the responsibility of HUB-03 and HUB-06 respectively, which use CORE-19 for their own schemas.
+   454→
+   455→### Sequence Diagram
+   456→
+   457→```mermaid
+   458→sequenceDiagram
+   459→    participant Caller as Caller (e.g. CORE-12 Compiler)
+   460→    participant Mgr as FilesystemManager
+   461→    participant Local as LocalAdapter
+   462→    participant Disk as Local Disk
+   463→
+   464→    Caller->>Mgr: disk('local')
+   465→    Mgr->>Mgr: lookup disk config (CORE-10)
+   466→    alt disk not cached
+   467→        Mgr->>Local: new LocalAdapter(base: /var/storage)
+   468→        Local->>Disk: realpath(/var/storage) + mkdir if missing
+   469→        Disk-->>Local: /var/storage
+   470→        Local-->>Mgr: adapter instance
+   471→        Mgr->>Mgr: cache by name 'local'
+   472→    end
+   473→    Mgr-->>Caller: LocalAdapter
+   474→
+   475→    Caller->>Local: write('views/home.compiled.php', $php)
+   476→    Local->>Local: resolve('views/home.compiled.php', allowMissing=true)
+   477→    Local->>Local: check traversal: realpath inside base?
+   478→    alt escapes base or is symlink
+   479→        Local-->>Caller: throw FilesystemException('write', path)
+   480→    end
+   481→    Local->>Disk: mkdir -p dirname (0755)
+   482→    Local->>Disk: tempnam(dirname, '.fs-write-')
+   483→    Disk-->>Local: /var/storage/views/.fs-write-XXXX
+   484→    Local->>Disk: file_put_contents(temp, $php)
+   485→    Local->>Disk: chmod(temp, 0644)
+   486→    Local->>Disk: rename(temp, target)
+   487→    Disk-->>Local: true
+   488→    Local-->>Caller: void
+   489→```
+   490→
+   491→### State Diagram
+   492→
+   493→```mermaid
+   494→stateDiagram-v2
+   495→    [*] --> Missing
+   496→    Missing --> Written: write(path, contents)
+   497→    Written --> Written: write(path, contents)  %% overwrite
+   498→    Written --> Written: read(path)             %% no state change
+   499→    Written --> Written: copy(from, to)         %% target enters Written
+   500→    Written --> Written: move(from, to)         %% source -> Missing, target -> Written
+   501→    Written --> Missing: delete(path)
+   502→    Missing --> Missing: delete(path)           %% idempotent
+   503→    Missing --> Missing: exists(path) returns false
+   504→    note right of Written
+   505→        Atomic invariant: at no point during write()
+   506→        is a partial file visible to a concurrent
+   507→        read() of the same path.
+   508→    end note
+   509→```
+   510→
+   511→## Integration Strategy
+   512→
+   513→**Upward — what CORE-14 consumes.** `FilesystemManager` is constructed by the Kernel (CORE-18) at boot with a `disks` array sourced from CORE-10 config (`config/filesystems.php` returning `['disks' => ['local' => ['driver' => 'local', 'base' => '/var/storage'], 's3' => ['driver' => 's3', 'bucket' => '...', 'region' => '...', 'prefix' => '']]]`). The Kernel binds `FilesystemInterface` in CORE-02 as a singleton pointing at the default disk (typically `local`), and binds `FilesystemManager` itself for callers that need a non-default disk. All exceptions are funnelled through CORE-08 → CORE-09; adapters do not log directly.
+   514→
+   515→**Downward — what consumes CORE-14.**
+   516→
+   517→```php
+   518→// CORE-12 SuperPHP Compiler: persists a compiled template
+   519→$this->fs->write("views/{$checksum}.compiled.php", $php);
+   520→
+   521→// CORE-09 PSR-3 Logger: rotates a log file
+   522→if ($this->fs->size('app.log') > self::MAX_BYTES) {
+   523→    $this->fs->move('app.log', "app-{$date}.log");
+   524→    $this->fs->write('app.log', '');  // fresh file
+   525→}
+   526→
+   527→// HUB-06 Audit: archives a batch
+   528→$payload = $this->serializer->serialize($batch, 'json');
+   529→$this->fs->write("audit/{$tenant}/{$batchId}.jsonl", $payload);
+   530→
+   531→// HUB-03 Asset Engine: stores an upload via S3 disk
+   532→$s3 = $this->manager->disk('s3');
+   533→$s3->write("uploads/{$assetId}/original.bin", $uploadBytes);
+   534→```
+   535→
+   536→`HUB-11 Cloud Storage` is the only consumer that needs operations outside this interface (multipart uploads, presigned URLs); it is permitted to inject the `S3Adapter` directly and call SDK methods not exposed by `FilesystemInterface`, but it MUST NOT bypass the adapter's path-resolution logic for any write that lands in a path also reachable through `FilesystemInterface`.
+   537→
+   538→## Benchmark & Verification Methodology
+   539→
+   540→| Target | Harness | Baseline | Load model | Assert |
+   541→|---|---|---|---|---|
+   542→| `LocalAdapter.write()` 1 KB | PHPUnit `--group performance` | GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, local SSD (Actions runner NVMe) | 1,000 iterations after 100-iteration warm-up; `microtime(true)` wall-clock; median of 5 runs | Bounded by disk I/O: write throughput ≤ 120% of an equivalent `file_put_contents()` baseline run on the same runner. *Provisional, unverified.* |
+   543→| `LocalAdapter.read()` 1 KB | same | same | same | Bounded by disk I/O: read throughput ≤ 120% of `file_get_contents()` baseline. *Provisional, unverified.* |
+   544→| `LocalAdapter.write()` 10 KB | same | same | 1,000 iterations | Per-byte cost ≤ 1.2× the 1 KB per-byte cost (no super-linear scaling). *Provisional, unverified.* |
+   545→| `LocalAdapter.write()` 1 MB | same | same | 200 iterations | Round-trip (write → read → byte-compare) succeeds with zero diff; wall-clock within 2× of `dd` baseline. *Provisional, unverified.* |
+   546→| `LocalAdapter.list()` 10 k files | same | same | 1 directory containing 10,000 files; 50 iterations | Yields all 10,000 entries; wall-clock linear in entry count (Pearson r ≥ 0.99 against N ∈ {1k, 5k, 10k}). *Provisional, unverified.* |
+   547→| `InMemoryAdapter.write()` 1 KB | same | same | 10,000 iterations | < 5× the cost of an equivalent `$array[$k] = $v` assignment (sanity bound only; not a target). *Provisional, unverified.* |
+   548→| `S3Adapter.write()` 1 MB | PHPUnit `--group performance` with `Aws\MockHandler` | same runner | 100 iterations against mocked S3 client | Measures adapter overhead only (no real network). Asserts adapter overhead ≤ 5% of mocked SDK call time. *Provisional, unverified.* |
+   549→
+   550→**Iron rule compliance (Governance Rule 2).** Every row names its harness (PHPUnit `--group performance`), baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug, local SSD), and load model (iteration count, warm-up, file sizes). No absolute millisecond target is asserted without the "provisional, unverified" marker. First CI run records concrete numbers to `docs/perf/CORE-14-baselines.md`; subsequent runs assert the new measurement is ≤ 120% of the recorded baseline (regression bound), never against a hard-coded microsecond threshold. Real-network S3 benchmarks are out of scope for CI and live in `docs/perf/CORE-14-s3-field.md` if measured.
+   551→
+   552→## CI Verification Criteria
+   553→
+   554→1. **Branch coverage on `LocalAdapter`**: 100% on `resolve()` (the path-traversal guard) and on every public method's success + failure branches. 95% on the file as a whole (the `finally` cleanup branch is intentionally hard to cover when `rename` succeeds first try).
+   555→2. **Static analysis**: `phpstan` level 8 with `bleedingEdge` enabled; zero baseline-ignored errors. The `FilesystemException` constructor's positional args must type-check against the readonly property promotion.
+   556→3. **Path-traversal test**: a data provider feeds `../../etc/passwd`, `/etc/passwd`, `..%2f..%2fetc%2fpasswd`, `a/../../../b`, `a/\0b` (NUL byte), and an absolute Windows path (`C:\Windows\system32\config\SAM`). Each MUST throw `FilesystemException` with `operation === 'resolve'`. No call reaches `file_get_contents`, `file_put_contents`, `fopen`, or `unlink`.
+   557→4. **Symlink-rejection test**: create a symlink inside the base pointing outside; `read()` and `write()` on the symlink path MUST throw. Create a symlink inside the base pointing to another file inside the base; same assertion (policy: no symlinks at all, even internal).
+   558→5. **Large-file round-trip**: write a 1 MB random byte string, read it back, assert strict byte equality (`hash_file('sha256')` of written === hash of read). Run on both `LocalAdapter` and `InMemoryAdapter`.
+   559→6. **Atomicity test**: in a forked child, call `write()` and `SIGKILL` the child between `tempnam` and `rename`. Parent then lists the target directory; the temp file MUST NOT be visible to `list()` if the parent's `write()` recovered, and a subsequent `write()` of the same path MUST succeed (no lingering lock). Tolerates at most one stale `.fs-write-*` temp file per crash.
+   560→7. **`S3Adapter` mocked test**: wire `Aws\MockHandler` with queued `GetObject` / `PutObject` / `HeadObject` / `DeleteObject` / `ListObjectsV2` / `CopyObject` results. Assert each interface call maps to the expected SDK operation and that SDK exceptions are re-thrown as `FilesystemException` with `previous` set and `operation` matching the interface method.
+   561→8. **`list()` test**: create 100 files plus 5 subdirectories in the base; assert `list()` yields exactly 100 `File` objects, each with non-empty `path`, non-negative `size`, valid MIME, and `lastModified` within ±5 s of `time()`. Assert order-independence (sort both sides before comparing).
+   562→9. **Idempotent `delete()` test**: `delete()` on a missing path MUST NOT throw. `delete()` on a path that escapes the base MUST throw (idempotency does not extend to traversal attempts).
+   563→10. **Permissions test**: after `write()`, assert `decoct(fileperms($file) & 0777) === '644'`. After `write()` to a path whose parent dirs were just created, assert each new dir has mode `755`. Run only on Linux CI runners (skip on Windows).
+   564→11. **Infection MSI**: `Infection` mutation testing on `LocalAdapter` and `InMemoryAdapter`; Minimum Mutation Score Indicator ≥ 95%. Critical mutations to `str_starts_with` in `resolve()` MUST be killed (they would weaken the traversal guard).
+   565→12. **Dependency hygiene**: `composer require --dry-run` on the package MUST fail with no required packages (the LocalAdapter path is dependency-free). The S3 SDK is `require-dev` plus `suggest` only.
+   566→
+   567→## Security Properties
+   568→
+   569→1. **Path traversal is impossible.** Every path is resolved through `realpath()` and the canonicalised result MUST start with the base directory followed by a separator (so `/var/www` cannot be evaded by a base of `/var/www-base`). NUL bytes, absolute paths, and `..` segments are rejected before the filesystem call. Symlinks are rejected even when they point inside the base.
+   570→2. **File and directory permissions are set explicitly on every write.** Files are `0644`; directories created by `write()`/`move()`/`copy()` are `0755`. The adapter NEVER inherits the system umask. CI test 10 verifies the on-disk mode after every write.
+   571→3. **Writes are atomic.** A `write()` crash at any point leaves either the previous contents of the target file or no file at all — never a partial write. `tempnam()` + `rename()` on `LocalAdapter`; `PutObject` atomicity on `S3Adapter`; trivially atomic on `InMemoryAdapter`.
+   572→4. **S3 credentials are never logged.** `S3Adapter` catches `AwsException` instances, extracts the SDK error code and request ID, and discards the `Credentials` object from any context passed to CORE-09. The `FilesystemException` `$path` field is the S3 key only, never a signed URL or query string. A CI test feeds a fake credential-leaking exception and asserts the leak does not appear in the captured log record.
+   573→5. **Symlink following is disabled in `LocalAdapter`.** `is_link()` returns true on the resolved path → throw. There is no configuration flag to relax this; callers needing symlink semantics must use a different adapter (none ship by default).
+   574→6. **Adapters do not execute file contents.** No `include`, `require`, `eval`, `Closure::fromCallable`, `unserialize`, or ` Phar` is ever invoked. CORE-12 (Compiler) is responsible for `include`-ing compiled templates and applies its own validation; CORE-14 only stores and retrieves bytes.
+   575→
+   576→## Migration Notes
+   577→
+   578→**New package.** Create `packages/core/filesystem/` with the following layout:
+   579→
+   580→```
+   581→packages/core/filesystem/
+   582→├── composer.json          # name: sovereign-stack/core-filesystem
+   583→│                          # require: php ^8.3, ext-mbstring: *
+   584→│                          # suggest: aws/aws-sdk-php ^3.3 (for S3Adapter)
+   585→│                          # autoload PSR-4: SovereignStack\Core\Filesystem\ -> src/
+   586→├── src/
+   587→│   ├── FilesystemInterface.php
+   588→│   ├── FilesystemManager.php
+   589→│   ├── File.php
+   590→│   ├── FilesystemException.php
+   591→│   ├── LocalAdapter.php
+   592→│   ├── S3Adapter.php
+   593→│   └── InMemoryAdapter.php
+   594→├── tests/
+   595→│   ├── Unit/
+   596→│   │   ├── LocalAdapterTest.php
+   597→│   │   ├── InMemoryAdapterTest.php
+   598→│   │   ├── S3AdapterTest.php          # uses Aws\MockHandler
+   599→│   │   └── FilesystemManagerTest.php
+   600→│   └── performance/
+   601→│       └── LocalAdapterBenchmark.php  # @group performance
+   602→└── phpstan.neon.dist
+   603→```
+   604→
+   605→The root `composer.json` adds a path repository for `packages/core/filesystem/` and lists it under `require` once consumers exist. `LocalAdapter` has zero Composer dependencies, so the package can be installed in isolation in environments that do not need S3.
+   606→
+   607→**Landing order.**
+   608→1. Land CORE-02 (DI Container) — Step 1 of the §5 build sequence.
+   609→2. Land CORE-14 package (this blueprint) — Step 5; the package compiles and passes its own tests without any consumer wired up.
+   610→3. Land CORE-10 (Config) — supplies the `disks` array the manager reads.
+   611→4. Wire `FilesystemManager` into the Kernel (CORE-18) boot sequence; bind `FilesystemInterface` to the default disk.
+   612→5. Migrate consumers one PR at a time: CORE-09 logger file handler first (lowest blast radius), then CORE-12 compiler cache, then CORE-15 cache `FileStore` driver, then HUB-06 audit, then HUB-03 assets, then HUB-11 cloud storage.
+   613→
+   614→**Rollback.** CORE-14 is a leaf in the dependency DAG (no other Core component depends on it). Rollback procedure:
+   615→1. Revert each consumer PR (restores direct `file_put_contents` / `fopen` calls).
+   616→2. Remove the Kernel boot wiring.
+   617→3. `git rm packages/core/filesystem/` and remove the path repository from root `composer.json`.
+   618→4. `composer update` — no schema migration, no data migration. Any bytes written by `LocalAdapter` remain on disk as ordinary files; any objects written by `S3Adapter` remain in the bucket. Cleanup of orphaned files is the operator's responsibility (the package does not own the storage lifecycle).
+   619→
+   620→**Forward compatibility.** The `FilesystemInterface` is the SemVer-protected public surface. Adding methods (e.g. `stream(string $path): resource` for chunked reads) is a minor bump and MUST ship with a default implementation in every adapter. Changing a method signature is a major bump and requires an ADR. Adapters themselves (the concrete classes) are not part of the SemVer promise; callers depending on `LocalAdapter` directly rather than `FilesystemInterface` accept that the concrete class may change between minor releases.
+   621→
+   622→## SemVer Impact
+   623→**Minor.** Initial release `0.1.0`. The package is a leaf in the Core DAG, has no existing consumers, and introduces no breaking change to any published interface. The `FilesystemInterface` signature is part of the 0.1.0 contract and will not change without a major bump; future minors may add optional methods (with default implementations), new adapters (e.g. `GcsAdapter` if Google Cloud Storage is ever targeted), or performance improvements. A `1.0.0` release will be cut once HUB-03, HUB-06, and HUB-11 have all consumed the interface in production for one release cycle without contract drift.
+   624→
