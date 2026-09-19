@@ -151,6 +151,9 @@ final class QueryBuilder implements QueryBuilderInterface
         }
     }
 
+    /**
+     * @return array{sql: string, params: array<string, mixed>}
+     */
     public function toSql(): array
     {
         if ($this->parts['from'] === null) {
