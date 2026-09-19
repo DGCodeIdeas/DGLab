@@ -31,6 +31,7 @@ interface QueryBuilderInterface
 
     /**
      * @return array{sql: string, params: array<string, mixed>}
+     * @phpstan-return array{sql: string, params: array<string, mixed>}
      */
     public function toSql(): array;
 }
