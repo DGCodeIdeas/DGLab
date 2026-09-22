@@ -2,6 +2,8 @@
 
 **Read this entire file before writing any blueprint.** Every blueprint in this bundle must meet the fidelity bar defined here. Subagents that produce prose-only or thin blueprints will be rejected.
 
+> **Nuclear-grade doctrine (Step 5).** If you are authoring or amending a blueprint for `CORE-19` (DBAL), `CORE-15` (Cache), `CORE-14` (Filesystem), or `CORE-16` (Encryption), the blueprint MUST end with a section titled `## Nuclear-Grade Engineering Doctrine (binding)` that cross-references [`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](./CrossCutting/NUCLEAR-GRADE-DOCTRINE.md) and enumerates the doctrine's per-package binding items (resource ceilings, breaker thresholds, audit record fields, chaos scenarios, §9 merge gate). Where the blueprint and the doctrine conflict, **the doctrine wins**; the blueprint is amended at the same PR that lands the implementation.
+
 ---
 
 ## Canonical Template

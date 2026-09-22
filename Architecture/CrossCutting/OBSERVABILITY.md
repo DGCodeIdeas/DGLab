@@ -5,6 +5,8 @@
 **Last verified against `01_MASTER_INDEX.md`:** 2026-08-04
 **Resolves:** Finding 10 (ungrounded performance targets), Finding 11 (solutions not merged — observability solutions land here, not in a sidecar doc), Finding 4 (blueprint fidelity bar — CI verification criteria)
 
+> **Step 5 doctrine anchor.** The Step-5 Core persistence packages (`CORE-19`, `CORE-15`, `CORE-14`, `CORE-16`) emit observability signals under the binding envelope of [`NUCLEAR-GRADE-DOCTRINE.md`](./NUCLEAR-GRADE-DOCTRINE.md) §8: every state-changing operation emits an `AuditRecord` with `seq`, `tenant_id`, `request_id`, `fiber_id`, `actor_id`, `operation`, `target`, `before_hash`, `after_hash`, `prev_hash`, `entry_hash`, `created_at` — the `entry_hash` chain is verified daily by a job that recomputes every hash and alerts on mismatch. The doctrine's `frankenphp_log()` structured context (severity, trace_id, fiber_id) feeds this spec's §2 traces and §3 metrics. A `PanicException` (§6.2 of the doctrine) is the canonical signal for ISPOKE-17 (Incident) to page the operator.
+
 ---
 
 ## §1. Observability Pillars

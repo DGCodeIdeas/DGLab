@@ -86,3 +86,22 @@
 ### Items NOT touched (left for follow-up)
 - `Kernel::boot()`'s match arm `KernelState::Handling => throw KernelException::handleDuringBoot()` — this scenario is "boot() called during handling", which is different from the recursive `handle()` case the task addressed. Left alone; would warrant a separate `bootDuringHandling()` exception if pursued.
 - The `dglab_clone` submodule's modified content was pre-existing and not touched.
+
+---
+Task ID: 43
+Agent: main
+Task: Compose and persist Nuclear-Grade Engineering Doctrine for Step 5 (CORE-19/15/14/16) before implementation begins. User directive: "build like you are building a nuclear plant or even a nuclear reactor, build for the worst case scenario."
+
+Work Log:
+- Re-read existing artefacts to align voice and avoid duplication: Architecture/Core/CORE-19.md, CORE-15.md, CORE-14.md, CORE-16.md, Architecture/CrossCutting/STRUCTURE-05-Persistence.md, THREAT_MODEL.md, SDLC-AGRD.md, FROZEN-CONTRACTS.md.
+- Authored new doctrine at Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md (723 lines, ~28KB).
+- Structure: §0 Why / §1 Twelve principles (defence in depth, fail-safe, bounded resources, idempotency, bounded retries, circuit breakers, atomicity, validation at every boundary, audit trail, constant-time, chaos testing, zeroization) / §2 Five-class error taxonomy (Transient / Permanent-External / Permanent-Local / Corrupt / Panic) / §3 Hard resource ceilings per package / §4 Per-package application for CORE-19 DBAL, CORE-15 Cache, CORE-14 Filesystem, CORE-16 Encryption, each with 6 worst-case chaos scenarios / §5 Cross-cutting test matrix (13 test categories) / §6 Panic modes & recovery / §7 Cross-package worst-case catalogue (5 scenarios: silent corruption, double-write split-brain, key rotation race, tenant-scope leak under OOM, audit log tamper) / §8 Audit trail schema (binding) / §9 Merge acceptance gate / §10 Glossary / §11 Living-contract maintenance.
+- Doctrine is binding: where it conflicts with a softer statement in a per-package blueprint, doctrine wins; blueprint amended at the same PR.
+- Did NOT modify any package source code in this task — pure doctrine publication, no implementation risk.
+
+Stage Summary:
+- New file: /home/z/my-project/Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md
+- Raises the Step-5 bar from "depth 2 (interfaces + happy-path tests)" to "nuclear-grade depth 2 (interfaces + chaos + audit + breaker + zeroization + property + concurrency + constant-time tests)".
+- Defines 12 binding principles, 5-class error taxonomy, hard resource ceilings, panic procedure, audit hash chain schema, and merge gate.
+- Every Step-5 package PR must satisfy §9 acceptance gate before promotion to stable.
+- Next task: begin implementation of CORE-19 DBAL at nuclear-grade depth 2, gated by this doctrine.

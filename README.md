@@ -96,6 +96,8 @@ The build order defines which components depend on which:
 
 See [`Architecture/CrossCutting/SDLC-AGRD.md`](Architecture/CrossCutting/SDLC-AGRD.md) for the full methodology and [`Architecture/INDEX.md`](Architecture/INDEX.md) §5 for the complete build order.
 
+> **Step 5 nuclear-grade doctrine.** All Core persistence packages (`CORE-19` DBAL, `CORE-15` Cache, `CORE-14` Filesystem, `CORE-16` Encryption) are built under the binding [`Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md): 12 principles, 5-class error taxonomy (Transient / Permanent-External / Permanent-Local / Corrupt / Panic), hard resource ceilings, circuit breakers, hash-chained audit, chaos tests, and a §9 merge gate. Where the doctrine and a per-package blueprint disagree, the doctrine wins.
+
 ## Versioning
 
 DGLab uses a **four-segment version scheme** ([ADR-019](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md)):

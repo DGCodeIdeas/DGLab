@@ -795,3 +795,29 @@ Subsequent **minor** versions may add: `whereIn()`, `whereNull()`, `join()`, `gr
 A **major** version is required only if: (a) any method signature on `ConnectionInterface` or `QueryBuilderInterface` changes incompatibly, (b) `DatabaseException` no longer extends `\RuntimeException`, (c) the prepared-statement cache contract changes (e.g., from per-Connection to per-process), (d) tenant-scoping semantics change (e.g., from opt-out to opt-in), (e) the `QueryExecuted` event payload loses fields.
 
 The MySQL-first dialect choice (ADR-013) is **not** a SemVer-major concern: adding MySQL or SQLite support is additive (new `DriverInterface` implementations), and removing PostgreSQL support is not anticipated.
+
+---
+
+## Nuclear-Grade Engineering Doctrine (binding)
+
+This blueprint is the source of truth for **interface signatures and DDL**.
+The operational envelope — failure shape, resource ceilings, breaker thresholds,
+audit hash-chain, panic procedure, chaos-test matrix, merge gate — is governed
+by [`Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)
+§4.1. Where this blueprint and the doctrine conflict, **the doctrine wins**;
+this blueprint is amended at the same PR that lands the implementation.
+
+Specifically binding on CORE-19 from the doctrine:
+- **§3 resource ceilings:** 5s query / 30s txn wall-clock, 64 MB result buffer, 10 conns/process, 256-entry prepared-statement cache, 3-retry deadlock budget with 50/150/450 ms + 0–50 ms jitter, 5%/30s breaker trip threshold, 10s cooldown.
+- **§4.1 connection lifecycle:** `wait_timeout=30s` server-side, `SELECT 1` heartbeat every 60s, leak detection at >30s borrowed, recycle on failure.
+- **§4.1 transaction envelope:** explicit isolation level per call (`REPEATABLE READ` default, `SERIALIZABLE` for audit-log writes), savepoint depth counter, no external network calls inside a DB transaction (lint-enforced).
+- **§4.1 tenant scope:** SQL-rewriting decorator, `MissingTenantContext` thrown before SQL is sent on missing tenant, `->withoutTenantScope()` gated behind `SystemContext` token enforced by static analysis (not runtime honouring).
+- **§4.1 statement cache:** 256 entries, LRU, invalidated on DDL against the same table, **disabled in tests** by default.
+- **§4.1 migrations:** forward-only, idempotent, tenant-ordered scan with per-100-tenant checkpointing for crash-resume.
+- **§4.1 audit:** every INSERT/UPDATE/DELETE emits a `DatabaseMutationRecord` to HUB-06 with before/after hash; PII column reads are audited via the `pii_columns` registry.
+- **§4.1.7 chaos scenarios (must have tests):** master-goes-read-only, tenant-scope leak attempt, deadlock storm, connection leak, migration crash-resume, binlog position drift.
+- **§5 test matrix:** 13 categories required for merge — unit (happy + boundary), property, idempotency, tenant-isolation fuzz, chaos (dep-down / dep-slow / corrupted / resource ceiling), breaker trip + recovery, audit hash chain, constant-time, concurrency stress.
+- **§7 cross-package worst-case scenarios:** §7.1 silent corruption (cache invalidation lost when Redis breaker OPEN), §7.4 tenant-scope leak under OOM (WeakMap stale entry), §7.5 audit-log tamper (DDL `BEFORE UPDATE` trigger + MySQL grant lockdown).
+- **§9 merge gate:** all of the above must pass before PR merges into `main` and promotes to `stable`.
+
+**Implementation note.** The existing depth-2 CORE-19 implementation shipped at PR #241 satisfies the depth-2 baseline. Closing the gap to the doctrine's nuclear-grade baseline (chaos tests, breaker, hash-chained audit, panic procedure) is the immediate follow-up work tracked under Step 5 follow-up tasks.

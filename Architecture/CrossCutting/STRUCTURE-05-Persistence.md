@@ -10,6 +10,8 @@
 > isolation is enforced by the DBAL `TenantScope` (CORE-19 + HUB-21), **not** engine-level RLS (MySQL has
 > no RLS; the driver + application layer provide it).
 
+> **Step 5 doctrine anchor.** The persistence flows below — write path, read path, cache hierarchy, retention/backup — are **operationally enforced** for `CORE-19` (DBAL), `CORE-15` (Cache), `CORE-14` (Filesystem), and `CORE-16` (Encryption) by [`NUCLEAR-GRADE-DOCTRINE.md`](./NUCLEAR-GRADE-DOCTRINE.md). Specifically: every DB write runs in an explicit-isolation transaction with deadlock retry budget (§4.1.2); every cache miss uses single-flight + circuit breaker (§4.2); every file write is temp→fsync→rename→fsync(parent) with post-rename SHA-256 (§4.3); every encryption uses KEK/DEK envelope with persisted nonce counter (§4.4); every state-changing op emits a hash-chained `AuditRecord` (§8). The §7 worst-case catalogue (silent corruption, double-write split-brain, key rotation race, tenant-scope leak under OOM, audit log tamper) covers the cross-package failure shapes this document's flow diagrams elide.
+
 > **Repository:** https://github.com/DGCodeIdeas/DGLab  
 > **Framework:** Custom PHP MVC Framework  
 > **Pattern:** Concentric Wheel with Tiered Persistence

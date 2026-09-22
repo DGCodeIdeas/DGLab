@@ -621,3 +621,27 @@ The root `composer.json` adds a path repository for `packages/core/filesystem/` 
 
 ## SemVer Impact
 **Minor.** Initial release `0.1.0`. The package is a leaf in the Core DAG, has no existing consumers, and introduces no breaking change to any published interface. The `FilesystemInterface` signature is part of the 0.1.0 contract and will not change without a major bump; future minors may add optional methods (with default implementations), new adapters (e.g. `GcsAdapter` if Google Cloud Storage is ever targeted), or performance improvements. A `1.0.0` release will be cut once HUB-03, HUB-06, and HUB-11 have all consumed the interface in production for one release cycle without contract drift.
+
+---
+
+## Nuclear-Grade Engineering Doctrine (binding)
+
+This blueprint is the source of truth for the `FilesystemInterface` surface and
+adapter signatures. The operational envelope — write atomicity, path safety,
+S3 multipart chaos, resource ceilings, breaker thresholds, audit hash-chain,
+panic procedure, chaos-test matrix, merge gate — is governed by
+[`Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)
+§4.3. Where this blueprint and the doctrine conflict, **the doctrine wins**;
+this blueprint is amended at the same PR that lands the implementation.
+
+Specifically binding on CORE-14 from the doctrine:
+- **§3 resource ceilings:** 30s small / 300s multipart wall-clock, 4 MB chunk, 4 conns/process, 256 open FDs/process, 5-retry budget per S3 part with exponential backoff, 5%/60s breaker trip threshold, 30s cooldown.
+- **§4.3.1 write atomicity:** temp→`fsync`→`rename`→`fsync(parent)`. Periodic `TempJanitor` sweeps `.write_tmp.*` older than 10 minutes. Post-rename SHA-256 verification; mismatch is `FileIntegrityCheckFailed` (Corrupt), partial file moved to quarantine (not deleted) for forensics.
+- **§4.3.2 path-traversal hardening:** `strpos($resolved, $base)` after `realpath` on both — string-prefix matching alone is FORBIDDEN. `PathTraversalRefused` (Permanent-Local) audit-logged. Repeated attempts on the same Fiber trip the breaker.
+- **§4.3.3 S3 multipart:** 8 MB parts capped at 10,000 parts. Each part 5 retries with exponential backoff + full jitter. Per-part SHA-256 recorded locally. Failed multipart MUST be explicitly aborted via `AbortMultipartUpload` — leaving it pending is a doctrine violation. Final `CompleteMultipartUpload` includes all part checksums; S3 response verified, mismatch is `S3IntegrityMismatch` (Corrupt).
+- **§4.3.4 streaming:** all read/write APIs stream-based. `file_get_contents`-style API on user-supplied paths is FORBIDDEN. 4 MB chunk loop with caller-declared `maxBytes`; exceeding aborts with `StreamByteLimitExceeded` (Permanent-Local) and partial output cleaned up.
+- **§4.3.5 quarantine:** untrusted uploads land in `quarantine://` scheme; not readable until `QuarantineRelease` invoked by HUB-18 (Media Processing) after virus scan + EXIF strip + content-type verification. Destructive ops versioned where backend supports it (S3 bucket versioning); local deletes move to `.trash/` with 7-day TTL.
+- **§4.3.6 chaos scenarios:** disk-full mid-write, S3 part 4-of-10 fails permanently (abort + audit), path traversal via `../`, quarantine bypass attempt, local rename cross-device fallback, SHA-256 mismatch after write.
+- **§5 test matrix:** 13 categories required for merge.
+- **§7 cross-package worst-case scenario §7.2:** double-write split-brain — S3 multipart fails on part 6 after DB row committed. Recovery job every 60s scans `media_assets` for `s3_upload_state != 'COMPLETED'`, resumes or marks `ORPHANED`, pages operator.
+- **§9 merge gate:** all of the above must pass before PR merges into `main` and promotes to `stable`.

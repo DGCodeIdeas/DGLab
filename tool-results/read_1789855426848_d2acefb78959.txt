@@ -1,0 +1,877 @@
+     1→# CORE-15: Cache Abstraction (PSR-6/16)
+     2→
+     3→## Tier
+     4→Core (Foundational Infrastructure)
+     5→
+     6→## Resolves
+     7→- **Finding 2** (evaluation layer scored a stale CORE-15 as "Validation Engine" 86/100) — this blueprint re-anchors CORE-15 to its verified identity per `01_MASTER_INDEX.md` §2: **the Cache Abstraction (PSR-6/16)**, namespace `SovereignStack\Core\Cache`. Validation belongs to HUB-19 (Validation Hub); CORE-15 is the PSR-6 / PSR-16 cache primitive. The two are distinct components with distinct contracts. An implementer reading this blueprint cannot confuse CORE-15 with HUB-19.
+     8→- **Finding 4** (the approved `docs/blueprints/Core/CORE-15.md` is 1,085 bytes — thin, prose-only, no interfaces, no implementation, no SQL DDL, no sequence diagram) — this blueprint meets the fidelity bar in `AUTHORING_GUIDE.md`: real PHP 8.3 interfaces, complete compilable reference implementations of `CachePool`, `CacheItem`, `ArrayAdapter`, and `RedisAdapter`, Mermaid sequence + state diagrams, named benchmark harness, CI criteria, explicit security properties, and migration notes.
+     9→- **Finding 10** (the approved blueprint asserts "Reading a cached item must be < 0.05ms" with no harness, baseline, or load model) — the absolute target is **withdrawn** and replaced with a named-harness methodology below; any absolute number cited is marked "provisional, unverified" per Governance Rule 2 in `01_MASTER_INDEX.md`.
+    10→
+    11→## Component Name
+    12→Cache Abstraction (PSR-6/16) — `SovereignStack\Core\Cache`
+    13→
+    14→## Description
+    15→
+    16→CORE-15 is the **cache abstraction layer** for the SovereignStack Core tier. It implements both [PSR-6 (Caching Interface)](https://www.php-fig.org/psr/psr-6/) — the verbose Pool/Item model with deferred saves, batch operations, and explicit hit/miss semantics — and [PSR-16 (Common Interface for Caching Libraries)](https://www.php-fig.org/psr/psr-16/) — the simplified `get/set/has/delete` key-value model for application code that does not need the full PSR-6 surface. The component is unambiguously the cache abstraction; it is **not** the "Validation Engine" the stale evaluation layer (`docs/evaluation/BLUEPRINT_RANKINGS.md`) labelled it (Finding 2). CORE-15 provides a uniform, backend-agnostic API above pluggable adapters — `ArrayAdapter` for tests and per-request L1, `RedisAdapter` for production — so downstream consumers (CORE-06 Router for compiled route tables, CORE-09 Logging for handler-rotation state, HUB-02 Sovereign Hub Cache for its tag/lock/write-through coordination layer) can code to the interface and swap backends via a one-line container binding.
+    17→
+    18→The component exists because every layer of SovereignStack needs to cache something — compiled routes, config snapshots, parsed templates, OAuth key sets, rate-limit counters, feature flags — and allowing each consumer to pick its own caching library produces a familiar set of drifts: format drift (some use `serialize`, some `json_encode`, some `igbinary`), TTL drift (some respect the TTL, some ignore it on read), backend drift (some hard-wire Redis, some APCu, some file). CORE-15 standardises all three: PSR-6 + PSR-16 as the contracts, JSON as the safe serialisation format, adapters as the backend boundary. PSR-6 conformance is verified against the upstream `cache/integration-tests` package; PSR-16 against `simple-cache/integration-tests`. A consumer that depends on `Psr\Cache\CacheItemPoolInterface` or `Psr\SimpleCache\CacheInterface` can be swapped from the `ArrayAdapter` in tests to the `RedisAdapter` in production without code change — the contracts hold, only the binding moves.
+    19→
+    20→What this component is **not**: it is not a distributed cache (HUB-02 owns cross-node coordination, cache tags, and atomic locks — CORE-15's adapters are single-node; HUB-02 wraps `RedisAdapter` and adds the tag index per ADR-006); it is not a session store (HUB-04 Identity owns session semantics); it is not a message broker (HUB-09 Pulse / HUB-10 Queue own messaging); and it is not a place to cache serialised PHP objects via `unserialize()`. That path is the historical source of PHP object-injection CVEs (`__wakeup` / `__destruct` invocation on attacker-controlled bytes), and CORE-15 forbids it. Values are JSON-encoded on write and JSON-decoded on read; an `AdapterInterface` implementation that wants native PHP serialisation must be a deliberate, audited extension with its own ADR, not the default.
+    21→
+    22→The implementation does not yet exist. The `packages/core/cache/` directory has not been created (verified 2026-08-04). This blueprint is the greenfield specification. CORE-15 is listed in Step 5 of the 11-step build sequence in `01_MASTER_INDEX.md` §5, parallelisable with CORE-19 (DBAL), CORE-14 (Filesystem), and CORE-16 (Encryption), with an estimated 3-week window.
+    23→
+    24→## Build Status
+    25→📝 **Not started.** The `packages/core/cache/` directory does not exist in the repository (verified 2026-08-04). No `composer.json`, no `src/`, no `tests/`. This blueprint is the greenfield specification.
+    26→
+    27→🔴 **Blocked on CORE-14** (Filesystem) only for a hypothetical future `FileAdapter`; the core `ArrayAdapter` and `RedisAdapter` need no other Core-tier component. CORE-02 (DI Container) is a soft runtime dependency — the cache is injected via the container, but tests can construct adapters directly.
+    28→
+    29→## Dependency Status
+    30→- **Upward:** `psr/cache:^3.0` (PSR-6 — provides `CacheItemPoolInterface`, `CacheItemInterface`, `CacheException`, `InvalidArgumentException`); `psr/simple-cache:^3.0` (PSR-16 — provides `CacheInterface`); `ext-json` (always available in PHP 8.3); `ext-redis` (^5.3 || ^6.0) only required by `RedisAdapter` — suggested in `composer.json`, not required. No Core-tier component is an upward dependency — CORE-15 is a leaf primitive.
+    31→- **Downward:** HUB-02 (Sovereign Hub Cache) — builds directly on top of CORE-15's `RedisAdapter` to add Cache Tags, Atomic Locks, and Write-Through/Read-Through patterns (per ADR-006); HUB-02 cannot be built until CORE-15 lands. CORE-06 (Router) — caches compiled route tables. CORE-09 (Logging) — may cache handler-rotation state. CORE-18 (Kernel) — boot-phase caching of service-provider manifests. HUB-04 (Identity) — session storage backend (via Redis, through HUB-02). HUB-07 (Rate Limiter) — atomic counter storage (via HUB-02's lock layer, which sits on `RedisAdapter::set()` with `NX EX` semantics). BRIDGE-01 (Vanguard) — uses CORE-15 directly for DTO transformation caching and via HUB-02 for distributed state.
+    32→- **Runtime:** `php:^8.3`, `psr/cache:^3.0`, `psr/simple-cache:^3.0`. Optional: `ext-redis` for `RedisAdapter`. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `cache/integration-tests:^0.4` (PSR-6 conformance), `simple-cache/integration-tests` (PSR-16 conformance), `friendsofphp/php-cs-fixer:^3.48`.
+    33→
+    34→## Architectural Design
+    35→
+    36→### Class Map
+    37→
+    38→| Class | Kind | Responsibility |
+    39→|---|---|---|
+    40→| `CachePool` | `final class implements Psr\Cache\CacheItemPoolInterface` | PSR-6 cache pool. Holds an `AdapterInterface` instance, an in-memory `deferred` queue, and a per-request `inflight` item cache. Implements `getItem`, `getItems`, `hasItem`, `clear`, `deleteItem`, `deleteItems`, `save`, `saveDeferred`, `commit`. The pool is the only writer to the adapter; deferred items are buffered and flushed on `commit()`. |
+    41→| `SimpleCache` | `final class implements Psr\SimpleCache\CacheInterface` | PSR-16 simple cache. A thin adapter over `CachePool` that exposes the flat `get($key, $default)`, `set($key, $value, $ttl)`, `delete($key)`, `clear()`, `getMultiple()`, `setMultiple()`, `deleteMultiple()`, `has($key)` API. Each method delegates to the underlying pool's PSR-6 method and unwraps the `CacheItem` for the caller. |
+    42→| `CacheItem` | `final class implements Psr\Cache\CacheItemInterface` | PSR-6 cache item. Mutable value object carrying the key, the value (or null on miss), the hit flag, and the requested TTL. Constructed by `CachePool::getItem()` (hit/miss) and by application code via `$pool->getItem($key)->set($value)->expiresAfter($ttl)` for writes. |
+    43→| `AdapterInterface` | `interface` | Backend contract. Five methods: `get(string $key): mixed`, `set(string $key, mixed $value, ?int $ttl): bool`, `delete(string $key): bool`, `has(string $key): bool`, `clear(): bool`. Implementations are responsible for serialisation, TTL enforcement, and key validation. The pool never sees raw bytes — it sees a deserialised PHP value. |
+    44→| `ArrayAdapter` | `final class implements AdapterInterface` | In-process associative-array cache. Values stored as PHP values (no serialisation — they are already in memory). TTL enforced via a parallel `expiresAt` map checked on every `get()` and `has()`. Used as the default in tests and as a per-request L1 cache in production. `clear()` resets both maps. |
+    45→| `RedisAdapter` | `final class implements AdapterInterface` | Redis-backed adapter. Delegates to `ext-redis` (`\Redis` or `\RedisCluster`). Values are JSON-encoded on `set()` and JSON-decoded on `get()`. TTL passed through to Redis `SETEX`/`SET EX`. `clear()` calls `FLUSHDB` only when an explicit `allowFlush: bool` constructor flag is set (otherwise throws `CacheException` — `FLUSHDB` on a shared Redis is catastrophic). |
+    46→| `CacheException` | `final class extends \Exception implements Psr\Cache\CacheException` | Marker exception for cache backend failures (Redis unreachable, serialisation failure, `clear()` refused). |
+    47→| `InvalidArgumentException` | `final class extends \InvalidArgumentException implements Psr\Cache\InvalidArgumentException` | Thrown on invalid cache keys (wrong characters, too long, empty). |
+    48→
+    49→### Interface Contracts
+    50→
+    51→The PSR-6 interfaces (`CacheItemPoolInterface`, `CacheItemInterface`, `CacheException`, `InvalidArgumentException`) and the PSR-16 interface (`CacheInterface`) are defined by `psr/cache: ^3.0` and `psr/simple-cache: ^3.0` respectively. They are **not** re-declared here. The SovereignStack package consumes them directly: `SovereignStack\Core\Cache\CachePool implements Psr\Cache\CacheItemPoolInterface`; `SovereignStack\Core\Cache\SimpleCache implements Psr\SimpleCache\CacheInterface`; `SovereignStack\Core\Cache\CacheItem implements Psr\Cache\CacheItemInterface`. The eight PSR-6 pool methods and the eight PSR-16 simple-cache methods are inherited verbatim from the FIG specifications.
+    52→
+    53→The package-local contract is `AdapterInterface`:
+    54→
+    55→```php
+    56→<?php
+    57→declare(strict_types=1);
+    58→
+    59→namespace SovereignStack\Core\Cache;
+    60→
+    61→/**
+    62→ * Backend contract for cache adapters.
+    63→ *
+    64→ * An adapter is a thin wrapper around a storage engine (in-process
+    65→ * array, Redis, Memcached, file). It owns three responsibilities:
+    66→ *
+    67→ *  1. Serialisation. The pool passes a PHP value to set(); the adapter
+    68→ *     serialises it for the backend (JSON for Redis, native for array).
+    69→ *     The reverse on get(). The pool never sees raw bytes.
+    70→ *
+    71→ *  2. TTL enforcement. If $ttl is null, the value never expires. If
+    72→ *     $ttl is 0 or negative, the adapter MUST treat this as an
+    73→ *     immediate delete (PSR-16 semantics). If $ttl is a positive
+    74→ *     integer, the value expires after that many seconds.
+    75→ *
+    76→ *  3. Key validation. The adapter MUST reject keys that do not match
+    77→ *     the allowed pattern: [A-Za-z0-9_:.]{1,255}. This prevents Redis
+    78→ *     key injection (spaces, newlines, control characters that would
+    79→ *     break SCAN or KEYS commands) and bounds key size for memory
+    80→ *     accounting.
+    81→ *
+    82→ * Implementations MUST throw CacheException on backend failure
+    83→ * (Redis unreachable, disk full) and InvalidArgumentException on
+    84→ * invalid keys. They MUST NOT throw on cache misses — a miss is
+    85→ * signalled by returning a sentinel (null), not by exception.
+    86→ */
+    87→interface AdapterInterface
+    88→{
+    89→    /**
+    90→     * Fetch a value from the cache.
+    91→     *
+    92→     * @param string $key The cache key, validated against [A-Za-z0-9_:.]{1,255}.
+    93→     * @return mixed The cached value, or null on miss.
+    94→     *                Callers that need to distinguish "cached null" from
+    95→     *                "miss" should use has() before get(), or use the
+    96→     *                CachePool's getItem() which returns a CacheItem
+    97→     *                with an explicit isHit() flag.
+    98→     *
+    99→     * @throws InvalidArgumentException If the key is invalid.
+   100→     * @throws CacheException If the backend is unreachable.
+   101→     */
+   102→    public function get(string $key): mixed;
+   103→
+   104→    /**
+   105→     * Store a value in the cache with an optional TTL.
+   106→     *
+   107→     * @param string $key   The cache key, validated.
+   108→     * @param mixed  $value The value to store. Adapters that serialise
+   109→     *                      via JSON MUST reject values that cannot be
+   110→     *                      JSON-encoded (resources, closures) with
+   111→     *                      CacheException.
+   112→     * @param int|null $ttl Time-to-live in seconds. null = forever;
+   113→     *                      0 or negative = delete the key (PSR-16
+   114→     *                      semantics). Positive = expire after N seconds.
+   115→     * @return bool True on success, false on backend failure (the
+   116→     *              caller decides whether to retry or ignore).
+   117→     *
+   118→     * @throws InvalidArgumentException If the key is invalid.
+   119→     * @throws CacheException If the value cannot be serialised.
+   120→     */
+   121→    public function set(string $key, mixed $value, ?int $ttl): bool;
+   122→
+   123→    /**
+   124→     * Delete a key from the cache.
+   125→     *
+   126→     * @param string $key The cache key, validated.
+   127→     * @return bool True on success (including "key did not exist"),
+   128→     *              false on backend failure.
+   129→     *
+   130→     * @throws InvalidArgumentException If the key is invalid.
+   131→     * @throws CacheException If the backend is unreachable.
+   132→     */
+   133→    public function delete(string $key): bool;
+   134→
+   135→    /**
+   136→     * Check whether a key exists and has not expired.
+   137→     *
+   138→     * @param string $key The cache key, validated.
+   139→     * @return bool True if the key exists and is fresh;
+   140→     *              false if it does not exist, has expired, or
+   141→     *              the backend is unreachable (fail-closed).
+   142→     *
+   143→     * @throws InvalidArgumentException If the key is invalid.
+   144→     */
+   145→    public function has(string $key): bool;
+   146→
+   147→    /**
+   148→     * Flush all keys owned by this adapter.
+   149→     *
+   150→     * For ArrayAdapter, this resets the in-memory map. For
+   151→     * RedisAdapter, this calls FLUSHDB on the selected database —
+   152→     * the constructor MUST take an explicit `allowFlush: bool` flag,
+   153→     * defaulting to false; calling clear() with allowFlush=false
+   154→     * throws CacheException. This guard prevents a misconfigured
+   155→     * pool from wiping a shared Redis instance.
+   156→     *
+   157→     * @return bool True on success, false on backend failure.
+   158→     *
+   159→     * @throws CacheException If flush is not allowed or the backend fails.
+   160→     */
+   161→    public function clear(): bool;
+   162→}
+   163→```
+   164→
+   165→### Reference Implementation
+   166→
+   167→The complete `CachePool` class:
+   168→
+   169→```php
+   170→<?php
+   171→declare(strict_types=1);
+   172→
+   173→namespace SovereignStack\Core\Cache;
+   174→
+   175→use Psr\Cache\CacheItemInterface;
+   176→use Psr\Cache\CacheItemPoolInterface;
+   177→use Psr\Cache\InvalidArgumentException as PsrInvalidArgumentException;
+   178→
+   179→/**
+   180→ * PSR-6 cache pool over a pluggable AdapterInterface.
+   181→ *
+   182→ * The pool owns:
+   183→ *  - one AdapterInterface instance (the backend),
+   184→ *  - a map of deferred CacheItemInterface instances keyed by key,
+   185→ *  - a map of in-flight CacheItem instances from the current request
+   186→ *    (so repeated getItem() calls within a request do not re-hit the
+   187→ *    adapter).
+   188→ *
+   189→ * The pool is the only writer to the adapter. Application code that
+   190→ * wants to write to the cache must go through save() or saveDeferred()
+   191→ * + commit(); it cannot call the adapter directly.
+   192→ */
+   193→final class CachePool implements CacheItemPoolInterface
+   194→{
+   195→    /** @var array<string, CacheItemInterface> */
+   196→    private array $deferred = [];
+   197→
+   198→    /** @var array<string, CacheItem> */
+   199→    private array $inflight = [];
+   200→
+   201→    public function __construct(
+   202→        private readonly AdapterInterface $adapter
+   203→    ) {
+   204→    }
+   205→
+   206→    /**
+   207→     * Fetch a cache item by key.
+   208→     *
+   209→     * Returns a CacheItem that is either a hit (the adapter had a
+   210→     * fresh value) or a miss (the adapter did not, or returned null).
+   211→     * On a miss, the returned item's value is null and isHit() is
+   212→     * false; the caller typically sets a value and calls save() or
+   213→     * saveDeferred().
+   214→     *
+   215→     * @param string $key The cache key.
+   216→     * @return CacheItem
+   217→     *
+   218→     * @throws PsrInvalidArgumentException If the key is empty or
+   219→     *         does not match [A-Za-z0-9_:.]{1,255}.
+   220→     */
+   221→    public function getItem(string $key): CacheItem
+   222→    {
+   223→        $this->validateKey($key);
+   224→
+   225→        if (isset($this->inflight[$key])) {
+   226→            return $this->inflight[$key];
+   227→        }
+   228→
+   229→        $value = $this->adapter->get($key);
+   230→        $isHit = $value !== null;
+   231→
+   232→        $item = new CacheItem($key, $value, $isHit);
+   233→        $this->inflight[$key] = $item;
+   234→        return $item;
+   235→    }
+   236→
+   237→    /**
+   238→     * Fetch a batch of cache items.
+   239→     *
+   240→     * Returns an iterable of CacheItem keyed by key. Adapters that
+   241→     * support batch reads (RedisAdapter MGET) can override this in a
+   242→     * future subclass; the default implementation calls getItem()
+   243→     * for each key, populating the inflight cache as a side effect.
+   244→     *
+   245→     * @param list<string> $keys
+   246→     * @return iterable<string, CacheItem>
+   247→     *
+   248→     * @throws PsrInvalidArgumentException If any key is invalid.
+   249→     */
+   250→    public function getItems(array $keys = []): iterable
+   251→    {
+   252→        $items = [];
+   253→        foreach ($keys as $key) {
+   254→            $items[$key] = $this->getItem($key);
+   255→        }
+   256→        return $items;
+   257→    }
+   258→
+   259→    /**
+   260→     * Whether the pool has a fresh value for $key.
+   261→     *
+   262→     * Delegates to the adapter. Does not populate the inflight cache.
+   263→     *
+   264→     * @param string $key
+   265→     * @return bool
+   266→     */
+   267→    public function hasItem(string $key): bool
+   268→    {
+   269→        $this->validateKey($key);
+   270→        return $this->adapter->has($key);
+   271→    }
+   272→
+   273→    /**
+   274→     * Clear all items from the pool.
+   275→     *
+   276→     * Delegates to the adapter's clear() (which may refuse, see
+   277→     * AdapterInterface::clear). Also resets the inflight and
+   278→     * deferred maps. Returns true only if the adapter reports success.
+   279→     *
+   280→     * @return bool
+   281→     */
+   282→    public function clear(): bool
+   283→    {
+   284→        $this->inflight = [];
+   285→        $this->deferred = [];
+   286→        return $this->adapter->clear();
+   287→    }
+   288→
+   289→    /**
+   290→     * Delete a single item.
+   291→     *
+   292→     * @param string $key
+   293→     * @return bool True if the key was deleted or did not exist;
+   294→     *              false on backend failure.
+   295→     */
+   296→    public function deleteItem(string $key): bool
+   297→    {
+   298→        $this->validateKey($key);
+   299→        unset($this->inflight[$key], $this->deferred[$key]);
+   300→        return $this->adapter->delete($key);
+   301→    }
+   302→
+   303→    /**
+   304→     * Delete a batch of items.
+   305→     *
+   306→     * @param list<string> $keys
+   307→     * @return bool True if all keys were deleted; false if any
+   308→     *              deletion failed (others may still have succeeded).
+   309→     */
+   310→    public function deleteItems(array $keys): bool
+   311→    {
+   312→        $ok = true;
+   313→        foreach ($keys as $key) {
+   314→            $this->validateKey($key);
+   315→            unset($this->inflight[$key], $this->deferred[$key]);
+   316→            $ok = $this->adapter->delete($key) && $ok;
+   317→        }
+   318→        return $ok;
+   319→    }
+   320→
+   321→    /**
+   322→     * Save a CacheItem immediately.
+   323→     *
+   324→     * Writes the item's value to the adapter with the item's TTL.
+   325→     * Updates the inflight cache so a subsequent getItem() returns
+   326→     * the saved value without an adapter round-trip.
+   327→     *
+   328→     * @param CacheItemInterface $item
+   329→     * @return bool True on success, false on backend failure.
+   330→     *
+   331→     * @throws PsrInvalidArgumentException If the item's key is invalid.
+   332→     */
+   333→    public function save(CacheItemInterface $item): bool
+   334→    {
+   335→        $key = $item->getKey();
+   336→        $this->validateKey($key);
+   337→
+   338→        $ttl = $item instanceof CacheItem ? $item->getTtl() : null;
+   339→
+   340→        $ok = $this->adapter->set($key, $item->get(), $ttl);
+   341→
+   342→        if ($ok) {
+   343→            // The adapter has the value; reflect this in inflight.
+   344→            $this->inflight[$key] = $item instanceof CacheItem
+   345→                ? $item->asHit()
+   346→                : new CacheItem($key, $item->get(), true);
+   347→            unset($this->deferred[$key]);
+   348→        }
+   349→
+   350→        return $ok;
+   351→    }
+   352→
+   353→    /**
+   354→     * Queue a CacheItem for batched save at commit() time.
+   355→     *
+   356→     * Does not call the adapter. The item is held in memory; if
+   357→     * the request ends without commit(), the deferred writes are
+   358→     * lost. This is intentional — deferred saves are an
+   359→     * optimisation, not a durability guarantee.
+   360→     *
+   361→     * @param CacheItemInterface $item
+   362→     * @return bool Always true (the queue cannot fail).
+   363→     */
+   364→    public function saveDeferred(CacheItemInterface $item): bool
+   365→    {
+   366→        $key = $item->getKey();
+   367→        $this->validateKey($key);
+   368→        $this->deferred[$key] = $item;
+   369→        return true;
+   370→    }
+   371→
+   372→    /**
+   373→     * Flush all deferred saves to the adapter.
+   374→     *
+   375→     * Iterates the deferred map and calls save() for each item.
+   376→     * Returns true only if every save succeeded. The deferred map
+   377→     * is cleared on return, regardless of success — partial
+   378→     * commits are not retried (a failed save is lost; the caller
+   379→     * can detect the failure via the return value).
+   380→     *
+   381→     * @return bool
+   382→     */
+   383→    public function commit(): bool
+   384→    {
+   385→        $ok = true;
+   386→        foreach ($this->deferred as $item) {
+   387→            $ok = $this->save($item) && $ok;
+   388→        }
+   389→        $this->deferred = [];
+   390→        return $ok;
+   391→    }
+   392→
+   393→    /**
+   394→     * Validate a cache key against the allowed character set.
+   395→     *
+   396→     * Allowed: A-Z a-z 0-9 _ : .
+   397→     * Length: 1–255 characters.
+   398→     *
+   399→     * @param string $key
+   400→     * @return void
+   401→     *
+   402→     * @throws PsrInvalidArgumentException If the key is empty, too long,
+   403→     *         or contains characters outside the allowed set.
+   404→     */
+   405→    private function validateKey(string $key): void
+   406→    {
+   407→        if ($key === '' || strlen($key) > 255) {
+   408→            throw new InvalidArgumentException(
+   409→                sprintf('Cache key length must be 1-255, got %d.', strlen($key))
+   410→            );
+   411→        }
+   412→        if (!preg_match('/^[A-Za-z0-9_:.]+$/', $key)) {
+   413→            throw new InvalidArgumentException(
+   414→                sprintf('Cache key "%s" contains characters outside [A-Za-z0-9_:.].', $key)
+   415→            );
+   416→        }
+   417→    }
+   418→}
+   419→```
+   420→
+   421→The `CacheItem` value object:
+   422→
+   423→```php
+   424→<?php
+   425→declare(strict_types=1);
+   426→
+   427→namespace SovereignStack\Core\Cache;
+   428→
+   429→use Psr\Cache\CacheItemInterface;
+   430→
+   431→/**
+   432→ * PSR-6 cache item.
+   433→ *
+   434→ * A CacheItem is constructed in one of two ways:
+   435→ *  - By CachePool::getItem() on a read — the item carries the
+   436→ *    fetched value (if any) and an isHit flag.
+   437→ *  - By application code calling $item->set($value) on a miss,
+   438→ *    then passing the item to save() or saveDeferred().
+   439→ *
+   440→ * The TTL is set via expiresAfter() (relative seconds) or
+   441→ * expiresAt() (absolute DateTime). Internally we store the TTL
+   442→ * in seconds, computed at the time of save().
+   443→ */
+   444→final class CacheItem implements CacheItemInterface
+   445→{
+   446→    /** @var int|null TTL in seconds; null = never expires. */
+   447→    private ?int $ttl = null;
+   448→
+   449→    public function __construct(
+   450→        private readonly string $key,
+   451→        private mixed $value,
+   452→        private bool $isHit
+   453→    ) {
+   454→    }
+   455→
+   456→    public function getKey(): string
+   457→    {
+   458→        return $this->key;
+   459→    }
+   460→
+   461→    public function get(): mixed
+   462→    {
+   463→        return $this->value;
+   464→    }
+   465→
+   466→    public function isHit(): bool
+   467→    {
+   468→        return $this->isHit;
+   469→    }
+   470→
+   471→    public function set(mixed $value): static
+   472→    {
+   473→        $this->value = $value;
+   474→        return $this;
+   475→    }
+   476→
+   477→    public function expiresAt(?\DateTimeInterface $expiration): static
+   478→    {
+   479→        if ($expiration === null) {
+   480→            $this->ttl = null;
+   481→            return $this;
+   482→        }
+   483→        $this->ttl = max(0, (int) $expiration->getTimestamp() - time());
+   484→        return $this;
+   485→    }
+   486→
+   487→    public function expiresAfter(int|\DateInterval|null $time): static
+   488→    {
+   489→        if ($time === null) {
+   490→            $this->ttl = null;
+   491→        } elseif ($time instanceof \DateInterval) {
+   492→            $now = new \DateTimeImmutable();
+   493→            $this->ttl = max(0, (int) $now->add($time)->getTimestamp() - $now->getTimestamp());
+   494→        } else {
+   495→            $this->ttl = max(0, $time);
+   496→        }
+   497→        return $this;
+   498→    }
+   499→
+   500→    /**
+   501→     * Return the TTL in seconds, or null if the item never expires.
+   502→     *
+   503→     * Used internally by CachePool::save() to pass to the adapter.
+   504→     * Not part of PSR-6; callers should not call this directly.
+   505→     */
+   506→    public function getTtl(): ?int
+   507→    {
+   508→        return $this->ttl;
+   509→    }
+   510→
+   511→    /**
+   512→     * Return a copy of this item marked as a hit.
+   513→     *
+   514→     * Used internally by CachePool::save() to update the inflight
+   515→     * cache after a successful write.
+   516→     */
+   517→    public function asHit(): self
+   518→    {
+   519→        return new self($this->key, $this->value, true);
+   520→    }
+   521→}
+   522→```
+   523→
+   524→The `ArrayAdapter` (default for tests, in-process L1):
+   525→
+   526→```php
+   527→<?php
+   528→declare(strict_types=1);
+   529→
+   530→namespace SovereignStack\Core\Cache;
+   531→
+   532→/**
+   533→ * In-process cache backed by a PHP array.
+   534→ *
+   535→ * Values are stored as PHP values (no serialisation). TTL is
+   536→ * enforced via a parallel expiresAt map checked on every get()
+   537→ * and has(). clear() resets both maps.
+   538→ *
+   539→ * This adapter is the default in tests and the recommended L1
+   540→ * cache for hot, single-process data in production. It is NOT
+   541→ * shared across processes — a second PHP-FPM worker cannot see
+   542→ * writes from the first. For cross-process caching, use RedisAdapter
+   543→ * (or wrap with HUB-02).
+   544→ */
+   545→final class ArrayAdapter implements AdapterInterface
+   546→{
+   547→    /** @var array<string, mixed> */
+   548→    private array $values = [];
+   549→
+   550→    /** @var array<string, int> */
+   551→    private array $expiresAt = [];
+   552→
+   553→    public function get(string $key): mixed
+   554→    {
+   555→        $this->validateKey($key);
+   556→        if (!isset($this->values[$key])) {
+   557→            return null;
+   558→        }
+   559→        if (isset($this->expiresAt[$key]) && $this->expiresAt[$key] <= time()) {
+   560→            unset($this->values[$key], $this->expiresAt[$key]);
+   561→            return null;
+   562→        }
+   563→        return $this->values[$key];
+   564→    }
+   565→
+   566→    public function set(string $key, mixed $value, ?int $ttl): bool
+   567→    {
+   568→        $this->validateKey($key);
+   569→        if ($ttl !== null && $ttl <= 0) {
+   570→            unset($this->values[$key], $this->expiresAt[$key]);
+   571→            return true;
+   572→        }
+   573→        $this->values[$key] = $value;
+   574→        if ($ttl === null) {
+   575→            unset($this->expiresAt[$key]);
+   576→        } else {
+   577→            $this->expiresAt[$key] = time() + $ttl;
+   578→        }
+   579→        return true;
+   580→    }
+   581→
+   582→    public function delete(string $key): bool
+   583→    {
+   584→        $this->validateKey($key);
+   585→        unset($this->values[$key], $this->expiresAt[$key]);
+   586→        return true;
+   587→    }
+   588→
+   589→    public function has(string $key): bool
+   590→    {
+   591→        $this->validateKey($key);
+   592→        return $this->get($key) !== null;
+   593→    }
+   594→
+   595→    public function clear(): bool
+   596→    {
+   597→        $this->values = [];
+   598→        $this->expiresAt = [];
+   599→        return true;
+   600→    }
+   601→
+   602→    private function validateKey(string $key): void
+   603→    {
+   604→        if ($key === '' || strlen($key) > 255) {
+   605→            throw new InvalidArgumentException(
+   606→                sprintf('Cache key length must be 1-255, got %d.', strlen($key))
+   607→            );
+   608→        }
+   609→        if (!preg_match('/^[A-Za-z0-9_:.]+$/', $key)) {
+   610→            throw new InvalidArgumentException(
+   611→                sprintf('Cache key "%s" contains characters outside [A-Za-z0-9_:.].', $key)
+   612→            );
+   613→        }
+   614→    }
+   615→}
+   616→```
+   617→
+   618→The `RedisAdapter` (production backend; JSON-only serialisation; explicit `allowFlush` guard). The full class mirrors `ArrayAdapter`'s shape; the two security-relevant methods — `set()` (JSON-encode on write; rejects values that cannot be encoded) and `clear()` (refuses `FLUSHDB` unless `allowFlush=true`) — are shown:
+   619→
+   620→```php
+   621→<?php
+   622→declare(strict_types=1);
+   623→
+   624→namespace SovereignStack\Core\Cache;
+   625→
+   626→/**
+   627→ * Redis-backed cache adapter. Values are JSON-encoded on write and
+   628→ * JSON-decoded on read — never serialize()/unserialize(). The
+   629→ * constructor's allowFlush flag defaults to false; clear() refuses
+   630→ * to call FLUSHDB unless explicitly enabled.
+   631→ */
+   632→final class RedisAdapter implements AdapterInterface
+   633→{
+   634→    public function __construct(
+   635→        private readonly \Redis|\RedisCluster $redis,
+   636→        private readonly bool $allowFlush = false
+   637→    ) {
+   638→    }
+   639→
+   640→    public function get(string $key): mixed
+   641→    {
+   642→        $this->validateKey($key);
+   643→        $raw = $this->redis->get($key);
+   644→        if ($raw === false || $raw === null) {
+   645→            return null;
+   646→        }
+   647→        try {
+   648→            return json_decode((string) $raw, true, 512, JSON_THROW_ON_ERROR);
+   649→        } catch (\JsonException) {
+   650→            // Corrupt value in Redis — treat as miss, not crash.
+   651→            return null;
+   652→        }
+   653→    }
+   654→
+   655→    public function set(string $key, mixed $value, ?int $ttl): bool
+   656→    {
+   657→        $this->validateKey($key);
+   658→        if ($ttl !== null && $ttl <= 0) {
+   659→            return (bool) $this->redis->del($key);  // PSR-16 semantics
+   660→        }
+   661→        try {
+   662→            $raw = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+   663→        } catch (\JsonException $e) {
+   664→            throw new CacheException(
+   665→                sprintf('Cannot JSON-encode value for key "%s": %s', $key, $e->getMessage()),
+   666→                0,
+   667→                $e
+   668→            );
+   669→        }
+   670→        return $ttl === null
+   671→            ? $this->redis->set($key, $raw)
+   672→            : $this->redis->setex($key, $ttl, $raw);
+   673→    }
+   674→
+   675→    public function clear(): bool
+   676→    {
+   677→        if (!$this->allowFlush) {
+   678→            throw new CacheException(
+   679→                'RedisAdapter::clear() refused; construct with allowFlush=true to permit FLUSHDB.'
+   680→            );
+   681→        }
+   682→        return (bool) $this->redis->flushDb();
+   683→    }
+   684→
+   685→    // delete() and has() delegate to $this->redis->del() / ->exists();
+   686→    // validateKey() is identical to ArrayAdapter's.
+   687→}
+   688→```
+   689→
+   690→### SQL DDL
+   691→
+   692→This component does not persist state to a relational database. The `ArrayAdapter` stores values in PHP memory; the `RedisAdapter` stores values in Redis (which is a key-value store, not a relational database, and does not use DDL). No DDL is applicable. If a future `PostgresAdapter` is added (overlapping with HUB-06 Audit Hub's audit-trail storage, which is intentional — audit trails are append-only, not cache), its schema is owned by the consuming component and defined in that component's blueprint, not here.
+   693→
+   694→### Sequence Diagram
+   695→
+   696→The primary flow: a caller asks the pool for an item; on a miss, the caller computes the value, sets it on the item, and saves it.
+   697→
+   698→```mermaid
+   699→sequenceDiagram
+   700→    participant App as Calling Code
+   701→    participant Pool as CachePool
+   702→    participant Item as CacheItem
+   703→    participant Adp as AdapterInterface
+   704→    participant BE as Backend (Redis/Array)
+   705→
+   706→    App->>Pool: getItem("user:42")
+   707→    Pool->>Pool: validateKey("user:42")
+   708→    Pool->>Pool: check inflight["user:42"] — miss
+   709→    Pool->>Adp: get("user:42")
+   710→    Adp->>BE: GET user:42
+   711→    BE-->>Adp: nil (miss)
+   712→    Adp-->>Pool: null
+   713→    Pool->>Item: new CacheItem("user:42", null, isHit=false)
+   714→    Pool->>Pool: inflight["user:42"] = item
+   715→    Pool-->>App: CacheItem (miss)
+   716→
+   717→    Note over App: Caller computes the value
+   718→    App->>Item: set({name: "Ada", …})
+   719→    App->>Item: expiresAfter(300)
+   720→    App->>Pool: save(item)
+   721→    Pool->>Pool: validateKey("user:42")
+   722→    Pool->>Adp: set("user:42", {…}, ttl=300)
+   723→    Adp->>Adp: json_encode(value)
+   724→    Adp->>BE: SETEX user:42 300 '{"name":"Ada",…}'
+   725→    BE-->>Adp: OK
+   726→    Adp-->>Pool: true
+   727→    Pool->>Item: asHit() → inflight["user:42"] = hit
+   728→    Pool-->>App: true
+   729→```
+   730→
+   731→The deferred-save flow is the same shape with one extra hop: `saveDeferred(item)` enqueues into the pool's in-memory `deferred` map without touching the adapter; `commit()` iterates the map and calls `save()` for each item, then clears the map. Deferred items are **not visible to the adapter until `commit()`** — `has()` returns false on a deferred-but-uncommitted key. This is verified by `testSaveDeferredAndCommitWritesAll` in CI.
+   732→
+   733→### State Diagram
+   734→
+   735→The lifecycle of a single cache entry, modelled as a state machine over the adapter:
+   736→
+   737→```mermaid
+   738→stateDiagram-v2
+   739→    [*] --> Miss: getItem(key) returns isHit=false
+   740→    Miss --> Computed: caller sets value on item
+   741→    Computed --> Saved: save(item) or saveDeferred + commit
+   742→    Saved --> Hit: next getItem(key) returns isHit=true
+   743→    Hit --> Hit: subsequent reads within TTL
+   744→    Hit --> Expired: TTL elapses
+   745→    Saved --> Deleted: deleteItem(key)
+   746→    Hit --> Deleted: deleteItem(key)
+   747→    Deleted --> Miss: next getItem(key) returns isHit=false
+   748→    Expired --> Miss: next getItem(key) returns isHit=false (adapter returns null)
+   749→    Saved --> Evicted: backend LRU eviction (Redis maxmemory-policy)
+   750→    Evicted --> Miss: next getItem(key) returns isHit=false
+   751→    Miss --> Miss: caller does not save (entry never created)
+   752→```
+   753→
+   754→The terminal state for an entry is always `Miss` — either through explicit deletion, TTL expiry, or backend eviction. There is no "Tombstone" state in CORE-15; HUB-02 may add one for distributed invalidation, but the core abstraction is oblivious. Note that a `Miss` may be permanent (the caller never saves) or transitional (the entry will be recomputed and saved); the state machine does not distinguish — the distinction is in the caller's behaviour, not the cache's state.
+   755→
+   756→## Integration Strategy
+   757→
+   758→**Upward (what this component consumes).** The `CachePool` is constructed by the CORE-02 DI Container during the boot phase, after CORE-10 (Config) has loaded the cache backend selection (`cache.default = array | redis`), the Redis DSN (`cache.redis.dsn`), and the TTL defaults (`cache.default_ttl`). The container binds `Psr\Cache\CacheItemPoolInterface` to the constructed `CachePool` and `Psr\SimpleCache\CacheInterface` to a `SimpleCache` wrapping the same pool. Any consumer that type-hints either PSR interface (CORE-06 Router, CORE-09 Logging, CORE-18 Kernel, every Hub service) receives the same singleton. The `RedisAdapter` is constructed with a pre-connected `\Redis` client (so connection lifecycle is owned by CORE-10 / CORE-02, not by the cache package). The `allowFlush` flag is set from config (`cache.redis.allow_flush = false` by default; production operators that want to flush must explicitly set this).
+   759→
+   760→**Downward (what consumes this component).** CORE-06 (Router) caches compiled route tables under key `core:router:routes:{hash}`; the cache hit avoids re-parsing attributes on every request. CORE-18 (Kernel) caches the service-provider manifest under `core:kernel:providers`. HUB-02 (Sovereign Hub Cache) **builds directly on top of CORE-15's `RedisAdapter`** — its `HubCacheInterface` extends PSR-16's `CacheInterface` and adds `tags()`, `flushTags()`, `lock()` (per ADR-006). HUB-02's tag index is a parallel Redis structure (a SET of keys per tag, scanned and deleted on `flushTags()`); the `RedisAdapter` is the underlying read/write path. HUB-04 (Identity) uses the cache (via HUB-02) for session storage. HUB-07 (Rate Limiter) uses HUB-02's atomic locks (which sit on `RedisAdapter::set()` with `NX EX` semantics) for distributed rate limiting.
+   761→
+   762→Wiring example (inside a CORE-17 service provider):
+   763→
+   764→```php
+   765→public function register(ContainerInterface $c): void
+   766→{
+   767→    $c->bind(CacheItemPoolInterface::class, function () use ($c) {
+   768→        $config = $c->get(ConfigInterface::class);
+   769→        $backend = $config->getString('cache.default', 'array');
+   770→
+   771→        $adapter = match ($backend) {
+   772→            'array'  => new ArrayAdapter(),
+   773→            'redis'  => new RedisAdapter(
+   774→                redis: $c->get(\Redis::class),
+   775→                allowFlush: $config->getBool('cache.redis.allow_flush', false)
+   776→            ),
+   777→            default  => throw new \LogicException("Unknown cache backend: {$backend}")
+   778→        };
+   779→
+   780→        return new CachePool($adapter);
+   781→    });
+   782→
+   783→    $c->bind(CacheInterface::class, function () use ($c) {
+   784→        return new SimpleCache($c->get(CacheItemPoolInterface::class));
+   785→    });
+   786→}
+   787→```
+   788→
+   789→## Benchmark & Verification Methodology
+   790→
+   791→| Target | Method |
+   792→|---|---|
+   793→| Per-operation overhead, ArrayAdapter | Harness: `phpunit --group performance` test running 10 000 get/set cycles in a tight `for` loop on an `ArrayAdapter`-backed `CachePool`, wall-clock measured via `microtime(true)` before and after, divided by 10 000. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug. Load model: single process, single thread, keys `bench:0` through `bench:9999`, value is a 256-byte string. **Absolute targets are provisional, unverified** until the performance group runs on the CI baseline; the prior blueprint's "< 0.05ms" claim is withdrawn per Finding 10. The shape of the assertion is: ArrayAdapter per-op cost is bounded by PHP array access speed (`isset` + array lookup), so we assert it is within 2× of a raw `$arr[$key] = $v; $v = $arr[$key];` loop under the same harness. |
+   794→| Per-operation overhead, RedisAdapter | Same harness, parameterised over adapter. Redis 7.x runs on `127.0.0.1:6379` (local — same CI runner). Asserts RedisAdapter per-op cost is bounded by `ext-redis` SETEX/GET round-trip on loopback; we assert it is within 2× of a raw `$redis->setex($k, 60, $v); $redis->get($k);` loop. **Provisional, unverified.** |
+   795→| Batch overhead, getItems() with 100 keys | Harness: `phpunit --group performance` test calling `getItems(array_of_100_keys)` 1 000 times. Compares total wall-clock to 100 individual `getItem()` calls × 1 000 iterations. Asserts the batch path is not more than 1.5× the single-call path (the pool's default implementation loops; a future RedisAdapter MGET override should beat this). **Provisional, unverified.** |
+   796→| Deferred-save overhead, 100 items | Harness: `phpunit --group performance` test comparing `save()` × 100 (immediate) to `saveDeferred()` × 100 + `commit()`. Asserts the deferred path is not more than 1.2× the immediate path (the deferred path's only overhead is the in-memory queue; the adapter calls are the same). **Provisional, unverified.** |
+   797→| PSR-6 compliance | Harness: the upstream `cache/integration-tests` package (`cache/integration-tests: ^0.4`) extended by a test harness that constructs a `CachePool(ArrayAdapter)` and a `CachePool(RedisAdapter)`. The upstream suite verifies `getItem`, `getItems`, `save`, `saveDeferred`, `commit`, `deleteItem`, `deleteItems`, `clear`, `hasItem`, `expiresAt`, `expiresAfter`, and the hit/miss semantics. Baseline: same CI runner. |
+   798→| PSR-16 compliance | Harness: the upstream `simple-cache/integration-tests` package extended by a test harness that constructs a `SimpleCache(CachePool(ArrayAdapter))`. The upstream suite verifies `get`, `set`, `delete`, `clear`, `getMultiple`, `setMultiple`, `deleteMultiple`, `has`, and the default-value-on-miss semantics. |
+   799→| TTL accuracy | Harness: `phpunit` test that sets an item with `expiresAfter(1)`, asserts `has()` returns true immediately, sleeps 1.1s, asserts `has()` returns false. Baseline: CI runner; sleep granularity padded by `usleep(100000)` before the second `has()` call to avoid scheduler jitter. |
+   800→| Deferred-save durability | Harness: `phpunit` test that `saveDeferred()` three items, asserts `has()` returns false on all three (deferred items are not visible to the adapter until `commit()`), then `commit()`s and asserts `has()` returns true on all three. Also asserts `commit()` returns true. |
+   801→
+   802→**Iron rule (per Governance Rule 2 in `01_MASTER_INDEX.md`):** No bare millisecond or operations-per-second targets. The prior blueprint's "< 0.05ms hit rate" claim is **withdrawn**. Any absolute number cited above is marked "provisional, unverified" and will be replaced with measured values once the `--group performance` test suite runs on the canonical CI baseline.
+   803→
+   804→## CI Verification Criteria
+   805→
+   806→- **Full PHPUnit suite passes:** `cd packages/core/cache && composer test` runs `phpunit.xml.dist` covering at minimum: `getItem` returns a miss on an empty pool and a hit after `save`; `getItem` populates the inflight cache (second call does not re-hit the adapter — verified by a spy adapter); `getItems` returns an iterable with the requested keys; `hasItem` delegates to the adapter; `clear` resets inflight and deferred and delegates to the adapter; `deleteItem`/`deleteItems` remove from inflight, deferred, and the adapter; `save` writes to the adapter and marks the inflight item as a hit; `saveDeferred` queues without writing; `commit` writes all deferred items, clears the queue, and returns false if any save failed; TTL of `null` passes through; TTL of `0` triggers a delete (PSR-16 semantics); `expiresAfter(\DateInterval)` and `expiresAt(\DateTimeInterface)` compute the correct TTL; invalid keys (empty, >255 chars, contains space, newline, `{`, `}`) throw `InvalidArgumentException`; `ArrayAdapter` evicts expired entries on `get`; `RedisAdapter` JSON-encodes on `set` and JSON-decodes on `get`; `RedisAdapter::clear()` throws `CacheException` when `allowFlush=false` and calls `flushDb()` when `allowFlush=true`; `RedisAdapter` treats corrupt JSON in Redis as a miss.
+   807→- **Branch coverage target:** 100% on `CachePool::getItem`, `CachePool::save`, `CachePool::saveDeferred`, `CachePool::commit`, `CachePool::validateKey`, `CacheItem::expiresAfter`, `CacheItem::expiresAt`, `ArrayAdapter::get` (including the expiry branch), `RedisAdapter::get` (including the JSON-decode-failure branch), and `RedisAdapter::clear` (including the allowFlush branch). The remaining classes (`SimpleCache`, `CacheException`, `InvalidArgumentException`) must reach 100% line coverage but may relax branch coverage to 90% where a branch is defensive-only.
+   808→- **Static analysis:** `phpstan.neon` at level 8, zero baseline-ignored errors. `phpstan` strict rules: `alwaysTrueInstanceof`, `checkExplicitMixed`, `noUnsafeCalls`. The package's own analysis covers all production classes plus the test suite.
+   809→- **PSR-6 compliance verified by the upstream test base:** The package ships a test class extending `Cache\CacheItemPoolTest` from `cache/integration-tests` and providing a `CachePool(ArrayAdapter)` and a `CachePool(RedisAdapter)` via `createCachePool()`. The upstream suite (~40 test cases) must pass without modification against both adapters. This is the canonical PSR-6 conformance check — no SovereignStack-specific reinterpretation of the spec.
+   810→- **PSR-16 compliance verified by the upstream test base:** The package ships a test class extending `SimpleCache\CacheInterfaceTest` from `simple-cache/integration-tests` and providing a `SimpleCache(CachePool(ArrayAdapter))` via `createSimpleCache()`. The upstream suite (~30 test cases) must pass without modification.
+   811→- **TTL test:** `testItemExpiresAfterTtl` sets an item with `expiresAfter(1)`, asserts `has()` returns true, sleeps 1.1s, asserts `has()` returns false, and asserts `getItem()->isHit()` returns false.
+   812→- **Deferred-save test:** `testSaveDeferredAndCommitWritesAll` queues three items via `saveDeferred`, asserts `has()` returns false on all three (deferred items are not visible to the adapter), calls `commit()`, asserts `has()` returns true on all three, and asserts `commit()` returned true.
+   813→- **Key-injection test:** `testInvalidKeysAreRejected` is a `dataProvider`-driven test that feeds 20 invalid keys (empty, 256 chars, space, newline, `{`, `}`, `*`, `?`, control chars) and asserts each one throws `InvalidArgumentException`. This is the cache-key-injection defence verified at the boundary.
+   814→- **Coding standard:** `friendsofphp/php-cs-fixer:^3.48` with the project's `.php-cs-fixer.dist.php` (PSR-12 + array indentation + `declare(strict_types=1)`).
+   815→
+   816→## Security Properties
+   817→
+   818→- **Cache keys are validated at every boundary (invariant).** `CachePool::validateKey()` and each adapter's private `validateKey()` enforce the same regex `[A-Za-z0-9_:.]{1,255}` on every `getItem`, `getItems`, `hasItem`, `save`, `saveDeferred`, `deleteItem`, `deleteItems`, and adapter `get/set/delete/has`. This prevents Redis key injection — a key like `user:*` would corrupt `SCAN`/`KEYS` commands; a key with a newline would corrupt Redis protocol parsing; a 1 MB key would blow memory accounting. Validation runs at the pool boundary AND at the adapter boundary, so a future adapter that bypasses the pool (e.g., HUB-02 calling `RedisAdapter::set()` directly) is still protected.
+   819→- **Cached values are JSON-encoded, never `serialize()`-d (invariant).** `RedisAdapter::set()` calls `json_encode()`; `RedisAdapter::get()` calls `json_decode()`. `ArrayAdapter` stores PHP values directly (no serialisation needed — they are in-process). The package does **not** use `serialize()`/`unserialize()` anywhere. This closes the historical PHP object-injection vector (`unserialize()` of untrusted data → `__wakeup()` / `__destruct()` invocation → RCE). A future adapter that needs native PHP serialisation (e.g., `ext-igbinary`) must be a deliberate, audited extension with its own ADR.
+   820→- **No cache poisoning (invariant).** `CachePool::save()` overwrites the value unconditionally; it never merges with an existing value. There is no `saveIfAbsent()` in the PSR-6 surface — the equivalent (set-with-NX) is HUB-02's atomic-lock concern, not CORE-15's. A concurrent writer will overwrite; the last write wins. This is the documented PSR-6 semantics and the safest default for application caches.
+   821→- **TTL is always enforced by the adapter (invariant).** `ArrayAdapter` checks the `expiresAt` map on every `get()` and `has()`. `RedisAdapter` passes TTL to Redis `SETEX`/`SET EX` (Redis enforces expiry server-side). An item that has expired will never be returned as a hit. A `null` TTL means "never expire" (not "use default TTL") — callers that want a default must pass it explicitly. This prevents the subtle bug where a forgotten TTL causes unbounded cache growth.
+   822→- **`RedisAdapter::clear()` is fail-closed (invariant).** The constructor's `allowFlush` flag defaults to `false`. Calling `clear()` with `allowFlush=false` throws `CacheException`. This guard prevents a misconfigured pool from calling `FLUSHDB` on a shared Redis instance and wiping every consumer's data. Operators that want to flush must opt in via config (`cache.redis.allow_flush = true`); the production service-provider template sets this to `false` by default.
+   823→- **Backend failure is signalled, not silent (invariant).** `AdapterInterface` methods throw `CacheException` on backend failure (Redis unreachable, JSON-encode failure). They do **not** return false silently and let the caller mistake a failure for a miss. The pool propagates the exception. The caller can catch `CacheException` and fall back to a recomputed value, but the failure is observable. This is the inverse of "fail-open" caching, where a Redis outage silently degrades to "no cache" — CORE-15 makes the degradation explicit so monitoring catches it.
+   824→- **Deferred saves are an optimisation, not a durability guarantee (invariant).** `saveDeferred()` queues items in memory; if the request ends without `commit()`, the queued writes are lost. This is intentional — the deferred path is for batching writes at the end of a request, not for guaranteeing durability across request boundaries. Callers that need durability must call `save()` (immediate) or ensure `commit()` is invoked in a `finally` block.
+   825→- **Corrupt values in Redis are treated as a miss, not a crash (invariant).** `RedisAdapter::get()` catches `JsonException` from `json_decode()` and returns `null` (a miss). A corrupt value in Redis (e.g., a value written by a different consumer with a different format, or partial bytes from a Redis crash) does not crash the caller. The corrupt value is left in Redis (CORE-15 does not auto-delete it — that is the operator's responsibility); the next `save()` overwrites it.
+   826→
+   827→## Migration Notes
+   828→
+   829→This blueprint is **greenfield** — no code exists yet. The `packages/core/cache/` directory must be created with the following structure:
+   830→
+   831→```
+   832→packages/core/cache/
+   833→├── composer.json          # name: sovereign-stack/core-cache, requires psr/cache:^3.0, psr/simple-cache:^3.0
+   834→├── src/
+   835→│   ├── CachePool.php
+   836→│   ├── SimpleCache.php
+   837→│   ├── CacheItem.php
+   838→│   ├── AdapterInterface.php
+   839→│   ├── ArrayAdapter.php
+   840→│   ├── RedisAdapter.php
+   841→│   ├── CacheException.php
+   842→│   └── InvalidArgumentException.php
+   843→├── tests/
+   844→│   ├── CachePoolTest.php
+   845→│   ├── SimpleCacheTest.php
+   846→│   ├── CacheItemTest.php
+   847→│   ├── ArrayAdapterTest.php
+   848→│   ├── RedisAdapterTest.php        # skipped if ext-redis not loaded
+   849→│   ├── CacheItemPoolPsr6Test.php   # extends cache/integration-tests base
+   850→│   ├── SimpleCachePsr16Test.php    # extends simple-cache/integration-tests base
+   851→│   ├── KeyValidationTest.php
+   852→│   └── performance/
+   853→│       ├── ArrayAdapterPerfTest.php
+   854→│       ├── RedisAdapterPerfTest.php
+   855→│       ├── BatchOverheadTest.php
+   856→│       └── DeferredSaveOverheadTest.php
+   857→├── phpunit.xml.dist
+   858→├── phpstan.neon
+   859→└── .php-cs-fixer.dist.php
+   860→```
+   861→
+   862→**Landing sequence.** CORE-15 is built in Step 5 of the 11-step build sequence (`01_MASTER_INDEX.md` §5), parallelisable with CORE-19, CORE-14, and CORE-16. Entry criterion: Step 1 (CORE-02 DI Container) must be implemented and tested, because the cache is injected via the container. The `RedisAdapter` requires CORE-10 (Config) to provide a Redis DSN; the `ArrayAdapter` works without any Redis infrastructure, so the cache can be developed and tested in isolation before Redis is wired in. This parallelisability is why Step 5 estimates 3 weeks of calendar time despite covering four blueprints.
+   863→
+   864→**HUB-02 dependency.** HUB-02 (Sovereign Hub Cache) builds directly on top of CORE-15's `RedisAdapter`. Per ADR-006, HUB-02's `HubCacheInterface` extends PSR-16's `CacheInterface` and adds `tags()`, `flushTags()`, `lock()`. The tag index is a parallel Redis structure (a SET of keys per tag, scanned and deleted on `flushTags()`); the underlying read/write path is CORE-15's `RedisAdapter`. HUB-02 cannot be built until CORE-15 lands.
+   865→
+   866→**Rollback procedure.** If CORE-15 needs to be reverted (e.g., a critical regression in the `RedisAdapter`'s JSON handling): (1) remove the `sovereign-stack/core-cache` package from `composer.json`; (2) rebind `Psr\Cache\CacheItemPoolInterface` in the CORE-02 container to a `NullPool` (a PSR-6 no-op — every `getItem` returns a miss, every `save` returns true). Every consumer that type-hints `CacheItemPoolInterface` continues to compile and run. The cost of rollback is the loss of all caching; the system remains functional but slow. HUB-02 cannot operate without CORE-15 (its tag index and locks sit on `RedisAdapter`); rolling back CORE-15 forces a rollback of HUB-02 to its own `NullHubCache`.
+   867→
+   868→**Compatibility with existing code.** No existing Core-tier code type-hints `CacheItemPoolInterface` today (verified 2026-08-04 — the only Core-tier packages with code are `orchestrator/`, `packages/core/event-dispatcher/`, and the stub `packages/core/container/`). CORE-06, CORE-09, and CORE-18 will type-hint the PSR interfaces once they are built; they will be written against the interface, not the implementation, so the implementation can land independently. This is the PSR-6/16 contract paying off: consumers can be written before the cache implementation exists.
+   869→
+   870→**Finding 2 correction.** Per Finding 2, the stale evaluation layer (`docs/evaluation/BLUEPRINT_RANKINGS.md`) labelled CORE-15 as "Validation Engine" with a score of 86/100. The actual file (verified 2026-08-04 — `docs/blueprints/Core/CORE-15.md`, 1,085 bytes) is titled "Cache Abstraction" and describes a PSR-6/16 unified cache. This blueprint re-anchors CORE-15 to its verified identity per `01_MASTER_INDEX.md` §2: the Cache Abstraction, namespace `SovereignStack\Core\Cache`. Validation belongs to HUB-19 (Validation Hub). An implementer reading this blueprint cannot confuse CORE-15 with HUB-19.
+   871→
+   872→## SemVer Impact
+   873→
+   874→**Minor.** The package does not yet exist; its first tagged release will be `0.1.0`. The PSR-6 `CacheItemPoolInterface` and `CacheItemInterface`, and the PSR-16 `CacheInterface`, are fixed by the FIG specifications — the package cannot break them. The package-local `AdapterInterface` is part of the public API: breaking changes (e.g., adding a method without a default) require a major version bump; additive changes (a method with a default) are minor. The internal classes (`CachePool`, `SimpleCache`, `CacheItem`, `ArrayAdapter`, `RedisAdapter`) are marked `final`; consumers that need to extend them should submit a feature request rather than subclass.
+   875→
+   876→The `0.x` initial development period allows breaking changes per SemVer 2.0 §4. The first `1.0.0` release will lock the public API and is gated on: (a) PSR-6 compliance suite (`cache/integration-tests`) passing against both `ArrayAdapter` and `RedisAdapter`, (b) PSR-16 compliance suite (`simple-cache/integration-tests`) passing against `SimpleCache(CachePool(ArrayAdapter))`, (c) 100% branch coverage on the ten core methods listed in CI criteria, (d) phpstan level 8 with zero baseline-ignored errors, (e) the `--group performance` suite running on the canonical CI baseline and producing the first measured (non-provisional) numbers.
+   877→

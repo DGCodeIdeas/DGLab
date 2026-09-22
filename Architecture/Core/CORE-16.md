@@ -754,3 +754,27 @@ packages/core/crypto/
 
 ## SemVer Impact
 **Major** — initial release as `1.0.0`. Establishes the cryptographic baseline of the stack (AES-256-GCM, Argon2id per ADR-008, HKDF-SHA256). The `EncrypterInterface`, `KeyRegistryInterface`, `Envelope`, and `CryptoException` public surface is the SemVer contract; future cipher additions land as minor versions (envelope `v=2` dispatched alongside `v=1`); future cipher removals or interface changes are major. Per ADR-008 §Consequences, Argon2id parameter increases (raising `memory_cost` from 64 MiB to 128 MiB, say) are SemVer-patch — `password_needs_rehash()` upgrades existing hashes transparently on next login, so no breaking change to callers.
+
+---
+
+## Nuclear-Grade Engineering Doctrine (binding)
+
+This blueprint is the source of truth for `Encrypter`/`Hasher` interface
+signatures, envelope `v` field, and Argon2id parameters. The operational
+envelope — key lifecycle, nonce uniqueness, side-channel hardening,
+zeroization, audit hash-chain, panic procedure, chaos-test matrix, merge gate —
+is governed by [`Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)
+§4.4. Where this blueprint and the doctrine conflict, **the doctrine wins**;
+this blueprint is amended at the same PR that lands the implementation.
+
+Specifically binding on CORE-16 from the doctrine:
+- **§3 resource ceilings:** 50 ms sym / 2 s Argon2id verify wall-clock, 256 KB plaintext chunk, 0 retries (cryptographic ops are not retried — failure shape is Corrupt or Permanent-Local, never Transient), 1%/60s breaker trip threshold, 60s cooldown.
+- **§4.4.1 key envelope (KEK/DEK/KMS):** long-lived KEK held ONLY inside `SensitiveParameterValue` (PHP 8.4+, hides from `var_dump`/stack traces). Each encryption derives fresh DEK via HKDF-SHA256 with per-file 32-byte random salt; DEK zeroized after operation. KEK rotation every 90 days; old KEK remains in `KeyRing` for read-only use until all data re-encrypted; re-encryption is a tracked background job with per-tenant checkpointing.
+- **§4.4.2 nonce uniqueness:** 12-byte GCM nonce = 8-byte monotonic counter persisted to `nonce_counter` table + 4-byte random. Counter advance atomic: new value committed to DB BEFORE nonce is used. If counter DB down, encryption refuses with `NonceCounterUnavailable` (Permanent-Local) — NO fallback to pure-random nonce (collision risk under high volume).
+- **§4.4.3 constant-time / side-channel hardening:** every MAC tag, key fingerprint, password hash comparison uses `sodium_memcmp` or `hash_equals` — never `===`. Decryption verifies GCM tag BEFORE returning plaintext; on mismatch, plaintext buffer zeroized and `DecryptionFailed` (Corrupt) thrown; ciphertext hex-encoded in audit log for forensics. Argon2id: `memory_cost = 64 * 1024 * 1024` (64 MiB), `time_cost = 3`, `threads = 4` — floored at 32 MiB / 2 / 1, anything weaker rejected with `WeakHashParametersRefused`.
+- **§4.4.4 zeroization:** every DEK, derived intermediate, plaintext buffer zeroized via `sodium_memzero` after use. Encrypter does not cache DEKs across requests. KEK cache held in `SensitiveParameterValue`, invalidated on rotation.
+- **§4.4.5 audit & provenance:** every encrypt/decrypt call audit-logged with caller, typed `EncryptionPurpose` enum, key version, success/failure. Plaintext NEVER logged. Ciphertext hash IS logged (operator can answer "was this blob ever decrypted, by whom, when"). Decryption failures classed Corrupt, trip breaker immediately; repeated failures from a single Fiber page operator.
+- **§4.4.6 chaos scenarios:** nonce counter DB down (refuse + audit, no fallback), GCM tag mismatch (zeroize + Corrupt + breaker + page), KEK rotation mid-flight (try new then fall back through `KeyRing`, never silently null), weak Argon2id params (refuse to start), side-channel timing attempt (constant-time thanks to `hash_equals` on key fingerprint), memory dump captures DEK (`SensitiveParameterValue` + zeroize).
+- **§5 test matrix:** 13 categories required for merge — constant-time timing test is mandatory for this package.
+- **§7 cross-package worst-case scenario §7.3:** key rotation race — Tenant A writes with KEK v2, Tenant B reads with worker that only has v1 loaded. Decryption tries current KEK then falls back through `KeyRing`; if none verify GCM tag, `DecryptionFailed` (Corrupt), row marked `DECRYPT_FAILED`, operator paged. NEVER silently returns null.
+- **§9 merge gate:** all of the above must pass before PR merges into `main` and promotes to `stable`.
