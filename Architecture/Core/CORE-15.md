@@ -874,3 +874,28 @@ packages/core/cache/
 **Minor.** The package does not yet exist; its first tagged release will be `0.1.0`. The PSR-6 `CacheItemPoolInterface` and `CacheItemInterface`, and the PSR-16 `CacheInterface`, are fixed by the FIG specifications — the package cannot break them. The package-local `AdapterInterface` is part of the public API: breaking changes (e.g., adding a method without a default) require a major version bump; additive changes (a method with a default) are minor. The internal classes (`CachePool`, `SimpleCache`, `CacheItem`, `ArrayAdapter`, `RedisAdapter`) are marked `final`; consumers that need to extend them should submit a feature request rather than subclass.
 
 The `0.x` initial development period allows breaking changes per SemVer 2.0 §4. The first `1.0.0` release will lock the public API and is gated on: (a) PSR-6 compliance suite (`cache/integration-tests`) passing against both `ArrayAdapter` and `RedisAdapter`, (b) PSR-16 compliance suite (`simple-cache/integration-tests`) passing against `SimpleCache(CachePool(ArrayAdapter))`, (c) 100% branch coverage on the ten core methods listed in CI criteria, (d) phpstan level 8 with zero baseline-ignored errors, (e) the `--group performance` suite running on the canonical CI baseline and producing the first measured (non-provisional) numbers.
+
+---
+
+## Nuclear-Grade Engineering Doctrine (binding)
+
+This blueprint is the source of truth for **PSR-6/16 interface conformance and
+adapter signatures**. The operational envelope — failure shape under
+Redis-down and stampede, resource ceilings, breaker thresholds, audit
+hash-chain, panic procedure, chaos-test matrix, merge gate — is governed by
+[`Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)
+§4.2. Where this blueprint and the doctrine conflict, **the doctrine wins**;
+this blueprint is amended at the same PR that lands the implementation.
+
+Specifically binding on CORE-15 from the doctrine:
+- **§3 resource ceilings:** 100 ms read / 250 ms write wall-clock, 1 MB value, 8 conns/process, 2-retry budget with 10–100 ms jitter, 10%/30s breaker trip threshold, 5s cooldown.
+- **§4.2 circuit breaker (Redis):** CLOSED/OPEN/HALF_OPEN, 5s cooldown, falls through to caller compute when OPEN. Trip conditions: 10% error rate over 30s OR 3 consecutive connection-refused OR a single `LOADING`-state reply. While OPEN, the cache layer MUST NOT retry — fall through and emit `CacheBreakerOpen` structured log.
+- **§4.2 stampede protection:** single-flight via in-process `array<string, Fiber>` + Redis `SET NX EX 10` cross-process lock. 1s wait timeout for concurrent fibers; on timeout, fall through with `CacheComputeFallbackTimeout` (Transient) and recompute locally.
+- **§4.2 TTL hard floor:** `set()` with TTL ≤ 1s rejected with `CacheTtlTooShort` (Permanent-Local). TTL = 0 (forever) rejected unless caller passes `PermanentCacheAllowed` token only ISPOKE-19 (Vault Ops) and ISPOKE-20 (Compliance) can hold.
+- **§4.2 serialization safety:** no `serialize()`/`unserialize()` on external-boundary values. `igbinary` for opaque blobs, typed `CacheValue` envelope `{type, payload, checksum}` for structured values. CRC32C checksum verified constant-time on read; mismatch is `CachePayloadCorrupt` (Corrupt) — key auto-deleted, breaker stays CLOSED.
+- **§4.2 tenant isolation:** key builder prepends `{tenantId}:`. `get()` without tenant context throws `MissingTenantContext`. 1000-random-tenant-pairs fuzz test required.
+- **§4.2 hot-key detection:** per-key sliding-window 60s counter. >1000 hits/min flagged hot; value mirrored to APCu with 1s TTL.
+- **§4.2.7 chaos scenarios:** Redis entirely down, 500-concurrent stampede, corrupt payload (checksum mismatch), tenant poisoning attempt, hot-key saturation, TTL=0 attempt.
+- **§5 test matrix:** 13 categories required for merge.
+- **§7 cross-package worst-case scenario §7.1:** silent corruption — DB write fails mid-txn, rollback succeeds, cache invalidation lost because Redis breaker was OPEN. Cache MUST write `PendingInvalidation` to local disk and replay on recovery; stale read detected via version-stamp MUST trigger `StaleCacheReadDetected` (Corrupt), MUST NOT return stale value to user.
+- **§9 merge gate:** all of the above must pass before PR merges into `main` and promotes to `stable`.

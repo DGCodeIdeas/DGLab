@@ -5,6 +5,9 @@
 **Method:** STRIDE-per-trust-boundary (Microsoft methodology) with deep-dives on tenant isolation, JWT lifecycle, BRIDGE-01 bypass, secret management, rate-limit evasion, audit-log tampering, and OWASP ASVS L2 coverage.
 **Conventions:** Every threat carries an explicit mitigation tied to a blueprint ID (`CORE-XX`, `HUB-XX`, `BRIDGE-01`, `DEPLOY-XX`). The corrected canonical IDs from `01_MASTER_INDEX.md` §2–§3 are used throughout — in particular, payload verification is `CORE-16`, not the stale `CORE-09` reference called out in Finding 3.
 
+> **Step 5 doctrine anchor.** Every threat mitigation that names `CORE-19`, `CORE-15`, `CORE-14`, or `CORE-16` is **operationally enforced** by [`NUCLEAR-GRADE-DOCTRINE.md`](./NUCLEAR-GRADE-DOCTRINE.md): circuit breakers, hash-chained audit, panic procedure, chaos tests, and the §9 merge gate. Where this threat model says a mitigation exists and the doctrine specifies its failure shape, the two documents are **jointly binding** — neither is sufficient alone.
+
+
 ---
 
 ## §1. Trust Boundaries

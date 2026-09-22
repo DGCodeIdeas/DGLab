@@ -17,7 +17,7 @@ the DGLab platform (CMS + Studio + admin).
 | [`Spoke/`](./Spoke) | Internal (`ISPOKE-01`…`25`), External (`ESPOKE-01`…`15`), Bridge (`BRIDGE-01`) |
 | [`Deploy/`](./Deploy) | `DEPLOY-00` (docs) … `DEPLOY-04` (promotion) |
 | [`ADRs/`](./ADRs) | 10 Accepted decision records + 1 Proposed (`ADR-011`) |
-| [`CrossCutting/`](./CrossCutting) | Structure (Wheel, Pulse, Security, Events, Persistence, Boot, Testing, Deployment, Performance), Observability, Glossary, Threat Model |
+| [`CrossCutting/`](./CrossCutting) | Structure (Wheel, Pulse, Security, Events, Persistence, Boot, Testing, Deployment, Performance), Observability, Glossary, Threat Model, **[Nuclear-Grade Engineering Doctrine](./CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)** (binding on Step 5 Core persistence packages: CORE-19, CORE-15, CORE-14, CORE-16) |
 | [`Critiques/`](./Critiques) | The consolidated critique that drove this consolidation |
 | [`Migration/`](./Migration) | `04_MIGRATION_PLAN.md` — the 11-step build sequence |
 | [`Verification/`](./Verification) | `INCONSISTENCIES.md` + `lint/run.php` (CI) |

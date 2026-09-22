@@ -138,3 +138,23 @@
 2. **`Environment` enum** (`SovereignStack\Hub\Config`) — frozen, but marked as a placeholder. When CORE-10 ships its own `Environment` enum, HUB-01 swaps via use-clause. The string values (`Development`, `Staging`, `Production`, `Testing`) are stable across both.
 
 3. **`ConfigOverrideRepositoryInterface` + `FeatureFlagRepositoryInterface`** (HUB-01) — frozen at depth 2 with in-memory stubs. When CORE-19 (DBAL) ships, the in-memory stubs are replaced with database-backed implementations. The interface signatures are stable.
+
+---
+
+## Step 5 contracts (CORE-19 / CORE-15 / CORE-14 / CORE-16)
+
+> **Nuclear-grade doctrine applies.** Every interface landed under Step 5 is **frozen** the moment it is implemented at any depth, per SDLC-AGRD §2.1, AND is **operationally bound** by [`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](./CrossCutting/NUCLEAR-GRADE-DOCTRINE.md). Freezing governs the **signature** (method names, parameter types, return types, constant values). The doctrine governs the **operational envelope** (failure shape, resource ceilings, breaker thresholds, audit, panic, chaos tests, merge gate). A signature-frozen interface can still fail doctrine §9 merge gate — in which case the implementation is **not eligible for promotion to `stable`** even though the interface is technically frozen.
+
+### Doctrine-imposed contract constraints
+
+The following constraints are binding on every Step-5 frozen contract and MUST be respected by any future amendment:
+
+- **Exception classes** thrown across the public surface MUST name their error taxonomy class (Transient / Permanent-External / Permanent-Local / Corrupt / Panic) in the docblock `@throws` tag.
+- **Resource-limit exceptions** (`ResourceLimitExceeded`, `QueryTimeoutExceeded`, `ConnectionLeakDetected`, `CacheTtlTooShort`, `StreamByteLimitExceeded`, `NonceCounterUnavailable`, `WeakHashParametersRefused`, `PathTraversalRefused`, `QuarantineNotReleased`) are part of the frozen contract surface — they cannot be renamed or have their constructor signature changed without a major SemVer bump.
+- **Token interfaces** that gate elevated privileges (`SystemContext` for tenant-scope bypass, `PermanentCacheAllowed` for TTL=0 cache writes, `QuarantineRelease` for untrusted-file reads) are part of the frozen contract surface; their acquisition paths are enforced by static analysis.
+- **Audit record schema** (`AuditRecord` with `seq`, `tenant_id`, `request_id`, `fiber_id`, `actor_id`, `operation`, `target`, `before_hash`, `after_hash`, `prev_hash`, `entry_hash`, `created_at`) is part of the frozen contract surface — downstream consumers (HUB-06, ISPOKE-17) depend on it.
+- **Circuit breaker** public methods (`isOpen()`, `trip()`, `cooldown()`, `probe()`) are part of the frozen contract surface; their state machine (CLOSED → OPEN → HALF_OPEN → CLOSED) cannot change.
+
+### Registration pending
+
+The actual interface and enum FQCN/file tables for CORE-19, CORE-15, CORE-14, and CORE-16 will be appended to this registry at the same PR that lands each package's depth-2 implementation under the doctrine. Until then, the per-package blueprints (`Architecture/Core/CORE-{14,15,16,19}.md`) are the source of truth for the planned interface surface; the doctrine file is the source of truth for the operational envelope.

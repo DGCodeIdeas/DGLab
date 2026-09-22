@@ -6,6 +6,8 @@
 > contradicted ADR-003 on both algorithm and ownership. The tenant claim is `tenant_id`, matching
 > `Hub/HUB-04.md`'s `TokenClaims` value object — not the short form `tid`.
 
+> **Step 5 doctrine anchor.** The security invariants below are **operationally enforced** for `CORE-19` (DBAL), `CORE-15` (Cache), `CORE-14` (Filesystem), and `CORE-16` (Encryption) by [`NUCLEAR-GRADE-DOCTRINE.md`](./NUCLEAR-GRADE-DOCTRINE.md): tenant-scope bypass is gated behind a `SystemContext` token (doctrine §4.1.3 + §4.2.5), path-traversal hardening uses `realpath`+`strpos` not string-prefix (§4.3.2), cryptographic comparisons are constant-time via `hash_equals`/`sodium_memcmp` (§4.4.3), and every secret is held in `SensitiveParameterValue` with mandatory `sodium_memzero` zeroization (§4.4.1 + §4.4.4). The §6 panic procedure (audit hash-chain break, tenant-scope leak under OOM, decryption failure rate >1%/60s) is the security-violation escalation path; ISPOKE-17 (Incident) is paged.
+
 
 > **Repository:** https://github.com/DGCodeIdeas/DGLab  
 > **Framework:** Custom PHP MVC Framework  
