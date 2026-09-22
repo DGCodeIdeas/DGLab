@@ -1,17 +1,16 @@
-# Nuclear-Grade Engineering Doctrine — Step 5 Core Persistence Layer
+# Nuclear-Grade Engineering Doctrine — Core Tier
 
 > **Status:** Canonical, binding.
-> **Scope:** Every line of code, every test, every operational artefact produced under
-> Step 5 of the AGRD build order — i.e. **CORE-19 (DBAL), CORE-15 (Cache), CORE-14
-> (Filesystem), CORE-16 (Encryption)** — is governed by this doctrine in addition to the
-> existing blueprints (`Architecture/Core/CORE-{14,15,16,19}.md`) and cross-cutting specs
-> (`THREAT_MODEL.md`, `OBSERVABILITY.md`, `STRUCTURE-05-Persistence.md`,
-> `STRUCTURE-03-Security.md`, `SDLC-AGRD.md`).
-> **Effective:** 2026-09-20 (post-MUWV, on `stable` branch model).
-> **Tone of voice:** This document is short on aspiration and long on **enforcement
-> language** ("MUST", "MUST NOT", "FORBIDDEN", "GATE"). Where it conflicts with a softer
-> statement in a per-package blueprint, **this doctrine wins** and the blueprint is
-> amended by reference.
+> **Scope:** Every line of code, every test, every operational artefact produced in the **Core tier** of the AGRD build order is governed by this doctrine in addition to the existing per-package blueprints (`Architecture/Core/CORE-*.md`) and cross-cutting specs (`THREAT_MODEL.md`, `OBSERVABILITY.md`, `STRUCTURE-05-Persistence.md`, `STRUCTURE-03-Security.md`, `SDLC-AGRD.md`).
+>
+> **Effective scope as of 2026-09-23** (post-MUWV, on `stable` branch model):
+> - **Step 5 Core persistence layer (binding since 2026-09-20):** CORE-19 (DBAL), CORE-15 (Cache), CORE-14 (Filesystem), CORE-16 (Encryption). Detailed per-package application in §4.1–§4.4.
+> - **Core runtime layer (binding as of 2026-09-23):** CORE-18 (Kernel). Detailed per-package application in §4.5 — pilot for extending the doctrine from Step 5 to the broader Core tier.
+> - **All other Core packages (pending per-package application):** CORE-01 (Orchestrator), CORE-02 (Container), CORE-03 (EventDispatcher), CORE-04 (HttpMessage), CORE-05 (Middleware), CORE-06 (Router), CORE-07 (SuperPHP), CORE-08 (ErrorHandler), CORE-09 (Logger), CORE-10 (Config), CORE-17 (Providers), CORE-20 (Assets) — binding in **principle** under §1–§3 and §5–§11 immediately; per-package application sections (§4.6 onward) land incrementally per §11's amendment protocol.
+>
+> **Tone of voice:** This document is short on aspiration and long on **enforcement language** ("MUST", "MUST NOT", "FORBIDDEN", "GATE"). Where it conflicts with a softer statement in a per-package blueprint, **this doctrine wins** and the blueprint is amended by reference.
+>
+> **Scope-widening rationale (2026-09-23):** The doctrine's own P1 (defence in depth), P11 (chaos testing as first-class), and §11 (living contract) imply that "build for the worst case" cannot be scoped to only the persistence layer — a panic in the Kernel, a runaway rebind loop in the Container, or a stale-shutdown handler in the ErrorHandler can sink the system just as thoroughly as a corrupt cache payload. The scope therefore widens to all Core packages, applied incrementally starting with CORE-18 (Kernel) because it has the most concrete, already-verified gap (the four untested re-entrancy paths in `KernelStateMachineTest.php`'s docblock) and is the safety-critical seam through which every request and every boot passes.
 
 ---
 
@@ -496,6 +495,179 @@ hardening**.
 
 ---
 
+### §4.5 CORE-18 — Kernel (state machine, bootstrapper chain, panic procedure)
+
+**Source of truth:** `Architecture/Core/CORE-18.md` for the `KernelInterface`,
+`BootstrapperInterface`, `KernelState` enum, and `KernelException` signatures;
+`packages/core/kernel/src/Kernel.php` for the reference implementation;
+`packages/core/kernel/tests/Unit/KernelStateMachineTest.php` for the state-machine
+test suite. This doctrine governs the **operational envelope around the state
+machine, the bootstrapper chain, and the missing panic-mode concept**.
+
+#### §4.5.1 State-machine invariants (binding)
+- The six-case `KernelState` enum (`Unbooted`, `Booting`, `Booted`, `Handling`,
+  `Terminating`, `Terminated`) is frozen in `FROZEN-CONTRACTS.md` and CANNOT be
+  extended without a major SemVer bump (P7).
+- Every state transition is single-writer: only the Kernel itself MAY mutate
+  `$this->state`. External callers MUST NOT reflection-set state (P1, P10).
+- The state machine's 9 illegal transitions (`bootAfterTerminate`,
+  `handleBeforeBoot`, `handleAfterTerminate`, `terminateBeforeBoot`,
+  `doubleTerminate`, `handleDuringHandling`, `bootDuringBoot`,
+  `handleDuringBoot`, `terminateDuringBoot`, `terminateDuringHandling`) are
+  enumerated as named constructors on `KernelException` and MUST remain
+  available as throw-points (P9 — provenance).
+- `boot()` on an already-Booted Kernel is idempotent (returns immediately
+  without re-running bootstrappers). This is part of the frozen contract and
+  MUST NOT change.
+
+#### §4.5.2 Re-entrancy test coverage (P11 — immediate closure required)
+The four re-entrancy exceptions `bootDuringBoot`, `handleDuringBoot`,
+`terminateDuringBoot`, `terminateDuringHandling` are listed in the docblock of
+`KernelStateMachineTest.php` lines 19, 21, 24, 25 as cases the file is supposed
+to cover, but **the file ships zero actual test methods for them** (verified
+2026-09-23 via grep). This is a direct P11 (chaos testing as first-class
+artefact) violation sitting in the most safety-critical package. Closure is
+**mandatory** before the next `stable` promotion:
+
+- `testBootDuringBootThrows()` — call `boot()`, then inside a bootstrapper
+  re-enter `boot()`, assert `KernelException::bootDuringBoot()` is thrown.
+- `testHandleDuringBootThrows()` — call `boot()`, inside a bootstrapper call
+  `handle()` on a fake request, assert `KernelException::handleDuringBoot()`.
+- `testTerminateDuringBootThrows()` — call `boot()`, inside a bootstrapper
+  call `terminate()`, assert `KernelException::terminateDuringBoot()`.
+- `testTerminateDuringHandlingThrows()` — drive the Kernel to `Handling`
+  state via `handle()` inside a fiber, from a parallel fiber call `terminate()`,
+  assert `KernelException::terminateDuringHandling()`.
+
+Each test MUST use a real bootstrapper that re-enters (not a reflection hack)
+so the test exercises the actual code path, not a mocked one (P11).
+
+#### §4.5.3 Bootstrapper chain circuit breaker (P6 — new)
+The `foreach ($this->bootstrappers as $bootstrapper) { $bootstrapper->bootstrap($this); }`
+loop in `Kernel::boot()` has **no timeout, no breaker, no per-bootstrapper
+fault isolation** today. A hanging or throwing bootstrapper blocks `boot()`
+indefinitely or sinks the entire boot graph (P6 violation). Binding behaviour:
+
+- Each `BootstrapperInterface::bootstrap()` call MUST be wrapped in a
+  per-bootstrapper wall-clock budget of **5 seconds** (P3). Exceeding the
+  budget throws `BootstrapperTimeoutExceeded` (class Permanent-Local) and
+  transitions the Kernel to `Terminated` via the existing catch block.
+- A bootstrapper that throws a `Throwable` other than the doctrine's Panic
+  class is treated as a Permanent-Local boot failure — the Kernel transitions
+  to `Terminated` as today. A bootstrapper that throws `PanicException`
+  escalates to the §6 panic procedure immediately (the catch block re-throws
+  after marking state, the worker supervisor restarts the process).
+- The bootstrapper chain is **not** retryable. A failed `boot()` is a failed
+  worker — the supervisor must restart the process, not retry `boot()` on the
+  same instance (P4 — boot is not idempotent across failure).
+
+#### §4.5.4 Panic-mode concept (§6 — new for Kernel)
+The Kernel today throws `KernelException` (a `RuntimeException`) for every
+illegal state transition. None of these are classified as Panic per §2's
+taxonomy. That is correct for the 9 illegal transitions (they are
+Permanent-Local — the caller did something wrong, the system is fine). But
+the Kernel lacks a `PanicException` path for the cases where the **system
+itself** is broken:
+
+- The Kernel's `releaseReferences()` fails (e.g., a property is unexpectedly
+  already null — invariant violation).
+- `boot()` completes but `$this->container` is null immediately after the
+  assignment (factory returned null — invariant violation).
+- `handle()` enters `Handling` state but `$this->pipeline` is null despite
+  `assertBooted()` passing (invariant violation).
+- The `finally` block in `handle()` cannot transition state back to `Booted`
+  (state-recovery gap — invariant violation).
+
+Binding behaviour: the Kernel MUST throw `PanicException` (added to the
+`SovereignStack\Core\Kernel` namespace, extends `\RuntimeException`, class
+Panic per §2) for these four invariant-violation paths. The Kernel's catch
+block in `boot()` and the `finally` in `handle()` MUST NOT swallow a
+`PanicException` — it MUST propagate to the Kernel caller (the public/index.php
+worker loop), which MUST exit non-zero per §6.2's panic procedure.
+
+`PanicException` is part of the frozen contract surface of CORE-18 going
+forward (per `FROZEN-CONTRACTS.md` Step-5 contracts section's doctrine-imposed
+constraints). Adding it is a SemVer-minor change (additive — no existing
+throw-point changes class from Permanent-Local to Panic).
+
+#### §4.5.5 Resource ceilings (P3 — new)
+- Wall-clock per `boot()`: 30s aggregate across all bootstrappers, enforced
+  by the per-bootstrapper 5s budget (§4.5.3) plus a 30s outer watchdog.
+- Wall-clock per `handle()`: 30s for the full request lifecycle (middleware
+  pipeline + event dispatch + response). Exceeding this is
+  `RequestTimeoutExceeded` (class Permanent-Local) — the Kernel transitions
+  to `Booted` via the existing `finally` and the caller gets 503.
+- Wall-clock per `terminate()`: 5s for the terminate event + handler unreg.
+  Exceeding is `TerminateTimeoutExceeded` (class Permanent-Local); the Kernel
+  force-transitions to `Terminated` and `releaseReferences()` runs anyway.
+- Bootstrapper count: hard ceiling of **32 bootstrappers** per Kernel
+  construction. Exceeding is `BootstrapperCountExceeded` (Permanent-Local) at
+  construction time, before any boot attempt.
+- Concurrent `handle()` calls on the same Kernel instance: 1 (single-writer).
+  The state-machine already enforces this via `handleDuringHandling`; no new
+  code needed, just an explicit doctrine note that this is intentional and
+  frozen (P7).
+
+#### §4.5.6 Audit (P9 — new)
+The Kernel MUST emit `KernelLifecycleRecord` audit records for:
+- `bootStarted` (at state transition Unbooted→Booting, with bootstrapper
+  count, factory list, request_id where applicable)
+- `bootCompleted` (at state transition Booting→Booted, with elapsed ms,
+  bootstrapper timings)
+- `bootFailed` (in the catch block, with the throwable class + message,
+  elapsed ms, which bootstrapper threw if determinable)
+- `handleStarted` (at state transition Booted→Handling, with request_id,
+  request method, request URI hash)
+- `handleCompleted` (at the finally, with elapsed ms, response status code)
+- `handleFailed` (in any catch the Kernel adds in future, with throwable
+  class + message, elapsed ms)
+- `terminateStarted` (at state transition Booted→Terminating)
+- `terminateCompleted` (at state transition Terminating→Terminated, with
+  elapsed ms)
+
+These records feed the §8 `AuditRecord` schema and are appended to the
+hash chain. The Kernel's existing event dispatch (`BootEvent`,
+`RequestReceivedEvent`, `ResponseReadyEvent`, `TerminateEvent`) is the
+delivery mechanism — HUB-06 (Audit) listens to these events and writes
+the records. No new event types needed; the audit content is enriched
+by the listener.
+
+#### §4.5.7 Worst-case scenarios (must have chaos tests)
+1. **Re-entrancy from a bootstrapper** — `bootstrapperA::bootstrap()` calls
+   `$kernel->boot()`. Expected: `bootDuringBoot` thrown, boot fails, Kernel
+   transitions to Terminated, worker restarts. (Closes the docblock-vs-tests
+   gap in §4.5.2.)
+2. **Re-entrancy from a listener** — `RequestReceivedEvent` listener calls
+   `$kernel->handle()` on the same request. Expected: `handleDuringHandling`
+   thrown, outer handle's `finally` restores state to `Booted`, caller gets
+   500 + audit `handleFailed`.
+3. **Hanging bootstrapper** — `bootstrapperA::bootstrap()` sleeps 6s.
+   Expected: `BootstrapperTimeoutExceeded` at 5s, Kernel transitions to
+   Terminated, boot fails, worker restarts, audit `bootFailed` records the
+   timeout.
+4. **Throwing bootstrapper** — `bootstrapperA::bootstrap()` throws
+   `RuntimeException`. Expected: Kernel transitions to Terminated,
+   `releaseReferences()` runs, audit `bootFailed` records the throwable,
+   worker restarts. Boot is NOT retried on the same Kernel instance (P4).
+5. **Null factory result** — `$containerFactory` returns null. Expected:
+   `PanicException` (invariant violation — factory contracts are non-null),
+   Kernel transitions to Terminated, panic procedure runs, worker exits
+   non-zero, ISPOKE-17 is paged.
+6. **State-recovery gap** — `handle()` enters `Handling` but the `finally`
+   cannot restore `Booted` (e.g., reflection-mangled state). Expected:
+   `PanicException`, Kernel transitions to Terminated, worker exits non-zero,
+   ISPOKE-17 paged. The system refuses to serve further requests on this
+   worker — the supervisor MUST restart.
+7. **Double-handle from parallel fibers** — Fiber A calls `handle()`,
+   Fiber B calls `handle()` before A's `finally` runs. Expected:
+   `handleDuringHandling` from B's match arm, B's call fails fast, A's
+   handle continues. State remains `Handling` until A's `finally` runs.
+8. **Terminate during handling** — Fiber A in `Handling`, Fiber B calls
+   `terminate()`. Expected: `terminateDuringHandling` from B's match arm,
+   B's call fails fast, A's handle continues. (Closes the §4.5.2 gap.)
+
+---
+
 ## §5. Cross-cutting test matrix
 
 Every package MUST ship the following test categories. A package missing any
@@ -718,6 +890,13 @@ on the `main` branch, propagated to `stable` on the next cooldown promotion. The
 PR description MUST cite the incident, test failure, or audit finding that
 motivated the change. Drive-by edits without a cited motivation are rejected.
 
+### §11.1 Amendment log
+
+| Date | PR | Change | Motivation |
+|---|---|---|---|
+| 2026-09-20 | (initial publication, Task 43) | Doctrine published at 723 lines, binding on Step 5 Core persistence packages (CORE-19/15/14/16). 12 principles, 5-class error taxonomy, hard resource ceilings, per-package application §4.1–§4.4, test matrix, panic procedure, audit schema, merge gate. | User directive: "build like you are building a nuclear plant or even a nuclear reactor, build for the worst case scenario." |
+| 2026-09-23 | (this amendment, PR pending) | (1) §0 scope widened from "Step 5 Core Persistence Layer" to "Core Tier" — all Core packages now bound in principle under §1–§3 and §5–§11 immediately, with per-package application sections §4.6 onward landing incrementally per §11's amendment protocol. (2) §4.5 CORE-18 — Kernel added as the pilot for the broader scope: state-machine invariants, the four untested re-entrancy exceptions (`bootDuringBoot`, `handleDuringBoot`, `terminateDuringBoot`, `terminateDuringHandling`) flagged for immediate P11 closure, bootstrapper chain circuit breaker (P6), new `PanicException` concept for invariant violations (§6), resource ceilings for boot/handle/terminate, `KernelLifecycleRecord` audit feed, 8 worst-case chaos scenarios. (3) Document title updated; closing footer updated. | External review (Claude, trace_id 1a0ca7fa404300c1) observed that the doctrine's own P1/P11/§11 imply the scope cannot be limited to the persistence layer — a Kernel panic or Container runaway is just as system-sinking as a corrupt cache payload. §4.5 lands first on CORE-18 because the four untested re-entrancy paths in `KernelStateMachineTest.php`'s docblock are the most concrete, already-verified gap. |
+
 ---
 
-*End of Nuclear-Grade Engineering Doctrine — Step 5 Core Persistence Layer.*
+*End of Nuclear-Grade Engineering Doctrine — Core Tier.*

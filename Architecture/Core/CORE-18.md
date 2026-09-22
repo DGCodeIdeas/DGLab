@@ -790,3 +790,32 @@ packages/core/kernel/
 
 ## SemVer Impact
 **Major.** CORE-18 is the capstone of the Core tier — completing it enables the Hub tier. The `KernelInterface` three-method contract (`boot()`, `handle()`, `terminate()`) and the four lifecycle event classes are the 1.0.0 stable contract that every downstream package (Hub, Bridge, Spokes, Deploy) type-hints against. The `KernelState` enum's string values are part of the public audit-log schema. Any change to these is a major-version bump. Future additive changes (new `BootstrapperInterface` implementations, new lifecycle event subclasses for additional phases like `RequestHandlingFailedEvent`) are SemVer-minor; the contract surface (the three methods + the four events + the six-state enum) is locked at 1.0.0.
+
+---
+
+## Nuclear-Grade Engineering Doctrine (binding — pilot for Core-tier scope)
+
+This blueprint is the source of truth for `KernelInterface`, `BootstrapperInterface`,
+`KernelState` enum, and `KernelException` signatures. The operational envelope —
+state-machine invariants, re-entrancy test coverage, bootstrapper chain circuit
+breaker, panic-mode concept, resource ceilings, audit, chaos-test matrix, merge
+gate — is governed by [`Architecture/CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)
+**§4.5 CORE-18 — Kernel**. Where this blueprint and the doctrine conflict, **the
+doctrine wins**; this blueprint is amended at the same PR that lands the
+implementation. CORE-18 is the **pilot** for widening the doctrine's scope from
+Step 5 (persistence) to the entire Core tier — see doctrine §0 and §11.1's
+amendment log entry dated 2026-09-23.
+
+Specifically binding on CORE-18 from the doctrine §4.5:
+
+- **§4.5.1 state-machine invariants:** six-case `KernelState` enum frozen; single-writer state; 9 illegal transitions enumerated as `KernelException` named constructors; `boot()` on Booted is idempotent (frozen).
+- **§4.5.2 re-entrancy test coverage (P11 — immediate closure required):** the four re-entrancy exceptions `bootDuringBoot`, `handleDuringBoot`, `terminateDuringBoot`, `terminateDuringHandling` are listed in `packages/core/kernel/tests/Unit/KernelStateMachineTest.php` lines 19, 21, 24, 25 as cases the file is supposed to cover, but the file ships **zero actual test methods for them** (verified 2026-09-23 via grep). Closure is mandatory before the next `stable` promotion: `testBootDuringBootThrows()`, `testHandleDuringBootThrows()`, `testTerminateDuringBootThrows()`, `testTerminateDuringHandlingThrows()` — each using a real bootstrapper that re-enters, not a reflection hack.
+- **§4.5.3 bootstrapper chain circuit breaker (P6 — new):** each `BootstrapperInterface::bootstrap()` call wrapped in a 5s wall-clock budget; exceeding throws `BootstrapperTimeoutExceeded` (Permanent-Local) and transitions Kernel to Terminated via existing catch block. Throwing bootstrapper = Permanent-Local boot failure (Kernel → Terminated, `releaseReferences()` runs). `PanicException` from a bootstrapper escalates to §6 panic procedure immediately. Boot is **not** retryable on the same Kernel instance (P4).
+- **§4.5.4 panic-mode concept (§6 — new):** the Kernel today throws `KernelException` (a `RuntimeException`) for every illegal state transition. That is correct for the 9 illegal transitions (Permanent-Local — caller error). But the Kernel lacks a `PanicException` path for the cases where the **system itself** is broken: `releaseReferences()` fails, factory returns null, `assertBooted()` passes but `$pipeline` is null, `handle()`'s `finally` cannot restore state. The Kernel MUST throw `PanicException` (class Panic per §2) for these four invariant-violation paths; the catch in `boot()` and `finally` in `handle()` MUST NOT swallow it; the worker loop MUST exit non-zero per §6.2; ISPOKE-17 is paged. `PanicException` becomes part of CORE-18's frozen contract surface going forward (SemVer-minor — additive).
+- **§4.5.5 resource ceilings (P3 — new):** 30s aggregate wall-clock per `boot()` (5s per bootstrapper + 30s outer watchdog); 30s wall-clock per `handle()` (exceeding throws `RequestTimeoutExceeded`, Kernel returns to Booted via existing finally, caller gets 503); 5s wall-clock per `terminate()` (exceeding throws `TerminateTimeoutExceeded`, force-transition to Terminated, `releaseReferences()` runs anyway); 32 bootstrapper hard ceiling at construction time (`BootstrapperCountExceeded`); concurrent `handle()` calls capped at 1 (already enforced via `handleDuringHandling`, doctrine note that this is intentional and frozen).
+- **§4.5.6 audit (P9 — new):** Kernel MUST emit `KernelLifecycleRecord` audit records for `bootStarted`, `bootCompleted`, `bootFailed`, `handleStarted`, `handleCompleted`, `handleFailed`, `terminateStarted`, `terminateCompleted`. These feed the §8 `AuditRecord` schema and are appended to the hash chain. Delivery via the Kernel's existing event dispatch (`BootEvent`, `RequestReceivedEvent`, `ResponseReadyEvent`, `TerminateEvent`) — HUB-06 (Audit) listens and writes the records. No new event types needed.
+- **§4.5.7 chaos scenarios (must have tests):** (1) re-entrancy from a bootstrapper, (2) re-entrancy from a listener, (3) hanging bootstrapper (>5s), (4) throwing bootstrapper, (5) null factory result (PanicException), (6) state-recovery gap in `handle()`'s finally (PanicException), (7) double-handle from parallel fibers, (8) terminate during handling.
+- **§5 test matrix:** 13 categories required for merge — the four re-entrancy tests from §4.5.2 are the immediate priority.
+- **§9 merge gate:** all of the above must pass before CORE-18 PRs touching state-machine, bootstrapper chain, or panic paths merge into `main` and promote to `stable`.
+
+**Implementation note.** The existing depth-2 CORE-18 implementation (PR #215 fixed exception messages; the state machine and frozen contracts are already in place) satisfies the depth-2 baseline. Closing the gap to the doctrine's nuclear-grade baseline (the 4 missing re-entrancy tests, the bootstrapper breaker, the `PanicException` class, the `KernelLifecycleRecord` audit feed, the resource ceilings) is the immediate follow-up work tracked under Step 5 follow-up tasks. The §4.5 doctrine section is the spec those follow-up PRs implement against.
