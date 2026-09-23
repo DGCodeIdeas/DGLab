@@ -3,7 +3,7 @@
     "description": "CORE-19: Database Abstraction Layer — thin PDO wrapper with fluent QueryBuilder, nested transactions, and tenant scoping",
     "type": "library",
     "license": "MIT",
-    "version": "0.6.0.0",
+    "version": "0.7.0.0",
     "require": {
         "php": "^8.4",
         "ext-pdo": "*",
