@@ -126,4 +126,95 @@ class KernelException extends \RuntimeException
             ),
         );
     }
+
+    /**
+     * Per doctrine §4.5.5: boot aggregate wall-clock budget (30s outer
+     * watchdog on top of §4.5.3's per-bootstrapper 5s budget). If the
+     * total boot time exceeds 30s (even if no individual bootstrapper
+     * exceeds 5s — e.g., 7 bootstrappers × 4.9s each = 34.3s), throw
+     * this. Class Permanent-Local — the catch block in boot() handles
+     * the transition to Terminated + releaseReferences + rethrow.
+     *
+     * @param float $elapsed  Wall-clock seconds the boot() call took.
+     * @param float $budget   The aggregate boot budget in seconds.
+     */
+    public static function bootAggregateTimeoutExceeded(float $elapsed, float $budget): self
+    {
+        return new self(
+            \sprintf(
+                'boot() exceeded the aggregate wall-clock budget (%.2fs budget, %.2fs elapsed). '
+                . 'Kernel transitions to Terminated. The bootstrapper chain is not retryable — '
+                . 'the worker supervisor MUST restart the process (doctrine §4.5.5, P4).',
+                $budget,
+                $elapsed,
+            ),
+        );
+    }
+
+    /**
+     * Per doctrine §4.5.5: handle() wall-clock budget (30s for the full
+     * request lifecycle). Exceeding throws this (class Permanent-Local).
+     * The Kernel transitions to Booted via the existing finally block
+     * (state = Booted runs BEFORE the timeout check), and the caller
+     * (worker loop) catches this and returns 503 to the client.
+     *
+     * @param float $elapsed  Wall-clock seconds the handle() call took.
+     * @param float $budget   The request budget in seconds.
+     */
+    public static function requestTimeoutExceeded(float $elapsed, float $budget): self
+    {
+        return new self(
+            \sprintf(
+                'handle() exceeded the request wall-clock budget (%.2fs budget, %.2fs elapsed). '
+                . 'Kernel transitions to Booted; caller SHOULD return 503 (doctrine §4.5.5).',
+                $budget,
+                $elapsed,
+            ),
+        );
+    }
+
+    /**
+     * Per doctrine §4.5.5: terminate() wall-clock budget (5s for the
+     * terminate event + handler unreg). Exceeding throws this (class
+     * Permanent-Local). The Kernel force-transitions to Terminated and
+     * releaseReferences() runs anyway (the timeout check is in the finally
+     * block, AFTER releaseReferences + state = Terminated).
+     *
+     * @param float $elapsed  Wall-clock seconds the terminate() call took.
+     * @param float $budget   The terminate budget in seconds.
+     */
+    public static function terminateTimeoutExceeded(float $elapsed, float $budget): self
+    {
+        return new self(
+            \sprintf(
+                'terminate() exceeded the wall-clock budget (%.2fs budget, %.2fs elapsed). '
+                . 'Kernel force-transitioned to Terminated; releaseReferences() ran anyway '
+                . '(doctrine §4.5.5).',
+                $budget,
+                $elapsed,
+            ),
+        );
+    }
+
+    /**
+     * Per doctrine §4.5.5: bootstrapper count hard ceiling (32 per Kernel
+     * construction). Exceeding throws this at construction time, before
+     * any boot attempt. Class Permanent-Local — the caller passed too
+     * many bootstrappers; the system is fine.
+     *
+     * @param int $count   The actual bootstrapper count passed.
+     * @param int $ceiling  The hard ceiling (BOOTSTRAPPER_COUNT_CEILING).
+     */
+    public static function bootstrapperCountExceeded(int $count, int $ceiling): self
+    {
+        return new self(
+            \sprintf(
+                'Bootstrapper count %d exceeds the hard ceiling of %d per Kernel construction '
+                . '(doctrine §4.5.5). The Kernel was not constructed; the caller MUST reduce '
+                . 'the bootstrapper count.',
+                $count,
+                $ceiling,
+            ),
+        );
+    }
 }
