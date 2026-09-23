@@ -52,7 +52,17 @@ class CIMonitor
             ];
         }
 
-        if ($this->httpClient !== null && $this->requestFactory !== null) {
+        // If ci_url is a local filesystem path (no http(s):// scheme), use
+        // local execution regardless of HTTP client availability. A path
+        // like '/tmp/foo' or '/home/runner/work/.../packages/core/container'
+        // is local — querying it via HTTP would fail with connection refused
+        // (and previously returned 'fail' instead of the correct 'unknown'
+        // or 'pass' from running ci/run.php). See Task 49 CIMonitorTest
+        // regression after Guzzle was added as a PSR-18 implementation.
+        if (\preg_match('#^https?://#', $repo['ci_url'])
+            && $this->httpClient !== null
+            && $this->requestFactory !== null
+        ) {
             return $this->checkViaHttp($repo, $this->httpClient, $this->requestFactory);
         }
 

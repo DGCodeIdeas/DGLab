@@ -189,8 +189,12 @@ jobs:
           git config user.email "loom-release-bot@users.noreply.github.com"
 
           # PAT hygiene: build a one-shot token URL, never persist to git config.
+          # Format: https://x-access-token:<PAT>@github.com/owner/repo.git
+          # (x-access-token is the GitHub Actions service-account username;
+          # the bare-PAT-before-https form via 'PAT@https://...' is invalid
+          # and produces 'protocol ***@https is not supported' on git push.)
           ORIGIN_URL=$(git remote get-url origin)
-          TOKEN_URL=$(printf '%s\n' "$ORIGIN_URL" | sed -E "s#(https://github.com/)#${LOOM_RELEASE_PAT}@\\1#")
+          TOKEN_URL=$(printf '%s\n' "$ORIGIN_URL" | sed -E "s#https://github.com/#https://x-access-token:${LOOM_RELEASE_PAT}@github.com/#")
 
           TAG_MESSAGE="Release ${TIER} tier ${NEW_VERSION} (${{ steps.bump.outputs.increment }} bump). Computed by: loom. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
 
