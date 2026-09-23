@@ -160,12 +160,23 @@ The following constraints are binding on every frozen Core-tier contract and MUS
 
 The actual interface and enum FQCN/file tables for CORE-19, CORE-15, CORE-14, CORE-16, and CORE-18 will be appended to this registry at the same PR that lands each package's depth-2 implementation under the doctrine. Until then, the per-package blueprints (`Architecture/Core/CORE-{14,15,16,18,19}.md`) are the source of truth for the planned interface surface; the doctrine file (`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md` §4.1–§4.5) is the source of truth for the operational envelope.
 
+#### Frozen contracts landed for CORE-18 (per doctrine §4.5 implementation):
+
+| FQCN | File | Frozen via | Status |
+|---|---|---|---|
+| `PanicException` (extends `\RuntimeException`) | `packages/core/kernel/src/PanicException.php` | PR #251 (2026-09-23) | ✅ Frozen — 5 named constructors: `forInvariantViolation`, `forNullFactoryResult`, `forUnexpectedNullProperty`, `forStateRecoveryGap`, `forNullPipelineInHandlingState` |
+| `KernelException::bootstrapperTimeoutExceeded()` | `packages/core/kernel/src/KernelException.php` | PR #249 (2026-09-23) | ✅ Frozen — named constructor for the per-bootstrapper wall-clock budget throw-point |
+| `Kernel::BOOTSTRAPPER_TIMEOUT_SECONDS` (constant = 5.0) | `packages/core/kernel/src/Kernel.php` | PR #249 (2026-09-23) | ✅ Frozen — hard ceiling for per-bootstrapper wall-clock budget |
+| `Kernel::$bootstrapperTimeoutSeconds` (protected property) | `packages/core/kernel/src/Kernel.php` | PR #249 (2026-09-23) | ✅ Frozen — instance-level override for tests; production code MUST NOT modify |
+
 ### CORE-18-specific doctrine constraints (added 2026-09-23)
 
 Per doctrine §4.5, CORE-18 (Kernel) carries these additional doctrine-imposed constraints on top of the Core-tier-wide constraints above:
 
 - The 6-case `KernelState` enum string values (`Unbooted`, `Booting`, `Booted`, `Handling`, `Terminating`, `Terminated`) are part of the frozen audit-log schema — they cannot be renamed.
 - The 9 `KernelException` named constructors (`bootAfterTerminate`, `handleBeforeBoot`, `handleAfterTerminate`, `terminateBeforeBoot`, `doubleTerminate`, `handleDuringHandling`, `bootDuringBoot`, `handleDuringBoot`, `terminateDuringBoot`, `terminateDuringHandling`) are part of the frozen contract surface — they cannot be renamed or removed; additions are SemVer-minor.
-- The new `PanicException` class (added per doctrine §4.5.4) is frozen on first implementation. The four invariant-violation throw-points it covers (`releaseReferences()` failure, null factory result, `assertBooted()` passing but `$pipeline` null, `handle()` finally cannot restore state) MUST remain PanicException throws — downgrading any of them to KernelException is SemVer-major.
+- The `PanicException` class (`SovereignStack\Core\Kernel\PanicException`, extends `\RuntimeException`, class Panic per doctrine §2) is **frozen per PR #251 (2026-09-23)**. The four invariant-violation throw-points it covers (`releaseReferences()` failure, null factory result, `assertBooted()` passing but `$pipeline` null, `handle()` finally cannot restore state) MUST remain PanicException throws — downgrading any of them to KernelException is SemVer-major.
+- The `BootstrapperTimeoutExceeded` named constructor on `KernelException` (added per doctrine §4.5.3) is **frozen per PR #249 (2026-09-23)**. The `Kernel::BOOTSTRAPPER_TIMEOUT_SECONDS = 5.0` constant is part of the frozen contract — worker supervisors + deployment scripts depend on the documented 5s ceiling for their own process-level watchdogs (e.g., systemd `TimeoutStartSec=30s` for the aggregate boot budget). Changing the constant is SemVer-major.
+- The `Kernel::$bootstrapperTimeoutSeconds` protected instance property is **frozen per PR #249**. Tests override via reflection; production code MUST NOT modify this property.
 - `boot()` on an already-Booted Kernel is idempotent (returns immediately without re-running bootstrappers) — this is part of the frozen contract and cannot change.
 - `KernelLifecycleRecord` audit fields (`bootStarted`, `bootCompleted`, `bootFailed`, `handleStarted`, `handleCompleted`, `handleFailed`, `terminateStarted`, `terminateCompleted`) are part of the frozen contract surface — downstream consumers (HUB-06, ISPOKE-17) depend on them.
