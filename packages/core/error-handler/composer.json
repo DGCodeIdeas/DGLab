@@ -3,7 +3,7 @@
     "description": "CORE-08: Global Error & Exception Handler with PSR-3 logging, multi-format rendering, and security-aware stack-trace sanitization",
     "type": "library",
     "license": "MIT",
-    "version": "0.6.0.0",
+    "version": "0.7.0.0",
     "require": {
         "php": "^8.4",
         "psr/log": "^3.0",
