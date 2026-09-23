@@ -9,6 +9,7 @@ use SovereignStack\Core\Kernel\BootstrapperInterface;
 use SovereignStack\Core\Kernel\KernelException;
 use SovereignStack\Core\Kernel\KernelInterface;
 use SovereignStack\Core\Kernel\KernelState;
+use SovereignStack\Core\Kernel\PanicException;
 
 /**
  * Tests that every illegal state transition throws the correct KernelException.
@@ -404,6 +405,171 @@ final class KernelStateMachineTest extends TestCase
         $kernel->boot();
 
         // Should complete normally — no throw, Kernel in Booted state.
+        self::assertSame(KernelState::Booted, $kernel->getState());
+    }
+
+    // --- PanicException Tests (P6 §6 closure, doctrine §4.5.4) ---
+
+    /**
+     * Throw-point #1 per doctrine §4.5.4: releaseReferences() detects a
+     * property is unexpectedly already null while state is Booted/Handling/
+     * Terminating (should be set, but isn't). Invariant violation → panic.
+     *
+     * Uses reflection to nullify $container while the kernel is in Booted
+     * state, then calls terminate() (which calls releaseReferences()).
+     * releaseReferences() should detect that $container is already null
+     * and throw PanicException.
+     */
+    public function testPanicOnReleaseReferencesUnexpectedNullProperty(): void
+    {
+        $kernel = TestKernelFactory::create();
+        $kernel->boot();
+
+        // Mangle $container to null while kernel is Booted — invariant violation.
+        $container = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'container',
+        );
+        $container->setValue($kernel, null);
+
+        $this->expectException(PanicException::class);
+        $this->expectExceptionMessage('container is already null when releaseReferences() tried to nullify it');
+
+        // terminate() calls releaseReferences() which should detect the violation.
+        $kernel->terminate();
+    }
+
+    /**
+     * Throw-point #2 per doctrine §4.5.4: a factory returns null despite
+     * its non-null contract. Invariant violation → panic. Verify the
+     * catch block in boot() does NOT call releaseReferences() (which
+     * would throw a secondary panic and mask the original).
+     */
+    public function testPanicOnNullFactoryResult(): void
+    {
+        // Use reflection to swap containerFactory for one that returns null.
+        $kernel = TestKernelFactory::create();
+
+        $factoryProp = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'containerFactory',
+        );
+        $factoryProp->setValue($kernel, fn () => null);
+
+        try {
+            $kernel->boot();
+            self::fail('Expected PanicException::forNullFactoryResult to be thrown');
+        } catch (PanicException $e) {
+            self::assertStringContainsString(
+                'containerFactory returned null despite its non-null contract',
+                $e->getMessage(),
+            );
+        }
+
+        // Verify state transitioned to Terminated (catch block did this).
+        self::assertSame(KernelState::Terminated, $kernel->getState());
+    }
+
+    /**
+     * Throw-point #3 per doctrine §4.5.4: handle() enters Handling state
+     * but $this->pipeline is null despite assertBooted() passing.
+     * Invariant violation → panic.
+     *
+     * Uses reflection to nullify $pipeline while kernel is Booted (after
+     * boot completed normally), then calls handle(). The handle() method's
+     * pre-state-transition null check throws PanicException.
+     */
+    public function testPanicOnNullPipelineInHandle(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+
+        // Nullify $pipeline while kernel is Booted — invariant violation.
+        $pipeline = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'pipeline',
+        );
+        $pipeline->setValue($kernel, null);
+
+        $request = TestKernelFactory::createServerRequest('GET', '/');
+
+        $this->expectException(PanicException::class);
+        $this->expectExceptionMessage(
+            'handle() entered Handling state but $this->pipeline is null despite assertBooted() passing',
+        );
+
+        $kernel->handle($request);
+    }
+
+    /**
+     * Throw-point #4 per doctrine §4.5.4: handle()'s finally block detects
+     * state was mangled during the request (state-recovery gap). Uses a
+     * custom bootstrapper that injects a pipeline which mangles state when
+     * its handle() method is called — simulating a parallel Fiber calling
+     * terminate() mid-request.
+     */
+    public function testPanicOnStateRecoveryGapInHandleFinally(): void
+    {
+        // Custom bootstrapper that installs a pipeline which mangles the
+        // kernel's state to Terminated when its handle() is called. This
+        // simulates a parallel Fiber calling terminate() during the request.
+        $manglingBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                // Build a fake pipeline that mutates state during handle().
+                // We can't createMock() with arbitrary behavior, so use an
+                // anonymous class implementing MiddlewarePipelineInterface.
+                $pipeline = new class($kernel) implements \SovereignStack\Core\Http\MiddlewarePipelineInterface {
+                    public function __construct(private KernelInterface $kernel) {}
+
+                    public function pipe(\Psr\Http\Server\MiddlewareInterface|string|callable $middleware): void
+                    {
+                        // No-op — this fake pipeline doesn't support piping.
+                    }
+
+                    public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
+                    {
+                        // Mangle state to Terminated, simulating a parallel
+                        // Fiber calling terminate() during the request.
+                        $state = new \ReflectionProperty(
+                            \SovereignStack\Core\Kernel\Kernel::class,
+                            'state',
+                        );
+                        $state->setValue($this->kernel, KernelState::Terminated);
+
+                        // Return a fake response so handle() proceeds to finally.
+                        return new \SovereignStack\Core\Http\Response(200);
+                    }
+                };
+                $kernel->setPipeline($pipeline);
+            }
+        };
+
+        $kernel = TestKernelFactory::create($manglingBootstrapper);
+        $kernel->boot();
+
+        $request = TestKernelFactory::createServerRequest('GET', '/');
+
+        $this->expectException(PanicException::class);
+        $this->expectExceptionMessage('handle() finally cannot transition state back to Booted');
+
+        $kernel->handle($request);
+    }
+
+    /**
+     * Sanity check: handle()'s finally block does NOT throw PanicException
+     * when state is still Handling at the end of the request (the normal
+     * case). Verifies the state-recovery-gap check doesn't false-positive.
+     */
+    public function testHandleFinallySucceedsWhenStateIsHandling(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+
+        $request = TestKernelFactory::createServerRequest('GET', '/');
+        $kernel->handle($request);
+
+        // Should complete normally — Kernel in Booted state (finally ran cleanly).
         self::assertSame(KernelState::Booted, $kernel->getState());
     }
 
