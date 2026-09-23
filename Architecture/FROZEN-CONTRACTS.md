@@ -141,20 +141,31 @@
 
 ---
 
-## Step 5 contracts (CORE-19 / CORE-15 / CORE-14 / CORE-16)
+## Core tier contracts under Nuclear-Grade Engineering Doctrine
 
-> **Nuclear-grade doctrine applies.** Every interface landed under Step 5 is **frozen** the moment it is implemented at any depth, per SDLC-AGRD §2.1, AND is **operationally bound** by [`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](./CrossCutting/NUCLEAR-GRADE-DOCTRINE.md). Freezing governs the **signature** (method names, parameter types, return types, constant values). The doctrine governs the **operational envelope** (failure shape, resource ceilings, breaker thresholds, audit, panic, chaos tests, merge gate). A signature-frozen interface can still fail doctrine §9 merge gate — in which case the implementation is **not eligible for promotion to `stable`** even though the interface is technically frozen.
+> Every interface landed under the Core tier is **frozen** the moment it is implemented at any depth, per SDLC-AGRD §2.1, AND is **operationally bound** by [`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](./CrossCutting/NUCLEAR-GRADE-DOCTRINE.md). Freezing governs the **signature** (method names, parameter types, return types, constant values). The doctrine governs the **operational envelope** (failure shape, resource ceilings, breaker thresholds, audit, panic, chaos tests, merge gate). A signature-frozen interface can still fail doctrine §9 merge gate — in which case the implementation is **not eligible for promotion to `stable`** even though the interface is technically frozen.
 
-### Doctrine-imposed contract constraints
+### Doctrine-imposed contract constraints (binding on every Core-tier package)
 
-The following constraints are binding on every Step-5 frozen contract and MUST be respected by any future amendment:
+The following constraints are binding on every frozen Core-tier contract and MUST be respected by any future amendment:
 
 - **Exception classes** thrown across the public surface MUST name their error taxonomy class (Transient / Permanent-External / Permanent-Local / Corrupt / Panic) in the docblock `@throws` tag.
-- **Resource-limit exceptions** (`ResourceLimitExceeded`, `QueryTimeoutExceeded`, `ConnectionLeakDetected`, `CacheTtlTooShort`, `StreamByteLimitExceeded`, `NonceCounterUnavailable`, `WeakHashParametersRefused`, `PathTraversalRefused`, `QuarantineNotReleased`) are part of the frozen contract surface — they cannot be renamed or have their constructor signature changed without a major SemVer bump.
+- **Resource-limit exceptions** (`ResourceLimitExceeded`, `QueryTimeoutExceeded`, `ConnectionLeakDetected`, `CacheTtlTooShort`, `StreamByteLimitExceeded`, `NonceCounterUnavailable`, `WeakHashParametersRefused`, `PathTraversalRefused`, `QuarantineNotReleased`, `BootstrapperTimeoutExceeded`, `BootstrapperCountExceeded`, `RequestTimeoutExceeded`, `TerminateTimeoutExceeded`) are part of the frozen contract surface — they cannot be renamed or have their constructor signature changed without a major SemVer bump.
 - **Token interfaces** that gate elevated privileges (`SystemContext` for tenant-scope bypass, `PermanentCacheAllowed` for TTL=0 cache writes, `QuarantineRelease` for untrusted-file reads) are part of the frozen contract surface; their acquisition paths are enforced by static analysis.
+- **Panic class** (`PanicException`, extends `\RuntimeException`, class Panic per doctrine §2) is part of the frozen contract surface for every Core-tier package — additions are SemVer-minor; removing a PanicException throw-point or downgrading it to a different class is SemVer-major.
 - **Audit record schema** (`AuditRecord` with `seq`, `tenant_id`, `request_id`, `fiber_id`, `actor_id`, `operation`, `target`, `before_hash`, `after_hash`, `prev_hash`, `entry_hash`, `created_at`) is part of the frozen contract surface — downstream consumers (HUB-06, ISPOKE-17) depend on it.
 - **Circuit breaker** public methods (`isOpen()`, `trip()`, `cooldown()`, `probe()`) are part of the frozen contract surface; their state machine (CLOSED → OPEN → HALF_OPEN → CLOSED) cannot change.
 
-### Registration pending
+### Per-package registration pending
 
-The actual interface and enum FQCN/file tables for CORE-19, CORE-15, CORE-14, and CORE-16 will be appended to this registry at the same PR that lands each package's depth-2 implementation under the doctrine. Until then, the per-package blueprints (`Architecture/Core/CORE-{14,15,16,19}.md`) are the source of truth for the planned interface surface; the doctrine file is the source of truth for the operational envelope.
+The actual interface and enum FQCN/file tables for CORE-19, CORE-15, CORE-14, CORE-16, and CORE-18 will be appended to this registry at the same PR that lands each package's depth-2 implementation under the doctrine. Until then, the per-package blueprints (`Architecture/Core/CORE-{14,15,16,18,19}.md`) are the source of truth for the planned interface surface; the doctrine file (`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md` §4.1–§4.5) is the source of truth for the operational envelope.
+
+### CORE-18-specific doctrine constraints (added 2026-09-23)
+
+Per doctrine §4.5, CORE-18 (Kernel) carries these additional doctrine-imposed constraints on top of the Core-tier-wide constraints above:
+
+- The 6-case `KernelState` enum string values (`Unbooted`, `Booting`, `Booted`, `Handling`, `Terminating`, `Terminated`) are part of the frozen audit-log schema — they cannot be renamed.
+- The 9 `KernelException` named constructors (`bootAfterTerminate`, `handleBeforeBoot`, `handleAfterTerminate`, `terminateBeforeBoot`, `doubleTerminate`, `handleDuringHandling`, `bootDuringBoot`, `handleDuringBoot`, `terminateDuringBoot`, `terminateDuringHandling`) are part of the frozen contract surface — they cannot be renamed or removed; additions are SemVer-minor.
+- The new `PanicException` class (added per doctrine §4.5.4) is frozen on first implementation. The four invariant-violation throw-points it covers (`releaseReferences()` failure, null factory result, `assertBooted()` passing but `$pipeline` null, `handle()` finally cannot restore state) MUST remain PanicException throws — downgrading any of them to KernelException is SemVer-major.
+- `boot()` on an already-Booted Kernel is idempotent (returns immediately without re-running bootstrappers) — this is part of the frozen contract and cannot change.
+- `KernelLifecycleRecord` audit fields (`bootStarted`, `bootCompleted`, `bootFailed`, `handleStarted`, `handleCompleted`, `handleFailed`, `terminateStarted`, `terminateCompleted`) are part of the frozen contract surface — downstream consumers (HUB-06, ISPOKE-17) depend on them.
