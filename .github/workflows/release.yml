@@ -128,6 +128,14 @@ jobs:
             PKG=$(basename "$PKG_DIR")
             OUTPUT=$(orchestrator/bin/loom version:bump "${TIER}/${PKG}" --format=json 2>&1) || {
               echo "  $TIER/$PKG: no changes or error — skipping"
+              # DIAGNOSTIC (Task 47): print the loom output verbatim so the
+              # actual error message is visible in the workflow log. Without
+              # this, the `|| continue` pattern swallows the loom STDERR and
+              # we can't tell whether loom threw, exited 1, or produced
+              # unparseable JSON.
+              echo "  ----- loom output (verbatim) -----"
+              printf '%s\n' "$OUTPUT" | sed 's/^/    /'
+              echo "  ----- end loom output -----"
               continue
             }
             INCREMENT=$(printf '%s\n' "$OUTPUT" | jq -r '.increment // empty')
