@@ -54,7 +54,7 @@ on:
 # by a later push, the gate would block forever.
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   release:
