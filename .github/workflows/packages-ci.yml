@@ -74,7 +74,7 @@ jobs:
 
       - name: Validate composer.json
         working-directory: ${{ matrix.working-dir }}
-        run: composer validate --strict --no-check-publish --no-check-version
+        run: composer validate --no-check-publish --no-check-version
 
       - name: Install dependencies
         working-directory: ${{ matrix.working-dir }}

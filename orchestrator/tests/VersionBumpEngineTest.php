@@ -226,7 +226,7 @@ final class VersionBumpEngineTest extends TestCase
     {
         $result = $this->engine->analyze([]);
 
-        self::assertSame('patch', $result['increment']);
-        self::assertStringContainsString('defaulting', $result['reason']);
+        self::assertSame('none', $result['increment']);
+        self::assertStringContainsString('No recognized', $result['reason']);
     }
 }

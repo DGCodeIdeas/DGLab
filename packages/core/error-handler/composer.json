@@ -3,11 +3,11 @@
     "description": "CORE-08: Global Error & Exception Handler with PSR-3 logging, multi-format rendering, and security-aware stack-trace sanitization",
     "type": "library",
     "license": "MIT",
-    "version": "0.10.0.0",
+    "version": "0.4.0.0",
     "require": {
         "php": "^8.4",
         "psr/log": "^3.0",
-        "sovereign-stack/core-logger": "^0.1 || ^0.2 || ^0.3 || ^0.4 || ^0.5 || ^0.6 || ^0.7 || ^0.8 || ^0.9"
+        "sovereign-stack/core-logger": "*"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",

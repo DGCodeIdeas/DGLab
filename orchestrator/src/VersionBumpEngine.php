@@ -22,6 +22,14 @@ class VersionBumpEngine
                 continue;
             }
 
+            // Skip loom's own bump commits — they should NOT trigger version
+            // bumps. Without this, each bump commit (chore(core/X): bump
+            // version to Y) triggers a new release run that creates another
+            // bump commit, ad infinitum — the runaway release loop (Task 53).
+            if (\preg_match('/^chore\([^)]*\): bump version to /', $message)) {
+                continue;
+            }
+
             $parsed = $this->parseCommit($message);
 
             if ($parsed['breaking']) {
@@ -63,9 +71,15 @@ class VersionBumpEngine
             ];
         }
 
+        // No recognized commits → no bump. This prevents the runaway release
+        // loop where bump commits (chore(*): bump version to X) trigger new
+        // release runs that default to 'patch' and create more bump commits.
+        // With 'none', the workflow's Compute step sees INCREMENT=none, which
+        // doesn't match any case in the case statement → has_bump stays false
+        // → no release. (Task 53 fix)
         return [
-            'increment' => 'patch',
-            'reason' => 'No recognized commits; defaulting to patch increment.',
+            'increment' => 'none',
+            'reason' => 'No recognized commits; no bump.',
         ];
     }
 
@@ -110,6 +124,7 @@ class VersionBumpEngine
             'major' => \sprintf('%d.%d.%d.%d', $muwv + 1, 0, 0, 0),
             'minor' => \sprintf('%d.%d.%d.%d', $muwv, $milestone + 1, 0, 0),
             'patch' => \sprintf('%d.%d.%d.%d', $muwv, $milestone, $lap + 1, 0),
+            'none' => $currentVersion,  // No bump — return unchanged (Task 53 fix)
             default => throw new \RuntimeException("Invalid increment type: {$increment}"),
         };
     }
