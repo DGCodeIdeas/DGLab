@@ -71,18 +71,45 @@ class VersionBumpEngine
 
     public function calculateNewVersion(string $currentVersion, string $increment): string
     {
-        if (!\preg_match('/^(\d+)\.(\d+)\.(\d+)$/', $currentVersion, $matches)) {
+        // Per ADR-019, package versions use the 4-segment scheme:
+        //   <MUWV>.<Milestone>.<Lap>.<Patch>
+        // MUWV (segment 1)       = master stability flag (0 = prerelease, 1 = stable).
+        // Milestone (segment 2)  = milestone number.
+        // Lap (segment 3)        = release lap within the milestone.
+        // Patch (segment 4)     = emergency patch within a lap (not bumped by
+        //                          conventional commits — reserved for manual
+        //                          emergency fixes via a separate path).
+        //
+        // Conventional-commit increment → 4-segment bump mapping:
+        //   'major' (breaking change) → bump MUWV,        reset Milestone/Lap/Patch
+        //   'minor' (new feature)    → bump Milestone,   reset Lap/Patch
+        //   'patch' (fix/refactor)   → bump Lap,         reset Patch
+        //
+        // This mapping preserves the standard SemVer semantic ordering
+        // (major > minor > patch) while keeping the 4-segment ADR-019 layout
+        // consistent across monorepo and per-tier tags.
+        //
+        // Before this fix, the regex was strict 3-segment `^(\d+)\.(\d+)\.(\d+)$`
+        // and every package's composer.json had `"version": "0.1.0.0"` (4 segments).
+        // The regex didn't match, `calculateNewVersion` threw, the workflow's
+        // per-package loop swallowed the throw (`|| continue`), `has_bump` stayed
+        // `false`, and per-tier tags were never created. Silent no-op for the
+        // entire Step-5 release cycle. See worklog Task 46 for the trace.
+        if (!\preg_match('/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/', $currentVersion, $matches)) {
             throw new \RuntimeException("Invalid SemVer format: {$currentVersion}");
         }
 
-        $major = (int) $matches[1];
-        $minor = (int) $matches[2];
-        $patch = (int) $matches[3];
+        $muwv = (int) $matches[1];
+        $milestone = (int) $matches[2];
+        $lap = (int) $matches[3];
+        // Patch segment (matches[4]) is intentionally not assigned — it is
+        // never bumped by conventional commits (reserved for emergency patches
+        // via a separate path; see ADR-019 §4).
 
         return match ($increment) {
-            'major' => \sprintf('%d.%d.%d', $major + 1, 0, 0),
-            'minor' => \sprintf('%d.%d.%d', $major, $minor + 1, 0),
-            'patch' => \sprintf('%d.%d.%d', $major, $minor, $patch + 1),
+            'major' => \sprintf('%d.%d.%d.%d', $muwv + 1, 0, 0, 0),
+            'minor' => \sprintf('%d.%d.%d.%d', $muwv, $milestone + 1, 0, 0),
+            'patch' => \sprintf('%d.%d.%d.%d', $muwv, $milestone, $lap + 1, 0),
             default => throw new \RuntimeException("Invalid increment type: {$increment}"),
         };
     }
