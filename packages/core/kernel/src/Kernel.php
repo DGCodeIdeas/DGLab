@@ -48,6 +48,32 @@ final class Kernel implements KernelInterface
     public const BOOTSTRAPPER_TIMEOUT_SECONDS = 5.0;
 
     /**
+     * Per doctrine §4.5.5: hard ceiling for bootstrapper count per Kernel
+     * construction. Frozen — changing this is a SemVer-major break because
+     * callers depend on the documented 32-bootstrapper limit for their own
+     * wiring (e.g., diagnostic dashboards that display bootstrapper count).
+     */
+    public const BOOTSTRAPPER_COUNT_CEILING = 32;
+
+    /**
+     * Per doctrine §4.5.5: aggregate boot() wall-clock budget (30s outer
+     * watchdog on top of §4.5.3's per-bootstrapper 5s budget). Frozen.
+     */
+    public const BOOT_AGGREGATE_TIMEOUT_SECONDS = 30.0;
+
+    /**
+     * Per doctrine §4.5.5: handle() wall-clock budget (30s for the full
+     * request lifecycle). Frozen.
+     */
+    public const REQUEST_TIMEOUT_SECONDS = 30.0;
+
+    /**
+     * Per doctrine §4.5.5: terminate() wall-clock budget (5s for the
+     * terminate event + handler unreg). Frozen.
+     */
+    public const TERMINATE_TIMEOUT_SECONDS = 5.0;
+
+    /**
      * Per-bootstrapper wall-clock budget. Defaults to
      * BOOTSTRAPPER_TIMEOUT_SECONDS (the hard ceiling). Tests override via
      * reflection to a small value (0.001s) and use a sleeping bootstrapper
@@ -57,6 +83,24 @@ final class Kernel implements KernelInterface
      * contract.
      */
     protected float $bootstrapperTimeoutSeconds = self::BOOTSTRAPPER_TIMEOUT_SECONDS;
+
+    /**
+     * Aggregate boot() wall-clock budget. Defaults to
+     * BOOT_AGGREGATE_TIMEOUT_SECONDS. Tests override via reflection.
+     */
+    protected float $bootAggregateTimeoutSeconds = self::BOOT_AGGREGATE_TIMEOUT_SECONDS;
+
+    /**
+     * handle() wall-clock budget. Defaults to REQUEST_TIMEOUT_SECONDS.
+     * Tests override via reflection.
+     */
+    protected float $requestTimeoutSeconds = self::REQUEST_TIMEOUT_SECONDS;
+
+    /**
+     * terminate() wall-clock budget. Defaults to TERMINATE_TIMEOUT_SECONDS.
+     * Tests override via reflection.
+     */
+    protected float $terminateTimeoutSeconds = self::TERMINATE_TIMEOUT_SECONDS;
 
     private KernelState $state = KernelState::Unbooted;
 
@@ -121,6 +165,15 @@ final class Kernel implements KernelInterface
         $this->loggerFactory = $loggerFactory;
         $this->routerFactory = $routerFactory;
         $this->bootstrappers = $bootstrappers;
+
+        // Per doctrine §4.5.5: bootstrapper count hard ceiling (32). Check
+        // at construction time, before any boot attempt. Exceeding throws
+        // BootstrapperCountExceeded (Permanent-Local — the caller passed
+        // too many bootstrappers; the system is fine).
+        $count = \count($bootstrappers);
+        if ($count > self::BOOTSTRAPPER_COUNT_CEILING) {
+            throw KernelException::bootstrapperCountExceeded($count, self::BOOTSTRAPPER_COUNT_CEILING);
+        }
     }
 
     public function boot(): void
@@ -139,6 +192,7 @@ final class Kernel implements KernelInterface
         }
 
         $this->state = KernelState::Booting;
+        $bootStart = \microtime(true);
 
         try {
             // Initialize core dependencies via factories. Each factory returns a
@@ -231,6 +285,19 @@ final class Kernel implements KernelInterface
             // Boot service providers (post-bootstrapper initialization).
             $providerRegistry->bootAll($container);
 
+            // Per doctrine §4.5.5: boot aggregate wall-clock budget (30s outer
+            // watchdog). Check BEFORE state = Booted so the catch block below
+            // handles the transition to Terminated + releaseReferences + rethrow.
+            // This catches the case where no individual bootstrapper exceeded
+            // 5s but the aggregate exceeds 30s (e.g., 7 bootstrappers × 4.9s).
+            $bootElapsed = \microtime(true) - $bootStart;
+            if ($bootElapsed > $this->bootAggregateTimeoutSeconds) {
+                throw KernelException::bootAggregateTimeoutExceeded(
+                    $bootElapsed,
+                    $this->bootAggregateTimeoutSeconds,
+                );
+            }
+
             $this->state = KernelState::Booted;
 
             // Dispatch BootEvent.
@@ -279,6 +346,7 @@ final class Kernel implements KernelInterface
         $pipeline = $this->pipeline ?? throw PanicException::forNullPipelineInHandlingState();
 
         $this->state = KernelState::Handling;
+        $handleStart = \microtime(true);
 
         try {
             // Dispatch RequestReceivedEvent (listeners may enrich the request).
@@ -311,6 +379,18 @@ final class Kernel implements KernelInterface
                 );
             }
             $this->state = KernelState::Booted;
+
+            // Per doctrine §4.5.5: handle() wall-clock budget (30s). Check
+            // AFTER state = Booted so the kernel is in a usable state when
+            // the throw propagates. The caller (worker loop) catches this
+            // and returns 503 to the client.
+            $handleElapsed = \microtime(true) - $handleStart;
+            if ($handleElapsed > $this->requestTimeoutSeconds) {
+                throw KernelException::requestTimeoutExceeded(
+                    $handleElapsed,
+                    $this->requestTimeoutSeconds,
+                );
+            }
         }
     }
 
@@ -326,6 +406,7 @@ final class Kernel implements KernelInterface
         };
 
         $this->state = KernelState::Terminating;
+        $terminateStart = \microtime(true);
 
         try {
             $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
@@ -352,6 +433,19 @@ final class Kernel implements KernelInterface
             // leave some properties null).
             $this->releaseReferences();
             $this->state = KernelState::Terminated;
+
+            // Per doctrine §4.5.5: terminate() wall-clock budget (5s). Check
+            // AFTER releaseReferences + state = Terminated so cleanup runs
+            // regardless. If exceeded, throw TerminateTimeoutExceeded
+            // (Permanent-Local) — the kernel is already Terminated, the
+            // throw propagates to the caller.
+            $terminateElapsed = \microtime(true) - $terminateStart;
+            if ($terminateElapsed > $this->terminateTimeoutSeconds) {
+                throw KernelException::terminateTimeoutExceeded(
+                    $terminateElapsed,
+                    $this->terminateTimeoutSeconds,
+                );
+            }
         }
     }
 

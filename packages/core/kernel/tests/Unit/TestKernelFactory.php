@@ -64,6 +64,34 @@ final class TestKernelFactory
         );
     }
 
+    /**
+     * Create a Kernel with an explicit array of bootstrappers (for tests
+     * that need multiple bootstrappers, e.g., the bootstrapper count ceiling
+     * test in §4.5.5).
+     *
+     * @param array<int, BootstrapperInterface> $bootstrappers
+     */
+    public static function createWithBootstrappers(array $bootstrappers): Kernel
+    {
+        self::$logFile = tempnam(sys_get_temp_dir(), 'dglab_kernel_test_') ?: '/dev/null';
+        @unlink(self::$logFile);
+
+        return new Kernel(
+            containerFactory: fn (): ContainerInterface => new Container(),
+            configFactory: fn (): ConfigInterface => (new ConfigBuilder())->build(),
+            errorHandlerFactory: fn (): ErrorHandlerInterface => new ErrorHandler(
+                logger: self::createLogger(),
+                renderer: new PlainTextRenderer(),
+                debug: true,
+            ),
+            providerRegistryFactory: fn (): ProviderRegistryInterface => new EmptyProviderRegistry(),
+            eventDispatcherFactory: fn (): EventDispatcherInterface => new EventDispatcher(new ListenerProvider()),
+            loggerFactory: fn (): DgLoggerInterface => self::createLogger(),
+            routerFactory: fn (): RouterInterface => new Router(),
+            bootstrappers: $bootstrappers,
+        );
+    }
+
     public static function createWithRoutes(): Kernel
     {
         // For state-machine tests, we don't need actual routes — the handle()

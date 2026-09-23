@@ -573,6 +573,162 @@ final class KernelStateMachineTest extends TestCase
         self::assertSame(KernelState::Booted, $kernel->getState());
     }
 
+    // --- Resource Ceilings Tests (P3 closure, doctrine §4.5.5) ---
+
+    /**
+     * Per doctrine §4.5.5: bootstrapper count hard ceiling (32 per Kernel
+     * construction). Exceeding throws BootstrapperCountExceeded at
+     * construction time, before any boot attempt.
+     */
+    public function testBootstrapperCountExceededAtConstruction(): void
+    {
+        // Build 33 bootstrappers (one over the 32 ceiling).
+        $bootstrappers = [];
+        for ($i = 0; $i < 33; $i++) {
+            $bootstrappers[] = new class implements BootstrapperInterface {
+                public function bootstrap(KernelInterface $kernel): void
+                {
+                    // No-op.
+                }
+            };
+        }
+
+        $this->expectException(KernelException::class);
+        $this->expectExceptionMessage('Bootstrapper count 33 exceeds the hard ceiling of 32');
+
+        // Construction throws — no boot() call needed.
+        TestKernelFactory::createWithBootstrappers($bootstrappers);
+    }
+
+    /**
+     * Per doctrine §4.5.5: boot aggregate wall-clock budget (30s outer
+     * watchdog). If the total boot time exceeds the budget, throws
+     * BootAggregateTimeoutExceeded. The Kernel transitions to Terminated
+     * via the existing catch block.
+     *
+     * Uses reflection to lower the aggregate timeout to 0.001s and a
+     * bootstrapper that sleeps 0.02s to trigger the aggregate timeout
+     * (the per-bootstrapper timeout is left at 5.0s so the aggregate
+     * check is what fires, not the per-bootstrapper check).
+     */
+    public function testBootAggregateTimeoutExceeded(): void
+    {
+        $slowBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                \usleep(20_000);  // 20ms — under the 5s per-bootstrapper budget
+            }
+        };
+
+        $kernel = TestKernelFactory::create($slowBootstrapper);
+
+        // Lower the aggregate boot timeout to 0.001s.
+        $aggregateTimeout = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'bootAggregateTimeoutSeconds',
+        );
+        $aggregateTimeout->setValue($kernel, 0.001);
+
+        try {
+            $kernel->boot();
+            self::fail('Expected KernelException::bootAggregateTimeoutExceeded');
+        } catch (KernelException $e) {
+            self::assertStringContainsString('boot() exceeded the aggregate wall-clock budget', $e->getMessage());
+        }
+
+        // Kernel MUST transition to Terminated (catch block handled it).
+        self::assertSame(KernelState::Terminated, $kernel->getState());
+    }
+
+    /**
+     * Per doctrine §4.5.5: handle() wall-clock budget (30s). Exceeding
+     * throws RequestTimeoutExceeded. The Kernel transitions to Booted
+     * via the existing finally (state = Booted runs BEFORE the timeout
+     * check), and the caller (worker loop) returns 503.
+     *
+     * Uses a bootstrapper that installs a fake pipeline which sleeps
+     * 0.02s — combined with lowering the request timeout to 0.001s,
+     * this triggers the timeout check in handle()'s finally.
+     */
+    public function testRequestTimeoutExceeded(): void
+    {
+        $slowPipelineBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                $pipeline = new class implements \SovereignStack\Core\Http\MiddlewarePipelineInterface {
+                    public function pipe(\Psr\Http\Server\MiddlewareInterface|string|callable $middleware): void
+                    {
+                        // No-op.
+                    }
+
+                    public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
+                    {
+                        \usleep(20_000);  // 20ms — exceeds the 0.001s threshold
+                        return new \SovereignStack\Core\Http\Response(200);
+                    }
+                };
+                $kernel->setPipeline($pipeline);
+            }
+        };
+
+        $kernel = TestKernelFactory::create($slowPipelineBootstrapper);
+        $kernel->boot();
+
+        // Lower the request timeout to 0.001s.
+        $requestTimeout = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'requestTimeoutSeconds',
+        );
+        $requestTimeout->setValue($kernel, 0.001);
+
+        $request = TestKernelFactory::createServerRequest('GET', '/');
+
+        try {
+            $kernel->handle($request);
+            self::fail('Expected KernelException::requestTimeoutExceeded');
+        } catch (KernelException $e) {
+            self::assertStringContainsString('handle() exceeded the request wall-clock budget', $e->getMessage());
+        }
+
+        // Kernel MUST be in Booted state (finally ran, state = Booted before timeout check).
+        self::assertSame(KernelState::Booted, $kernel->getState());
+    }
+
+    /**
+     * Per doctrine §4.5.5: terminate() wall-clock budget (5s). Exceeding
+     * throws TerminateTimeoutExceeded. The Kernel force-transitions to
+     * Terminated and releaseReferences() runs anyway.
+     *
+     * Lowers the terminate timeout to 0.0s via reflection — the normal
+     * terminate() flow (dispatch TerminateEvent + unregister error handler)
+     * takes non-zero time, so any elapsed > 0.0 triggers the timeout.
+     * This tests the timeout mechanism itself; the slow-listener case is
+     * covered by doctrine §4.5.7 chaos tests.
+     */
+    public function testTerminateTimeoutExceeded(): void
+    {
+        $kernel = TestKernelFactory::create();
+        $kernel->boot();
+
+        // Lower the terminate timeout to 0.0s — any elapsed time exceeds it.
+        $terminateTimeout = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'terminateTimeoutSeconds',
+        );
+        $terminateTimeout->setValue($kernel, 0.0);
+
+        try {
+            $kernel->terminate();
+            self::fail('Expected KernelException::terminateTimeoutExceeded');
+        } catch (KernelException $e) {
+            self::assertStringContainsString('terminate() exceeded the wall-clock budget', $e->getMessage());
+        }
+
+        // Kernel MUST be in Terminated state (finally ran, state = Terminated
+        // BEFORE timeout check — releaseReferences also ran).
+        self::assertSame(KernelState::Terminated, $kernel->getState());
+    }
+
     // --- P3 Edge-Case Tests ---
 
     public function testGetRouterBeforeBootThrows(): void
