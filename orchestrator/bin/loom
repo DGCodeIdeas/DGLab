@@ -164,7 +164,12 @@ function handleVersionBump(array $subArgs): void
 function computeVersionBump(string $repoName): array
 {
     $engine = new VersionBumpEngine();
-    $repoRoot = \dirname(__DIR__);
+    // loom lives at <repo-root>/orchestrator/bin/loom, so __DIR__ is
+    // <repo-root>/orchestrator/bin and dirname(__DIR__, 2) is <repo-root>.
+    // Using dirname(__DIR__) (one level) would point at <repo-root>/orchestrator
+    // where packages/*/*/composer.json does NOT exist — silent no-op root cause
+    // (Task 47 diagnostic). Fixed by going up two levels.
+    $repoRoot = \dirname(__DIR__, 2);
     $package = MonorepoPackage::find($repoRoot, $repoName);
 
     if ($package !== null) {
@@ -181,6 +186,22 @@ function computeVersionBump(string $repoName): array
     }
 
     $currentVersion = $manager->getCurrentVersion();
+    // When no git tags exist for this package yet, getCurrentVersion() returns
+    // the sentinel '0.0.1' (3-segment). With PR #244's 4-segment ADR-019 regex
+    // in VersionBumpEngine, calculateNewVersion('0.0.1', ...) would throw
+    // 'Invalid SemVer format: 0.0.1'. Fall back to reading the package's
+    // composer.json 'version' field — this matches the workflow's compare
+    // step (release.yml line 149-157) which also reads from composer.json,
+    // and is the actual current state of the package (4-segment per ADR-019).
+    if ($currentVersion === '0.0.1') {
+        $composerJsonPath = $repoRoot . '/' . $pkgPath . '/composer.json';
+        if (\is_file($composerJsonPath)) {
+            $composerJson = \json_decode((string)\file_get_contents($composerJsonPath), true);
+            if (\is_array($composerJson) && \is_string($composerJson['version'] ?? null)) {
+                $currentVersion = $composerJson['version'];
+            }
+        }
+    }
     $log = $manager->getLogSince($currentVersion);
     $analysis = $engine->analyze($log);
     $newVersion = $engine->calculateNewVersion($currentVersion, $analysis['increment']);
@@ -309,7 +330,8 @@ function handleVersionRelease(array $subArgs): void
     // Determine the composer.json path for the version-field sync (P2 gap 10).
     // For monorepo packages: <repoRoot>/<package.path>/composer.json.
     // For legacy repos.json entries: <repoDir>/composer.json (may not exist).
-    $repoRoot = \dirname(__DIR__);
+    // dirname(__DIR__, 2) → monorepo root (loom is at <root>/orchestrator/bin/loom).
+    $repoRoot = \dirname(__DIR__, 2);
     $composerPath = $repoRoot . '/' . $info['path'] . '/composer.json';
     $composerCurrentVersion = '';
     if (\is_file($composerPath)) {
@@ -515,7 +537,8 @@ function handleReposGenerate(array $subArgs): void
         }
     }
 
-    $repoRoot = \dirname(__DIR__);
+    // dirname(__DIR__, 2) → monorepo root (loom is at <root>/orchestrator/bin/loom).
+    $repoRoot = \dirname(__DIR__, 2);
     $packages = MonorepoPackage::discover($repoRoot);
 
     $entries = [];
@@ -597,7 +620,8 @@ function handleTagCreate(array $subArgs): void
         }
     }
 
-    $repoRoot = \dirname(__DIR__);
+    // dirname(__DIR__, 2) → monorepo root (loom is at <root>/orchestrator/bin/loom).
+    $repoRoot = \dirname(__DIR__, 2);
     $package = MonorepoPackage::find($repoRoot, $repoName);
 
     if ($package !== null) {
@@ -660,7 +684,8 @@ function handleTagPush(array $subArgs): void
     $version = $subArgs[1];
     $remoteUrl = $subArgs[2] ?? \getenv('LOOM_REMOTE_URL') ?: 'origin';
 
-    $repoRoot = \dirname(__DIR__);
+    // dirname(__DIR__, 2) → monorepo root (loom is at <root>/orchestrator/bin/loom).
+    $repoRoot = \dirname(__DIR__, 2);
     $package = MonorepoPackage::find($repoRoot, $repoName);
 
     if ($package !== null) {
@@ -683,7 +708,8 @@ function handleTagPush(array $subArgs): void
 
 function handlePackageList(array $subArgs): void
 {
-    $repoRoot = \dirname(__DIR__);
+    // dirname(__DIR__, 2) → monorepo root (loom is at <root>/orchestrator/bin/loom).
+    $repoRoot = \dirname(__DIR__, 2);
     $packages = MonorepoPackage::discover($repoRoot);
 
     if ($packages === []) {
@@ -715,7 +741,8 @@ function handleStatusClean(array $subArgs): void
     }
 
     // Use the repo root as the working dir (monorepo context).
-    $repoRoot = \dirname(__DIR__);
+    // dirname(__DIR__, 2) → monorepo root (loom is at <root>/orchestrator/bin/loom).
+    $repoRoot = \dirname(__DIR__, 2);
     $manager = new RepoManager($repoRoot);
 
     try {
