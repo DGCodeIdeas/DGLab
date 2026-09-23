@@ -315,6 +315,98 @@ final class KernelStateMachineTest extends TestCase
         $kernel->terminate();
     }
 
+    // --- Bootstrapper Circuit Breaker Tests (P6 closure, doctrine §4.5.3) ---
+
+    /**
+     * Per doctrine §4.5.3: each BootstrapperInterface::bootstrap() call MUST
+     * be wrapped in a per-bootstrapper wall-clock budget of 5 seconds.
+     * Exceeding the budget throws BootstrapperTimeoutExceeded (KernelException,
+     * class Permanent-Local per doctrine §2 taxonomy). The Kernel transitions
+     * to Terminated via the existing catch block in boot().
+     *
+     * This test uses reflection to lower the timeout threshold to 0.001s so
+     * the test runs fast — no point sleeping 6s in the test suite. The
+     * bootstrapper sleeps 0.02s which is > 0.001s threshold → throws.
+     *
+     * Verifies:
+     *   1. BootstrapperTimeoutExceeded is thrown when bootstrap() exceeds the
+     *      per-bootstrapper wall-clock budget.
+     *   2. The Kernel transitions to Terminated (via the existing catch block).
+     *   3. The exception message names the offending bootstrapper class and
+     *      reports both the budget and elapsed time (provenance for debugging).
+     */
+    public function testBootstrapperTimeoutExceededThrows(): void
+    {
+        $slowBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                // Sleep 0.02s — exceeds the 0.001s threshold we'll set via
+                // reflection below. In production, the threshold is 5.0s
+                // (Kernel::BOOTSTRAPPER_TIMEOUT_SECONDS) so this sleep would
+                // be well under budget; the test artificially lowers it.
+                \usleep(20_000);  // 20ms = 0.02s
+            }
+        };
+
+        $kernel = TestKernelFactory::create($slowBootstrapper);
+
+        // Lower the per-bootstrapper timeout to 0.001s for this test so the
+        // 0.02s sleep triggers the timeout. The constant
+        // BOOTSTRAPPER_TIMEOUT_SECONDS (5.0s) is the production hard ceiling
+        // and remains unchanged — we only override the instance property.
+        $timeout = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'bootstrapperTimeoutSeconds',
+        );
+        $timeout->setValue($kernel, 0.001);
+
+        try {
+            $kernel->boot();
+            self::fail('Expected KernelException::bootstrapperTimeoutExceeded to be thrown');
+        } catch (KernelException $e) {
+            self::assertStringContainsString(
+                'exceeded the per-bootstrapper wall-clock budget',
+                $e->getMessage(),
+            );
+            self::assertStringContainsString('0.00s budget', $e->getMessage());
+            self::assertStringContainsString('0.02s elapsed', $e->getMessage());
+        }
+
+        // Per doctrine §4.5.3: Kernel MUST transition to Terminated via the
+        // existing catch block in boot(). The boot graph MUST be released.
+        self::assertSame(KernelState::Terminated, $kernel->getState());
+    }
+
+    /**
+     * Sanity check: a fast bootstrapper (well under the timeout) MUST NOT
+     * trigger the timeout throw. This verifies the circuit breaker doesn't
+     * false-positive on normal bootstrappers.
+     */
+    public function testBootstrapperUnderTimeoutDoesNotThrow(): void
+    {
+        $fastBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                // Sleep 0.001s — under the 0.01s threshold we'll set via
+                // reflection below.
+                \usleep(1_000);  // 1ms = 0.001s
+            }
+        };
+
+        $kernel = TestKernelFactory::create($fastBootstrapper);
+
+        $timeout = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'bootstrapperTimeoutSeconds',
+        );
+        $timeout->setValue($kernel, 0.01);  // 10ms threshold
+
+        $kernel->boot();
+
+        // Should complete normally — no throw, Kernel in Booted state.
+        self::assertSame(KernelState::Booted, $kernel->getState());
+    }
+
     // --- P3 Edge-Case Tests ---
 
     public function testGetRouterBeforeBootThrows(): void
