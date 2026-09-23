@@ -3,7 +3,7 @@
     "description": "CORE-18: The Sovereign Kernel — orchestrates the request lifecycle from boot to terminate, wiring all Core-tier components into the Pulse round-trip",
     "type": "library",
     "license": "MIT",
-    "version": "0.1.0.0",
+    "version": "0.2.0.0",
     "require": {
         "php": "^8.4",
         "psr/http-message": "^2.0",
@@ -35,14 +35,38 @@
         }
     },
     "repositories": [
-        {"type": "path", "url": "../container"},
-        {"type": "path", "url": "../event-dispatcher"},
-        {"type": "path", "url": "../http-message"},
-        {"type": "path", "url": "../middleware"},
-        {"type": "path", "url": "../router"},
-        {"type": "path", "url": "../config"},
-        {"type": "path", "url": "../logger"},
-        {"type": "path", "url": "../error-handler"}
+        {
+            "type": "path",
+            "url": "../container"
+        },
+        {
+            "type": "path",
+            "url": "../event-dispatcher"
+        },
+        {
+            "type": "path",
+            "url": "../http-message"
+        },
+        {
+            "type": "path",
+            "url": "../middleware"
+        },
+        {
+            "type": "path",
+            "url": "../router"
+        },
+        {
+            "type": "path",
+            "url": "../config"
+        },
+        {
+            "type": "path",
+            "url": "../logger"
+        },
+        {
+            "type": "path",
+            "url": "../error-handler"
+        }
     ],
     "minimum-stability": "stable",
     "prefer-stable": true
