@@ -3,7 +3,7 @@
     "description": "CORE-09: PSR-3 Structured Logging Service with HandlerStack, JSON/Line formatters, and flock-protected file handler",
     "type": "library",
     "license": "MIT",
-    "version": "0.1.0.0",
+    "version": "0.2.0.0",
     "require": {
         "php": "^8.4",
         "psr/log": "^3.0",
