@@ -38,6 +38,26 @@ use SovereignStack\Core\Router\RouterInterface;
  */
 final class Kernel implements KernelInterface
 {
+    /**
+     * Per doctrine §4.5.3: hard ceiling for the per-bootstrapper wall-clock
+     * budget. Frozen — changing this is a SemVer-major break because callers
+     * (worker supervisors, deployment scripts) depend on the documented
+     * 5s ceiling for their own process-level watchdogs
+     * (e.g., systemd TimeoutStartSec=30s for the aggregate boot budget).
+     */
+    public const BOOTSTRAPPER_TIMEOUT_SECONDS = 5.0;
+
+    /**
+     * Per-bootstrapper wall-clock budget. Defaults to
+     * BOOTSTRAPPER_TIMEOUT_SECONDS (the hard ceiling). Tests override via
+     * reflection to a small value (0.001s) and use a sleeping bootstrapper
+     * to trigger the timeout without actually waiting 5+ seconds in the
+     * test suite. Production code MUST NOT modify this property — only
+     * the doctrine's hard ceiling (the constant) is part of the public
+     * contract.
+     */
+    protected float $bootstrapperTimeoutSeconds = self::BOOTSTRAPPER_TIMEOUT_SECONDS;
+
     private KernelState $state = KernelState::Unbooted;
 
     /** @var list<BootstrapperInterface> */
@@ -146,8 +166,31 @@ final class Kernel implements KernelInterface
             $providerRegistry->registerAll($container);
 
             // Run bootstrappers (they wire the pipeline, router, final handler, etc.).
+            // Per doctrine §4.5.3: each bootstrap() call is wrapped in a
+            // per-bootstrapper wall-clock budget. Exceeding the budget throws
+            // BootstrapperTimeoutExceeded (KernelException) which the catch
+            // block below transitions to Terminated + releaseReferences + rethrow.
+            // The bootstrapper chain is not retryable (P4) — the worker supervisor
+            // MUST restart the process on boot failure, not retry boot() on the
+            // same Kernel instance.
+            //
+            // Note: microtime() before/after only catches bootstrappers that
+            // COMPLETE in > $bootstrapperTimeoutSeconds seconds (slow but not
+            // infinite). Infinite loops or forever-hanging I/O are NOT caught
+            // by this mechanism — production deployments need a process-level
+            // watchdog (e.g., systemd TimeoutStartSec) for those. The doctrine
+            // §4.5.7 chaos scenario 3 (sleep 6s) is what this guard catches.
             foreach ($this->bootstrappers as $bootstrapper) {
+                $start = \microtime(true);
                 $bootstrapper->bootstrap($this);
+                $elapsed = \microtime(true) - $start;
+                if ($elapsed > $this->bootstrapperTimeoutSeconds) {
+                    throw KernelException::bootstrapperTimeoutExceeded(
+                        $bootstrapper::class,
+                        $elapsed,
+                        $this->bootstrapperTimeoutSeconds,
+                    );
+                }
             }
 
             // Boot service providers (post-bootstrapper initialization).

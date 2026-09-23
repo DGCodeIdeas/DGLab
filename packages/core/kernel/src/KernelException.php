@@ -95,4 +95,35 @@ class KernelException extends \RuntimeException
             'Cannot terminate() while handling a request. Wait for handle() to return.',
         );
     }
+
+    /**
+     * Per doctrine §4.5.3 (bootstrapper chain circuit breaker): each
+     * BootstrapperInterface::bootstrap() call MUST be wrapped in a
+     * per-bootstrapper wall-clock budget of 5 seconds. Exceeding the
+     * budget throws this exception (class Permanent-Local per doctrine
+     * §2 taxonomy). The existing catch block in Kernel::boot() handles
+     * the transition to Terminated + releaseReferences + rethrow.
+     *
+     * @param string $bootstrapperClass  The FQCN of the slow bootstrapper.
+     * @param float  $elapsed           Wall-clock seconds the bootstrap call took.
+     * @param float  $budget            The per-bootstrapper budget in seconds.
+     */
+    public static function bootstrapperTimeoutExceeded(
+        string $bootstrapperClass,
+        float $elapsed,
+        float $budget,
+    ): self {
+        return new self(
+            \sprintf(
+                'Bootstrapper %s exceeded the per-bootstrapper wall-clock budget '
+                . '(%.2fs budget, %.2fs elapsed). Kernel transitions to Terminated. '
+                . 'The bootstrapper chain is not retryable — the worker supervisor '
+                . 'MUST restart the process, not retry boot() on the same Kernel '
+                . 'instance (doctrine §4.5.3, P4 — boot is not idempotent across failure).',
+                $bootstrapperClass,
+                $budget,
+                $elapsed,
+            ),
+        );
+    }
 }
