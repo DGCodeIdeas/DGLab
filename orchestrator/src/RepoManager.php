@@ -340,10 +340,24 @@ class RepoManager
     public function getLogSince(string $version, ?string $pathScope = null): array
     {
         $repo = $this->getRepository();
-        $tagName = $this->findTagForVersion($version) ?? $this->buildTagName($version);
+        // If no existing tag matches the version (e.g. when a package has
+        // never been released yet, or when getCurrentVersion() returned the
+        // '0.0.1' sentinel and computeVersionBump fell back to reading the
+        // composer.json 'version' field), findTagForVersion returns null.
+        // In that case, building a tag name via buildTagName() and running
+        // `git log <name>..HEAD` would fail with "unknown revision" — silent
+        // no-op root cause #3 (Task 49). Fix: when no tag matches, return ALL
+        // commits touching the path scope (no range restriction).
+        $tag = $this->findTagForVersion($version);
         $scope = $pathScope ?? $this->pathScope;
 
-        $args = ['log', "{$tagName}..HEAD", '--format=%s'];
+        if ($tag !== null) {
+            $args = ['log', "{$tag}..HEAD", '--format=%s'];
+        } else {
+            // No tag exists for this version yet — list ALL commits
+            // (optionally restricted to the path scope).
+            $args = ['log', 'HEAD', '--format=%s'];
+        }
         if ($scope !== null) {
             $args[] = '--';
             $args[] = $scope;
