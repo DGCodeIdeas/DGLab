@@ -3,7 +3,7 @@
     "description": "CORE-03: Production-ready PSR-14 Event Dispatcher with prioritized, haltable listener pipeline and lazy resolution",
     "type": "library",
     "license": "MIT",
-    "version": "0.1.5.0",
+    "version": "0.1.6.0",
     "require": {
         "php": "^8.4",
         "psr/event-dispatcher": "^1.0"
