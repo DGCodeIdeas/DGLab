@@ -139,33 +139,87 @@ final class VersionBumpEngineTest extends TestCase
 
     public function testCalculateNewVersion(): void
     {
-        self::assertSame('2.0.0', $this->engine->calculateNewVersion('1.5.3', 'major'));
-        self::assertSame('1.6.0', $this->engine->calculateNewVersion('1.5.3', 'minor'));
-        self::assertSame('1.5.4', $this->engine->calculateNewVersion('1.5.3', 'patch'));
+        // 4-segment ADR-019 scheme per VersionBumpEngine fix (Task 46).
+        // Pre-fix: these used 3-segment '1.5.3' inputs and outputs; the engine
+        // would throw on real package versions like '0.1.0.0'.
+        self::assertSame('2.0.0.0', $this->engine->calculateNewVersion('1.5.3.0', 'major'));
+        self::assertSame('1.6.0.0', $this->engine->calculateNewVersion('1.5.3.0', 'minor'));
+        self::assertSame('1.5.4.0', $this->engine->calculateNewVersion('1.5.3.0', 'patch'));
     }
 
     public function testCalculateNewVersionMajorResetsMinorAndPatch(): void
     {
-        self::assertSame('2.0.0', $this->engine->calculateNewVersion('1.9.9', 'major'));
+        // 4-segment: major bump resets segments 2/3/4.
+        self::assertSame('2.0.0.0', $this->engine->calculateNewVersion('1.9.9.0', 'major'));
+        // Also verify a non-zero 4th segment gets reset.
+        self::assertSame('2.0.0.0', $this->engine->calculateNewVersion('1.9.9.5', 'major'));
     }
 
     public function testCalculateNewVersionMinorResetsPatch(): void
     {
-        self::assertSame('1.10.0', $this->engine->calculateNewVersion('1.9.9', 'minor'));
+        // 4-segment: minor bump resets segments 3 (Lap) and 4 (Patch).
+        self::assertSame('1.10.0.0', $this->engine->calculateNewVersion('1.9.9.0', 'minor'));
+        // Also verify a non-zero 4th segment gets reset.
+        self::assertSame('1.10.0.0', $this->engine->calculateNewVersion('1.9.9.5', 'minor'));
     }
 
     public function testCalculateNewVersionInvalidIncrement(): void
     {
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid increment');
-        $this->engine->calculateNewVersion('1.0.0', 'invalid');
+        $this->engine->calculateNewVersion('1.0.0.0', 'invalid');
     }
 
     public function testCalculateNewVersionInvalidFormat(): void
     {
+        // 'v1.0.0.0' is rejected because the regex expects bare digits
+        // (no 'v' prefix).
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid SemVer');
-        $this->engine->calculateNewVersion('v1.0.0', 'patch');
+        $this->engine->calculateNewVersion('v1.0.0.0', 'patch');
+    }
+
+    /**
+     * Regression guard for the Task 46 fix: 3-segment versions MUST be rejected
+     * because every package's composer.json carries a 4-segment ADR-019 version.
+     * Before the fix, the engine accepted 3-segment versions, which silently
+     * mismatched the 4-segment package versions and caused per-tier releases
+     * to no-op forever.
+     */
+    public function testCalculateNewVersionRejectsThreeSegmentFormat(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid SemVer format: 1.5.3');
+        $this->engine->calculateNewVersion('1.5.3', 'patch');
+    }
+
+    /**
+     * Verifies the engine handles real package versions (all Step-5 packages
+     * ship with "0.1.0.0" in their composer.json).
+     */
+    public function testCalculateNewVersionHandlesRealPackageVersionZeroOneZeroZero(): void
+    {
+        // First major bump on a prerelease package → MUWV flip from 0 to 1.
+        self::assertSame('1.0.0.0', $this->engine->calculateNewVersion('0.1.0.0', 'major'));
+        // First minor bump → new milestone for the tier.
+        self::assertSame('0.2.0.0', $this->engine->calculateNewVersion('0.1.0.0', 'minor'));
+        // First patch bump → first lap for the tier (this is what fix:/refactor:
+        // commits produce).
+        self::assertSame('0.1.1.0', $this->engine->calculateNewVersion('0.1.0.0', 'patch'));
+    }
+
+    /**
+     * Verifies the Patch segment (4th) is never bumped by conventional commits
+     * — it's reserved for emergency patches via a separate path.
+     */
+    public function testCalculateNewVersionPatchSegmentAlwaysResetsToZero(): void
+    {
+        // Patch increment bumps Lap (segment 3) and resets Patch (segment 4).
+        self::assertSame('0.1.2.0', $this->engine->calculateNewVersion('0.1.1.5', 'patch'));
+        // Minor increment bumps Milestone (segment 2) and resets Lap+Patch.
+        self::assertSame('0.2.0.0', $this->engine->calculateNewVersion('0.1.1.5', 'minor'));
+        // Major increment bumps MUWV (segment 1) and resets Milestone/Lap/Patch.
+        self::assertSame('1.0.0.0', $this->engine->calculateNewVersion('0.1.1.5', 'major'));
     }
 
     public function testEmptyCommitList(): void
