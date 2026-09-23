@@ -144,13 +144,48 @@ final class Kernel implements KernelInterface
             // Initialize core dependencies via factories. Each factory returns a
             // non-null instance; we assign to local variables first so PHPStan
             // can narrow the types before storing on the nullable properties.
+            //
+            // Per doctrine §4.5.4 (throw-point #2): if a factory returns null
+            // despite its non-null contract (e.g., via reflection-mangled
+            // factory or a buggy implementation), throw PanicException.
+            // Factory contracts are non-null per Kernel::__construct docblock;
+            // a null return is an invariant violation — the system is broken,
+            // not the caller. Worker MUST exit non-zero per §6.2.
             $container = ($this->containerFactory)();
+            /** @phpstan-ignore-next-line factory contract is non-null at the type level, but runtime violation (e.g. reflection-mangled factory) is the panic case the doctrine §4.5.4 throw-point #2 guards. */
+            if ($container === null) {
+                throw PanicException::forNullFactoryResult('containerFactory');
+            }
             $config = ($this->configFactory)();
+            /** @phpstan-ignore-next-line see containerFactory note above. */
+            if ($config === null) {
+                throw PanicException::forNullFactoryResult('configFactory');
+            }
             $logger = ($this->loggerFactory)();
+            /** @phpstan-ignore-next-line see containerFactory note above. */
+            if ($logger === null) {
+                throw PanicException::forNullFactoryResult('loggerFactory');
+            }
             $errorHandler = ($this->errorHandlerFactory)();
+            /** @phpstan-ignore-next-line see containerFactory note above. */
+            if ($errorHandler === null) {
+                throw PanicException::forNullFactoryResult('errorHandlerFactory');
+            }
             $providerRegistry = ($this->providerRegistryFactory)();
+            /** @phpstan-ignore-next-line see containerFactory note above. */
+            if ($providerRegistry === null) {
+                throw PanicException::forNullFactoryResult('providerRegistryFactory');
+            }
             $eventDispatcher = ($this->eventDispatcherFactory)();
+            /** @phpstan-ignore-next-line see containerFactory note above. */
+            if ($eventDispatcher === null) {
+                throw PanicException::forNullFactoryResult('eventDispatcherFactory');
+            }
             $router = ($this->routerFactory)();
+            /** @phpstan-ignore-next-line see containerFactory note above. */
+            if ($router === null) {
+                throw PanicException::forNullFactoryResult('routerFactory');
+            }
 
             $this->container = $container;
             $this->config = $config;
@@ -204,8 +239,18 @@ final class Kernel implements KernelInterface
             // Boot failure: transition to Terminated so the Kernel is unusable
             // and can be safely discarded. Without this, the Kernel would be
             // stuck in Booting forever — no handle(), no terminate(), no recovery.
+            //
+            // Per doctrine §4.5.4: if the caught exception is itself a
+            // PanicException (invariant violation — system is broken), skip
+            // releaseReferences() and rethrow immediately. releaseReferences()
+            // could itself throw a secondary PanicException (if a property is
+            // unexpectedly already null), which would mask the original panic
+            // and confuse the operator. The state transition is still done
+            // because it's a simple assignment that can't throw.
             $this->state = KernelState::Terminated;
-            $this->releaseReferences();
+            if (!$e instanceof PanicException) {
+                $this->releaseReferences();
+            }
             throw $e;
         }
     }
@@ -224,9 +269,14 @@ final class Kernel implements KernelInterface
         // Resolve services BEFORE transitioning state — if either is null,
         // throw before $this->state = Handling (P2: state-recovery gap fix).
         $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
-        $pipeline = $this->pipeline ?? throw new \LogicException(
-            'Middleware pipeline is not configured. Register the HttpBootstrapper.',
-        );
+        // Per doctrine §4.5.4 (throw-point #3): if $this->pipeline is null
+        // despite assertBooted() passing, that's an invariant violation —
+        // HttpBootstrapper (or equivalent) failed to call setPipeline()
+        // during boot. Throw PanicException (class Panic per §2) — the
+        // system is broken, not the caller. Previously threw \LogicException
+        // which the catch block in boot() would treat as Permanent-Local
+        // (caller error) — wrong classification.
+        $pipeline = $this->pipeline ?? throw PanicException::forNullPipelineInHandlingState();
 
         $this->state = KernelState::Handling;
 
@@ -246,6 +296,20 @@ final class Kernel implements KernelInterface
 
             return $response;
         } finally {
+            // Per doctrine §4.5.4 (throw-point #4): state-recovery gap. If
+            // $this->state was mangled during the request (e.g., a parallel
+            // Fiber called terminate() and transitioned to Terminating),
+            // unconditionally setting it back to Booted would HIDE the
+            // invariant violation. Detect it: if state isn't Handling when
+            // we get here, throw PanicException instead of silently
+            // overwriting it.
+            /** @phpstan-ignore-next-line PHPStan infers $this->state is Handling (set above), but runtime mutation by a parallel Fiber is exactly the panic case the doctrine §4.5.4 throw-point #4 guards. */
+            if ($this->state !== KernelState::Handling) {
+                throw PanicException::forStateRecoveryGap(
+                    KernelState::Handling->value,
+                    $this->state->value,
+                );
+            }
             $this->state = KernelState::Booted;
         }
     }
@@ -277,8 +341,17 @@ final class Kernel implements KernelInterface
             // boot graph. This is critical for long-lived workers that re-boot
             // the Kernel (e.g., during a deploy). Without this, the old Kernel's
             // container, router, pipeline, logger, etc. leak until process exit.
-            $this->state = KernelState::Terminated;
+            //
+            // Order: releaseReferences() runs FIRST (while state is still
+            // Terminating) so the invariant check in releaseReferences()
+            // can detect reflection-mangled properties per doctrine §4.5.4
+            // throw-point #1. State transitions to Terminated AFTER — this
+            // distinguishes terminate()'s release path from boot()'s catch
+            // path (where state is already Terminated when releaseReferences
+            // runs, so the check doesn't fire — boot failure can legitimately
+            // leave some properties null).
             $this->releaseReferences();
+            $this->state = KernelState::Terminated;
         }
     }
 
@@ -412,6 +485,40 @@ final class Kernel implements KernelInterface
      */
     private function releaseReferences(): void
     {
+        // Per doctrine §4.5.4 (throw-point #1): if a property is unexpectedly
+        // already null when releaseReferences() tries to nullify it, that's
+        // an invariant violation — the property should be set in Booted/
+        // Handling/Terminating states (releaseReferences is called from
+        // boot()'s catch block and from terminate()). A null property in
+        // those states means external code mangled the kernel's properties
+        // via reflection, OR releaseReferences was called twice (which the
+        // state machine prevents). Either way: panic.
+        //
+        // Skip the check for $this->pipeline — it's set conditionally
+        // (only by HttpBootstrapper) so it may legitimately be null if
+        // boot failed before the bootstrapper ran.
+        // Per doctrine §4.5.4 (throw-point #1): if a property is unexpectedly
+        // already null when releaseReferences() tries to nullify it, that's
+        // an invariant violation. Check fires for Booted/Handling/Terminating
+        // states (where properties should be set). Terminated is excluded
+        // because releaseReferences() has already nulled them on the first
+        // call (terminate()'s finally calls releaseReferences() BEFORE
+        // transitioning state to Terminated, so state is Terminating when
+        // the check runs). boot()'s catch block sets state to Terminated
+        // BEFORE calling releaseReferences() — so the check doesn't fire
+        // for boot-failure paths (where some properties might legitimately
+        // be null because boot failed mid-way).
+        if ($this->state === KernelState::Booted
+            || $this->state === KernelState::Handling
+            || $this->state === KernelState::Terminating
+        ) {
+            foreach (['container', 'config', 'logger', 'errorHandler', 'eventDispatcher', 'router'] as $prop) {
+                if ($this->$prop === null) {
+                    throw PanicException::forUnexpectedNullProperty($prop, $this->state->value);
+                }
+            }
+        }
+
         $this->container = null;
         $this->config = null;
         $this->logger = null;
