@@ -504,6 +504,22 @@ hardening**.
 test suite. This doctrine governs the **operational envelope around the state
 machine, the bootstrapper chain, and the missing panic-mode concept**.
 
+> **Implementation status (updated 2026-09-23):** Items 1-3 of 6 are
+> implemented and merged to `main`:
+>
+> | # | Item | Section | Status | PR |
+> |---|---|---|---|---|
+> | 1 | Re-entrancy tests (4 test methods using real bootstrappers) | §4.5.2 | ✅ Implemented | #246 |
+> | 2 | Bootstrapper chain circuit breaker + `BootstrapperTimeoutExceeded` + `BOOTSTRAPPER_TIMEOUT_SECONDS=5.0` | §4.5.3 | ✅ Implemented | #249 |
+> | 3 | `PanicException` class + 4 invariant-violation throw-points + catch-block skip on PanicException | §4.5.4 | ✅ Implemented | #251 |
+> | 4 | `KernelLifecycleRecord` audit feed (8 record types via existing event dispatch) | §4.5.6 | ⏳ Pending | — |
+> | 5 | Resource ceilings (30s boot / 30s handle / 5s terminate / 32 bootstrapper cap) | §4.5.5 | ⏳ Pending | — |
+> | 6 | 8 chaos tests from §4.5.7 | §4.5.7 | ⏳ Pending | — |
+>
+> Items 4-6 are pending per-package application. The doctrine's binding spec
+> for each item remains unchanged; the implementation work is tracked in the
+> worklog under Task 48 (item 1), Task 50 (item 2), Task 51 (item 3).
+
 #### §4.5.1 State-machine invariants (binding)
 - The six-case `KernelState` enum (`Unbooted`, `Booting`, `Booted`, `Handling`,
   `Terminating`, `Terminated`) is frozen in `FROZEN-CONTRACTS.md` and CANNOT be
@@ -520,7 +536,7 @@ machine, the bootstrapper chain, and the missing panic-mode concept**.
   without re-running bootstrappers). This is part of the frozen contract and
   MUST NOT change.
 
-#### §4.5.2 Re-entrancy test coverage (P11 — immediate closure required)
+#### §4.5.2 Re-entrancy test coverage (P11 — ✅ implemented in PR #246)
 The four re-entrancy exceptions `bootDuringBoot`, `handleDuringBoot`,
 `terminateDuringBoot`, `terminateDuringHandling` are listed in the docblock of
 `KernelStateMachineTest.php` lines 19, 21, 24, 25 as cases the file is supposed
@@ -542,7 +558,7 @@ artefact) violation sitting in the most safety-critical package. Closure is
 Each test MUST use a real bootstrapper that re-enters (not a reflection hack)
 so the test exercises the actual code path, not a mocked one (P11).
 
-#### §4.5.3 Bootstrapper chain circuit breaker (P6 — new)
+#### §4.5.3 Bootstrapper chain circuit breaker (P6 — ✅ implemented in PR #249)
 The `foreach ($this->bootstrappers as $bootstrapper) { $bootstrapper->bootstrap($this); }`
 loop in `Kernel::boot()` has **no timeout, no breaker, no per-bootstrapper
 fault isolation** today. A hanging or throwing bootstrapper blocks `boot()`
@@ -561,7 +577,7 @@ indefinitely or sinks the entire boot graph (P6 violation). Binding behaviour:
   worker — the supervisor must restart the process, not retry `boot()` on the
   same instance (P4 — boot is not idempotent across failure).
 
-#### §4.5.4 Panic-mode concept (§6 — new for Kernel)
+#### §4.5.4 Panic-mode concept (§6 — ✅ implemented in PR #251)
 The Kernel today throws `KernelException` (a `RuntimeException`) for every
 illegal state transition. None of these are classified as Panic per §2's
 taxonomy. That is correct for the 9 illegal transitions (they are
