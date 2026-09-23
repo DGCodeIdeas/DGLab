@@ -31,7 +31,20 @@ final class Manifest
      */
     public static function setVersion(string $composerJsonPath, string $version): void
     {
-        if (!\preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+        // Per ADR-019, package versions use the 4-segment scheme
+        // <MUWV>.<Milestone>.<Lap>.<Patch> with optional +build-metadata.
+        // Legacy 3-segment SemVer is still accepted for backward compat
+        // with pre-ADR-019 packages and external callers. This matches
+        // RepoManager::isValidVersion() for consistency.
+        //
+        // Before this fix, the regex was strict 3-segment /^\d+\.\d+\.\d+$/
+        // which rejected 4-segment versions like '0.2.0.0'. The loom's
+        // version:release step then threw 'Invalid SemVer version: 0.2.0.0'
+        // for every package on the first tier release attempt — silent no-op
+        // root cause #4 (Task 50). Fixed by accepting both 3- and 4-segment.
+        $isValid = \preg_match('/^\d+\.\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version)
+            || \preg_match('/^\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version);
+        if (!$isValid) {
             throw new \RuntimeException("Invalid SemVer version: {$version}");
         }
 

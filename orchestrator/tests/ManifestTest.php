@@ -73,6 +73,35 @@ final class ManifestTest extends TestCase
         self::assertSame('1.1.0', $read['version']);
     }
 
+    /**
+     * Regression test for Task 50 fix: Manifest::setVersion MUST accept
+     * 4-segment ADR-019 versions (e.g. '0.2.0.0', '1.5.3.0') in addition
+     * to the legacy 3-segment SemVer. Before the fix, the strict 3-segment
+     * regex rejected 4-segment versions, causing 'Invalid SemVer version:
+     * 0.2.0.0' to be thrown for every package on the first tier release.
+     */
+    public function testSetVersionAcceptsFourSegmentAdr019Version(): void
+    {
+        \file_put_contents($this->tempFile, '{"name": "test/pkg"}');
+        Manifest::setVersion($this->tempFile, '0.2.0.0');
+
+        $read = \json_decode((string) \file_get_contents($this->tempFile), true);
+        self::assertSame('0.2.0.0', $read['version']);
+    }
+
+    /**
+     * 4-segment ADR-019 version with +build-metadata MUST also be accepted
+     * (e.g. '0.2.0.0+abc1234'). Build metadata is preserved per SemVer §10.
+     */
+    public function testSetVersionAcceptsFourSegmentWithBuildMetadata(): void
+    {
+        \file_put_contents($this->tempFile, '{"name": "test/pkg"}');
+        Manifest::setVersion($this->tempFile, '1.5.3.0+abc1234');
+
+        $read = \json_decode((string) \file_get_contents($this->tempFile), true);
+        self::assertSame('1.5.3.0+abc1234', $read['version']);
+    }
+
     public function testSetVersionRejectsNonSemVer(): void
     {
         \file_put_contents($this->tempFile, '{"name": "test/pkg"}');
