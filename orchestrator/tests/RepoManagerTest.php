@@ -150,6 +150,73 @@ final class RepoManagerTest extends TestCase
         self::assertStringContainsString('second', $log[1] ?? '');
     }
 
+    /**
+     * Regression test for Task 49 fix: when no git tag exists for the given
+     * version (e.g. when a package has never been released yet, or when
+     * computeVersionBump fell back to reading the composer.json 'version'
+     * field), getLogSince() MUST return ALL commits (touching the path scope
+     * if set) — not fail with 'unknown revision'.
+     *
+     * Before the fix, getLogSince built a tag name via buildTagName() even
+     * when no tag matched, then ran `git log <name>..HEAD` which fails with
+     * 'unknown revision' — caught as RuntimeException — swallowed by the
+     * release workflow's `|| continue` pattern. The result: every package
+     * with no prior tags silently failed version:bump, has_bump stayed false,
+     * and per-tier releases never happened.
+     */
+    public function testGetLogSinceReturnsAllCommitsWhenNoTagExists(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        // Create 3 commits, no tags.
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "feat: first feature" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "fix: a bug" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "feat: second feature" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir);
+        // Pass a version that has no corresponding tag — should NOT throw,
+        // should return ALL commits (3 here, plus the initial commit
+        // created by clone()).
+        $log = $manager2->getLogSince('0.1.0.0');
+
+        // The 3 explicit commits we made above; the clone's initial commit
+        // may or may not show up depending on how the test repo is set up.
+        // Assert at least the 3 commits we explicitly added.
+        self::assertGreaterThanOrEqual(3, \count($log));
+        // Most recent commit subject appears first (git log default order).
+        self::assertStringContainsString('second feature', $log[0] ?? '');
+    }
+
+    /**
+     * Variant: when pathScope is set AND no tag exists for the version,
+     * getLogSince MUST return all commits touching that path (not all
+     * commits in the repo).
+     */
+    public function testGetLogSinceReturnsAllCommitsForPathScopeWhenNoTagExists(): void
+    {
+        $manager = new RepoManager($this->testDir);
+        $manager->clone($this->remoteDir, 'test-repo');
+
+        $cloneDir = $this->testDir . '/test-repo';
+        // Create files in two paths so we can verify path scope filtering.
+        \mkdir($cloneDir . '/packages/core/a', 0777, true);
+        \mkdir($cloneDir . '/packages/core/b', 0777, true);
+        \file_put_contents($cloneDir . '/packages/core/a/file.txt', 'a1');
+        \file_put_contents($cloneDir . '/packages/core/b/file.txt', 'b1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add packages/core/a/file.txt && git commit -m "feat: a feature" 2>&1');
+        \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add packages/core/b/file.txt && git commit -m "feat: b feature" 2>&1');
+
+        $manager2 = new RepoManager($cloneDir, null, 'packages/core/a');
+        $log = $manager2->getLogSince('0.1.0.0');
+
+        // Should return only the commit touching packages/core/a, not packages/core/b.
+        self::assertCount(1, $log);
+        self::assertStringContainsString('a feature', $log[0] ?? '');
+        self::assertStringNotContainsString('b feature', $log[0] ?? '');
+    }
+
     public function testGetWorkingDir(): void
     {
         $manager = new RepoManager($this->testDir);
