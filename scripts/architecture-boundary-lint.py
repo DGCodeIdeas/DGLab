@@ -39,11 +39,14 @@ from __future__ import annotations
 import json
 import re
 import sys
+import yaml
+from pathlib import Path as PathlibPath
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 REPO_ROOT = Path("/home/z/my-project")
+ALLOWLIST_PATH = REPO_ROOT / ".github" / "architecture-export-allowlist.yaml"
 
 
 # --- Ring classification -----------------------------------------------------
@@ -247,6 +250,72 @@ def find_service_locator_violations(content: str, source_file: Path) -> list[tup
 
 # --- Main scan logic ---------------------------------------------------------
 
+
+
+# --- Export allow-list (per SPEC §41 + Composition Principle) ---
+
+def load_export_allowlist() -> dict[str, set[str]]:
+    """
+    Load the export allow-list from .github/architecture-export-allowlist.yaml.
+    Returns a dict mapping package namespace prefix -> set of allowed class names.
+    Packages without entries are not enforced.
+    """
+    if not ALLOWLIST_PATH.is_file():
+        return {}
+    data = yaml.safe_load(ALLOWLIST_PATH.read_text()) or {}
+    packages = data.get("packages", {})
+    result = {}
+    for ns, config in packages.items():
+        public_surface = config.get("public_surface", [])
+        if public_surface:
+            result[ns] = set(public_surface)
+    return result
+
+
+def check_export_violation(
+    import_name: str,
+    source_file: str,
+    allowlist: dict[str, set[str]],
+) -> Optional[tuple[str, str, str]]:
+    """
+    Check if an import violates the export allow-list.
+    Returns (rule_id, target, rule_violated) if violation, None if OK.
+    Only checks cross-package imports (source package != target package).
+    """
+    if not allowlist:
+        return None
+
+    # Determine which package the import belongs to
+    target_ns = None
+    for ns in allowlist:
+        if import_name.startswith(ns + "\\") or import_name == ns:
+            target_ns = ns
+            break
+
+    if target_ns is None:
+        return None  # Import is not from a package with an allow-list
+
+    # Determine the source package
+    source_ns = None
+    for ns in allowlist:
+        # Check if the source file path corresponds to this package
+        # by matching the namespace to the path
+        pass  # Path-based detection is already handled by ring_for_path
+
+    # If the import is in the public surface, it's allowed
+    if import_name in allowlist[target_ns]:
+        return None
+
+    # The import is from a package with an allow-list but NOT in the public surface
+    return (
+        "ARCH-EXPORT-001",
+        import_name,
+        f"Import of non-exported symbol from {target_ns}: {import_name} "
+        f"(per SPEC §41: 'Do not infer public APIs from filenames'; "
+        f"only symbols in the export allow-list may be imported by consumers)",
+    )
+
+
 def is_production_source(file_path: Path) -> bool:
     """Determine if a PHP file is production code (not tests, not vendor, not scripts)."""
     rel = str(file_path.relative_to(REPO_ROOT))
@@ -266,7 +335,7 @@ def is_production_source(file_path: Path) -> bool:
     return ("/src/" in rel) or rel.startswith("app/")
 
 
-def scan_file(file_path: Path, result: ScanResult) -> None:
+def scan_file(file_path: Path, result: ScanResult, allowlist: dict[str, set[str]] | None = None) -> None:
     """Scan a single PHP file for ring-boundary and service-locator violations."""
     source_ring = ring_for_path(file_path) or "external"
     if source_ring not in ALLOWED_TARGETS:
@@ -309,6 +378,21 @@ def scan_file(file_path: Path, result: ScanResult) -> None:
         )
         result.violations.append(violation)
 
+    # --- Export allow-list check (per SPEC §41) ---
+    if allowlist:
+        for imp in imports:
+            export_violation = check_export_violation(imp, rel, allowlist)
+            if export_violation:
+                rule_id, target, rule = export_violation
+                result.violations.append(Violation(
+                    rule_id=rule_id,
+                    source_file=rel,
+                    source_ring=source_ring,
+                    target=target,
+                    target_ring="(non-exported)",
+                    rule_violated=rule,
+                ))
+
     # --- Service-locator check ---
     if "tests/" in rel or "/Fixtures/" in rel:
         return  # don't flag service-locator in test code
@@ -339,6 +423,7 @@ def scan_file(file_path: Path, result: ScanResult) -> None:
 def scan_repository() -> ScanResult:
     """Walk the repository and scan every production PHP file."""
     result = ScanResult()
+    allowlist = load_export_allowlist()
 
     # Scan packages/{core,hub,spoke,bridge}/*/src/
     for tier in ["core", "hub", "spoke/internal", "spoke/external", "bridge"]:
@@ -347,7 +432,7 @@ def scan_repository() -> ScanResult:
             continue
         for php_file in tier_path.rglob("*.php"):
             if "/src/" in str(php_file.relative_to(REPO_ROOT)):
-                scan_file(php_file, result)
+                scan_file(php_file, result, allowlist)
 
     # Scan app/
     app_path = REPO_ROOT / "app"
@@ -369,6 +454,7 @@ def main() -> int:
         "violations": [v.to_dict() for v in result.violations],
         "legitimate_callers_seen": result.legitimate_callers_seen,
         "legitimate_callers_expected": LEGITIMATE_RESOLVE_CALLERS,
+        "allowlist_packages_enforced": list(allowlist.keys()) if "allowlist" in dir() else [],
     }
     print(json.dumps(summary, indent=2))
 

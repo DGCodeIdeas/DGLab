@@ -469,6 +469,112 @@ def test_ring_for_path_classification() -> TestResult:
 
 # --- Runner ------------------------------------------------------------------
 
+
+def test_export_allowlist_loads_correctly() -> TestResult:
+    """Test 14: The export allow-list YAML loads and parses correctly."""
+    allowlist = architecture_boundary_lint.load_export_allowlist()
+
+    identity_key = r"SovereignStack\Hub\Identity"
+    filesystem_key = r"SovereignStack\Core\Filesystem"
+
+    if identity_key not in allowlist:
+        return TestResult(name="export_allowlist_loads_correctly", passed=False,
+                          detail=f"Identity key not found in allowlist. Keys: {list(allowlist.keys())}")
+
+    if filesystem_key not in allowlist:
+        return TestResult(name="export_allowlist_loads_correctly", passed=False,
+                          detail=f"Filesystem key not found in allowlist. Keys: {list(allowlist.keys())}")
+
+    identity_surface = allowlist[identity_key]
+    if len(identity_surface) != 6:
+        return TestResult(name="export_allowlist_loads_correctly", passed=False,
+                          detail=f"Identity should have 6 public symbols, got {len(identity_surface)}")
+
+    identity_interface = r"SovereignStack\Hub\Identity\Application\IdentityInterface"
+    if identity_interface not in identity_surface:
+        return TestResult(name="export_allowlist_loads_correctly", passed=False,
+                          detail=f"IdentityInterface not in Identity public surface")
+
+    return TestResult(name="export_allowlist_loads_correctly", passed=True,
+                      detail=f"Identity: {len(identity_surface)} symbols, Filesystem: {len(allowlist[filesystem_key])} symbols")
+
+
+def test_export_violation_detected_for_non_exported_symbol() -> TestResult:
+    """Test 15: Importing a non-exported Identity symbol IS flagged."""
+    user_entity = r"SovereignStack\Hub\Identity\Domain\Entity\User"
+    violation = architecture_boundary_lint.check_export_violation(
+        user_entity,
+        "packages/hub/showcase/src/Application/SomeService.php",
+        architecture_boundary_lint.load_export_allowlist(),
+    )
+    if not violation:
+        return TestResult(name="export_violation_detected_for_non_exported_symbol", passed=False,
+                          detail="Expected ARCH-EXPORT-001 violation for importing User entity, got none.")
+    return TestResult(name="export_violation_detected_for_non_exported_symbol", passed=True,
+                      detail=f"Correctly flagged: {violation[0]}")
+
+
+def test_export_allowed_for_public_surface_symbol() -> TestResult:
+    """Test 16: Importing a public Identity symbol (IdentityInterface) is NOT flagged."""
+    identity_interface = r"SovereignStack\Hub\Identity\Application\IdentityInterface"
+    violation = architecture_boundary_lint.check_export_violation(
+        identity_interface,
+        "packages/hub/showcase/src/Application/SomeService.php",
+        architecture_boundary_lint.load_export_allowlist(),
+    )
+    if violation:
+        return TestResult(name="export_allowed_for_public_surface_symbol", passed=False,
+                          detail=f"IdentityInterface should be allowed (public surface), got: {violation[0]}")
+    return TestResult(name="export_allowed_for_public_surface_symbol", passed=True,
+                      detail="IdentityInterface correctly NOT flagged (in public surface).")
+
+
+def test_export_not_checked_for_packages_without_allowlist() -> TestResult:
+    """Test 17: Packages without allow-list entries are not checked."""
+    # Hub\Config has no allow-list entry (it's commented out in the YAML)
+    flag_manager = r"SovereignStack\Hub\Config\FeatureFlagManager"
+    violation = architecture_boundary_lint.check_export_violation(
+        flag_manager,
+        "packages/hub/showcase/src/Application/SomeService.php",
+        architecture_boundary_lint.load_export_allowlist(),
+    )
+    if violation:
+        return TestResult(name="export_not_checked_for_packages_without_allowlist", passed=False,
+                          detail=f"Hub\Config has no allow-list entry; should not be flagged, got: {violation[0]}")
+    return TestResult(name="export_not_checked_for_packages_without_allowlist", passed=True,
+                      detail="Hub\Config correctly NOT checked (no allow-list entry).")
+
+
+def test_filesystem_public_surface_enforced() -> TestResult:
+    """Test 18: Importing internal Filesystem symbol IS flagged."""
+    atomic_writer = r"SovereignStack\Core\Filesystem\Internal\AtomicWriter"
+    violation = architecture_boundary_lint.check_export_violation(
+        atomic_writer,
+        "packages/hub/showcase/src/Application/SomeService.php",
+        architecture_boundary_lint.load_export_allowlist(),
+    )
+    if not violation:
+        return TestResult(name="filesystem_public_surface_enforced", passed=False,
+                          detail="Expected ARCH-EXPORT-001 for importing AtomicWriter, got none.")
+    return TestResult(name="filesystem_public_surface_enforced", passed=True,
+                      detail=f"Correctly flagged: {violation[0]}")
+
+
+def test_filesystem_public_surface_allowed() -> TestResult:
+    """Test 19: Importing FilesystemInterface is NOT flagged."""
+    fs_interface = r"SovereignStack\Core\Filesystem\FilesystemInterface"
+    violation = architecture_boundary_lint.check_export_violation(
+        fs_interface,
+        "packages/hub/showcase/src/Application/SomeService.php",
+        architecture_boundary_lint.load_export_allowlist(),
+    )
+    if violation:
+        return TestResult(name="filesystem_public_surface_allowed", passed=False,
+                          detail=f"FilesystemInterface should be allowed, got: {violation[0]}")
+    return TestResult(name="filesystem_public_surface_allowed", passed=True,
+                      detail="FilesystemInterface correctly NOT flagged.")
+
+
 def main() -> int:
     tests = [
         test_live_repo_has_zero_false_positives_on_legitimate_callers,
@@ -484,6 +590,12 @@ def main() -> int:
         test_synthetic_function_definition_not_flagged,
         test_psr_imports_from_core_are_allowed,
         test_ring_for_path_classification,
+        test_export_allowlist_loads_correctly,
+        test_export_violation_detected_for_non_exported_symbol,
+        test_export_allowed_for_public_surface_symbol,
+        test_export_not_checked_for_packages_without_allowlist,
+        test_filesystem_public_surface_enforced,
+        test_filesystem_public_surface_allowed,
     ]
 
     results = [test() for test in tests]
