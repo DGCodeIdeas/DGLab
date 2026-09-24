@@ -27,7 +27,8 @@
         "sovereign-stack/bridge-vanguard": "*",
         "sovereign-stack/spoke-codex": "*",
         "sovereign-stack/spoke-canvas": "*",
-        "sovereign-stack/core-dbal": "*"
+        "sovereign-stack/core-dbal": "*",
+        "sovereign-stack/core-crypto": "*"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.4",
