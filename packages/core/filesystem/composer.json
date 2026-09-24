@@ -1,0 +1,26 @@
+{
+    "name": "sovereign-stack/core-filesystem",
+    "description": "CORE-14: Sovereign Filesystem \u2014 safe blob storage with atomic writes, path traversal protection, quarantine, and integrity verification",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0.0",
+    "require": {
+        "php": "^8.4",
+        "ext-fileinfo": "*"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^11.0",
+        "friendsofphp/php-cs-fixer": "^3.48"
+    },
+    "autoload": {
+        "psr-4": {
+            "SovereignStack\\Core\\Filesystem\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SovereignStack\\Core\\Filesystem\\Tests\\": "tests/"
+        }
+    }
+}

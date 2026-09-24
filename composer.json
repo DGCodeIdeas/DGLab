@@ -28,7 +28,8 @@
         "sovereign-stack/spoke-codex": "*",
         "sovereign-stack/spoke-canvas": "*",
         "sovereign-stack/core-dbal": "*",
-        "sovereign-stack/core-crypto": "*"
+        "sovereign-stack/core-crypto": "*",
+        "sovereign-stack/core-filesystem": "*"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.4",
@@ -51,7 +52,8 @@
             "SovereignStack\\Hub\\Config\\": "packages/hub/config/src/",
             "SovereignStack\\Bridge\\": "packages/bridge/vanguard/src/",
             "SovereignStack\\Internal\\Codex\\": "packages/spoke/internal/codex/src/",
-            "SovereignStack\\External\\Canvas\\": "packages/spoke/external/canvas/src/"
+            "SovereignStack\\External\\Canvas\\": "packages/spoke/external/canvas/src/",
+            "SovereignStack\\Core\\Filesystem\\": "packages/core/filesystem/src/"
         }
     },
     "autoload-dev": {
