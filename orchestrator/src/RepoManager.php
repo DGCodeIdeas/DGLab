@@ -354,9 +354,20 @@ class RepoManager
         if ($tag !== null) {
             $args = ['log', "{$tag}..HEAD", '--format=%s'];
         } else {
-            // No tag exists for this version yet — list ALL commits
-            // (optionally restricted to the path scope).
-            $args = ['log', 'HEAD', '--format=%s'];
+            // No tag exists for this version — return EMPTY array instead of
+            // ALL commits. The previous fallback ('git log HEAD') returned every
+            // commit in the package's history, unbounded. Combined with the
+            // composer.json version fallback in computeVersionBump, this caused
+            // the runaway release loop: if per-package tags were lost/deleted,
+            // getLogSince returned ALL commits → analyze saw old feat: commits
+            // → minor bump → created new bump commit → triggered another release
+            // → loop (Task 53/54).
+            //
+            // With this fix: no tag → empty log → analyze returns 'none' →
+            // has_bump=false → no release. First releases of new packages
+            // should be triggered manually via workflow_dispatch after creating
+            // a baseline per-package tag.
+            return [];
         }
         if ($scope !== null) {
             $args[] = '--';
