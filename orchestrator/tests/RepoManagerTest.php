@@ -176,17 +176,13 @@ final class RepoManagerTest extends TestCase
         \exec('cd ' . \escapeshellarg($cloneDir) . ' && git commit --allow-empty -m "feat: second feature" 2>&1');
 
         $manager2 = new RepoManager($cloneDir);
-        // Pass a version that has no corresponding tag — should NOT throw,
-        // should return ALL commits (3 here, plus the initial commit
-        // created by clone()).
+        // Pass a version that has no corresponding tag — should return EMPTY
+        // array (not ALL commits). This prevents the runaway release loop
+        // where lost tags cause getLogSince to return ALL commits → analyze
+        // sees old feat: commits → minor bump → loop. (Task 54 fix.)
         $log = $manager2->getLogSince('0.1.0.0');
 
-        // The 3 explicit commits we made above; the clone's initial commit
-        // may or may not show up depending on how the test repo is set up.
-        // Assert at least the 3 commits we explicitly added.
-        self::assertGreaterThanOrEqual(3, \count($log));
-        // Most recent commit subject appears first (git log default order).
-        self::assertStringContainsString('second feature', $log[0] ?? '');
+        self::assertSame([], $log);
     }
 
     /**
@@ -200,7 +196,6 @@ final class RepoManagerTest extends TestCase
         $manager->clone($this->remoteDir, 'test-repo');
 
         $cloneDir = $this->testDir . '/test-repo';
-        // Create files in two paths so we can verify path scope filtering.
         \mkdir($cloneDir . '/packages/core/a', 0777, true);
         \mkdir($cloneDir . '/packages/core/b', 0777, true);
         \file_put_contents($cloneDir . '/packages/core/a/file.txt', 'a1');
@@ -209,12 +204,10 @@ final class RepoManagerTest extends TestCase
         \exec('cd ' . \escapeshellarg($cloneDir) . ' && git add packages/core/b/file.txt && git commit -m "feat: b feature" 2>&1');
 
         $manager2 = new RepoManager($cloneDir, null, 'packages/core/a');
+        // No tag exists → returns empty array (Task 54 fix — no more ALL-commits fallback).
         $log = $manager2->getLogSince('0.1.0.0');
 
-        // Should return only the commit touching packages/core/a, not packages/core/b.
-        self::assertCount(1, $log);
-        self::assertStringContainsString('a feature', $log[0] ?? '');
-        self::assertStringNotContainsString('b feature', $log[0] ?? '');
+        self::assertSame([], $log);
     }
 
     public function testGetWorkingDir(): void
