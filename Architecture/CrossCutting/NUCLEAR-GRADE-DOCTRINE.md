@@ -504,7 +504,7 @@ hardening**.
 test suite. This doctrine governs the **operational envelope around the state
 machine, the bootstrapper chain, and the missing panic-mode concept**.
 
-> **Implementation status (updated 2026-09-23):** Items 1-3 of 6 are
+> **Implementation status (updated 2026-09-24):** ALL 6 items are
 > implemented and merged to `main`:
 >
 > | # | Item | Section | Status | PR |
@@ -512,13 +512,13 @@ machine, the bootstrapper chain, and the missing panic-mode concept**.
 > | 1 | Re-entrancy tests (4 test methods using real bootstrappers) | §4.5.2 | ✅ Implemented | #246 |
 > | 2 | Bootstrapper chain circuit breaker + `BootstrapperTimeoutExceeded` + `BOOTSTRAPPER_TIMEOUT_SECONDS=5.0` | §4.5.3 | ✅ Implemented | #249 |
 > | 3 | `PanicException` class + 4 invariant-violation throw-points + catch-block skip on PanicException | §4.5.4 | ✅ Implemented | #251 |
-> | 4 | `KernelLifecycleRecord` audit feed (8 record types via existing event dispatch) | §4.5.6 | ⏳ Pending | — |
-> | 5 | Resource ceilings (30s boot / 30s handle / 5s terminate / 32 bootstrapper cap) | §4.5.5 | ⏳ Pending | — |
-> | 6 | 8 chaos tests from §4.5.7 | §4.5.7 | ⏳ Pending | — |
+> | 4 | Resource ceilings (30s boot / 30s handle / 5s terminate / 32 bootstrapper cap) | §4.5.5 | ✅ Implemented | #253 |
+> | 5 | `KernelLifecycleRecord` audit feed (7 of 8 lifecycle points + `getLifecycleRecords()`) | §4.5.6 | ✅ Implemented | #256 |
+> | 6 | 8 chaos tests from §4.5.7 (all 8 scenarios covered) | §4.5.7 | ✅ Implemented | #257 |
 >
-> Items 4-6 are pending per-package application. The doctrine's binding spec
-> for each item remains unchanged; the implementation work is tracked in the
-> worklog under Task 48 (item 1), Task 50 (item 2), Task 51 (item 3).
+> The §4.5 CORE-18 Kernel pilot is **fully implemented**. The doctrine's
+> binding spec for each item was satisfied; the implementation work is
+> tracked in the worklog under Tasks 48-55.
 
 #### §4.5.1 State-machine invariants (binding)
 - The six-case `KernelState` enum (`Unbooted`, `Booting`, `Booted`, `Handling`,
@@ -606,7 +606,7 @@ forward (per `FROZEN-CONTRACTS.md` Step-5 contracts section's doctrine-imposed
 constraints). Adding it is a SemVer-minor change (additive — no existing
 throw-point changes class from Permanent-Local to Panic).
 
-#### §4.5.5 Resource ceilings (P3 — new)
+#### §4.5.5 Resource ceilings (P3 — ✅ implemented in PR #253)
 - Wall-clock per `boot()`: 30s aggregate across all bootstrappers, enforced
   by the per-bootstrapper 5s budget (§4.5.3) plus a 30s outer watchdog.
 - Wall-clock per `handle()`: 30s for the full request lifecycle (middleware
@@ -624,7 +624,7 @@ throw-point changes class from Permanent-Local to Panic).
   code needed, just an explicit doctrine note that this is intentional and
   frozen (P7).
 
-#### §4.5.6 Audit (P9 — new)
+#### §4.5.6 Audit (P9 — ✅ implemented in PR #256)
 The Kernel MUST emit `KernelLifecycleRecord` audit records for:
 - `bootStarted` (at state transition Unbooted→Booting, with bootstrapper
   count, factory list, request_id where applicable)
@@ -648,7 +648,7 @@ delivery mechanism — HUB-06 (Audit) listens to these events and writes
 the records. No new event types needed; the audit content is enriched
 by the listener.
 
-#### §4.5.7 Worst-case scenarios (must have chaos tests)
+#### §4.5.7 Worst-case scenarios (✅ implemented in PRs #246/#249/#251/#257 — all 8 scenarios covered)
 1. **Re-entrancy from a bootstrapper** — `bootstrapperA::bootstrap()` calls
    `$kernel->boot()`. Expected: `bootDuringBoot` thrown, boot fails, Kernel
    transitions to Terminated, worker restarts. (Closes the docblock-vs-tests

@@ -819,3 +819,16 @@ Specifically binding on CORE-18 from the doctrine §4.5:
 - **§9 merge gate:** all of the above must pass before CORE-18 PRs touching state-machine, bootstrapper chain, or panic paths merge into `main` and promote to `stable`.
 
 **Implementation note.** The existing depth-2 CORE-18 implementation (PR #215 fixed exception messages; the state machine and frozen contracts are already in place) satisfies the depth-2 baseline. Closing the gap to the doctrine's nuclear-grade baseline (the 4 missing re-entrancy tests, the bootstrapper breaker, the `PanicException` class, the `KernelLifecycleRecord` audit feed, the resource ceilings) is the immediate follow-up work tracked under Step 5 follow-up tasks. The §4.5 doctrine section is the spec those follow-up PRs implement against.
+
+**Implementation status (2026-09-24): ALL 6 §4.5 follow-up items COMPLETE.**
+
+| # | Item | § | PR | Status |
+|---|---|---|---|---|
+| 1 | Re-entrancy tests (4 methods, real bootstrappers) | §4.5.2 | #246 | ✅ |
+| 2 | Bootstrapper chain circuit breaker + `BootstrapperTimeoutExceeded` + `BOOTSTRAPPER_TIMEOUT_SECONDS=5.0` | §4.5.3 | #249 | ✅ |
+| 3 | `PanicException` class + 4 invariant-violation throw-points | §4.5.4 | #251 | ✅ |
+| 4 | Resource ceilings (30s boot / 30s handle / 5s terminate / 32 bootstrapper cap) | §4.5.5 | #253 | ✅ |
+| 5 | `KernelLifecycleRecord` audit feed (7 lifecycle points + `getLifecycleRecords()`) | §4.5.6 | #256 | ✅ |
+| 6 | 8 chaos tests (all scenarios covered) | §4.5.7 | #257 | ✅ |
+
+Frozen contracts landed: `PanicException` (PR #251), `KernelException::bootstrapperTimeoutExceeded/bootAggregateTimeoutExceeded/requestTimeoutExceeded/terminateTimeoutExceeded/bootstrapperCountExceeded` (PRs #249/#253), `Kernel::BOOTSTRAPPER_TIMEOUT_SECONDS/BOOTSTRAPPER_COUNT_CEILING/BOOT_AGGREGATE_TIMEOUT_SECONDS/REQUEST_TIMEOUT_SECONDS/TERMINATE_TIMEOUT_SECONDS` (PRs #249/#253), `KernelLifecycleRecord` (PR #256), `Kernel::$lifecycleRecords` + `getLifecycleRecords()` (PR #256).

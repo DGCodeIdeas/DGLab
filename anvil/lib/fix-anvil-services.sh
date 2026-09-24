@@ -291,7 +291,10 @@ install -d -m 0755 -o anvil -g anvil "${RESOLVED}/var/log" 2>/dev/null || true
 chmod o+x /home/dgi 2>/dev/null || true
 chmod o+x /home/dgi/www 2>/dev/null || true
 chmod -R o+rX "${RESOLVED}" 2>/dev/null || true
-echo "  ✅ Fixed directory permissions for anvil user traversal"
+echo "  ✅ Fixed directory permissions for anvil user traversal
+  # Also fix parent dirs (home + www) — anvil user needs o+x to traverse
+  chmod o+x "$(dirname "$RESOLVED")" 2>/dev/null || true   # /home/dgci/www
+  chmod o+x "$(dirname "$(dirname "$RESOLVED")")" 2>/dev/null || true   # /home/dgci"
 
 # Also ensure /etc/anvil/secrets.env exists
 if [[ ! -f /etc/anvil/secrets.env ]]; then

@@ -168,6 +168,16 @@ The actual interface and enum FQCN/file tables for CORE-19, CORE-15, CORE-14, CO
 | `KernelException::bootstrapperTimeoutExceeded()` | `packages/core/kernel/src/KernelException.php` | PR #249 (2026-09-23) | ✅ Frozen — named constructor for the per-bootstrapper wall-clock budget throw-point |
 | `Kernel::BOOTSTRAPPER_TIMEOUT_SECONDS` (constant = 5.0) | `packages/core/kernel/src/Kernel.php` | PR #249 (2026-09-23) | ✅ Frozen — hard ceiling for per-bootstrapper wall-clock budget |
 | `Kernel::$bootstrapperTimeoutSeconds` (protected property) | `packages/core/kernel/src/Kernel.php` | PR #249 (2026-09-23) | ✅ Frozen — instance-level override for tests; production code MUST NOT modify |
+| `KernelLifecycleRecord` (value object, 10 fields) | `packages/core/kernel/src/KernelLifecycleRecord.php` | PR #256 (2026-09-24) | ✅ Frozen — 7 lifecycle event types (bootStarted, bootCompleted, bootFailed, handleStarted, handleCompleted, terminateStarted, terminateCompleted); handleFailed deferred until handle() gets a catch block |
+| `Kernel::$lifecycleRecords` (private array) + `getLifecycleRecords(): array` | `packages/core/kernel/src/Kernel.php` | PR #256 (2026-09-24) | ✅ Frozen — internal to Kernel (not on KernelInterface); HUB-06 reads via getLifecycleRecords() |
+| `Kernel::BOOTSTRAPPER_COUNT_CEILING = 32` | `packages/core/kernel/src/Kernel.php` | PR #253 (2026-09-23) | ✅ Frozen — hard ceiling for bootstrapper count per Kernel construction |
+| `Kernel::BOOT_AGGREGATE_TIMEOUT_SECONDS = 30.0` | `packages/core/kernel/src/Kernel.php` | PR #253 (2026-09-23) | ✅ Frozen — aggregate boot wall-clock budget (outer watchdog) |
+| `Kernel::REQUEST_TIMEOUT_SECONDS = 30.0` | `packages/core/kernel/src/Kernel.php` | PR #253 (2026-09-23) | ✅ Frozen — handle() wall-clock budget |
+| `Kernel::TERMINATE_TIMEOUT_SECONDS = 5.0` | `packages/core/kernel/src/Kernel.php` | PR #253 (2026-09-23) | ✅ Frozen — terminate() wall-clock budget |
+| `KernelException::bootAggregateTimeoutExceeded()` | `packages/core/kernel/src/KernelException.php` | PR #253 (2026-09-23) | ✅ Frozen — named constructor for aggregate boot timeout |
+| `KernelException::requestTimeoutExceeded()` | `packages/core/kernel/src/KernelException.php` | PR #253 (2026-09-23) | ✅ Frozen — named constructor for handle() timeout |
+| `KernelException::terminateTimeoutExceeded()` | `packages/core/kernel/src/KernelException.php` | PR #253 (2026-09-23) | ✅ Frozen — named constructor for terminate() timeout |
+| `KernelException::bootstrapperCountExceeded()` | `packages/core/kernel/src/KernelException.php` | PR #253 (2026-09-23) | ✅ Frozen — named constructor for bootstrapper count ceiling |
 
 ### CORE-18-specific doctrine constraints (added 2026-09-23)
 
