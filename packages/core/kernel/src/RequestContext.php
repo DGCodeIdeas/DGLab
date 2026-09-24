@@ -12,12 +12,15 @@ use DateTimeImmutable;
  * Per SPEC-001 §8 (RequestContext): follows the immutable-value-object
  * approach already established by {@see \SovereignStack\Core\Database\TenantContext}.
  *
- * Created at the request boundary (by the worker handler in public/index.php
- * or by the future ApplicationFactory). Stored in Fiber-isolated request scope
- * via the Container's pulse() WeakMap<Fiber, ...> mechanism — per SPEC §42,
- * "the existing container model already provides the mechanism." Available to
- * logging, error handling, middleware, event stamping, and downstream
- * request propagation.
+ * Per the locked MVP architectural baseline (PR #267): RequestContext is
+ * **identity-light** — it carries only the userId correlation key, NOT the
+ * full AuthenticatedUser or roles[]. The distinction:
+ *   - RequestContext describes the request (correlation keys: requestId,
+ *     traceId, tenantId, userId, startedAt, routeName).
+ *   - IdentityInterface describes the authenticated principal (full user
+ *     object with email + roles).
+ * Application services resolve the full principal via
+ * IdentityInterface::getUserById(RequestContext->userId) when needed.
  *
  * Per SPEC §13 (State Ownership Rules): lifetime is Pulse/Fiber — MUST never
  * cross Fibers. Per SPEC §14: composes with TenantContext conceptually — no
@@ -25,8 +28,8 @@ use DateTimeImmutable;
  *
  * Per SPEC §8: "If a tenant is established later in request processing, the
  * context SHOULD be replaced with a new immutable instance rather than
- * mutated." The {@see withTenantId()} and {@see withRouteName()} methods
- * implement this discipline — they return new instances, never mutate.
+ * mutated." The with*() methods implement this discipline — they return new
+ * instances, never mutate.
  *
  * @package SovereignStack\Core\Kernel
  *
@@ -41,6 +44,9 @@ final readonly class RequestContext
      * @param ?string $tenantId     Tenant ULID, populated after authentication. Null pre-auth or for non-tenant requests.
      * @param DateTimeImmutable $startedAt   Request start timestamp (monotonic-friendly; used for duration measurement).
      * @param ?string $routeName    Matched route name, populated after routing. Null pre-routing.
+     * @param ?string $userId       Authenticated user ULID, populated by AuthMiddleware after token verification.
+     *                              Null for unauthenticated requests. Identity-light: carries only the ID,
+     *                              NOT AuthenticatedUser or roles[] (those are resolved via IdentityInterface).
      */
     public function __construct(
         public string $requestId,
@@ -48,22 +54,14 @@ final readonly class RequestContext
         public ?string $tenantId,
         public DateTimeImmutable $startedAt,
         public ?string $routeName = null,
+        public ?string $userId = null,
     ) {}
 
     /**
      * Return a new instance with the tenant_id populated.
      *
-     * Use case: authentication runs after the request boundary (e.g., JWT
-     * verified in middleware). Per SPEC §8, the context is REPLACED with a
-     * new immutable instance rather than mutated. The original instance
-     * remains unchanged (immutable value semantics).
-     *
-     * Per SPEC §14: "The DBAL's existing tenant-aware QueryBuilder behavior
-     * should continue to receive TenantContext explicitly." This method does
-     * NOT inject anything into QueryBuilder — it merely returns a new
-     * RequestContext. The caller (application service, middleware, etc.)
-     * is responsible for constructing a TenantContext from this value if
-     * needed for DBAL queries.
+     * Per SPEC §8: the context is REPLACED with a new immutable instance
+     * rather than mutated. The original instance remains unchanged.
      *
      * @param non-empty-string $tenantId
      */
@@ -75,16 +73,12 @@ final readonly class RequestContext
             tenantId: $tenantId,
             startedAt: $this->startedAt,
             routeName: $this->routeName,
+            userId: $this->userId,
         );
     }
 
     /**
      * Return a new instance with the route name populated.
-     *
-     * Use case: router matches the request to a named route after the
-     * RequestContext is initially created at the request boundary. Per
-     * SPEC §8: "Optional metadata such as route name MAY be populated after
-     * routing."
      *
      * @param non-empty-string $routeName
      */
@@ -96,6 +90,31 @@ final readonly class RequestContext
             tenantId: $this->tenantId,
             startedAt: $this->startedAt,
             routeName: $routeName,
+            userId: $this->userId,
+        );
+    }
+
+    /**
+     * Return a new instance with the userId populated.
+     *
+     * Use case: AuthMiddleware verifies credentials (JWT/session), resolves
+     * the user ID, and stamps the RequestContext with it. Per the locked
+     * MVP architectural baseline: RequestContext is identity-light — only
+     * the userId correlation key is stored here, NOT the full
+     * AuthenticatedUser value object. The full principal is resolved by
+     * application services via IdentityInterface::getUserById().
+     *
+     * @param non-empty-string $userId  The authenticated user's ULID
+     */
+    public function withUserId(string $userId): self
+    {
+        return new self(
+            requestId: $this->requestId,
+            traceId: $this->traceId,
+            tenantId: $this->tenantId,
+            startedAt: $this->startedAt,
+            routeName: $this->routeName,
+            userId: $userId,
         );
     }
 
@@ -113,5 +132,14 @@ final readonly class RequestContext
     public function hasRouteName(): bool
     {
         return $this->routeName !== null && $this->routeName !== '';
+    }
+
+    /**
+     * True if the userId is populated (post-authentication).
+     * For unauthenticated requests, returns false.
+     */
+    public function hasUserId(): bool
+    {
+        return $this->userId !== null && $this->userId !== '';
     }
 }
