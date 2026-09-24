@@ -47,6 +47,10 @@ on:
         description: 'Dry-run (compute bumps, do not tag or push)'
         required: false
         default: 'true'
+      health_check:
+        description: 'Health check: verify per-package tags exist (no release)'
+        required: false
+        default: 'false'
 
 # Do not run concurrently with packages-ci.yml — the loom's
 # --require-ci-green flag polls for up to 60 seconds waiting for packages-ci.yml
@@ -329,6 +333,47 @@ jobs:
             --title "DGLab v${{ steps.mono.outputs.new_version }}+${SHORT_SHA}" \
             --notes "$(printf '%b' "$BODY")" \
             --target main
+
+  tag-health-check:
+    name: Per-Package Tag Health Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.health_check == 'true'
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check per-package tags exist
+        run: |
+          set -euo pipefail
+          MISSING=0
+          echo "Checking per-package tags for all packages/*/*/composer.json..."
+          for COMPOSER_JSON in packages/*/*/composer.json packages/*/*/*/composer.json; do
+            [ -f "$COMPOSER_JSON" ] || continue
+            PKG_DIR=$(dirname "$COMPOSER_JSON")
+            PKG_NAME=$(basename "$PKG_DIR")
+            TIER=$(basename "$(dirname "$PKG_DIR")")
+            VERSION=$(jq -r '.version // ""' "$COMPOSER_JSON")
+            if [ -z "$VERSION" ]; then
+              echo "  WARN: $TIER/$PKG_NAME has no 'version' field in composer.json"
+              continue
+            fi
+            TAG_NAME="${TIER}-${PKG_NAME}-v${VERSION}"
+            if git rev-parse "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
+              echo "  OK:   $TAG_NAME"
+            else
+              echo "  MISSING: $TAG_NAME (package $TIER/$PKG_NAME at version $VERSION has no per-package tag)"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          echo ""
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::warning::$MISSING per-package tag(s) are missing. Releases for those packages will silently no-op (getLogSince returns empty array per PR #255 fix). Run 'git tag <tier>-<pkg>-v<version> <sha> && git push origin <tag>' to create baseline tags."
+          else
+            echo "All per-package tags present. Release workflow is healthy."
+          fi
 
   summary:
     name: Release Summary
