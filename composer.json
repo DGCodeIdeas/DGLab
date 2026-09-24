@@ -56,7 +56,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\": "tests/"
+            "Tests\\": "tests/",
+            "App\\Tests\\": "app/tests/"
         }
     },
     "repositories": [
