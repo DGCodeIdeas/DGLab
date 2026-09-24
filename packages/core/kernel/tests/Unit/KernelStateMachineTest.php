@@ -821,6 +821,83 @@ final class KernelStateMachineTest extends TestCase
         self::assertNotEmpty($handleStarted->requestUriHash);
     }
 
+    // --- Chaos Tests (doctrine §4.5.7 — 8 worst-case scenarios) ---
+
+    /**
+     * Chaos scenario #4: Throwing bootstrapper. A bootstrapper that throws
+     * RuntimeException MUST transition the Kernel to Terminated + create a
+     * bootFailed lifecycle record with the throwable info + releaseReferences
+     * runs (since the exception is not PanicException).
+     */
+    public function testThrowingBootstrapperTransitionsToTerminated(): void
+    {
+        $throwingBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                throw new \RuntimeException('Chaos scenario #4: throwing bootstrapper');
+            }
+        };
+
+        $kernel = TestKernelFactory::create($throwingBootstrapper);
+
+        try {
+            $kernel->boot();
+            self::fail('Expected RuntimeException from throwing bootstrapper');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Chaos scenario #4: throwing bootstrapper', $e->getMessage());
+        }
+
+        // Kernel MUST be in Terminated state (catch block transitioned it).
+        self::assertSame(KernelState::Terminated, $kernel->getState());
+
+        // bootFailed lifecycle record MUST exist with the throwable info.
+        $records = $kernel->getLifecycleRecords();
+        $bootFailed = \array_find($records, fn ($r) => $r->event === 'bootFailed');
+        self::assertNotNull($bootFailed);
+        self::assertSame('RuntimeException', $bootFailed->throwableClass);
+        self::assertSame('Chaos scenario #4: throwing bootstrapper', $bootFailed->throwableMessage);
+        self::assertNotNull($bootFailed->elapsedMs);
+    }
+
+    /**
+     * Chaos scenario #3 (audit verification): BootstrapperTimeoutExceeded
+     * MUST create a bootFailed lifecycle record (the catch block fires).
+     * Verifies the lifecycle audit feed works during the timeout scenario.
+     */
+    public function testBootstrapperTimeoutRecordsBootFailedAudit(): void
+    {
+        $slowBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                \usleep(20_000);  // 20ms — exceeds the 0.001s threshold
+            }
+        };
+
+        $kernel = TestKernelFactory::create($slowBootstrapper);
+
+        $timeout = new \ReflectionProperty(
+            \SovereignStack\Core\Kernel\Kernel::class,
+            'bootstrapperTimeoutSeconds',
+        );
+        $timeout->setValue($kernel, 0.001);
+
+        try {
+            $kernel->boot();
+            self::fail('Expected KernelException::bootstrapperTimeoutExceeded');
+        } catch (KernelException $e) {
+            self::assertStringContainsString('exceeded the per-bootstrapper wall-clock budget', $e->getMessage());
+        }
+
+        self::assertSame(KernelState::Terminated, $kernel->getState());
+
+        // bootFailed record MUST exist — the catch block fires for
+        // BootstrapperTimeoutExceeded (it's a KernelException, not PanicException).
+        $records = $kernel->getLifecycleRecords();
+        $bootFailed = \array_find($records, fn ($r) => $r->event === 'bootFailed');
+        self::assertNotNull($bootFailed);
+        self::assertSame(KernelException::class, $bootFailed->throwableClass);
+    }
+
     // --- P3 Edge-Case Tests ---
 
     public function testGetRouterBeforeBootThrows(): void
