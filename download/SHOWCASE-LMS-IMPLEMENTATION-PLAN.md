@@ -15,7 +15,7 @@
 | Where products live | **Hub bounded contexts** inside DGLab monorepo | `packages/hub/showcase/`, `packages/hub/lms/` — fits SPEC §16 Hub target structure; M09 domain purity applies; repository ports inward-facing |
 | How to sequence vs current M0-M7 | **Extend M5** | Showcase = M5a, LMS = M5b. SPEC M5 already says "select one representative business capability" — these ARE the capabilities. Continues M4 (release gate) in parallel. |
 | First vertical slice | **Showcase first** | M5a = Showcase Product Catalog (simpler CRUD domain). M5b = LMS Course Catalog (richer domain). Both eventually land. |
-| Boundary between products | **Completely separate** | Each product bootstraps its own Identity/Audit/Config. Maximum isolation; each product can evolve independently. See §6 trade-off notes. |
+| Boundary between products | **Shared platform** | Shared Hub contexts (Identity, Audit, Config) consumed by both products; separate bounded contexts per product (Showcase Hub, LMS Hub). Single shared database; FKs enforce cross-product integrity (e.g., wishlist.user_id + enrollments.learner_id both reference the same `users` table). See §6 trade-off notes. |
 
 ### 1.2 Showcase MVP features (must-have)
 
@@ -77,7 +77,7 @@ Two parallel Hub/Core packages must land before the Showcase/LMS feature work ca
 
 #### PR #264 — `packages/hub/identity/` (HUB-04)
 
-Implements minimal user authentication. Per "completely separate" boundary, each product deploys its own instance (separate `users` table per product database) but shares the Hub code as a Composer dependency.
+Implements minimal user authentication. Per "Shared platform" boundary, this is a SHARED Hub package — both Showcase and LMS consume the same `packages/hub/identity/` code and the same `users` table. A single user account works across both products.
 
 **File structure:**
 ```
@@ -484,9 +484,9 @@ CREATE TABLE progress (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-### 5.3 Identity (1 migration, shared by both products per "completely separate")
+### 5.3 Identity (1 migration, shared Hub package per "Shared platform")
 
-Per "completely separate" boundary, each product has its OWN `users` table in its OWN database. The `users` table schema is shared (lives in `packages/hub/identity/migrations/`), but each product runs the migration against its own database.
+Per "Shared platform" boundary, both products share a SINGLE `users` table in the shared database. The `users` migration lives in `packages/hub/identity/migrations/` and runs ONCE per deployment. Foreign keys from `wishlists.user_id` (Showcase) and `enrollments.learner_id` (LMS) both reference this same `users.id` table — single sign-on across both products.
 
 ```sql
 -- packages/hub/identity/migrations/001_create_users_table.sql
@@ -503,20 +503,20 @@ CREATE TABLE users (
 
 ## 6. Trade-off Notes
 
-### 6.1 "Completely separate" boundary — what it actually means in code
+### 6.1 "Shared platform" boundary — what it actually means in code
 
-The user picked "Completely separate" for product boundary. The literal reading is "no shared Hub bounded contexts — each product bootstraps its own Identity/Audit/Config." However, this needs nuance:
+The user picked "Shared platform" for product boundary. This means shared Hub bounded contexts (Identity, Audit, Config) consumed by both products, with separate bounded contexts per product (Showcase Hub, LMS Hub). Concretely:
 
-**Recommended interpretation:** Each product has its own *deployment instance* of Identity/Audit/Config, but shares the underlying Hub packages as Composer dependencies. Concretely:
+**Concrete model:**
 - `packages/hub/identity/` is ONE Hub package (HUB-04). Both Showcase and LMS depend on it via Composer.
-- Showcase runs `packages/hub/identity/migrations/001_create_users_table.sql` against the **showcase database** → showcase's own `users` table.
-- LMS runs the same migration against the **LMS database** → LMS's own `users` table.
-- Showcase's `users` and LMS's `users` are completely independent — no shared accounts.
-- Each product's `ApplicationFactory` (per PR #263) wires its own `IdentityApplicationService` with its own database connection.
+- ONE shared database per deployment. The `users` migration lives in `packages/hub/identity/migrations/` and runs ONCE.
+- Showcase's `wishlists.user_id` references `users.id` via FK.
+- LMS's `enrollments.learner_id` references the SAME `users.id` via FK.
+- A single user account (one row in `users`) can have a Showcase wishlist AND LMS enrollments — single sign-on across both products.
+- Each product's `ApplicationFactory` (per PR #263) wires its own `IdentityApplicationService` but they share the same `users` table.
+- Future HUB-06 (Audit) and HUB-01 (Config, already exists as `packages/hub/config/`) follow the same pattern — shared Hub code, shared tables.
 
-This satisfies "completely separate" (no shared user accounts, no shared audit logs at runtime) while avoiding code duplication (the Hub package is shared, the data is not).
-
-**If the user actually wants NO shared Hub code at all** (each product literally has its own copy of the User entity class in its own package), that's significantly more code duplication. The plan above assumes the more pragmatic interpretation; flag for confirmation if stricter isolation is intended.
+This is the cleanest model: maximum code reuse, single sign-on, FK-enforced referential integrity across products, single audit log. The cost is tighter coupling — both products must coordinate schema changes to shared tables (e.g., adding a column to `users` affects both products).
 
 ### 6.2 HUB-04 Identity is the largest blocker
 
@@ -526,7 +526,7 @@ HUB-04 Identity blocks:
 - LMS "Admin dashboard" (PR #281, indirectly — admin auth required)
 - Showcase "Admin dashboard" (PR #273, indirectly — admin auth required)
 
-So 4 of the 9 feature PRs in Phase 2+3 depend on HUB-04 landing first. Phase 1 PR #264 unblocks all of them.
+So 4 of the 9 feature PRs in Phase 2+3 depend on HUB-04 landing first. Phase 1 PR #265 (re-numbered after PR #264 became this planning doc) unblocks all of them.
 
 ### 6.3 CORE-14 Filesystem is the second blocker
 
@@ -699,7 +699,7 @@ This plan as written is ~155 PHP files / 18 PRs / multi-week. To start executing
 
 1. **"Start Phase 1"** — I begin PR #264 (HUB-04 Identity) + PR #265 (CORE-14 Filesystem) immediately. Branches `feat/hub-04-identity` + `feat/core-14-filesystem` get created, code gets written, PRs get opened. The 3 current in-flight PRs merge whenever they're ready (Phase 1 work doesn't depend on them being merged first, just on the M1 architecture-boundary-lint being part of the repo).
 
-2. **"Adjust the plan first"** — you want to revise scope, drop features, add features, change PR ordering, or discuss the "completely separate" boundary interpretation before any code is written.
+2. **"Adjust the plan first"** — you want to revise scope, drop features, add features, change PR ordering, or discuss the "Shared platform" boundary interpretation before any code is written.
 
 3. **"Plan only, defer execution"** — save this plan as a contractor reference, defer all execution until a later session.
 
