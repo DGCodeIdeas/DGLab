@@ -1,0 +1,78 @@
+name: Architecture Boundary Lint
+
+# Per SPEC-001 §40 (Phase 1 — Enforce Ring Boundaries) + §41 (Container Service-Locator Rule).
+# This workflow enforces:
+#   1. Ring-boundary dependency direction (per ADR-004 tier-enforcement DAG).
+#      e.g., Core MUST NOT import Hub; Hub MUST NOT import Spoke; etc.
+#   2. Container service-locator prohibition (SPEC §3 + §41). Production code
+#      MUST NOT call $container->get()/make()/resolve(), Container::getInstance(),
+#      Container::resolve(), or app(). Narrowed to container-specific receivers
+#      so legitimate domain resolvers (MiddlewareResolver::resolve(),
+#      ContractRegistry::resolve(), PerRequestHandler, Vanguard) pass.
+#
+# Sister workflow to architecture-lint.yml (which checks documentation/reference
+# structure). This workflow checks executable ring-boundary rules.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'app/**'
+      - 'scripts/architecture-boundary-lint.py'
+      - 'scripts/architecture-boundary-lint.php'
+      - '.github/workflows/architecture-boundary-lint.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'app/**'
+      - 'scripts/architecture-boundary-lint.py'
+      - 'scripts/architecture-boundary-lint.php'
+      - '.github/workflows/architecture-boundary-lint.yml'
+  workflow_dispatch: {}
+
+jobs:
+  boundary-lint:
+    name: architecture-boundary-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run architecture-boundary-lint
+        run: python3 scripts/architecture-boundary-lint.py
+
+      - name: Run architecture-boundary-lint regression tests
+        # Per SPEC-001 §41 Acceptance: "False positives are covered by regression tests."
+        # Runs 13 tests covering:
+        #   - Live repo has 0 false positives on 6 legitimate resolve() callers
+        #   - Live repo has 0 ring-boundary violations
+        #   - Live repo has 0 service-locator violations
+        #   - Synthetic violations (Core→Hub, $container->get/make/resolve, app()) ARE flagged
+        #   - Legitimate domain resolvers ($this->resolver->resolve, $this->contracts->resolve) NOT flagged
+        #   - Method definitions (function resolve) NOT flagged
+        #   - PSR imports allowed from any ring
+        run: python3 scripts/test_architecture_boundary_lint.py
+
+      # Note: a PHP equivalent of this checker exists at
+      # scripts/architecture-boundary-lint.php for contractor environments
+      # where PHP 8.4 is the primary runtime. The Python version is used in
+      # CI for portability; both versions produce identical output.
+
+      - name: Upload violation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-boundary-lint-report
+          path: |
+            # JSON summary is printed to stdout; the workflow captures exit code
+            # 1 = violations, 0 = clean. The full report is on stderr in the
+            # workflow log. If a structured artifact is desired in the future,
+            # pipe stdout to a file and add it here.
+          if-no-files-found: ignore
+          retention-days: 14
