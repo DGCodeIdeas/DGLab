@@ -102,6 +102,12 @@ final class Kernel implements KernelInterface
      */
     protected float $terminateTimeoutSeconds = self::TERMINATE_TIMEOUT_SECONDS;
 
+    /**
+     * Lifecycle audit records per doctrine §4.5.6.
+     * @var list<KernelLifecycleRecord>
+     */
+    private array $lifecycleRecords = [];
+
     private KernelState $state = KernelState::Unbooted;
 
     /** @var list<BootstrapperInterface> */
@@ -193,6 +199,12 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Booting;
         $bootStart = \microtime(true);
+        $this->lifecycleRecords[] = new KernelLifecycleRecord(
+            event: 'bootStarted',
+            timestamp: $bootStart,
+            state: KernelState::Booting->value,
+            bootstrapperCount: \count($this->bootstrappers),
+        );
 
         try {
             // Initialize core dependencies via factories. Each factory returns a
@@ -299,6 +311,13 @@ final class Kernel implements KernelInterface
             }
 
             $this->state = KernelState::Booted;
+            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+                event: 'bootCompleted',
+                timestamp: \microtime(true),
+                state: KernelState::Booted->value,
+                elapsedMs: (\microtime(true) - $bootStart) * 1000,
+                bootstrapperCount: \count($this->bootstrappers),
+            );
 
             // Dispatch BootEvent.
             $eventDispatcher->dispatch(new BootEvent($this));
@@ -315,6 +334,14 @@ final class Kernel implements KernelInterface
             // and confuse the operator. The state transition is still done
             // because it's a simple assignment that can't throw.
             $this->state = KernelState::Terminated;
+            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+                event: 'bootFailed',
+                timestamp: \microtime(true),
+                state: KernelState::Terminated->value,
+                elapsedMs: (\microtime(true) - $bootStart) * 1000,
+                throwableClass: $e::class,
+                throwableMessage: $e->getMessage(),
+            );
             if (!$e instanceof PanicException) {
                 $this->releaseReferences();
             }
@@ -347,6 +374,13 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Handling;
         $handleStart = \microtime(true);
+        $this->lifecycleRecords[] = new KernelLifecycleRecord(
+            event: 'handleStarted',
+            timestamp: $handleStart,
+            state: KernelState::Handling->value,
+            requestMethod: $request->getMethod(),
+            requestUriHash: \hash('sha256', (string) $request->getUri()),
+        );
 
         try {
             // Dispatch RequestReceivedEvent (listeners may enrich the request).
@@ -379,6 +413,12 @@ final class Kernel implements KernelInterface
                 );
             }
             $this->state = KernelState::Booted;
+            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+                event: 'handleCompleted',
+                timestamp: \microtime(true),
+                state: KernelState::Booted->value,
+                elapsedMs: (\microtime(true) - $handleStart) * 1000,
+            );
 
             // Per doctrine §4.5.5: handle() wall-clock budget (30s). Check
             // AFTER state = Booted so the kernel is in a usable state when
@@ -407,6 +447,11 @@ final class Kernel implements KernelInterface
 
         $this->state = KernelState::Terminating;
         $terminateStart = \microtime(true);
+        $this->lifecycleRecords[] = new KernelLifecycleRecord(
+            event: 'terminateStarted',
+            timestamp: $terminateStart,
+            state: KernelState::Terminating->value,
+        );
 
         try {
             $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
@@ -433,6 +478,12 @@ final class Kernel implements KernelInterface
             // leave some properties null).
             $this->releaseReferences();
             $this->state = KernelState::Terminated;
+            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+                event: 'terminateCompleted',
+                timestamp: \microtime(true),
+                state: KernelState::Terminated->value,
+                elapsedMs: (\microtime(true) - $terminateStart) * 1000,
+            );
 
             // Per doctrine §4.5.5: terminate() wall-clock budget (5s). Check
             // AFTER releaseReferences + state = Terminated so cleanup runs
@@ -452,6 +503,15 @@ final class Kernel implements KernelInterface
     public function getState(): KernelState
     {
         return $this->state;
+    }
+
+    /**
+     * Returns all lifecycle audit records (doctrine §4.5.6).
+     * @return list<KernelLifecycleRecord>
+     */
+    public function getLifecycleRecords(): array
+    {
+        return $this->lifecycleRecords;
     }
 
     public function getContainer(): ContainerInterface

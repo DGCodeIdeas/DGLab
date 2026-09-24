@@ -9,6 +9,7 @@ use SovereignStack\Core\Kernel\BootstrapperInterface;
 use SovereignStack\Core\Kernel\KernelException;
 use SovereignStack\Core\Kernel\KernelInterface;
 use SovereignStack\Core\Kernel\KernelState;
+use SovereignStack\Core\Kernel\KernelLifecycleRecord;
 use SovereignStack\Core\Kernel\PanicException;
 
 /**
@@ -727,6 +728,97 @@ final class KernelStateMachineTest extends TestCase
         // Kernel MUST be in Terminated state (finally ran, state = Terminated
         // BEFORE timeout check — releaseReferences also ran).
         self::assertSame(KernelState::Terminated, $kernel->getState());
+    }
+
+    // --- Lifecycle Audit Tests (P9, doctrine §4.5.6) ---
+
+    /**
+     * Per doctrine §4.5.6: Kernel MUST emit lifecycle audit records at
+     * the 8 lifecycle points. Verifies that a normal boot→handle→terminate
+     * cycle produces the expected records.
+     */
+    public function testLifecycleRecordsForFullCycle(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+
+        $request = TestKernelFactory::createServerRequest('GET', '/');
+        $kernel->handle($request);
+        $kernel->terminate();
+
+        $records = $kernel->getLifecycleRecords();
+
+        // bootStarted, bootCompleted, handleStarted, handleCompleted,
+        // terminateStarted, terminateCompleted = 6 records (no failures)
+        self::assertGreaterThanOrEqual(6, \count($records));
+
+        $events = \array_map(fn ($r) => $r->event, $records);
+        self::assertContains('bootStarted', $events);
+        self::assertContains('bootCompleted', $events);
+        self::assertContains('handleStarted', $events);
+        self::assertContains('handleCompleted', $events);
+        self::assertContains('terminateStarted', $events);
+        self::assertContains('terminateCompleted', $events);
+    }
+
+    /**
+     * Per doctrine §4.5.6: bootFailed record MUST include the throwable
+     * class + message. Verifies that a failed boot produces the record.
+     */
+    public function testLifecycleRecordsIncludeBootFailedOnFailure(): void
+    {
+        $failingBootstrapper = new class implements BootstrapperInterface {
+            public function bootstrap(KernelInterface $kernel): void
+            {
+                throw new \RuntimeException('Bootstrapper failed intentionally');
+            }
+        };
+
+        $kernel = TestKernelFactory::create($failingBootstrapper);
+
+        try {
+            $kernel->boot();
+        } catch (\RuntimeException) {
+            // Expected
+        }
+
+        $records = $kernel->getLifecycleRecords();
+        $events = \array_map(fn ($r) => $r->event, $records);
+
+        self::assertContains('bootStarted', $events);
+        self::assertContains('bootFailed', $events);
+
+        $bootFailed = \array_find($records, fn ($r) => $r->event === 'bootFailed');
+        self::assertNotNull($bootFailed);
+        self::assertSame('RuntimeException', $bootFailed->throwableClass);
+        self::assertSame('Bootstrapper failed intentionally', $bootFailed->throwableMessage);
+    }
+
+    /**
+     * Per doctrine §4.5.6: bootCompleted record MUST include elapsedMs
+     * and bootstrapperCount. handleStarted MUST include requestMethod
+     * and requestUriHash.
+     */
+    public function testLifecycleRecordFields(): void
+    {
+        $kernel = TestKernelFactory::createWithRoutes();
+        $kernel->boot();
+
+        $request = TestKernelFactory::createServerRequest('POST', '/test/path');
+        $kernel->handle($request);
+
+        $records = $kernel->getLifecycleRecords();
+
+        $bootCompleted = \array_find($records, fn ($r) => $r->event === 'bootCompleted');
+        self::assertNotNull($bootCompleted);
+        self::assertNotNull($bootCompleted->elapsedMs);
+        self::assertNotNull($bootCompleted->bootstrapperCount);
+
+        $handleStarted = \array_find($records, fn ($r) => $r->event === 'handleStarted');
+        self::assertNotNull($handleStarted);
+        self::assertSame('POST', $handleStarted->requestMethod);
+        self::assertNotNull($handleStarted->requestUriHash);
+        self::assertNotEmpty($handleStarted->requestUriHash);
     }
 
     // --- P3 Edge-Case Tests ---
