@@ -8,7 +8,7 @@ namespace SovereignStack\Hub\Config;
  * Repository for feature flag definitions.
  *
  * At depth 2, implemented by InMemoryFeatureFlagRepository (no DBAL dependency).
- * When CORE-19 (DBAL) lands, replaced with a DBAL-backed implementation that
+ * CORE-19 (DBAL) is implemented at depth 2; when Hub reaches depth 3+, replace with a DBAL-backed implementation that
  * queries hub_feature_flags — the interface and FeatureFlagManager are unchanged.
  *
  * @package SovereignStack\Hub\Config

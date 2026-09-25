@@ -298,3 +298,22 @@ The discrepancies above were verified manually against:
 ---
 
 *End of ADR / Repository Discrepancy Register — M0 deliverable per SPEC-001 §39.*
+
+
+---
+
+## Disposition Record (Cooldown 1 — Deliverable 2, PR #TBD)
+
+All 7 discrepancies verified against HEAD `643efd7` (post-Lap-1). Classification and resolution:
+
+| # | Discrepancy | Classification | Resolution | Status |
+|---|---|---|---|---|
+| 1 | ADR-013 PostgreSQL driver "shipped but disabled" | Stale documentation | Corrected ADR-013 text: "future capability, not implemented" | ✅ Resolved |
+| 2 | README "19 ADRs" → actual 20 | Stale documentation | Corrected README: 19 → 20 | ✅ Resolved |
+| 3 | README "105 blueprints" → actual 102 | Stale documentation | Corrected README: 105 → 102 | ✅ Resolved |
+| 4 | README MUWV self-contradictory | Historical/metadata inconsistency | Reconciled README: post-MUWV canonical, pre-MUWV marked historical, 503 placeholder removed, class name fixed | ✅ Resolved |
+| 5 | Hub/config docblocks "When CORE-19 lands" | Stale documentation | Corrected 5 docblocks: "CORE-19 implemented at depth 2; DBAL when Hub reaches depth 3+" | ✅ Resolved |
+| 6 | SPEC §1 PlantUML implies Hub→DBAL current | Already correctly documented | No change needed — SPEC §1 caption already notes target-state | ✅ Verified (no action) |
+| 7 | Architecture-lint CI disclaims coverage gaps | Partially resolved by implementation evolution | Added cross-reference in architecture-lint.yml pointing to architecture-boundary-lint.yml; existing disclaimer preserved | ✅ Resolved |
+
+**Zero implementation changes.** All 7 are documentation corrections.

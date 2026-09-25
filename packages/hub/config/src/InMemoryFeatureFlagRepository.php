@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace SovereignStack\Hub\Config;
 
 /**
- * In-memory FeatureFlagRepository for depth-2 (pre-DBAL) usage.
+ * In-memory FeatureFlagRepository for depth-2 (CORE-19 DBAL implemented at depth 2; DBAL-backed when Hub reaches depth 3+).
  *
  * Stores flag definitions in a PHP array. Useful for tests and for the
  * Milestone 0 walking skeleton where CORE-19 (DBAL) is not yet shipped.
- * When CORE-19 lands, replace with a DBAL-backed implementation — the
+ * CORE-19 (DBAL) is implemented at depth 2; when Hub reaches depth 3+, replace with a DBAL-backed implementation — the
  * FeatureFlagRepositoryInterface contract is unchanged.
  *
  * @package SovereignStack\Hub\Config

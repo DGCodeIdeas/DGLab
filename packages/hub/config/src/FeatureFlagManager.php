@@ -8,7 +8,7 @@ namespace SovereignStack\Hub\Config;
  * Reference implementation of FeatureManagerInterface.
  *
  * Loads flag definitions from a FeatureFlagRepositoryInterface (in-memory stub
- * at depth 2; DBAL-backed when CORE-19 lands). Per-Context evaluation results
+ * at depth 2; DBAL-backed when Hub reaches depth 3+ (CORE-19 implemented at depth 2)). Per-Context evaluation results
  * are NOT cached: the percentage-rollout computation is O(1) (one hash + modulo)
  * and caching per user×flag would explode cache cardinality.
  *

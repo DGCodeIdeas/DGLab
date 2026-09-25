@@ -8,7 +8,7 @@ namespace SovereignStack\Hub\Config;
  * Evaluates feature flags against an immutable Context.
  *
  * Flag definitions are loaded from a FeatureFlagRepositoryInterface (in-memory
- * stub at depth 2; DBAL-backed when CORE-19 lands). For a given Context the
+ * stub at depth 2; DBAL-backed when Hub reaches depth 3+ (CORE-19 implemented at depth 2)). For a given Context the
  * result is deterministic — the same user always lands on the same side of
  * a rollout and always sees the same variant.
  *

@@ -8,7 +8,7 @@ namespace SovereignStack\Hub\Config;
  * Repository for per-tenant configuration overrides.
  *
  * At depth 2, implemented by InMemoryConfigOverrideRepository (no DBAL dependency).
- * When CORE-19 (DBAL) lands, replaced with a DBAL-backed implementation that
+ * CORE-19 (DBAL) is implemented at depth 2; when Hub reaches depth 3+, replace with a DBAL-backed implementation that
  * queries hub_config_overrides — the interface and HubConfigRegistry are unchanged.
  *
  * @package SovereignStack\Hub\Config
