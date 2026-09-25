@@ -137,6 +137,11 @@ final class ApplicationFactory
         // and future monitoring systems. Pass-through DTO transformer.
         $contractRegistry->registerContract('/health', new DefaultDtoTransformer());
 
+        // Three-tier health contracts per SPEC §29 (M4 — Production Release Gate).
+        $contractRegistry->registerContract('/health/live', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/health/ready', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/health/dependencies', new DefaultDtoTransformer());
+
         $vanguard = new Vanguard(
             contracts: $contractRegistry,
             waf: $waf,
