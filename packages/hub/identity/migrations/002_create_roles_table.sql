@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS roles (
+    id          CHAR(26)     NOT NULL PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT         NULL,
+    created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
