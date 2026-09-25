@@ -74,7 +74,7 @@ final class ApplicationFactory
     private function __construct(
         private readonly Kernel $kernel,
         private readonly ResponseFactory $responseFactory,
-        private readonly $log,
+        private readonly \Closure $log,
         private readonly bool $isDevMode,
     ) {}
 
