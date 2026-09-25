@@ -804,3 +804,105 @@ Stage Summary:
 - Exit criteria for M1 met (per SPEC §M1): ring-boundary AST checker ✅, container service-locator checker ✅, CI integration ✅, regression tests ✅; zero forbidden imports ✅; zero service-locator hits ✅; legitimate `resolve()` callers remain accepted ✅
 - Next milestones per SPEC: M2 (Persistent Worker Safety — RequestContext + contamination tests), M3 (Composition Boundary — ApplicationFactory), M4 (Production Release Gate — three-tier health + full-stack verification), M5 (Hub Vertical Slice), M6 (Event Infrastructure), M7 (Operational Verification)
 - All deliverables under /home/z/my-project/download/ (SPEC-001 + ARCHITECTURE_BASELINE + ADR-DISCREPANCY-REGISTER) and /home/z/my-project/scripts/ (4 scripts: baseline generator × 2 + boundary lint × 2 + regression tests) and /home/z/my-project/.github/workflows/ (architecture-boundary-lint.yml).
+
+
+---
+Task ID: 60 (Showcase + LMS Implementation Plan — COMPLETED)
+Agent: main
+Task: Produce contractor-facing implementation plan for Showcase + LMS products.
+Work Log:
+- Produced download/SHOWCASE-LMS-IMPLEMENTATION-PLAN.md (708 lines, PR #264).
+- Boundary later corrected from Completely separate to Shared platform.
+- Package placement later revised from hub/ to spoke/internal/ per revised architecture.
+Stage Summary: Plan produced and merged. Partially superseded by revised architecture (Spoke model).
+
+---
+Task ID: 61 (RequestContext userId + Export-Allow-List Lint — COMPLETED)
+Agent: main
+Task: Extend RequestContext with userId + add export-allow-list enforcement to lint.
+Work Log:
+- Added ?string userId to RequestContext (identity-light). Added withUserId/hasUserId.
+- Created .github/architecture-export-allowlist.yaml with Identity (6) + Filesystem (7) public surfaces.
+- Extended architecture-boundary-lint.py with load_export_allowlist + check_export_violation.
+- Added 6 regression tests (14-19). Lint: 138 files / 218 imports / 0 violations.
+Stage Summary: Meta-rule enabler merged as PR #265 (5a0b5c4). Export boundaries machine-enforced.
+
+---
+Task ID: 62 (CORE-14 Filesystem Plug — COMPLETED)
+Agent: main
+Task: Build packages/core/filesystem/ — safe blob storage abstraction.
+Work Log:
+- 14 files: FilesystemInterface (write returns FileMetadata), Filesystem, 3 exceptions, 3 internal classes, 14 tests.
+- Atomic writes + path traversal + quarantine + integrity check + stream limit.
+- Also fixed intra-package detection bug in lint script.
+Stage Summary: Depth 2 merged as PR #266 (c819232). 7 public symbols enforced.
+
+---
+Task ID: HOTFIX (ApplicationFactory readonly type — COMPLETED)
+Agent: main
+Task: Fix production-breaking PHP 8.4 fatal error.
+Work Log:
+- readonly property App\ApplicationFactory::$log had no type. PHP 8.2+ requires type for readonly.
+- Fix: private readonly $log → private readonly \Closure $log. One-word fix.
+Stage Summary: Emergency hotfix merged as PR #267 (9a69a7a). Same-day production recovery.
+
+---
+Task ID: 63 (HUB-04 Identity Plug — COMPLETED)
+Agent: main
+Task: Build packages/hub/identity/ — shared platform Identity capability.
+Work Log:
+- 25 files: User entity, UserId/Email/RoleIdentifier, AuthenticatedUser, IdentityInterface, AuthMiddleware (PSR-15), JwtSigner/JwtVerifier (ES256 via openssl_sign/verify), UserRepositoryInterface, MySQLUserRepository, 3 migrations, 4 tests.
+- Composes core/crypto (PasswordHasher), core/dbal, core/event-dispatcher, core/http-message, core/kernel.
+- JWT lives inside Identity (not core/crypto) — uses same openssl extension cable.
+- Also fixed lint intra-package detection (last-namespace-component matching for nested Spoke paths).
+Stage Summary: Depth 2 merged as PR #268 (13de262). 6 public symbols enforced.
+
+---
+Task ID: 64 (M4 Three-Tier Health Split — COMPLETED)
+Agent: main
+Task: Split /health into live/ready/dependencies per SPEC §29.
+Work Log:
+- HealthController: live() (no DB), ready() (may check DB), dependencies() (operator-only), handle() (compat).
+- ApplicationFactory: 3 new routes + 3 new Vanguard contracts.
+Stage Summary: Merged as PR #269 (d6110c5). M4 is PARTIAL (health done; full-stack verification + rollback deferred).
+
+---
+Task ID: 65 (Showcase Spoke — Product Domain at Depth 2 — COMPLETED)
+Agent: main
+Task: Build packages/spoke/internal/showcase/ — self-contained Showcase app (Spoke, not Hub).
+Work Log:
+- 19 files: 5 value objects, Product entity (draft→published→archived state machine), 3 exceptions, ProductRepositoryInterface, MySQLProductRepository, CreateProductCommand, ProductApplicationInterface, ProductApplicationService, 1 migration, 1 test.
+- First product Spoke on the platform. Composes core/dbal, hub/identity, core/kernel.
+- Added Showcase public surface (10 symbols) to export-allow-list.
+Stage Summary: Depth 2 merged as PR #270 (b111ce3). 10 public symbols enforced.
+
+---
+Task ID: 66 (ARCHITECTURE-SDLC-FUSION.md — COMPLETED)
+Agent: main
+Task: Lock the fusion between SDLC-AGRD and SPEC-001 + produce current-state snapshot.
+Work Log:
+- Produced download/ARCHITECTURE-SDLC-FUSION.md (315 lines).
+- Locked: SDLC drives process; SPEC defines contracts. Spokes are app entry points.
+- Included: 18 packages, honest depth assessment, 10 PRs, throughput data (2.5 build-units/day, deepening unknown).
+- Recorded AI App Architect as DEFERRED PRODUCT SCOPE.
+Stage Summary: Merged as PR #271 (55faf88). Fusion principle locked.
+
+---
+Task ID: 67 (Cooldown 1 — Worklog Reconciliation — COMPLETED)
+Agent: main
+Task: Reconcile SDLC worklog Tasks 59-66 against repository history through 55faf88.
+
+Work Log:
+- Verified Task 59 (in worklog) against PRs #261-#263: all claims verified accurate.
+- Found 8 entries missing from worklog (Tasks 60-66 + HOTFIX for PR #267).
+- Added worklog entries for all 8 missing items.
+- Reconciliation classification:
+  - Task 59: claimed → verified (all claims accurate)
+  - Task 60: claimed → verified, partially superseded (package paths evolved from hub/ to spoke/internal/)
+  - Tasks 61-66 + HOTFIX: new evidence → not previously recorded (now reconciled)
+- No implementation modified during this step.
+
+Stage Summary:
+- Worklog reconciled through HEAD 55faf88
+- 8 missing entries added
+- Ready for Cooldown 1 Deliverable 2 (ADR discrepancy resolution)
