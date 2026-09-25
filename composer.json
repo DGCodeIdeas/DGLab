@@ -30,7 +30,8 @@
         "sovereign-stack/core-dbal": "*",
         "sovereign-stack/core-crypto": "*",
         "sovereign-stack/core-filesystem": "*",
-        "sovereign-stack/hub-identity": "*"
+        "sovereign-stack/hub-identity": "*",
+        "sovereign-stack/spoke-showcase": "*"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.4",
@@ -55,14 +56,16 @@
             "SovereignStack\\Internal\\Codex\\": "packages/spoke/internal/codex/src/",
             "SovereignStack\\External\\Canvas\\": "packages/spoke/external/canvas/src/",
             "SovereignStack\\Core\\Filesystem\\": "packages/core/filesystem/src/",
-            "SovereignStack\\Hub\\Identity\\": "packages/hub/identity/src/"
+            "SovereignStack\\Hub\\Identity\\": "packages/hub/identity/src/",
+            "SovereignStack\\Spoke\\Showcase\\": "packages/spoke/internal/showcase/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/",
             "App\\Tests\\": "app/tests/",
-            "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/"
+            "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/",
+            "SovereignStack\\Spoke\\Showcase\\Tests\\": "packages/spoke/internal/showcase/tests/"
         }
     },
     "repositories": [

@@ -300,9 +300,12 @@ def check_export_violation(
         return None
 
     # Check if the source file is in the SAME package (intra-package import)
-    # Convert namespace to path: SovereignStack\\Hub\\Identity -> hub/identity
-    target_path_part = target_ns.lower().replace("sovereignstack\\", "").replace("\\", "/")
-    if target_path_part in source_file.lower():
+    # Use the last namespace component as the package name match.
+    # e.g., SovereignStack\Hub\Identity -> "identity" -> check if "identity" in source path
+    # e.g., SovereignStack\Spoke\Showcase -> "showcase" -> check if "showcase" in source path
+    ns_parts = target_ns.split("\\")
+    package_name = ns_parts[-1].lower() if ns_parts else ""
+    if package_name != "" and package_name in source_file.lower():
         return None
 
     # Cross-package import of non-exported symbol — VIOLATION

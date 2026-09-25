@@ -1,52 +1,30 @@
-# Architecture Export Allow-List
-#
-# Per SPEC-001 §41 + the Composition Principle:
-#   "Do not infer public APIs from filenames."
-#
-# Each package's public surface is EXPLICITLY listed here. Consumers
-# (Showcase, LMS, app/Controller/) may import ONLY the symbols listed
-# under public_surface. Importing any other symbol from the package
-# is a CI failure.
-#
-# Packages without entries here are not yet enforced — they'll be
-# added as their public surfaces are locked.
-#
-# The architecture-boundary-lint.py script reads this file and enforces
-# the allow-list on every PR.
-
 packages:
-  # HUB-04 Identity — public surface locked per PR #265 contract.
-  # The package itself doesn't exist yet; these entries are inert until
-  # hub/identity lands. When it does, the allow-list is already enforced.
   SovereignStack\Hub\Identity:
     public_surface:
-      - SovereignStack\Hub\Identity\Application\IdentityInterface
-      - SovereignStack\Hub\Identity\Application\AuthenticatedUser
-      - SovereignStack\Hub\Identity\Domain\ValueObject\UserId
-      - SovereignStack\Hub\Identity\Domain\ValueObject\Email
-      - SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier
-      - SovereignStack\Hub\Identity\Http\AuthMiddleware
-
-  # CORE-14 Filesystem — public surface locked per PR #266 contract.
-  # The package itself doesn't exist yet; these entries are inert until
-  # core/filesystem lands.
+    - SovereignStack\Hub\Identity\Application\IdentityInterface
+    - SovereignStack\Hub\Identity\Application\AuthenticatedUser
+    - SovereignStack\Hub\Identity\Domain\ValueObject\UserId
+    - SovereignStack\Hub\Identity\Domain\ValueObject\Email
+    - SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier
+    - SovereignStack\Hub\Identity\Http\AuthMiddleware
   SovereignStack\Core\Filesystem:
     public_surface:
-      - SovereignStack\Core\Filesystem\FilesystemInterface
-      - SovereignStack\Core\Filesystem\Filesystem
-      - SovereignStack\Core\Filesystem\FileMetadata
-      - SovereignStack\Core\Filesystem\FilesystemException
-      - SovereignStack\Core\Filesystem\PathTraversalRefusedException
-      - SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException
-      - SovereignStack\Core\Filesystem\StreamByteLimitExceededException
-
-  # HUB-30 Config — already exists; public surface is the existing
-  # interfaces + manager. To be populated when the allow-list mechanism
-  # is proven on Identity + Filesystem first.
-  # SovereignStack\Hub\Config:
-  #   public_surface:
-  #     - SovereignStack\Hub\Config\FeatureManagerInterface
-  #     - SovereignStack\Hub\Config\FeatureFlagRepositoryInterface
-  #     - SovereignStack\Hub\Config\ConfigOverrideRepositoryInterface
-  #     - SovereignStack\Hub\Config\Context
-  #     - ...
+    - SovereignStack\Core\Filesystem\FilesystemInterface
+    - SovereignStack\Core\Filesystem\Filesystem
+    - SovereignStack\Core\Filesystem\FileMetadata
+    - SovereignStack\Core\Filesystem\FilesystemException
+    - SovereignStack\Core\Filesystem\PathTraversalRefusedException
+    - SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException
+    - SovereignStack\Core\Filesystem\StreamByteLimitExceededException
+  SovereignStack\Spoke\Showcase:
+    public_surface:
+    - SovereignStack\Spoke\Showcase\Application\ProductApplicationInterface
+    - SovereignStack\Spoke\Showcase\Application\Command\CreateProductCommand
+    - SovereignStack\Spoke\Showcase\Domain\ValueObject\ProductId
+    - SovereignStack\Spoke\Showcase\Domain\ValueObject\Sku
+    - SovereignStack\Spoke\Showcase\Domain\ValueObject\Price
+    - SovereignStack\Spoke\Showcase\Domain\ValueObject\ProductTitle
+    - SovereignStack\Spoke\Showcase\Domain\ValueObject\ProductSlug
+    - SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException
+    - SovereignStack\Spoke\Showcase\Domain\Exception\DuplicateSkuException
+    - SovereignStack\Spoke\Showcase\Domain\Exception\InvalidProductDataException
