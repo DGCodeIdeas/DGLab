@@ -1,0 +1,38 @@
+{
+    "name": "sovereign-stack/hub-identity",
+    "description": "HUB-04: Global Identity & Authentication — shared platform capability",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0.0",
+    "require": {
+        "php": "^8.4",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "psr/container": "^2.0",
+        "psr/http-message": "^2.0",
+        "psr/http-server-middleware": "^1.0",
+        "psr/log": "^3.0",
+        "sovereign-stack/core-container": "*",
+        "sovereign-stack/core-config": "*",
+        "sovereign-stack/core-crypto": "*",
+        "sovereign-stack/core-dbal": "*",
+        "sovereign-stack/core-http-message": "*",
+        "sovereign-stack/core-kernel": "*",
+        "sovereign-stack/core-event-dispatcher": "*",
+        "sovereign-stack/core-logger": "*"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SovereignStack\\Hub\\Identity\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SovereignStack\\Hub\\Identity\\Tests\\": "tests/"
+        }
+    }
+}

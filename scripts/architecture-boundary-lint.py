@@ -280,12 +280,12 @@ def check_export_violation(
     """
     Check if an import violates the export allow-list.
     Returns (rule_id, target, rule_violated) if violation, None if OK.
-    Only checks cross-package imports (source package != target package).
+    Only checks CROSS-PACKAGE imports — intra-package imports are always allowed.
     """
     if not allowlist:
         return None
 
-    # Determine which package the import belongs to
+    # Find which package the import belongs to
     target_ns = None
     for ns in allowlist:
         if import_name.startswith(ns + "\\") or import_name == ns:
@@ -293,27 +293,26 @@ def check_export_violation(
             break
 
     if target_ns is None:
-        return None  # Import is not from a package with an allow-list
-
-    # Determine the source package
-    source_ns = None
-    for ns in allowlist:
-        # Check if the source file path corresponds to this package
-        # by matching the namespace to the path
-        pass  # Path-based detection is already handled by ring_for_path
+        return None
 
     # If the import is in the public surface, it's allowed
     if import_name in allowlist[target_ns]:
         return None
 
-    # The import is from a package with an allow-list but NOT in the public surface
+    # Check if the source file is in the SAME package (intra-package import)
+    # Convert namespace to path: SovereignStack\\Hub\\Identity -> hub/identity
+    target_path_part = target_ns.lower().replace("sovereignstack\\", "").replace("\\", "/")
+    if target_path_part in source_file.lower():
+        return None
+
+    # Cross-package import of non-exported symbol — VIOLATION
     return (
         "ARCH-EXPORT-001",
         import_name,
         f"Import of non-exported symbol from {target_ns}: {import_name} "
-        f"(per SPEC §41: 'Do not infer public APIs from filenames'; "
-        f"only symbols in the export allow-list may be imported by consumers)",
+        f"(per SPEC §41: only symbols in the export allow-list may be imported by consumers)",
     )
+
 
 
 def is_production_source(file_path: Path) -> bool:
