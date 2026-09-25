@@ -1,5 +1,10 @@
 name: Architecture Lint
 
+# NOTE: Ring-boundary import enforcement, export-allow-list checking,
+# and service-locator prohibition now live in architecture-boundary-lint.yml.
+# This workflow handles documentation/reference-structure checks only.
+# See: architecture-boundary-lint.yml for the executable architecture fitness gate.
+
 on:
   push:
     paths:

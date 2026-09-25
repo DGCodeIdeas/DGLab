@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace SovereignStack\Hub\Config;
 
 /**
- * In-memory ConfigOverrideRepository for depth-2 (pre-DBAL) usage.
+ * In-memory ConfigOverrideRepository for depth-2 (CORE-19 DBAL implemented at depth 2; DBAL-backed when Hub reaches depth 3+).
  *
  * Stores per-tenant overrides in a PHP array keyed by [tenant_id][config_key].
  * Validates keys against a set of known schema keys (passed at construction)

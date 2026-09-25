@@ -9,8 +9,10 @@
 
 A decision shift reverses `ADR-007`. **MySQL 8.0+ with the InnoDB storage engine is now the primary
 relational datastore** for the Sovereign Stack. PostgreSQL is **relegated behind the CORE-19 driver
-abstraction**: the PostgreSQL driver remains implemented in the DBAL but is **disabled by default** and
-is only activated at a later "decision scale" (an explicit future decision), not by default today.
+abstraction**: the PostgreSQL driver is referenced as a **future capability** but is **not currently
+implemented**. No `PgsqlDriver.php` exists in `packages/core/dbal/src/Driver/`. PostgreSQL support
+would require implementing the driver AND issuing a new ADR before promotion. MySQL is the only
+implemented production backend.
 
 This change is driven by operational and hosting realities: MySQL is the default managed database
 across the PHP hosting ecosystem, the team's operational tooling/experience centers on MySQL/InnoDB,
@@ -24,9 +26,9 @@ re-architecture.
 - **Primary datastore:** MySQL 8.0+ (InnoDB). All blueprints, migrations, and CI test fixtures assume
   MySQL/InnoDB semantics as the reference.
 - **Driver model (CORE-19):** CORE-19 exposes a `DriverInterface`. The **MySQL/InnoDB driver is enabled
-  by default**. The **PostgreSQL driver is shipped but disabled** (`enabled: false` in the default
-  `core.database.drivers` config) and is activated only by an explicit future decision at the next
-  scale boundary. SQLite remains the test/dev fixture (single-writer only).
+  by default**. The PostgreSQL driver is **not implemented** — it is a referenced future capability
+  that would require implementation + ADR before promotion. SQLite remains the test/dev fixture
+  (single-writer only).
 - **Feature detection:** Every engine-specific capability is gated behind
   `DriverInterface::supports(string $feature): bool`. Code must degrade gracefully or fail loud on a
   driver that does not support a requested feature — never assume PostgreSQL semantics.

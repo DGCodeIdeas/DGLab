@@ -9,8 +9,8 @@ DGLab is a personal scaffold: a complete, opinionated application stack that eli
 The repository contains:
 
 - **8 Core-tier packages** (PSR-7, PSR-15, PSR-11, PSR-14, attribute router, PSR-3 logging, config, error handler) — the foundational infrastructure
-- **19 Architecture Decision Records** — every major decision documented with alternatives and trade-offs
-- **105 component blueprints** — full implementation specs for Core, Hub, Bridge, Spoke, and Deploy tiers
+- **20 Architecture Decision Records** — every major decision documented with alternatives and trade-offs
+- **102 component blueprints** — full implementation specs for Core, Hub, Bridge, Spoke, and Deploy tiers
 - **Anvil** — a three-tier deployment stack (Caddy + Tengine + FrankenPHP) with automated provisioning
 - **Loom** — a custom SemVer automation tool that drives the monorepo release flow end-to-end
 
@@ -61,7 +61,7 @@ DGLab/
 ├── orchestrator/          # CORE-01: Loom — SemVer automation tool
 ├── anvil/                 # Deployment stack (Caddy + Tengine + FrankenPHP)
 ├── Architecture/          # Blueprints, ADRs, governance docs
-│   ├── ADRs/                  # 19 Architecture Decision Records
+│   ├── ADRs/                  # 20 Architecture Decision Records
 │   ├── Core/                  # 20 Core-tier blueprints
 │   ├── Hub/                   # 31 Hub-tier blueprints
 │   ├── Spoke/                 # 45 Spoke-tier blueprints (internal + external)
@@ -91,7 +91,7 @@ The build order defines which components depend on which:
 |------|------------|--------|
 | 1 | CORE-02 (DI), CORE-03 (Events), CORE-04 (HTTP), CORE-05 (Middleware), CORE-06 (Router) | ✅ Complete |
 | 2 | CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler) | ✅ Complete |
-| 3 | CORE-18 (Kernel) | ✅ Complete — **5 of 8 Milestone 0 blueprints shipped** |
+| 3 | CORE-18 (Kernel) | ✅ Complete — **8 of 8 Milestone 0 blueprints shipped** |
 | 4 | HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01 | ✅ Complete — **all 8 Milestone 0 blueprints shipped** |
 
 See [`Architecture/CrossCutting/SDLC-AGRD.md`](Architecture/CrossCutting/SDLC-AGRD.md) for the full methodology and [`Architecture/INDEX.md`](Architecture/INDEX.md) §5 for the complete build order.
@@ -210,14 +210,14 @@ MIT — see [LICENSE](LICENSE).
 | CORE-05 (Middleware) | ✅ Depth 2 | #140 |
 | CORE-06 (Router) | ✅ Depth 2 | #141 |
 | CORE-18 (Kernel) | ✅ Depth 2 | #156 |
-| HUB-01 (Hub Config & Flags) | ⬜ Not started | — |
-| BRIDGE-01 (Vanguard) | ⬜ Not started | — |
-| ISPOKE-09 (Codex) | ⬜ Not started | — |
-| ESPOKE-01 (Canvas) | ⬜ Not started | — |
+| HUB-01 (Hub Config & Flags) | ✅ Shipped (depth 2) | — |
+| BRIDGE-01 (Vanguard) | ✅ Shipped (depth 2) | — |
+| ISPOKE-09 (Codex) | ✅ Shipped (depth 1-2) | — |
+| ESPOKE-01 (Canvas) | ✅ Shipped (depth 2) | — |
 
 Also shipped but not in the Milestone 0 scope: CORE-03 (Event Dispatcher), CORE-10 (Config), CORE-09 (Logger), CORE-08 (Error Handler), CORE-17 (Service Providers, stub).
 
-**MUWV criterion (per AGRD §4 + ADR-019 §8):** all 8 blueprints above at depth 1–2 AND a real HTTP request through the full Pulse trace (Outer Rim → Inner Rim → Inner Spoke → return). The integration test `KernelHelloWorldIntegrationTest::testHelloWorldRoundTrip` proves the architectural round-trip works, but `public/index.php` is still a 503 placeholder — the flip is NOT yet authorized.
+**MUWV criterion (per AGRD §4 + ADR-019 §8):** all 8 blueprints above at depth 1–2 AND a real HTTP request through the full Pulse trace (Outer Rim → Inner Rim → Inner Spoke → return). The integration test `HelloWorldTest::testHelloWorldRoundTrip` proves the architectural round-trip works, and `public/index.php` is a working entry point (delegates to `ApplicationFactory`). The MUWV flip was authorized on 2026-09-18.
 
 ### Premature flip (2026-09-12) — reverted
 
