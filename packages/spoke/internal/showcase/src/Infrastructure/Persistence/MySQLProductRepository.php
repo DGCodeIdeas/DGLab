@@ -56,7 +56,18 @@ final class MySQLProductRepository implements ProductRepositoryInterface
             description: $row['description'] ?? null,
             createdAt: new DateTimeImmutable($row['created_at']),
         );
-        if ($row['status'] === 'published') $product->publish();
-        return $product;
+        // P1-2 fix: restore persisted state without invoking publish() behavior
+        $status = ProductStatus::from($row['status']);
+        return Product::restoreFromPersistence(
+            id: new ProductId($row['id']),
+            title: ProductTitle::fromString($row['title']),
+            slug: ProductSlug::fromString($row['slug']),
+            sku: Sku::fromString($row['sku']),
+            price: Price::fromCents((int)$row['price_cents'], $row['currency']),
+            description: $row['description'] ?? null,
+            status: $status,
+            createdAt: new DateTimeImmutable($row['created_at']),
+            updatedAt: new DateTimeImmutable($row['updated_at'] ?? $row['created_at']),
+        );
     }
 }
