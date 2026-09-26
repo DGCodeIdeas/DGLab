@@ -6,7 +6,7 @@ use SovereignStack\Spoke\Showcase\Domain\ValueObject\{ProductId, Sku, Price, Pro
 enum ProductStatus: string { case Draft = 'draft'; case Published = 'published'; case Archived = 'archived'; }
 final class Product
 {
-    private ProductStatus $status = ProductStatus::Draft;
+    private ProductStatus $status = ProductStatus::Draft; // Made reassignable by restoreFromPersistence()
     private DateTimeImmutable $updatedAt;
     public function __construct(
         private readonly ProductId $id,
@@ -19,6 +19,23 @@ final class Product
     ) {
         $this->updatedAt = new DateTimeImmutable();
     }
+    /**
+     * P1-2 fix: Restore a Product from persisted state WITHOUT invoking domain behavior.
+     * This method sets the status directly, avoiding the publish() state transition
+     * which would corrupt updatedAt during hydration.
+     *
+     * @param ProductStatus $status The persisted status (draft/published/archived)
+     */
+    public static function restoreFromPersistence(
+        ProductId $id, ProductTitle $title, ProductSlug $slug, Sku $sku, Price $price,
+        ?string $description, ProductStatus $status,
+        DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt
+    ): self {
+        $product = new self($id, $title, $slug, $sku, $price, $description, $createdAt, $updatedAt);
+        $product->status = $status;
+        return $product;
+    }
+
     public static function create(
         ProductTitle $title, ProductSlug $slug, Sku $sku, Price $price, ?string $description = null
     ): self {
