@@ -12,21 +12,30 @@ use SovereignStack\Core\Filesystem\PathTraversalRefusedException;
  * INTERNAL: not in the export allow-list. Only Filesystem uses this directly.
  *
  * Per doctrine §4.3: rejects ../, symlinks pointing outside root, null bytes.
+ * Per Lap 2 P0-3 fix: boundary-aware containment check (not prefix match).
  *
  * @internal
  * @package SovereignStack\Core\Filesystem\Internal
  */
 final readonly class PathGuard
 {
+    private string $rootWithSeparator;
+
     public function __construct(
         private string $rootPath,
     ) {
-        $this->rootPath = realpath($rootPath) ?: $rootPath;
+        $real = realpath($rootPath) ?: $rootPath;
+        $this->rootPath = $real;
+        // Boundary-aware: /tmp/data/ not /tmp/data (prevents /tmp/database matching)
+        $this->rootWithSeparator = rtrim($real, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
     }
 
     /**
      * Resolve a relative path to an absolute path within root.
      * Throws PathTraversalRefusedException if the path escapes root.
+     *
+     * Per Lap 2 P0-3: uses boundary-aware containment check.
+     * /tmp/data as root will NOT match /tmp/database — only /tmp/data/* is allowed.
      */
     public function resolve(string $relativePath): string
     {
@@ -51,7 +60,7 @@ final readonly class PathGuard
         if ($resolved === false) {
             $parentDir = dirname($fullPath);
             $resolvedParent = realpath($parentDir);
-            if ($resolvedParent === false || !str_starts_with($resolvedParent, $this->rootPath)) {
+            if ($resolvedParent === false || !$this->isWithinRoot($resolvedParent)) {
                 throw new PathTraversalRefusedException(
                     "Path escapes root: {$relativePath}"
                 );
@@ -60,12 +69,28 @@ final readonly class PathGuard
         }
 
         // For existing files (read target), verify within root
-        if (!str_starts_with($resolved, $this->rootPath)) {
+        if (!$this->isWithinRoot($resolved)) {
             throw new PathTraversalRefusedException(
                 "Path escapes root: {$relativePath}"
             );
         }
 
         return $resolved;
+    }
+
+    /**
+     * Boundary-aware root containment check.
+     * /tmp/data as root will match /tmp/data and /tmp/data/file
+     * but NOT /tmp/database (prefix collision prevention).
+     */
+    private function isWithinRoot(string $path): bool
+    {
+        // Exact match to root (the root directory itself)
+        $rootExact = rtrim($this->rootPath, DIRECTORY_SEPARATOR);
+        if ($path === $rootExact) {
+            return true;
+        }
+        // Boundary match: path must start with root + separator
+        return str_starts_with($path, $this->rootWithSeparator);
     }
 }

@@ -80,6 +80,14 @@ final class Filesystem implements FilesystemInterface
         $absolutePath = $this->pathGuard->resolve($path);
         $this->atomicWriter->writeStream($absolutePath, $stream, $this->streamByteLimit);
 
+        // Per Lap 2 P1-4: integrity check for writeStream (parity with write())
+        // Verify the file exists and has non-zero size if the stream produced content
+        if (!file_exists($absolutePath)) {
+            throw new FileIntegrityCheckFailedException(
+                "File not found after stream write: {$path}"
+            );
+        }
+
         return $this->buildMetadata($absolutePath);
     }
 
