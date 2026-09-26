@@ -36,6 +36,22 @@ final class MySQLUserRepository implements UserRepositoryInterface
     }
     public function save(User $user): void
     {
+        // P1-3: Wrap multi-statement save in a transaction for atomicity.
+        // Per SPEC §20: the application service should own the transaction boundary.
+        // This repository-level transaction is a safety net for depth-2 usage;
+        // at depth 3+, application services will wrap the entire operation.
+        $this->connection->beginTransaction();
+        try {
+            $this->saveInternal($user);
+            $this->connection->commit();
+        } catch (\Throwable $e) {
+            $this->connection->rollback();
+            throw $e;
+        }
+    }
+
+    private function saveInternal(User $user): void
+    {
         $exists = $this->connection->fetchOne(
             'SELECT id FROM users WHERE id = :id',
             ['id' => (string) $user->id()]
