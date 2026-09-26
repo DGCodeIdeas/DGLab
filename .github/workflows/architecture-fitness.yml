@@ -1,0 +1,33 @@
+name: Architecture Fitness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'app/**'
+      - 'scripts/fitness/**'
+      - '.github/workflows/architecture-fitness.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'app/**'
+      - 'scripts/fitness/**'
+      - '.github/workflows/architecture-fitness.yml'
+  workflow_dispatch: {}
+
+jobs:
+  fitness:
+    name: architecture-fitness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: FF-01 Pulse Consistency
+        run: python3 scripts/fitness/pulse-consistency.py
+      - name: FF-02 Naming Drift
+        run: python3 scripts/fitness/naming-drift.py
+      - name: FF-03 Blueprint Fidelity
+        run: python3 scripts/fitness/blueprint-fidelity.py
