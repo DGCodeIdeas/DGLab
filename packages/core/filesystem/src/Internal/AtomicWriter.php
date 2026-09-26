@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SovereignStack\Core\Filesystem\Internal;
 
 use SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException;
+use SovereignStack\Core\Filesystem\StreamByteLimitExceededException;
 
 /**
  * Atomic file writer — temp file + flush + rename pattern.
@@ -12,9 +13,7 @@ use SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException;
  * INTERNAL: not in the export allow-list.
  *
  * Per doctrine §4.3: "A successful write must not expose a partially-written final file."
- * The mechanism: write to temp file, fflush, fsync (if supported), rename to final path.
- * On crash during write, only the temp file is affected — the final file remains intact
- * (either the old version or absent).
+ * Per Lap 2 P1-4: writeStream now handles fread/fwrite failures explicitly.
  *
  * @internal
  * @package SovereignStack\Core\Filesystem\Internal
@@ -47,8 +46,6 @@ final class AtomicWriter
         $fp = fopen($tempPath, 'r');
         if ($fp !== false) {
             fflush($fp);
-            // fsync is available on PHP 8.1+ via stream_filter_append or ext-uv
-            // For MVP, fflush is sufficient on most POSIX systems
             fclose($fp);
         }
 
@@ -63,7 +60,10 @@ final class AtomicWriter
 
     /**
      * Write stream content atomically with byte counting.
-     * Returns the number of bytes written.
+     * Per Lap 2 P1-4: treats fread() === false as an error (not silent truncation),
+     * verifies fwrite() wrote the complete chunk, and cleans up on any failure.
+     *
+     * @return int Bytes written
      */
     public function writeStream(string $absolutePath, $stream, int $byteLimit = 0): int
     {
@@ -85,25 +85,61 @@ final class AtomicWriter
         }
 
         $bytesWritten = 0;
+        $streamError = null;
+
         try {
             while (!feof($stream)) {
                 $chunk = fread($stream, 8192);
+
+                // Per P1-4: treat read failure as an error, not silent truncation
                 if ($chunk === false) {
+                    $streamError = "Stream read error after {$bytesWritten} bytes";
                     break;
                 }
-                $bytesWritten += strlen($chunk);
+
+                // Skip empty chunks (EOF or no data yet)
+                if ($chunk === '') {
+                    continue;
+                }
+
+                $chunkLen = strlen($chunk);
+                $bytesWritten += $chunkLen;
+
+                // Check byte limit before writing
                 if ($byteLimit > 0 && $bytesWritten > $byteLimit) {
                     fclose($out);
                     @unlink($tempPath);
-                    throw new \SovereignStack\Core\Filesystem\StreamByteLimitExceededException(
+                    throw new StreamByteLimitExceededException(
                         "Stream exceeded byte limit of {$byteLimit} bytes"
                     );
                 }
-                fwrite($out, $chunk);
+
+                // Per P1-4: verify complete chunk was written
+                $written = fwrite($out, $chunk);
+                if ($written === false || $written !== $chunkLen) {
+                    $streamError = "Write incomplete: expected {$chunkLen} bytes, wrote " . ($written ?: 0);
+                    break;
+                }
             }
+
             fflush($out);
-        } finally {
+        } catch (\Throwable $e) {
             fclose($out);
+            @unlink($tempPath);
+            throw $e;
+        } finally {
+            // Ensure output file is closed even if loop breaks
+            if (is_resource($out)) {
+                fclose($out);
+            }
+        }
+
+        // Per P1-4: if stream error occurred, clean up and throw
+        if ($streamError !== null) {
+            @unlink($tempPath);
+            throw new FileIntegrityCheckFailedException(
+                "Stream write failed: {$streamError}"
+            );
         }
 
         if (!rename($tempPath, $absolutePath)) {
