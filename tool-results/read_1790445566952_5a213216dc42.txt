@@ -1,0 +1,1037 @@
+     1→# DGLab Wheel Architecture
+     2→## Structure 08: Deployment & Infrastructure Architecture
+     3→
+     4→> **Reconciled to ADR-013 / ADR-001** (`Verification/INCONSISTENCIES.md` #1 and #5):
+     5→> connection URIs use the `mysql://...:3306` scheme, and the directory trees below describe
+     6→> the layout **within a single repository of the polyrepo**, not a monorepo.
+     7→
+     8→
+     9→> **Repository:** https://github.com/DGCodeIdeas/DGLab  
+    10→> **Framework:** Custom PHP MVC Framework  
+    11→> **Pattern:** Concentric Wheel with Immutable Infrastructure
+    12→
+    13→---
+    14→
+    15→## 1. The Deployment Principle
+    16→
+    17→The DGLab wheel is **never modified in place**. It is rebuilt, tested, and replaced as a complete unit. Every deployment is an atomic swap — the old wheel stops, the new wheel starts. There is no "patching" or "hotfixing" a running instance.
+    18→
+    19→```
+    20→Immutable Deployment:
+    21→
+    22→   Build          Test           Deploy           Verify
+    23→    │              │               │                │
+    24→    ▼              ▼               ▼                ▼
+    25→┌────────┐    ┌────────┐     ┌────────┐      ┌────────┐
+    26→│  Code  │───►│  CI    │────►│  Blue  │─────►│ Health │
+    27→│ Change │    │ Pipeline│     │ /Green │      │ Checks │
+    28→└────────┘    └────────┘     └────────┘      └────────┘
+    29→                                  │
+    30→                                  ▼
+    31→                            ┌────────┐
+    32→                            │  Roll  │
+    33→                            │  Back  │ (if health fails)
+    34→                            └────────┘
+    35→```
+    36→
+    37→**Rule:** If a deployment fails health checks, it is automatically rolled back. No human decision is required for rollback.
+    38→
+    39→---
+    40→
+    41→## 2. Infrastructure as Code
+    42→
+    43→### 2.1 Repository Structure
+    44→
+    45→```
+    46→DGLab/
+    47→├── 📁 deploy/
+    48→│   ├── 📁 terraform/              # Infrastructure definitions
+    49→│   │   ├── 📁 modules/
+    50→│   │   │   ├── 📁 vpc/            # Network topology
+    51→│   │   │   ├── 📁 eks/            # Kubernetes cluster
+    52→│   │   │   ├── 📁 rds/            # Database
+    53→│   │   │   ├── 📁 elasticache/    # Redis
+    54→│   │   │   ├── 📁 s3/             # Object storage
+    55→│   │   │   └── 📁 cloudfront/     # CDN
+    56→│   │   ├── 📁 environments/
+    57→│   │   │   ├── 📁 dev/
+    58→│   │   │   ├── 📁 staging/
+    59→│   │   │   └── 📁 production/
+    60→│   │   └── main.tf
+    61→│   │
+    62→│   ├── 📁 kubernetes/             # K8s manifests
+    63→│   │   ├── 📁 base/               # Shared resources
+    64→│   │   │   ├── namespace.yaml
+    65→│   │   │   ├── configmap.yaml
+    66→│   │   │   └── secrets.yaml
+    67→│   │   ├── 📁 hub/                # Hub service deployments
+    68→│   │   │   ├── identity-deployment.yaml
+    69→│   │   │   ├── cache-deployment.yaml
+    70→│   │   │   └── ...
+    71→│   │   ├── 📁 spokes/             # Spoke deployments
+    72→│   │   │   ├── external/
+    73→│   │   │   └── internal/
+    74→│   │   ├── 📁 bridge/             # Vanguard deployment
+    75→│   │   │   ├── vanguard-deployment.yaml
+    76→│   │   │   ├── vanguard-service.yaml
+    77→│   │   │   └── vanguard-hpa.yaml
+    78→│   │   └── 📁 monitoring/         # Prometheus, Grafana
+    79→│   │
+    80→│   └── 📁 pipeline/               # CI/CD definitions
+    81→│       ├── 📁 github-actions/
+    82→│       ├── 📁 argocd/
+    83→│       └── 📁 scripts/
+    84→│
+    85→└── 📁 infrastructure/             # Runtime infrastructure code
+    86→    └── 📁 scripts/
+    87→        ├── backup.sh
+    88→        ├── restore.sh
+    89→        └── rotate-secrets.sh
+    90→```
+    91→
+    92→### 2.2 Terraform Module: VPC
+    93→
+    94→```hcl
+    95→# deploy/terraform/modules/vpc/main.tf
+    96→
+    97→resource "aws_vpc" "main" {
+    98→  cidr_block           = "10.0.0.0/16"
+    99→  enable_dns_hostnames = true
+   100→  enable_dns_support   = true
+   101→
+   102→  tags = {
+   103→    Name        = "sovereign-${var.environment}"
+   104→    Environment = var.environment
+   105→    ManagedBy   = "terraform"
+   106→  }
+   107→}
+   108→
+   109→# Public subnets (Outer Rim — CDN, LB, BRIDGE-01)
+   110→resource "aws_subnet" "public" {
+   111→  count                   = 3
+   112→  vpc_id                  = aws_vpc.main.id
+   113→  cidr_block              = "10.0.${count.index + 1}.0/24"
+   114→  availability_zone       = data.aws_availability_zones.available.names[count.index]
+   115→  map_public_ip_on_launch = true
+   116→
+   117→  tags = {
+   118→    Name = "sovereign-${var.environment}-public-${count.index + 1}"
+   119→    Tier = "public"
+   120→  }
+   121→}
+   122→
+   123→# Private subnets (Hub + Inner Spokes)
+   124→resource "aws_subnet" "private" {
+   125→  count             = 3
+   126→  vpc_id            = aws_vpc.main.id
+   127→  cidr_block        = "10.0.${count.index + 10}.0/24"
+   128→  availability_zone = data.aws_availability_zones.available.names[count.index]
+   129→
+   130→  tags = {
+   131→    Name = "sovereign-${var.environment}-private-${count.index + 1}"
+   132→    Tier = "private"
+   133→  }
+   134→}
+   135→
+   136→# Isolated subnets (Datastores — no inbound from private)
+   137→resource "aws_subnet" "isolated" {
+   138→  count             = 3
+   139→  vpc_id            = aws_vpc.main.id
+   140→  cidr_block        = "10.0.${count.index + 20}.0/24"
+   141→  availability_zone = data.aws_availability_zones.available.names[count.index]
+   142→
+   143→  tags = {
+   144→    Name = "sovereign-${var.environment}-isolated-${count.index + 1}"
+   145→    Tier = "isolated"
+   146→  }
+   147→}
+   148→```
+   149→
+   150→### 2.3 Terraform Module: EKS Cluster
+   151→
+   152→```hcl
+   153→# deploy/terraform/modules/eks/main.tf
+   154→
+   155→module "eks" {
+   156→  source  = "terraform-aws-modules/eks/aws"
+   157→  version = "~> 20.0"
+   158→
+   159→  cluster_name    = "sovereign-${var.environment}"
+   160→  cluster_version = "1.30"
+   161→
+   162→  vpc_id     = var.vpc_id
+   163→  subnet_ids = var.private_subnet_ids
+   164→
+   165→  eks_managed_node_groups = {
+   166→    hub = {
+   167→      desired_size = var.environment == "production" ? 3 : 2
+   168→      min_size     = 2
+   169→      max_size     = 10
+   170→      instance_types = ["m6i.xlarge"]
+   171→      capacity_type  = "ON_DEMAND"
+   172→
+   173→      labels = {
+   174→        tier = "hub"
+   175→      }
+   176→
+   177→      taints = [{
+   178→        key    = "tier"
+   179→        value  = "hub"
+   180→        effect = "NO_SCHEDULE"
+   181→      }]
+   182→    }
+   183→
+   184→    spokes = {
+   185→      desired_size = var.environment == "production" ? 5 : 2
+   186→      min_size     = 2
+   187→      max_size     = 20
+   188→      instance_types = ["m6i.large"]
+   189→      capacity_type  = var.environment == "production" ? "ON_DEMAND" : "SPOT"
+   190→
+   191→      labels = {
+   192→        tier = "spokes"
+   193→      }
+   194→    }
+   195→
+   196→    bridge = {
+   197→      desired_size = var.environment == "production" ? 3 : 2
+   198→      min_size     = 2
+   199→      max_size     = 10
+   200→      instance_types = ["m6i.xlarge"]
+   201→      capacity_type  = "ON_DEMAND"
+   202→
+   203→      labels = {
+   204→        tier = "bridge"
+   205→      }
+   206→
+   207→      taints = [{
+   208→        key    = "tier"
+   209→        value  = "bridge"
+   210→        effect = "NO_SCHEDULE"
+   211→      }]
+   212→    }
+   213→  }
+   214→}
+   215→```
+   216→
+   217→---
+   218→
+   219→## 3. Kubernetes Architecture
+   220→
+   221→### 3.1 Namespace Strategy
+   222→
+   223→```yaml
+   224→# deploy/kubernetes/base/namespace.yaml
+   225→apiVersion: v1
+   226→kind: Namespace
+   227→metadata:
+   228→  name: sovereign-hub
+   229→  labels:
+   230→    tier: hub
+   231→    environment: production
+   232→---
+   233→apiVersion: v1
+   234→kind: Namespace
+   235→metadata:
+   236→  name: sovereign-spokes-internal
+   237→  labels:
+   238→    tier: spokes
+   239→    spoke-type: internal
+   240→    environment: production
+   241→---
+   242→apiVersion: v1
+   243→kind: Namespace
+   244→metadata:
+   245→  name: sovereign-spokes-external
+   246→  labels:
+   247→    tier: spokes
+   248→    spoke-type: external
+   249→    environment: production
+   250→---
+   251→apiVersion: v1
+   252→kind: Namespace
+   253→metadata:
+   254→  name: sovereign-bridge
+   255→  labels:
+   256→    tier: bridge
+   257→    environment: production
+   258→```
+   259→
+   260→### 3.2 Bridge Deployment (Vanguard)
+   261→
+   262→```yaml
+   263→# deploy/kubernetes/bridge/vanguard-deployment.yaml
+   264→apiVersion: apps/v1
+   265→kind: Deployment
+   266→metadata:
+   267→  name: vanguard
+   268→  namespace: sovereign-bridge
+   269→  labels:
+   270→    app: vanguard
+   271→    tier: bridge
+   272→spec:
+   273→  replicas: 3
+   274→  strategy:
+   275→    type: RollingUpdate
+   276→    rollingUpdate:
+   277→      maxSurge: 1
+   278→      maxUnavailable: 0
+   279→  selector:
+   280→    matchLabels:
+   281→      app: vanguard
+   282→  template:
+   283→    metadata:
+   284→      labels:
+   285→        app: vanguard
+   286→        tier: bridge
+   287→    spec:
+   288→      serviceAccountName: vanguard
+   289→      containers:
+   290→        - name: vanguard
+   291→          image: ghcr.io/dgcodeideas/sovereign-bridge:v2.1.0
+   292→          imagePullPolicy: Always
+   293→          ports:
+   294→            - containerPort: 8080
+   295→              name: http
+   296→            - containerPort: 9090
+   297→              name: metrics
+   298→          env:
+   299→            - name: APP_ENV
+   300→              value: "production"
+   301→            - name: DATABASE_URL
+   302→              valueFrom:
+   303→                secretKeyRef:
+   304→                  name: vanguard-secrets
+   305→                  key: database-url
+   306→            - name: REDIS_URL
+   307→              valueFrom:
+   308→                secretKeyRef:
+   309→                  name: vanguard-secrets
+   310→                  key: redis-url
+   311→            - name: JWT_PUBLIC_KEY
+   312→              valueFrom:
+   313→                secretKeyRef:
+   314→                  name: vanguard-secrets
+   315→                  key: jwt-public-key
+   316→          resources:
+   317→            requests:
+   318→              memory: "512Mi"
+   319→              cpu: "500m"
+   320→            limits:
+   321→              memory: "1Gi"
+   322→              cpu: "1000m"
+   323→          livenessProbe:
+   324→            httpGet:
+   325→              path: /health/live
+   326→              port: 8080
+   327→            initialDelaySeconds: 10
+   328→            periodSeconds: 10
+   329→            failureThreshold: 3
+   330→          readinessProbe:
+   331→            httpGet:
+   332→              path: /health/ready
+   333→              port: 8080
+   334→            initialDelaySeconds: 5
+   335→            periodSeconds: 5
+   336→            failureThreshold: 2
+   337→          volumeMounts:
+   338→            - name: tmp
+   339→              mountPath: /tmp
+   340→      volumes:
+   341→        - name: tmp
+   342→          emptyDir: {}
+   343→---
+   344→apiVersion: v1
+   345→kind: Service
+   346→metadata:
+   347→  name: vanguard
+   348→  namespace: sovereign-bridge
+   349→spec:
+   350→  selector:
+   351→    app: vanguard
+   352→  ports:
+   353→    - port: 80
+   354→      targetPort: 8080
+   355→      name: http
+   356→    - port: 9090
+   357→      targetPort: 9090
+   358→      name: metrics
+   359→  type: ClusterIP
+   360→---
+   361→apiVersion: autoscaling/v2
+   362→kind: HorizontalPodAutoscaler
+   363→metadata:
+   364→  name: vanguard-hpa
+   365→  namespace: sovereign-bridge
+   366→spec:
+   367→  scaleTargetRef:
+   368→    apiVersion: apps/v1
+   369→    kind: Deployment
+   370→    name: vanguard
+   371→  minReplicas: 3
+   372→  maxReplicas: 20
+   373→  metrics:
+   374→    - type: Resource
+   375→      resource:
+   376→        name: cpu
+   377→        target:
+   378→          type: Utilization
+   379→          averageUtilization: 70
+   380→    - type: Resource
+   381→      resource:
+   382→        name: memory
+   383→        target:
+   384→          type: Utilization
+   385→          averageUtilization: 80
+   386→  behavior:
+   387→    scaleUp:
+   388→      stabilizationWindowSeconds: 60
+   389→      policies:
+   390→        - type: Percent
+   391→          value: 100
+   392→          periodSeconds: 15
+   393→    scaleDown:
+   394→      stabilizationWindowSeconds: 300
+   395→      policies:
+   396→        - type: Percent
+   397→          value: 10
+   398→          periodSeconds: 60
+   399→```
+   400→
+   401→### 3.3 Network Policies
+   402→
+   403→```yaml
+   404→# deploy/kubernetes/base/network-policies.yaml
+   405→# Zero-Exposure enforcement at network layer
+   406→
+   407→---
+   408→# Allow ingress to Vanguard only from LoadBalancer
+   409→apiVersion: networking.k8s.io/v1
+   410→kind: NetworkPolicy
+   411→metadata:
+   412→  name: vanguard-ingress
+   413→  namespace: sovereign-bridge
+   414→spec:
+   415→  podSelector:
+   416→    matchLabels:
+   417→      app: vanguard
+   418→  policyTypes:
+   419→    - Ingress
+   420→  ingress:
+   421→    - from:
+   422→        - namespaceSelector:
+   423→            matchLabels:
+   424→              name: ingress-nginx
+   425→      ports:
+   426→        - protocol: TCP
+   427→          port: 8080
+   428→
+   429→---
+   430→# Allow Vanguard egress to Hub services only
+   431→apiVersion: networking.k8s.io/v1
+   432→kind: NetworkPolicy
+   433→metadata:
+   434→  name: vanguard-egress-hub
+   435→  namespace: sovereign-bridge
+   436→spec:
+   437→  podSelector:
+   438→    matchLabels:
+   439→      app: vanguard
+   440→  policyTypes:
+   441→    - Egress
+   442→  egress:
+   443→    - to:
+   444→        - namespaceSelector:
+   445→            matchLabels:
+   446→              name: sovereign-hub
+   447→      ports:
+   448→        - protocol: TCP
+   449→          port: 8080
+   450→
+   451→---
+   452→# Allow Vanguard egress to External Spokes only
+   453→apiVersion: networking.k8s.io/v1
+   454→kind: NetworkPolicy
+   455→metadata:
+   456→  name: vanguard-egress-external-spokes
+   457→  namespace: sovereign-bridge
+   458→spec:
+   459→  podSelector:
+   460→    matchLabels:
+   461→      app: vanguard
+   462→  policyTypes:
+   463→    - Egress
+   464→  egress:
+   465→    - to:
+   466→        - namespaceSelector:
+   467→            matchLabels:
+   468→              name: sovereign-spokes-external
+   469→      ports:
+   470→        - protocol: TCP
+   471→          port: 8080
+   472→
+   473→---
+   474→# DENY External Spokes from accessing Hub directly
+   475→apiVersion: networking.k8s.io/v1
+   476→kind: NetworkPolicy
+   477→metadata:
+   478→  name: external-spokes-deny-hub
+   479→  namespace: sovereign-spokes-external
+   480→spec:
+   481→  podSelector: {}
+   482→  policyTypes:
+   483→    - Egress
+   484→  egress:
+   485→    - to:
+   486→        - namespaceSelector:
+   487→            matchLabels:
+   488→              name: sovereign-bridge
+   489→      ports:
+   490→        - protocol: TCP
+   491→          port: 8080
+   492→    - to: []  # Allow DNS
+   493→      ports:
+   494→        - protocol: UDP
+   495→          port: 53
+   496→
+   497→---
+   498→# DENY all ingress to Hub from non-Bridge sources
+   499→apiVersion: networking.k8s.io/v1
+   500→kind: NetworkPolicy
+   501→metadata:
+   502→  name: hub-deny-non-bridge
+   503→  namespace: sovereign-hub
+   504→spec:
+   505→  podSelector: {}
+   506→  policyTypes:
+   507→    - Ingress
+   508→  ingress:
+   509→    - from:
+   510→        - namespaceSelector:
+   511→            matchLabels:
+   512→              name: sovereign-bridge
+   513→```
+   514→
+   515→---
+   516→
+   517→## 4. CI/CD Pipeline
+   518→
+   519→### 4.1 GitHub Actions Workflow
+   520→
+   521→```yaml
+   522→# .github/workflows/deploy.yml
+   523→name: Deploy
+   524→
+   525→on:
+   526→  push:
+   527→    branches: [main]
+   528→  pull_request:
+   529→    branches: [main]
+   530→
+   531→env:
+   532→  REGISTRY: ghcr.io
+   533→  IMAGE_NAME: ${{ github.repository }}
+   534→
+   535→jobs:
+   536→  build:
+   537→    runs-on: ubuntu-latest
+   538→    strategy:
+   539→      matrix:
+   540→        component: [core, hub, bridge, spokes-internal, spokes-external]
+   541→    steps:
+   542→      - uses: actions/checkout@v4
+   543→
+   544→      - name: Set up Docker Buildx
+   545→        uses: docker/setup-buildx-action@v3
+   546→
+   547→      - name: Log in to Container Registry
+   548→        uses: docker/login-action@v3
+   549→        with:
+   550→          registry: ${{ env.REGISTRY }}
+   551→          username: ${{ github.actor }}
+   552→          password: ${{ secrets.GITHUB_TOKEN }}
+   553→
+   554→      - name: Extract metadata
+   555→        id: meta
+   556→        uses: docker/metadata-action@v5
+   557→        with:
+   558→          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}
+   559→          tags: |
+   560→            type=sha,prefix={{branch}}-
+   561→            type=semver,pattern={{version}}
+   562→            type=raw,value=latest,enable={{is_default_branch}}
+   563→
+   564→      - name: Build and push
+   565→        uses: docker/build-push-action@v5
+   566→        with:
+   567→          context: .
+   568→          file: ./docker/${{ matrix.component }}.Dockerfile
+   569→          push: ${{ github.event_name != 'pull_request' }}
+   570→          tags: ${{ steps.meta.outputs.tags }}
+   571→          labels: ${{ steps.meta.outputs.labels }}
+   572→          cache-from: type=gha
+   573→          cache-to: type=gha,mode=max
+   574→
+   575→  test:
+   576→    needs: build
+   577→    runs-on: ubuntu-latest
+   578→    steps:
+   579→      - uses: actions/checkout@v4
+   580→      - uses: shivammathur/setup-php@v2
+   581→        with: { php-version: '8.3' }
+   582→      - run: composer install
+   583→      - run: vendor/bin/phpunit --testsuite=unit
+   584→      - run: vendor/bin/phpunit --testsuite=integration
+   585→      - run: vendor/bin/phpstan analyse
+   586→      - run: composer audit
+   587→
+   588→  deploy-dev:
+   589→    needs: [build, test]
+   590→    if: github.ref == 'refs/heads/main'
+   591→    runs-on: ubuntu-latest
+   592→    environment: development
+   593→    steps:
+   594→      - uses: actions/checkout@v4
+   595→
+   596→      - name: Configure AWS credentials
+   597→        uses: aws-actions/configure-aws-credentials@v4
+   598→        with:
+   599→          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+   600→          aws-region: us-east-1
+   601→
+   602→      - name: Update kubeconfig
+   603→        run: aws eks update-kubeconfig --name sovereign-dev
+   604→
+   605→      - name: Deploy to development
+   606→        run: |
+   607→          kubectl set image deployment/vanguard             vanguard=ghcr.io/${{ github.repository }}/bridge:${{ github.sha }}             -n sovereign-bridge
+   608→          kubectl rollout status deployment/vanguard -n sovereign-bridge
+   609→
+   610→      - name: Run smoke tests
+   611→        run: |
+   612→          curl -f https://dev.sovereign.example/health/ready
+   613→          curl -f https://dev.sovereign.example/health/live
+   614→
+   615→  deploy-staging:
+   616→    needs: deploy-dev
+   617→    runs-on: ubuntu-latest
+   618→    environment: staging
+   619→    steps:
+   620→      - uses: actions/checkout@v4
+   621→      - name: Deploy to staging
+   622→        run: |
+   623→          # Similar to dev but with staging EKS cluster
+   624→          echo "Deploying to staging..."
+   625→
+   626→      - name: Run integration tests against staging
+   627→        run: |
+   628→          BASE_URL=https://staging.sovereign.example             vendor/bin/phpunit --testsuite=e2e
+   629→
+   630→  deploy-production:
+   631→    needs: deploy-staging
+   632→    runs-on: ubuntu-latest
+   633→    environment: production
+   634→    steps:
+   635→      - uses: actions/checkout@v4
+   636→      - name: Deploy to production (canary)
+   637→        run: |
+   638→          # ArgoCD handles canary deployment
+   639→          # This step just triggers the sync
+   640→          argocd app sync sovereign-production
+   641→
+   642→      - name: Verify canary health
+   643→        run: |
+   644→          sleep 60
+   645→          curl -f https://sovereign.example/health/ready
+   646→```
+   647→
+   648→### 4.2 ArgoCD Application
+   649→
+   650→```yaml
+   651→# deploy/pipeline/argocd/sovereign-production.yaml
+   652→apiVersion: argoproj.io/v1alpha1
+   653→kind: Application
+   654→metadata:
+   655→  name: sovereign-production
+   656→  namespace: argocd
+   657→spec:
+   658→  project: default
+   659→  source:
+   660→    repoURL: https://github.com/DGCodeIdeas/DGLab.git
+   661→    targetRevision: main
+   662→    path: deploy/kubernetes
+   663→    helm:
+   664→      valueFiles:
+   665→        - values-production.yaml
+   666→  destination:
+   667→    server: https://kubernetes.default.svc
+   668→    namespace: sovereign-hub
+   669→  syncPolicy:
+   670→    automated:
+   671→      prune: true
+   672→      selfHeal: true
+   673→      allowEmpty: false
+   674→    syncOptions:
+   675→      - CreateNamespace=true
+   676→      - PrunePropagationPolicy=foreground
+   677→      - PruneLast=true
+   678→  retry:
+   679→    limit: 5
+   680→    backoff:
+   681→      duration: 5s
+   682→      factor: 2
+   683→      maxDuration: 3m
+   684→```
+   685→
+   686→---
+   687→
+   688→## 5. Environment Promotion
+   689→
+   690→### 5.1 Promotion Gates
+   691→
+   692→| Gate | Dev → Staging | Staging → Production |
+   693→|---|---|---|
+   694→| All tests pass | ✅ Auto | ✅ Required |
+   695→| Static analysis clean | ✅ Auto | ✅ Required |
+   696→| Security scan pass | ✅ Auto | ✅ Required |
+   697→| Performance baseline | ❌ N/A | ✅ Required |
+   698→| Manual approval | ❌ Auto | ✅ Required (2-person rule) |
+   699→| Canary health check | ❌ N/A | ✅ Required (10 min observation) |
+   700→
+   701→### 5.2 Canary Deployment
+   702→
+   703→```yaml
+   704→# deploy/pipeline/argocd/canary-analysis.yaml
+   705→apiVersion: flagger.app/v1beta1
+   706→kind: Canary
+   707→metadata:
+   708→  name: vanguard
+   709→  namespace: sovereign-bridge
+   710→spec:
+   711→  targetRef:
+   712→    apiVersion: apps/v1
+   713→    kind: Deployment
+   714→    name: vanguard
+   715→  service:
+   716→    port: 8080
+   717→  analysis:
+   718→    interval: 1m
+   719→    threshold: 5
+   720→    maxWeight: 50
+   721→    stepWeight: 10
+   722→    metrics:
+   723→      - name: request-success-rate
+   724→        thresholdRange:
+   725→          min: 99
+   726→        interval: 1m
+   727→      - name: request-duration
+   728→        thresholdRange:
+   729→          max: 500
+   730→        interval: 1m
+   731→    webhooks:
+   732→      - name: load-test
+   733→        type: pre-rollout
+   734→        url: http://flagger-loadtester.test/
+   735→        timeout: 30s
+   736→        metadata:
+   737→          cmd: "hey -z 2m -q 10 -c 2 http://vanguard-canary:8080/"
+   738→      - name: conformance-test
+   739→        type: pre-rollout
+   740→        url: http://flagger-loadtester.test/
+   741→        timeout: 5m
+   742→        metadata:
+   743→          type: bash
+   744→          cmd: "curl -f http://vanguard-canary:8080/health/ready"
+   745→```
+   746→
+   747→---
+   748→
+   749→## 6. Secret Management in Production
+   750→
+   751→### 6.1 External Secrets Operator
+   752→
+   753→```yaml
+   754→# deploy/kubernetes/base/external-secrets.yaml
+   755→apiVersion: external-secrets.io/v1beta1
+   756→kind: ExternalSecret
+   757→metadata:
+   758→  name: vanguard-secrets
+   759→  namespace: sovereign-bridge
+   760→spec:
+   761→  refreshInterval: 1h
+   762→  secretStoreRef:
+   763→    kind: ClusterSecretStore
+   764→    name: aws-secrets-manager
+   765→  target:
+   766→    name: vanguard-secrets
+   767→    creationPolicy: Owner
+   768→  data:
+   769→    - secretKey: database-url
+   770→      remoteRef:
+   771→        key: sovereign/production/database
+   772→        property: url
+   773→    - secretKey: redis-url
+   774→      remoteRef:
+   775→        key: sovereign/production/redis
+   776→        property: url
+   777→    - secretKey: jwt-public-key
+   778→      remoteRef:
+   779→        key: sovereign/production/crypto
+   780→        property: jwt-public-key
+   781→```
+   782→
+   783→### 6.2 Secret Rotation
+   784→
+   785→```bash
+   786→#!/bin/bash
+   787→# infrastructure/scripts/rotate-secrets.sh
+   788→
+   789→set -e
+   790→
+   791→ENVIRONMENT=${1:-production}
+   792→SERVICE=${2:-all}
+   793→
+   794→echo "Rotating secrets for ${ENVIRONMENT}..."
+   795→
+   796→# Generate new database password
+   797→NEW_DB_PASSWORD=$(openssl rand -base64 32)
+   798→
+   799→# Update AWS Secrets Manager
+   800→aws secretsmanager put-secret-value     --secret-id sovereign/${ENVIRONMENT}/database     --secret-string "{"password":"${NEW_DB_PASSWORD}","url":"postgresql://user:${NEW_DB_PASSWORD}@db:5432/sovereign"}"
+   801→
+   802→# Trigger rolling restart to pick up new secrets
+   803→kubectl rollout restart deployment/vanguard -n sovereign-bridge
+   804→kubectl rollout status deployment/vanguard -n sovereign-bridge
+   805→
+   806→echo "Secret rotation complete."
+   807→```
+   808→
+   809→---
+   810→
+   811→## 7. Observability Stack
+   812→
+   813→### 7.1 Prometheus ServiceMonitor
+   814→
+   815→```yaml
+   816→# deploy/kubernetes/monitoring/servicemonitor.yaml
+   817→apiVersion: monitoring.coreos.com/v1
+   818→kind: ServiceMonitor
+   819→metadata:
+   820→  name: sovereign-metrics
+   821→  namespace: monitoring
+   822→spec:
+   823→  selector:
+   824→    matchExpressions:
+   825→      - key: tier
+   826→        operator: In
+   827→        values: [hub, bridge, spokes]
+   828→  endpoints:
+   829→    - port: metrics
+   830→      path: /metrics
+   831→      interval: 15s
+   832→      scrapeTimeout: 10s
+   833→```
+   834→
+   835→### 7.2 Grafana Dashboard
+   836→
+   837→```json
+   838→{
+   839→  "dashboard": {
+   840→    "title": "Sovereign Wheel Health",
+   841→    "panels": [
+   842→      {
+   843→        "title": "Pulse Rate (RPM)",
+   844→        "targets": [
+   845→          {
+   846→            "expr": "sum(rate(http_requests_total[1m]))",
+   847→            "legendFormat": "Total Pulses/sec"
+   848→          }
+   849→        ]
+   850→      },
+   851→      {
+   852→        "title": "Pulse Depth Distribution",
+   853→        "targets": [
+   854→          {
+   855→            "expr": "sum(rate(pulse_depth_total[1m])) by (depth)",
+   856→            "legendFormat": "Depth {{depth}}"
+   857→          }
+   858→        ]
+   859→      },
+   860→      {
+   861→        "title": "Error Rate by Layer",
+   862→        "targets": [
+   863→          {
+   864→            "expr": "sum(rate(http_requests_total{status=~"5.."}[1m])) by (tier)",
+   865→            "legendFormat": "{{tier}} Errors/sec"
+   866→          }
+   867→        ]
+   868→      },
+   869→      {
+   870→        "title": "Cache Hit Rate",
+   871→        "targets": [
+   872→          {
+   873→            "expr": "sum(rate(cache_hits_total[1m])) / sum(rate(cache_requests_total[1m]))",
+   874→            "legendFormat": "Hit Rate"
+   875→          }
+   876→        ]
+   877→      }
+   878→    ]
+   879→  }
+   880→}
+   881→```
+   882→
+   883→### 7.3 Alertmanager Rules
+   884→
+   885→```yaml
+   886→# deploy/kubernetes/monitoring/alerts.yaml
+   887→groups:
+   888→  - name: sovereign
+   889→    rules:
+   890→      - alert: HighErrorRate
+   891→        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+   892→        for: 2m
+   893→        labels:
+   894→          severity: critical
+   895→        annotations:
+   896→          summary: "High error rate detected"
+   897→          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+   898→
+   899→      - alert: BridgeReplicaDown
+   900→        expr: kube_deployment_status_replicas_available{deployment="vanguard"} < 3
+   901→        for: 1m
+   902→        labels:
+   903→          severity: critical
+   904→        annotations:
+   905→          summary: "Vanguard replica down"
+   906→
+   907→      - alert: DatabaseConnectionPoolExhausted
+   908→        expr: sovereign_db_pool_active_connections / sovereign_db_pool_max_connections > 0.9
+   909→        for: 5m
+   910→        labels:
+   911→          severity: warning
+   912→        annotations:
+   913→          summary: "Database connection pool near exhaustion"
+   914→
+   915→      - alert: AuditChainBreak
+   916→        expr: sovereign_audit_chain_integrity == 0
+   917→        for: 0s
+   918→        labels:
+   919→          severity: critical
+   920→        annotations:
+   921→          summary: "AUDIT CHAIN BROKEN — potential tampering detected"
+   922→```
+   923→
+   924→---
+   925→
+   926→## 8. Disaster Recovery
+   927→
+   928→### 8.1 Runbook: Complete Region Failure
+   929→
+   930→```
+   931→SCENARIO: AWS us-east-1 complete outage
+   932→
+   933→STEP 1: Activate standby region
+   934→    $ aws route53 change-resource-record-sets         --hosted-zone-id Z123456789         --change-batch file://failover-to-standby.json
+   935→
+   936→STEP 2: Verify standby EKS cluster
+   937→    $ kubectl --context=sovereign-standby get nodes
+   938→    $ kubectl --context=sovereign-standby get pods --all-namespaces
+   939→
+   940→STEP 3: Promote RDS read replica to primary
+   941→    $ aws rds promote-read-replica         --db-instance-identifier sovereign-standby-primary
+   942→
+   943→STEP 4: Verify data consistency
+   944→    $ php bin/console audit:verify-chain
+   945→    $ php bin/console health:check --all
+   946→
+   947→STEP 5: Notify stakeholders
+   948→    $ php bin/console notify:send         --channel=ops         --message="Failover to standby complete. RTO: XX minutes."
+   949→
+   950→STEP 6: Post-incident review
+   951→    - Document actual RTO/RPO
+   952→    - Identify gaps
+   953→    - Update runbook
+   954→```
+   955→
+   956→### 8.2 Backup Verification
+   957→
+   958→```yaml
+   959→# CronJob: Daily backup verification
+   960→apiVersion: batch/v1
+   961→kind: CronJob
+   962→metadata:
+   963→  name: backup-verification
+   964→  namespace: sovereign-hub
+   965→spec:
+   966→  schedule: "0 6 * * *"
+   967→  jobTemplate:
+   968→    spec:
+   969→      template:
+   970→        spec:
+   971→          containers:
+   972→            - name: verifier
+   973→              image: ghcr.io/dgcodeideas/sovereign-tools:backup-verifier
+   974→              command:
+   975→                - /bin/sh
+   976→                - -c
+   977→                - |
+   978→                  echo "Restoring latest backup to verification instance..."
+   979→                  aws rds restore-db-instance-to-point-in-time                     --source-db-instance-identifier sovereign-primary                     --target-db-instance-identifier sovereign-verify-$(date +%s)                     --restore-time $(date -d '1 hour ago' -Iseconds)
+   980→
+   981→                  echo "Running smoke tests..."
+   982→                  php /app/bin/console health:check --database=sovereign-verify
+   983→
+   984→                  echo "Cleaning up..."
+   985→                  aws rds delete-db-instance                     --db-instance-identifier sovereign-verify-$(date +%s)                     --skip-final-snapshot
+   986→          restartPolicy: OnFailure
+   987→```
+   988→
+   989→---
+   990→
+   991→## 9. Operational Runbooks
+   992→
+   993→### 9.1 Scaling Runbook
+   994→
+   995→```bash
+   996→#!/bin/bash
+   997→# Scale Hub services horizontally
+   998→
+   999→COMPONENT=${1}
+  1000→REPLICAS=${2}
+  1001→ENVIRONMENT=${3:-production}
+  1002→
+  1003→echo "Scaling ${COMPONENT} to ${REPLICAS} replicas in ${ENVIRONMENT}..."
+  1004→
+  1005→kubectl scale deployment/${COMPONENT}   --replicas=${REPLICAS}   -n sovereign-hub
+  1006→
+  1007→kubectl rollout status deployment/${COMPONENT} -n sovereign-hub
+  1008→
+  1009→echo "Scale complete."
+  1010→```
+  1011→
+  1012→### 9.2 Log Investigation Runbook
+  1013→
+  1014→```bash
+  1015→#!/bin/bash
+  1016→# Investigate errors for a specific Pulse
+  1017→
+  1018→PULSE_ID=${1}
+  1019→
+  1020→echo "Investigating Pulse ${PULSE_ID}..."
+  1021→
+  1022→# Collect logs from all tiers
+  1023→kubectl logs -l tier=bridge --all-containers | grep "${PULSE_ID}"
+  1024→kubectl logs -l tier=hub --all-containers | grep "${PULSE_ID}"
+  1025→kubectl logs -l tier=spokes --all-containers | grep "${PULSE_ID}"
+  1026→
+  1027→# Collect traces from Jaeger
+  1028→jaeger-query --trace-id=${PULSE_ID}
+  1029→
+  1030→# Collect audit entries
+  1031→php bin/console audit:search --pulse-id=${PULSE_ID}
+  1032→```
+  1033→
+  1034→---
+  1035→
+  1036→*End of Structure 08: Deployment & Infrastructure Architecture*
+  1037→
