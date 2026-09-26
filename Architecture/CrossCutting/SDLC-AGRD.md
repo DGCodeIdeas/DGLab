@@ -10,8 +10,10 @@ with a per-blueprint relative floor; verified `INDEX.md` §5.2's actual graph co
 repo), `SDLC-AGRD-v3.3`→`v3.4` (per external review: §4.2 brought in line with the per-blueprint floor;
 resolved Bet 1's kill-trigger unit mismatch using `W`; closed the fully-widened-ring edge case;
 disambiguated the §9 coverage-extension trigger's "50%"), and the "3 engineers" assumption embedded in
-all predecessors — **and `v3.4(3)` (this version): dropped the lap-1 widen exclusion for `CORE-16`/
-`HUB-04` after verifying OD-02 against their actual interfaces.**
+all predecessors — `v3.4(3)` dropped the lap-1 widen exclusion for `CORE-16`/`HUB-04` after verifying OD-02
+against their actual interfaces — **and `v3.5` (this version, per real Lap 1/Lap 2 evidence): formalized
+widen as need-driven rather than mandatory-per-ring (§4.3), and replaced the fixed 2-week cooldown with a
+variable duration gated on a recorded rest check rather than a clock (§7).**
 
 **Team reality this is written for:** 1 tech lead (solo, AI-agent-augmented — Cline/Jules/Kilo), 1
 marketer, 1 media. Every estimate, gate, and ceremony below is sized for that team, not a hypothetical one.
@@ -93,10 +95,13 @@ of Cooldown 0 is giving marketer/media a stable target. Letting them drift casua
 exact rework problem Cooldown 0 exists to prevent, just moved from "engineering vs. content" to
 "content vs. re-content."
 
-**Duration: 2 weeks — matching the general cooldown length in §7, deliberately, not as a special
-unstated one-off.** Freezing three artifacts with a real marketer/media review cycle behind each isn't
-faster than an ordinary cooldown, and giving it an unstated duration would leave Milestone 0's actual
-start date unbounded.
+**Duration: variable, matching §7's model — not a special unstated one-off, and not exempt from a real
+review cycle just because it's a one-time event.** Freezing three artifacts with a genuine marketer/media
+review behind each isn't faster than an ordinary cooldown, and unlike engineering's own cooldown tasks,
+marketer/media review isn't AI-throughput-compressible — it's still bounded by two humans' actual
+availability. Cooldown 0 closes when the three artifacts are genuinely frozen (reviewed, not just drafted)
+**and** marketer/media confirm they're unblocked on a stable target — the same "recorded confirmation, not
+an unstated default" discipline §7 now requires, applied to the people it's actually gating this time.
 
 With Cooldown 0, marketer and media genuinely start unblocked in week 1. Without it, "non-blocking
 track" is true in name only.
@@ -193,6 +198,16 @@ phases, and each lap does both things every time.
    candidates, since `BRIDGE-01`/`ISPOKE-09`/`ESPOKE-01` all reference them even at low depth — both
    confirmed present with real edges in `§5.2`'s current coverage).
 
+   **Widen is need-driven, not mandatory-per-ring (v3.5 addition, formalizing actual Lap 1/Lap 2 practice).**
+   "Admit its next-most-depended-upon not-yet-touched blueprint" presumes a ring's remaining blueprints are
+   actually pulled on by something already in the matrix. When reconciled `INDEX.md` §5.2 evidence shows
+   *nothing currently admitted* depends on any of a ring's remaining blueprints yet, that ring's widen step
+   for the lap is **skipped, not forced** — but the skip must be **explicitly logged with its reasoning** in
+   the lap's entry-gate record (e.g., Lap 2's entry gate logging `CORE-15 (not needed)` alongside what *was*
+   admitted), not silently omitted. This keeps the rule's intent (don't widen ahead of real dependency pull)
+   without quietly drifting into "some rings just stop getting widened and nobody decided that." A ring
+   skipped this way remains eligible for the very next lap where the graph shows a real pull on it.
+
    **OD-02 and lap-1 widening — checked against the actual `CORE-16` blueprint, not assumed (v3.4(3)
    correction).** `CORE-16` and `HUB-04` are both plausible early widening candidates (real graph edges into
    `BRIDGE-01`). An earlier draft (v3.4/v3.4(2)) excluded them from lap-1 widening to avoid ADR-thrash on
@@ -287,8 +302,9 @@ properly matters, not just re-labeling it.** It was built on an uncorrected blue
 this document correctly flagged that the arithmetic didn't actually derive it from the stated formula.
 Re-running that same formula with the *correct* N=8 doesn't produce a lower, tighter number — it produces a
 *higher* one, because a smaller Milestone 0 measured over the same W implies lower throughput. At W=4–6:
-44–66 weeks of build-only bet-work (see caveat above), before cooldowns (§7, now 2 weeks each) and before
-Cooldown 0 (§3, now 2 weeks, fixed). Cooldown *count* isn't a number this document will manufacture — under
+44–66 weeks of build-only bet-work (see caveat above), before cooldowns (§7, now variable per cooldown,
+gated on a recorded rest check rather than a fixed number) and before Cooldown 0 (§3, same variable model).
+Neither cooldown duration nor cooldown *count* is a number this document will manufacture — under
 the lap model, bet count isn't fixed in advance the way it was in the linear model, so a precise
 cooldown-overhead figure would be exactly the kind of false precision this section exists to avoid. Treat
 total elapsed time as **Milestone 0 (W) + Cooldown 0 (2wk) + build-work (11W) + deepening-work (unknown until
@@ -333,14 +349,37 @@ document instead of the architecture docs.
 > soft-freeze, or blueprint-fidelity checks. Those rows above are the *intended* expansion target, not a
 > description of what the linter does today. See `DISCREPANCY-REGISTER.md` and `REPO-STATE-AUDIT.md`.
 
-## 7. Cooldowns: 2 weeks, not 1
+## 7. Cooldowns: variable duration, gated on a recorded rest check — not a fixed 2 weeks (v3.5)
 
-A 3-person team's 1-week cooldown gave each person ~2.3 days of catch-up. Solo, one week has to cover doc
+A 3-person team's 1-week cooldown gave each person ~2.3 days of catch-up. Solo, cooldown has to cover doc
 reconciliation, OD triage, refactor backlog, the review backlog that accumulated during the bet, *and*
 recovery time nobody else provides by covering for you. Solo burnout carries higher risk than team burnout
-precisely because there's no redundancy to absorb it. **Cooldowns are 2 weeks for the duration of solo
-operation.** Total timeline goes up; sustainability goes up more, and an unsustainable schedule that collapses
-at week 25 is a worse outcome than a longer one that actually completes.
+precisely because there's no redundancy to absorb it.
+
+**What changed from the prior fixed-2-week rule, and why:** AI-agent-augmented throughput makes cooldown's
+*task list* (worklog reconciliation, ADR/discrepancy resolution, lint expansion, recalibration) completable in
+hours, not weeks — verified directly against this project's own history: Cooldown 1 ran its full task list in
+~14 hours, and the following lap's own cadence matched. A fixed 2-week clock measured against task completion
+was never actually the safeguard §7 needed; it was a proxy for one, and the proxy broke the moment task
+throughput stopped resembling a human's. **The actual requirement was never "2 weeks have elapsed" — it was
+"the operator is not running on unaddressed burnout debt."** Keeping a fixed duration after that proxy broke
+would either force artificial idleness (tasks done, nothing left to do, calendar still ticking) or — the
+failure mode actually observed — get silently ignored in practice because the fixed number stopped mapping to
+anything real.
+
+**The rule now:** cooldown duration is **variable**, bounded by two things instead of a clock:
+1. **The task list (§5.3/§5.4/Cooldown-1-style work) must actually complete** — reconciliation, discrepancy
+   resolution, lint/fitness expansion, recalibration. This floor doesn't move.
+2. **Cooldown does not close until the operator explicitly records a rest/decompression check** — not a task
+   checkbox, a genuine self-report, written into the cooldown-closing record alongside the task-completion
+   summary: *did real decompression happen, separate from whether the tasks finished fast.* "Tasks are done"
+   and "I am not running on burnout debt" are different claims, and only the second one is what this section
+   was ever actually protecting. If the honest answer is no, cooldown continues — regardless of how fast the
+   task list finished — until the answer is yes.
+
+This is deliberately not self-certifying by omission: the check must be a stated yes, not an unstated default.
+A cooldown record with the task list complete and no rest-check statement is an incomplete cooldown, not a
+short one.
 
 ## 8. What's kept unchanged from predecessor documents
 
@@ -408,6 +447,8 @@ six above go in `OPEN-DECISIONS.md` as new entries once this document is ratifie
 | v3.3 → v3.4 | §9 | Clarified "50% admitted" = 50% of the **covered set** (blueprints already in §5.2's subgraph for that ring), not 50% of the ring's total. |
 | v3.4 → v3.4(3) | §4.3 | **Dropped** the lap-1 widen exclusion for `CORE-16`/`HUB-04`: OD-02 checked against actual `EncrypterInterface`/`HUB-04` contracts; no interface change expected, so no exclusion needed (see §4.3 OD-02 note). Companion `PROMPTS.md` Rule 8 was corrected to match. |
 | split out | §11 | The PROMPTS operating-instructions module moved to the companion `PROMPTS.md` in this folder. |
+| v3.4(3) → v3.5 | §4.3 | **Formalized widen as need-driven, not mandatory-per-ring.** Real Lap 1/Lap 2 practice already skipped a ring's widen step when nothing admitted pulled on it (e.g., Lap 2 logging `CORE-15 (not needed)`); the rule now states this explicitly and requires the skip to be logged with reasoning, not silently omitted. |
+| v3.4(3) → v3.5 | §7 | **Replaced the fixed "2 weeks" cooldown with a variable duration gated on a recorded rest check.** Verified against real history: Cooldown 1 completed its full task list in ~14 hours — AI-agent throughput broke the fixed-duration proxy for "the operator actually rested" before this revision. Cooldown now closes only when the task list is done **and** the operator has explicitly recorded that real decompression occurred — a stated yes, not an unstated default. |
 
 **Assessment (carried from v3.4):** gap-hunting is still finding real things, but they are getting smaller and
 more localized. After v3.4(3), stop iterating without lap data. The remaining unknowns (§9's six entries) are
