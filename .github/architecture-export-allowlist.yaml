@@ -28,3 +28,15 @@ packages:
     - SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException
     - SovereignStack\Spoke\Showcase\Domain\Exception\DuplicateSkuException
     - SovereignStack\Spoke\Showcase\Domain\Exception\InvalidProductDataException
+  SovereignStack\Spoke\Lms:
+    public_surface:
+    - SovereignStack\Spoke\Lms\Application\CourseApplicationInterface
+    - SovereignStack\Spoke\Lms\Application\Command\CreateCourseCommand
+    - SovereignStack\Spoke\Lms\Domain\ValueObject\CourseId
+    - SovereignStack\Spoke\Lms\Domain\ValueObject\CourseTitle
+    - SovereignStack\Spoke\Lms\Domain\ValueObject\CourseSlug
+    - SovereignStack\Spoke\Lms\Domain\ValueObject\EnrollmentId
+    - SovereignStack\Spoke\Lms\Domain\ValueObject\EnrollmentStatus
+    - SovereignStack\Spoke\Lms\Domain\ValueObject\ModuleStatus
+    - SovereignStack\Spoke\Lms\Domain\Exception\CourseNotFoundException
+    - SovereignStack\Spoke\Lms\Domain\Exception\AlreadyEnrolledException
