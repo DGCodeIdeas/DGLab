@@ -1054,3 +1054,31 @@ Stage Summary:
 - The two partial verdicts: (Claim 3) SAAI listed 15 Core edges and all 15 are present, but the §5.2 graph has 16 Core-internal edges (SAAI missed C18 → C06 at line 281); (Claim 11) README does say "8 Core-tier packages" and "102 blueprints" but the 8-vs-20 number is a framing mismatch (8 = shipped packages, 20 = blueprint files), not strictly a contradiction — both numbers coexist legitimately.
 - Additional findings: (1) §5.2 Mermaid comment "selected critical" is inconsistent with §4 criticality table — 4 of the 10 shown are merely "High", and 4 Critical Hubs (HUB-05/09/10/21) are missing from the DAG; (2) §5.3 Step 8 says "Hub tier (30 blueprints)" but §4 says 31 (HUB-31 was added per ADR-011 — Step 8 wasn't updated); (3) §5 has no per-tier DAG breakdown — all five tiers + the build sequence live in one section; (4) INDEX.md line 5 still says "Last verified against main: 2026-08-12" while §9 changelog records doctrine-pilot work through 2026-09-24, so the document is internally inconsistent about its own freshness; (5) §5.3's "Parallelizable" labels are explicitly retired per ADR-014 (line 379-385) but the table still carries them; (6) §6 (Deploy tier) describes DEPLOY-01 as "containerized Core+Hub, one OCI image per Hub service" but SDLC-AUDIT-1 confirmed DEPLOY-01.md still describes PHP-FPM + Nginx + Supervisor — stale per ADR-017.
 - Build-order consequence: the SuperPHP chain (C07→C11→C12) is genuinely a free island in the DAG — it can be built in parallel with all Kernel/HTTP/DBAL/cache/encryption work because nothing in §5.2 declares those as inputs to it. INDEX.md §5.3 Step 6 confirms this with entry criteria = "None". This is the cleanest possible per-tier DAG extraction case.
+
+---
+Task ID: APP-MODEL-DISCUSSION-4
+Agent: Main (Super Z)
+Task: Discuss ESPOKE/ISPOKE topology model + queue deferred ELQ repo analysis
+
+Work Log:
+- Read user clarification: each app has ONE ESPOKE (singular external identity) + MANY ISPOKEs (multiple internal workers); ISPOKEs are typed Abstraction (shareable) or Feature (private); sharing is bilateral-consent
+- Cross-referenced against prior turns' 5-tier synthesis (Runtime + Core + Hub + Applications + Deploy/Tooling) and SAAI's per-tier DAG proposal
+- Identified four architectural changes: (1) "Application" becomes first-class entity, (2) ISPOKE catalog gets Owner/Type/Available-to metadata, (3) Sharing contract is a new first-class artifact with CONSENT edge type, (4) catalog counts (18 ESPOKE / 27 ISPOKE) fit the model
+- Extended the second AI's edge typing from 5 types (COMPILE/RUNTIME/INTEGRATION/CAPABILITY/OPTIONAL) to 6 (added CONSENT for bilateral ISPOKE→ESPOKE sharing)
+- Proposed updated documentation structure with new top-level `Architecture/Applications/` directory containing per-app manifests + `_SHARING-CONTRACT.md`
+- Drafted concrete example with three apps (Showcase, LMS, Codex) sharing ISPOKE-10 SearchIndexer, ISPOKE-12 BackgroundMailer
+- Surfaced six open questions for user decision (Abstraction/Feature formal-vs-heuristic, shared ISPOKE ownership model, CONSENT revocation, BRIDGE-01 placement, minimum-viable-app definition, ISPOKE-01..27 existing-assignment-vs-placeholder)
+- Updated SDLC widen/deepen rules to account for Application as composite entity (ESPOKE + ISPOKEs + sharing-contract)
+
+Deferred Task (queued, not started):
+- TASK: Analyze DGCodeIdeas/ELQ repo for cherry-picking + PHP porting + Spoke redesign
+- STATUS: DEFERRED per user instruction
+- NEEDED WHEN UN-DEFERRED: (a) repo accessibility confirmation, (b) current language, (c) primary purpose, (d) which apps to derive from it (one ESPOKE + N ISPOKEs each)
+- OUTPUT WHEN DONE: cherry-pick list + porting plan + per-app Spoke redesign
+
+Stage Summary:
+- The ESPOKE/ISPOKE model is a structural promotion: Application goes from implicit (inferred from cross-refs) to first-class (manifest-declared composite entity)
+- The consent model requires a new CONSENT edge type — first bilateral edge type in the typed-edge DAG framework
+- Six open questions block the documentation structure from being finalized; awaiting user decisions
+- ELQ analysis formally queued as deferred; will not start until user un-defers
+- Core DAG Reconciliation (the agreed immediate next step from prior turn) remains unblocked by this discussion — Application concept is a layer above Core, doesn't change Core's internal DAG
