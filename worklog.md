@@ -1082,3 +1082,25 @@ Stage Summary:
 - Six open questions block the documentation structure from being finalized; awaiting user decisions
 - ELQ analysis formally queued as deferred; will not start until user un-defers
 - Core DAG Reconciliation (the agreed immediate next step from prior turn) remains unblocked by this discussion — Application concept is a layer above Core, doesn't change Core's internal DAG
+
+---
+Task ID: APP-MODEL-REFINEMENT-5
+Agent: Main (Super Z)
+Task: Refine ESPOKE/ISPOKE model per SAAI's critique — drop ownership and CONSENT, adopt consumer-side composition policy
+
+Work Log:
+- Read SAAI's critique: rejected the "owner + bilateral consent" model; argued for consumer-side composition policy with no ISPOKE ownership; proposed three-artifact separation (ISPOKE blueprint / Application Manifest / Dependency DAG); argued Abstraction-vs-Feature is metadata not type
+- Conceded 6 corrections from SAAI: (1) ownership was theater, (2) CONSENT edge was wrong, (3) Abstraction/Feature is metadata, (4) "worker" terminology overloaded, (5) many-to-many is the correct invariant, (6) three-artifact separation is right
+- Answered SAAI's Q1 (sharing rule): YES with clarification — `reusable: false` must be lint-enforced (not advisory), otherwise the Feature→Abstraction boundary is decorative
+- Answered SAAI's Q2 (Abstraction/Feature as metadata): YES, SAAI's argument is decisive
+- Proposed 3 extensions to SAAI's model: (1) Hub vs ISPOKE boundary needs explicit definition (Hub = generic across all apps; ISPOKE = specific to a subset), (2) Contract reusability audit must be explicit SDLC step when second consumer arrives, (3) ISPOKE versioning is deferred but real
+- Addressed SAAI's deep question on ESPOKE/ISPOKE boundary: ESPOKE owns public surface + composition policy + cross-cutting policy + entry orchestration; ESPOKE must NOT do domain logic, business rules, direct Hub calls, state, or long-running work; lint rule restricts ESPOKE imports to Spoke\* and Application\* namespaces
+- Updated documentation structure: dropped CONSENT from Integration DAG, restored 5 edge types (COMPILE/RUNTIME/INTEGRATION/CAPABILITY/OPTIONAL), added classification + reusable metadata to ISPOKE blueprints, Application Manifest lives in Applications/<app>/APPLICATION.md (separate from ESPOKE blueprint)
+- Refined ELQ migration implications: output is cherry-pick list + PHP porting plan + Spoke decomposition (Feature vs Abstraction classification) + Application Manifest + Hub-promotion candidates — not just "port Angular to PHP"
+
+Stage Summary:
+- SAAI's consumer-side composition model adopted; bilateral CONSENT edge rejected; edge typing restored to 5 types
+- Three extensions proposed: explicit Hub/ISPOKE boundary, contract reusability audit as SDLC step, ISPOKE versioning flagged as deferred
+- ESPOKE/ISPOKE boundary defined and made enforceable via namespace-restricted imports
+- ELQ deferred task output shape refined: produces classification-aware Spoke decomposition, not just porting
+- Core DAG Reconciliation (the agreed immediate next step from prior turns) remains unblocked — Application concept is layer above Core, doesn't change Core's internal DAG
