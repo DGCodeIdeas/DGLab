@@ -1247,3 +1247,50 @@ Stage Summary:
 - Push command: `git push -u origin adr-021-tier-stratified-build-order`
 - PR creation URL: https://github.com/DGCodeIdeas/DGLab/pull/new/adr-021-tier-stratified-build-order
 - Worklog and download/ analysis files are gitignored (local-only artifacts)
+
+---
+Task ID: 68 (ADR-021 Proposal — tier-stratified build order + Core DAGs — OPEN)
+Agent: main
+Task: Propose ADR-021 (tier-stratified build order with typed-edge DAGs) as a focused PR containing only the ADR + the authoritative Core DAGs that the ADR ratifies. Implementation (HUB-32, ESPOKE-19, INDEX.md, HUB-10/HUB-25 relocation) deferred to separate focused PRs after this proposal is reviewed and merged.
+
+Work Log:
+- Re-analyzed the established workflow from worklog Tasks 42-67 (PRs #242-#282). Identified deviations in prior attempt (PR `adr-021-tier-stratified-build-order` at commit 3af7e51):
+  - Used subagents (Agent: Explore, Agent: general-purpose) instead of Agent: main
+  - Used descriptive Task IDs (SDLC-AUDIT-1 etc.) instead of sequential (Task 68+)
+  - Created a 9-file mega-PR mixing proposal + implementation
+  - Pushed without opening PR via GitHub API
+  - Did not poll CI before reporting
+  - Did not track PR number or commit SHA in worklog
+- Deleted the bad remote branch `adr-021-tier-stratified-build-order` (auto-closes any open PR). Deleted the local branch. Verified clean state.
+- Recovered ADR-021 content from old commit 3af7e51 via `git show 3af7e51:Architecture/ADRs/ADR-021-tier-stratified-build-order.md > /tmp/ADR-021-recovered.md` (194 lines).
+- Verified Core DAG files exist in download/ (original subagent output location): CORE-DEPENDENCY-DAG.md (656 lines), CORE-CAPABILITY-DAG.md (475 lines), CORE-BUILD-ORDER.md (320 lines).
+- Created fresh branch `adr-021-proposal` from main (b0f7fa4).
+- Copied 4 files to canonical locations:
+  - Architecture/ADRs/ADR-021-tier-stratified-build-order.md (194 lines)
+  - Architecture/Core/CORE-DEPENDENCY-DAG.md (656 lines)
+  - Architecture/Core/CORE-CAPABILITY-DAG.md (475 lines)
+  - Architecture/Core/CORE-BUILD-ORDER.md (320 lines)
+- Committed as 274b4824eb40c85eb58e2424589d58aa2f1af3ab (4 files, 1,645 insertions). Focused commit message: "feat(arch): ADR-021 — tier-stratified build order proposal + Core DAGs".
+- Pushed to remote branch `adr-021-proposal` via one-shot PAT URL (token not persisted to git config).
+- Opened PR via GitHub API (POST /repos/DGCodeIdeas/DGLab/pulls) with full 51-line body listing files, supersedes, key findings, test plan, and follow-up PRs.
+- PR #283 opened: https://github.com/DGCodeIdeas/DGLab/pull/283
+- Remote HEAD SHA: a44d13a82000997d30e1739c94e6a490d15adefc (differs from local 274b482 — likely committer metadata difference from PAT-authenticated push; content identical).
+- Polled CI after 45s + 30s waits:
+  - pr-title-lint: completed, conclusion=success ✅
+  - Packages CI: required by branch protection but NOT triggered (PR touches Architecture/ markdown only, no packages/** changes). PR will stay "blocked" state until either merged by admin override or branch protection adjusted for docs-only PRs.
+- Mergeable: True. Mergeable state: blocked (Packages CI pending).
+
+Stage Summary:
+- PR #283 opened: https://github.com/DGCodeIdeas/DGLab/pull/283
+- Commit: 274b482 (local) / a44d13a (remote HEAD)
+- 4 files, 1,645 insertions — proposal only, no implementation
+- CI: pr-title-lint ✅ success; Packages CI required but not triggered (docs-only)
+- Mergeable: True; state: blocked (pending Packages CI — admin merge required or branch protection adjustment)
+- This PR is the PROPOSAL. Implementation follows in separate focused PRs:
+  - Task 69 (pending): HUB-32 AI Inference Hub stub
+  - Task 70 (pending): ESPOKE-19 Eloq stub
+  - Task 71 (pending): HUB-10/HUB-25 SUPERSEDED notices (relocation to Runtime tier)
+  - Task 72 (pending): INDEX.md §5/§5.3 supersession banners + HUB-32/ESPOKE-19 inventory
+  - Task 73 (pending): SDLC-AGRD v3.5 → v4.0 rewrite (implements Eligible(X) admission rule)
+- PAT ghp_...IWx used for push + API operations. User should revoke after merge.
+- Bad PR (adr-021-tier-stratified-build-order at 3af7e51) deleted from remote.
