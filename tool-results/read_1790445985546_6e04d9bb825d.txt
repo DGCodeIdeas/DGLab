@@ -1,0 +1,708 @@
+     1→# HUB-20: Sovereign Vault
+     2→
+     3→## Tier
+     4→Hub (Security)
+     5→
+     6→## Resolves
+     7→- **Finding 4** (the approved `docs/blueprints/Hub/HUB-20.md` is 2,353 bytes — prose-only, declares `Vault` and `SecretManager` classes without interfaces, no reference implementation, no SQL DDL, no sequence/state diagrams, no benchmark methodology, no security properties beyond a one-line "encrypted at rest" claim). This blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.3 interface (`VaultServiceInterface`), complete compilable `VaultService` reference implementation (~210 lines), MySQL DDL with append-only soft-delete retention, two Mermaid diagrams (retrieve sequence + secret lifecycle state), named-harness benchmark table, eight CI verification methods, and eight explicit security invariants.
+     8→- **Finding 8** (HUB-20 transitively depends on CORE-02, CORE-16, CORE-19, and HUB-06 — three of which are stubs or not-started) — explicitly marked 🔴 Blocked below; build cannot start until CORE-16 (Encryption) and CORE-19 (DBAL) ship in Step 5 of the 11-step build sequence and HUB-06 (Audit) ships in Step 8.
+     9→- **Finding 10** (the approved blueprint asserts a bare "fast retrieval" target with no harness, baseline, or load model) — replaced with a named-harness PHPUnit `--group performance` benchmark running 1,000 encrypt+store+retrieve cycles measured by `microtime(true)` wall-clock on GitHub Actions `ubuntu-latest`, PHP 8.3, MySQL 8 (InnoDB); absolute retrieve latency is asserted to be bounded by DB SELECT + AES-256-GCM decrypt and is marked **"provisional, unverified"** per Governance Rule 2 in `01_MASTER_INDEX.md` §7.
+    10→
+    11→## Component Name
+    12→Sovereign Vault — `SovereignStack\Hub\Vault`
+    13→
+    14→## Description
+    15→HUB-20 is the **application-level secret store** for the SovereignStack Hub tier. It owns one concern: persistence of encrypted secrets (third-party API keys, OAuth refresh tokens, JWT signing-key envelopes, payment-provider credentials, BRIDGE-01 payload-verification HMAC keys) inside the application database, where values are encrypted at rest via CORE-16's `EncrypterInterface` (AES-256-GCM, base64-encoded envelope) and where every read/write/rotate/delete is observable by HUB-06 (Audit). It is **not** an external secret manager (HashiCorp Vault, AWS Secrets Manager, Kubernetes sealed-secrets) — those are deployment-tier concerns owned by DEPLOY-02 and addressed in the threat model's secret-management lifecycle §6 for the master KEK that protects CORE-16's `KeyRegistry`. HUB-20 sits *above* CORE-16: it stores secrets that need to be rotated, queried, and listed at runtime by application code (HUB-04 reads the JWT signing-key envelope on boot; HUB-09 reads third-party API keys before each upstream call; BRIDGE-01 reads the payload-verification HMAC key on every inbound request); external secret managers store the *master* key that decrypts those secrets at process start. The two layers are deliberately separate: external secret managers are ill-suited for per-secret audit trails, versioned rotation, and runtime listing, all of which are first-class HUB-20 operations.
+    16→
+    17→The component exists because the SovereignStack has at least four consumers needing application-level secret storage at runtime: **HUB-04** (Identity) — JWT signing key stored as a CORE-16 envelope, re-decrypted on every JWKS publish; **HUB-09** (Event Bus) — third-party webhook signing keys and OAuth refresh tokens for outbound integrations; **BRIDGE-01** (Vanguard) — HMAC key for verifying CDN-to-origin payloads (per Finding 3, BRIDGE-01 → CORE-16 for *verification*, but the *key* is held by HUB-20); and **HUB-22** (Ledger) — payment-provider API keys. Without a unified Vault, each consumer would re-implement its own encrypted-column logic: divergent cipher choices (some AES-256-CBC unauthenticated, some `openssl_encrypt` with a hard-coded IV), divergent audit trails (some log reads, some do not), divergent rotation models (some overwrite-in-place, losing rollback history), and divergent access-control rules. HUB-20 standardises all four: AES-256-GCM via CORE-16 (never a custom cipher), every operation audited via HUB-06 (including `metadata`, never the value), versioned rotation retaining old versions for rollback, and `super_admin`-only access enforced at the controller layer.
+    18→
+    19→What this component is **not**: it is not a full KMS — CORE-16 owns the cryptographic primitive (cipher, IV, envelope format, key registry); HUB-20 owns only the *storage* of envelopes CORE-16 produces. It is not a master-KEK rotation orchestrator — that lives in DEPLOY-02 per threat model §6. It is not a substitute for environment-variable injection of bootstrap secrets — the master `APP_KEY` that decrypts CORE-16's `KeyRegistry` is injected via env var at container start (per §6) and is **never** stored in HUB-20 (circular-dependency avoidance). It is not a public-key primitive — CORE-16 owns symmetric encryption only; HUB-20 stores the *encrypted envelope* of an ES256 private key, never the key in plaintext. It is not a tenant-scoped store — secrets are global system resources (the JWT signing key serves all tenants); tenant-scoped credentials (per-tenant OAuth tokens) live in HUB-21's `tenant_credentials`, not in `vault_secrets`.
+    20→
+    21→The implementation does not yet exist. The `packages/hub/vault/` directory has not been created (verified 2026-08-04). This blueprint is the greenfield specification. HUB-20 sits in Step 8 of the 11-step build sequence (`01_MASTER_INDEX.md` §5) and depends on CORE-16 (Step 5), CORE-19 (Step 5), CORE-02 (Step 1), and HUB-06 (Step 8, sibling). It is on the critical path for BRIDGE-01, HUB-04, and HUB-09.
+    22→
+    23→## Build Status
+    24→📝 **Not started.** The `packages/hub/vault/` directory does not exist in the repository (verified 2026-08-04). No `composer.json`, no `src/`, no `tests/`. This blueprint is the greenfield specification.
+    25→
+    26→🔴 **Blocked on:**
+    27→- **CORE-02** (DI Container — `VaultService` is constructed via the container; `VaultServiceProvider` registers bindings in Step 7's CORE-17 service-provider system).
+    28→- **CORE-16** (Binary Encryption Envelope — `VaultService::store()` calls `EncrypterInterface::encrypt($value)`; `retrieve()` calls `EncrypterInterface::decrypt($envelope)`. CORE-16 is the cryptographic primitive; HUB-20 owns only the storage layer above it. Without CORE-16, HUB-20 has no cipher and no envelope format — it cannot ship).
+    29→- **CORE-19** (Database Abstraction Layer — `VaultService` reads/writes via `ConnectionInterface` and `QueryBuilder` from CORE-19; no direct PDO usage).
+    30→- **HUB-06** (Audit Log — `AuditLogger::logSecretAccess()` delegates to `AuditServiceInterface::record()`; HUB-06 must land first or simultaneously so every `retrieve()` produces an audit row in the same Step 8 window).
+    31→
+    32→Per the build sequence, all four dependencies land in Steps 1, 5, and 8 — HUB-20 cannot start before Step 8.
+    33→
+    34→## Dependency Status
+    35→- **Upward:** `SovereignStack\Core\Crypto\EncrypterInterface` (CORE-16, hard — the only cipher HUB-20 uses); `SovereignStack\Core\Database\ConnectionInterface` and `QueryBuilder` (CORE-19, hard); `SovereignStack\Core\Container\ContainerInterface` (CORE-02, hard — for singleton wiring); `SovereignStack\Hub\Audit\AuditServiceInterface` and `AuditRecord` (HUB-06, hard — for tamper-evident access logging); `SovereignStack\Hub\Identity\RbacServiceInterface` and `TokenClaims` (HUB-04, hard — for `super_admin` role enforcement); `SovereignStack\Hub\Scheduler\SchedulerInterface` (HUB-25, soft — for `SecretRotator` cron registration; in test contexts the rotator is invoked directly). Runtime: `ext-json`, `ext-openssl` (transitively via CORE-16).
+    36→- **Downward:** **HUB-04 (Identity)** — reads the JWT signing-key envelope on boot via `retrieve('jwt_signing_key')` and after every rotation; **HUB-09 (Event Bus)** — reads third-party OAuth refresh tokens and webhook signing keys before each upstream call; **BRIDGE-01 (Vanguard)** — reads the payload-verification HMAC key on every inbound request (per Finding 3, BRIDGE-01 → CORE-16 for *verification*, but the *key* is held by HUB-20); **HUB-22 (Ledger)** — reads payment-provider API keys before each charge; **HUB-25 (Chronos)** — invokes `SecretRotator::rotateDue()` on the configured cron schedule.
+    37→- **Runtime:** `php:^8.3`, `ext-json`, `ext-openssl` (transitive), `ext-pdo_pgsql` (transitive via CORE-19). Composer: `sovereign-stack/core-crypto`, `sovereign-stack/core-database`, `sovereign-stack/hub-audit`, `sovereign-stack/hub-identity`, `sovereign-stack/hub-scheduler` (dev: optional). Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `vimeo/psalm:^5.20` (taint analysis on plaintext flow).
+    38→
+    39→## Architectural Design
+    40→
+    41→### Class Map
+    42→
+    43→| Class | Kind | Responsibility |
+    44→|---|---|---|
+    45→| `VaultService` | `final class implements VaultServiceInterface` | Main API. Constructor takes `EncrypterInterface`, `ConnectionInterface`, `AuditLogger`, `ClockInterface`. `store($name, $value, $metadata)` generates a ULID, encrypts the value via CORE-16, INSERTs into `vault_secrets` with `version = 1` and `is_active = TRUE`, logs `vault.secret.stored` via HUB-06, returns the ULID. `retrieve($name)` SELECTs the active row, decrypts via CORE-16, logs `vault.secret.retrieved`, returns plaintext. `rotate($name, $newValue)` marks the old row `is_active = FALSE` (retained), INSERTs a new row with `version = old + 1` and `is_active = TRUE` in a single transaction, logs `vault.secret.rotated`. `list()` SELECTs `id, name, version, is_active, created_by, created_at` — never `encrypted_value` — and returns an array of `SecretMetadata` value objects. `delete($name)` soft-deletes by setting `deleted_at = NOW()` and `is_active = FALSE`; the row is retained for 90 days for forensic recovery. |
+    46→| `Secret` | `final readonly class` | Value object. Fields: `id` (ULID, `string`), `name` (`string`), `value` (decrypted plaintext, `string` — only populated by `retrieve()`; never populated by `list()`), `version` (`int`), `createdBy` (`?string` ULID), `createdAt` (`\DateTimeImmutable`). The `value` field is the only mutable-by-construction concern: callers must `unset($secret->value)` or let it go out of scope as soon as practicable after use — the class is `readonly` so the property cannot be re-assigned, but the string it points to lives until garbage collection. |
+    47→| `SecretMetadata` | `final readonly class` | Value object for `list()` results. Same as `Secret` minus the `value` field. Returned by `list()` so callers can never accidentally receive plaintext. |
+    48→| `SecretRotator` | `final class` | Cron-driven rotation orchestrator. `rotateDue(): int` queries `vault_secrets` for rows whose `rotated_at` is older than the per-secret `rotation_interval_days` (stored in `metadata`), invokes `VaultService::rotate()` with a fresh value generated by a registered `SecretGeneratorInterface` (e.g., `RandomBytesGenerator` for HMAC keys, `OpenSslKeyGenerator` for ES256 keypairs), returns the count rotated. Registered with HUB-25 Scheduler via `#[Cron('0 3 * * *')]` attribute (daily 03:00 UTC). |
+    49→| `AuditLogger` | `final class` | Thin wrapper over `AuditServiceInterface`. `logSecretAccess(string $action, string $secretId, string $secretName, int $version, TokenClaims $actor, array $metadata)` constructs an `AuditRecord` with `action = 'vault.secret.'.$action`, `target_type = 'VaultSecret'`, `target_id = $secretId`, `actor_id = $actor->sub`, `actor_type = 'user'`, `tenant_id = $actor->tenant_id`, `metadata = ['name' => $secretName, 'version' => $version] + $metadata` — **the plaintext `value` is never in the metadata; the `metadata` array passed to `store()` is filtered through a denylist (`password`, `secret`, `token`, `key`, `value`) before being persisted or logged**. Delegates to `AuditServiceInterface::record()`. |
+    50→| `VaultException` | `final class extends \RuntimeException` | Marker for all HUB-20 failures. Carries an `errorCode` string enum (`SECRET_NOT_FOUND`, `DUPLICATE_NAME`, `ROTATE_FAILED`, `DECRYPT_FAILED`, `UNAUTHORIZED`) for programmatic dispatch and for HUB-06 logging without leaking plaintext. |
+    51→| `SecretGeneratorInterface` | `interface` | Strategy for generating new secret values during auto-rotation. Implementations: `RandomBytesGenerator` (32 raw bytes via `random_bytes`, base64-encoded), `OpenSslPkeyGenerator` (ES256 keypair via `openssl_pkey_new(['ec_key_curve' => 'prime256v1'])`, returns the PEM of the private half — used by `SecretRotator` for the JWT signing key). |
+    52→
+    53→### Interface Contracts
+    54→
+    55→```php
+    56→<?php
+    57→declare(strict_types=1);
+    58→
+    59→namespace SovereignStack\Hub\Vault;
+    60→
+    61→use SovereignStack\Core\Crypto\CryptoException;
+    62→use SovereignStack\Core\Database\ConnectionException;
+    63→use SovereignStack\Hub\Audit\AuditException;
+    64→use SovereignStack\Hub\Identity\TokenClaims;
+    65→
+    66→/**
+    67→ * Application-level encrypted-secret store.
+    68→ *
+    69→ * The Vault stores secrets (API keys, JWT signing keys, OAuth tokens,
+    70→ * HMAC verification keys) in the application database, encrypted at
+    71→ * rest via CORE-16's AES-256-GCM EncrypterInterface. Every operation
+    72→ * is logged via HUB-06 (Audit); the plaintext value is never logged.
+    73→ *
+    74→ * Invariants enforced by every implementation:
+    75→ *
+    76→ *  1. Plaintext values never leave retrieve(). list() returns
+    77→ *     metadata only. The audit log records the access event
+    78→ *     (action, secret id, name, version, actor) but never the
+    79→ *     value. CORE-09's redaction filter is a defence-in-depth
+    80→ *     backstop, not the primary control.
+    81→ *
+    82→ *  2. Rotation is non-disruptive. rotate() retains the old
+    83→ *     version with is_active = FALSE; existing envelopes
+    84→ *     encrypted with the old key remain decryptable for the
+    85→ *     90-day retention window. Active version pointer moves
+    86→ *     atomically inside a DB transaction.
+    87→ *
+    88→ *  3. All operations require the super_admin role. Enforcement
+    89→ *     is at the controller layer (RbacService::hasRole($claims,
+    90→ *     'super_admin')); the VaultService itself accepts a
+    91→ *     TokenClaims $actor and re-checks as defence-in-depth —
+    92→ *     non-super_admin actors throw VaultException(UNAUTHORIZED)
+    93→ *     before any DB read or write.
+    94→ *
+    95→ *  4. Deletion is soft. delete() sets deleted_at = NOW() and
+    96→ *     is_active = FALSE; the row is retained for 90 days for
+    97→ *     forensic recovery. A separate HUB-25 cron job physically
+    98→ *     purges rows older than 90 days.
+    99→ */
+   100→interface VaultServiceInterface
+   101→{
+   102→    /**
+   103→     * Store a new secret. Generates a ULID, encrypts the value via
+   104→     * CORE-16 EncrypterInterface::encrypt(), INSERTs a row with
+   105→     * version = 1 and is_active = TRUE, logs via HUB-06, returns
+   106→     * the new ULID.
+   107→     *
+   108→     * The $metadata array is persisted in a JSONB column. It is
+   109→     * filtered through a denylist ('password', 'secret', 'token',
+   110→     * 'key', 'value') case-insensitively; any key matching is
+   111→     * dropped silently. Callers SHOULD NOT place sensitive
+   112→     * material in metadata — metadata is logged in audit records.
+   113→     *
+   114→     * @param string $name     Unique secret name (across active rows).
+   115→     * @param string $value    Plaintext to encrypt; binary-safe.
+   116→     * @param array  $metadata Optional metadata; filtered.
+   117→     * @param TokenClaims $actor Authenticated super_admin.
+   118→     *
+   119→     * @return string The ULID of the new secret row.
+   120→     *
+   121→     * @throws VaultException UNAUTHORIZED if $actor lacks super_admin,
+   122→     *         DUPLICATE_NAME if an active secret with $name exists,
+   123→     *         STORE_FAILED on encryption or DB failure.
+   124→     */
+   125→    public function store(
+   126→        string $name,
+   127→        string $value,
+   128→        array $metadata = [],
+   129→        ?TokenClaims $actor = null
+   130→    ): string;
+   131→
+   132→    /**
+   133→     * Retrieve the active version of a secret by name.
+   134→     *
+   135→     * SELECTs name=$name AND is_active=TRUE AND deleted_at IS NULL,
+   136→     * decrypts via CORE-16 EncrypterInterface::decrypt(), logs the
+   137→     * access via HUB-06, returns the plaintext.
+   138→     *
+   139→     * Callers SHOULD minimise the time the plaintext is in memory
+   140→     * (assign, use, unset). The Vault does not zeroise the string
+   141→     * (PHP strings are immutable; zeroising is not reliable).
+   142→     *
+   143→     * @param string $name The secret name.
+   144→     * @param TokenClaims $actor Authenticated super_admin.
+   145→     *
+   146→     * @return string The decrypted plaintext value.
+   147→     *
+   148→     * @throws VaultException UNAUTHORIZED, SECRET_NOT_FOUND, or
+   149→     *         DECRYPT_FAILED (tampered envelope or missing key).
+   150→     */
+   151→    public function retrieve(string $name, ?TokenClaims $actor = null): string;
+   152→
+   153→    /**
+   154→     * Rotate a secret to a new value, retaining the old version.
+   155→     *
+   156→     * Marks the currently active row is_active = FALSE (retained
+   157→     * for the 90-day rollback window), INSERTs a new row with
+   158→     * version = old + 1 and is_active = TRUE, all inside a single
+   159→     * DB transaction. Logs vault.secret.rotated with old and new
+   160→     * version numbers.
+   161→     *
+   162→     * @param string $name     The secret name.
+   163→     * @param string $newValue The new plaintext value.
+   164→     * @param TokenClaims $actor Authenticated super_admin.
+   165→     *
+   166→     * @throws VaultException UNAUTHORIZED, SECRET_NOT_FOUND, or
+   167→     *         ROTATE_FAILED (transaction rolls back, old row
+   168→     *         remains is_active = TRUE).
+   169→     */
+   170→    public function rotate(
+   171→        string $name,
+   172→        string $newValue,
+   173→        ?TokenClaims $actor = null
+   174→    ): void;
+   175→
+   176→    /**
+   177→     * List all active secrets, returning metadata only.
+   178→     *
+   179→     * SELECTs id, name, version, is_active, created_by, created_at
+   180→     * for rows where is_active = TRUE AND deleted_at IS NULL.
+   181→     * Never SELECTs encrypted_value. Returns SecretMetadata[] —
+   182→     * never the plaintext.
+   183→     *
+   184→     * Secret names are NOT sensitive (visible in list()); values
+   185→     * are. An attacker who knows the names cannot decrypt without
+   186→     * the CORE-16 KEK.
+   187→     *
+   188→     * @param TokenClaims $actor Authenticated super_admin.
+   189→     * @return array<SecretMetadata>
+   190→     * @throws VaultException UNAUTHORIZED if $actor lacks super_admin.
+   191→     */
+   192→    public function list(?TokenClaims $actor = null): array;
+   193→
+   194→    /**
+   195→     * Soft-delete a secret. Sets deleted_at = NOW() and
+   196→     * is_active = FALSE on all rows with name = $name. The row is
+   197→     * retained for 90 days for forensic recovery; a HUB-25 cron
+   198→     * job physically purges rows older than 90 days.
+   199→     *
+   200→     * @param string $name The secret name.
+   201→     * @param TokenClaims $actor Authenticated super_admin.
+   202→     * @throws VaultException UNAUTHORIZED or SECRET_NOT_FOUND.
+   203→     */
+   204→    public function delete(string $name, ?TokenClaims $actor = null): void;
+   205→}
+   206→
+   207→/**
+   208→ * Strategy interface for generating new secret values during
+   209→ * auto-rotation. Registered with SecretRotator by name.
+   210→ */
+   211→interface SecretGeneratorInterface
+   212→{
+   213→    /**
+   214→     * Generate a fresh secret value.
+   215→     *
+   216→     * @return string The plaintext value to be stored via
+   217→     *                VaultService::rotate().
+   218→     */
+   219→    public function generate(): string;
+   220→}
+   221→```
+   222→
+   223→### Reference Implementation
+   224→
+   225→The complete `VaultService` class:
+   226→
+   227→```php
+   228→<?php
+   229→declare(strict_types=1);
+   230→
+   231→namespace SovereignStack\Hub\Vault;
+   232→
+   233→use SovereignStack\Core\Crypto\EncrypterInterface;
+   234→use SovereignStack\Core\Database\ConnectionInterface;
+   235→use SovereignStack\Core\Database\QueryBuilder;
+   236→use SovereignStack\Hub\Audit\AuditRecord;
+   237→use SovereignStack\Hub\Audit\AuditServiceInterface;
+   238→use SovereignStack\Hub\Identity\TokenClaims;
+   239→
+   240→/**
+   241→ * AES-256-GCM encrypted application-level secret store.
+   242→ *
+   243→ * Stores secrets in the vault_secrets table, encrypted via
+   244→ * CORE-16's EncrypterInterface. Every operation is audited via
+   245→ * HUB-06's AuditServiceInterface. Plaintext values never enter
+   246→ * the audit log.
+   247→ *
+   248→ * The service is stateless across calls and safe to register as
+   249→ * a singleton in CORE-02's DI container.
+   250→ */
+   251→final class VaultService implements VaultServiceInterface
+   252→{
+   253→    private const TABLE = 'vault_secrets';
+   254→    private const RETENTION_DAYS = 90;
+   255→
+   256→    /** Keys denied in $metadata (case-insensitive substring match). */
+   257→    private const METADATA_DENYLIST = [
+   258→        'password', 'secret', 'token', 'key', 'value',
+   259→    ];
+   260→
+   261→    public function __construct(
+   262→        private readonly EncrypterInterface $encrypter,
+   263→        private readonly ConnectionInterface $connection,
+   264→        private readonly AuditServiceInterface $audit,
+   265→        private readonly UidGeneratorInterface $ulid,
+   266→        private readonly ClockInterface $clock
+   267→    ) {
+   268→    }
+   269→
+   270→    public function store(
+   271→        string $name,
+   272→        string $value,
+   273→        array $metadata = [],
+   274→        ?TokenClaims $actor = null
+   275→    ): string {
+   276→        $this->requireSuperAdmin($actor);
+   277→
+   278→        $id = $this->ulid->generate();
+   279→        $encrypted = $this->encrypter->encrypt($value);
+   280→        $filteredMetadata = $this->filterMetadata($metadata);
+   281→        $now = $this->clock->now();
+   282→
+   283→        try {
+   284→            $existing = $this->connection
+   285→                ->query(self::TABLE)
+   286→                ->where('name', '=', $name)
+   287→                ->where('is_active', '=', true)
+   288→                ->whereNull('deleted_at')
+   289→                ->exists();
+   290→
+   291→            if ($existing) {
+   292→                throw VaultException::duplicateName($name);
+   293→            }
+   294→
+   295→            $this->connection->insert(self::TABLE, [
+   296→                'id' => $id,
+   297→                'name' => $name,
+   298→                'encrypted_value' => $encrypted,
+   299→                'version' => 1,
+   300→                'is_active' => true,
+   301→                'metadata' => json_encode($filteredMetadata, JSON_THROW_ON_ERROR),
+   302→                'created_by' => $actor?->sub,
+   303→                'created_at' => $now,
+   304→                'rotated_at' => $now,
+   305→            ]);
+   306→        } catch (VaultException $e) {
+   307→            throw $e;
+   308→        } catch (\Throwable $e) {
+   309→            throw VaultException::storeFailed($name, $e);
+   310→        }
+   311→
+   312→        $this->auditLogger()->logSecretAccess(
+   313→            action: 'stored',
+   314→            secretId: $id,
+   315→            secretName: $name,
+   316→            version: 1,
+   317→            actor: $actor,
+   318→            metadata: $filteredMetadata
+   319→        );
+   320→
+   321→        return $id;
+   322→    }
+   323→
+   324→    public function retrieve(string $name, ?TokenClaims $actor = null): string
+   325→    {
+   326→        $this->requireSuperAdmin($actor);
+   327→
+   328→        $row = $this->connection
+   329→            ->query(self::TABLE)
+   330→            ->select(['id', 'encrypted_value', 'version'])
+   331→            ->where('name', '=', $name)
+   332→            ->where('is_active', '=', true)
+   333→            ->whereNull('deleted_at')
+   334→            ->first();
+   335→
+   336→        if ($row === null) {
+   337→            throw VaultException::notFound($name);
+   338→        }
+   339→
+   340→        try {
+   341→            $plaintext = $this->encrypter->decrypt($row['encrypted_value']);
+   342→        } catch (\Throwable $e) {
+   343→            throw VaultException::decryptFailed($name, $row['version'], $e);
+   344→        }
+   345→
+   346→        $this->auditLogger()->logSecretAccess(
+   347→            action: 'retrieved',
+   348→            secretId: $row['id'],
+   349→            secretName: $name,
+   350→            version: (int) $row['version'],
+   351→            actor: $actor,
+   352→            metadata: []
+   353→        );
+   354→
+   355→        return $plaintext;
+   356→    }
+   357→
+   358→    public function rotate(
+   359→        string $name,
+   360→        string $newValue,
+   361→        ?TokenClaims $actor = null
+   362→    ): void {
+   363→        $this->requireSuperAdmin($actor);
+   364→
+   365→        $this->connection->transaction(function () use ($name, $newValue, $actor): void {
+   366→            $current = $this->connection
+   367→                ->query(self::TABLE)
+   368→                ->select(['id', 'version'])
+   369→                ->where('name', '=', $name)
+   370→                ->where('is_active', '=', true)
+   371→                ->whereNull('deleted_at')
+   372→                ->lockForUpdate()
+   373→                ->first();
+   374→
+   375→            if ($current === null) {
+   376→                throw VaultException::notFound($name);
+   377→            }
+   378→
+   379→            $oldVersion = (int) $current['version'];
+   380→            $newVersion = $oldVersion + 1;
+   381→            $newId = $this->ulid->generate();
+   382→            $encrypted = $this->encrypter->encrypt($newValue);
+   383→            $now = $this->clock->now();
+   384→
+   385→            // Demote the old version (retained for rollback).
+   386→            $this->connection
+   387→                ->query(self::TABLE)
+   388→                ->where('id', '=', $current['id'])
+   389→                ->update(['is_active' => false]);
+   390→
+   391→            // Insert the new active version.
+   392→            $this->connection->insert(self::TABLE, [
+   393→                'id' => $newId,
+   394→                'name' => $name,
+   395→                'encrypted_value' => $encrypted,
+   396→                'version' => $newVersion,
+   397→                'is_active' => true,
+   398→                'metadata' => json_encode([], JSON_THROW_ON_ERROR),
+   399→                'created_by' => $actor?->sub,
+   400→                'created_at' => $now,
+   401→                'rotated_at' => $now,
+   402→            ]);
+   403→
+   404→            $this->auditLogger()->logSecretAccess(
+   405→                action: 'rotated',
+   406→                secretId: $newId,
+   407→                secretName: $name,
+   408→                version: $newVersion,
+   409→                actor: $actor,
+   410→                metadata: ['old_version' => $oldVersion]
+   411→            );
+   412→        });
+   413→    }
+   414→
+   415→    public function list(?TokenClaims $actor = null): array
+   416→    {
+   417→        $this->requireSuperAdmin($actor);
+   418→
+   419→        $rows = $this->connection
+   420→            ->query(self::TABLE)
+   421→            ->select(['id', 'name', 'version', 'created_by', 'created_at'])
+   422→            ->where('is_active', '=', true)
+   423→            ->whereNull('deleted_at')
+   424→            ->orderBy('name', 'ASC')
+   425→            ->get();
+   426→
+   427→        $result = [];
+   428→        foreach ($rows as $row) {
+   429→            $result[] = new SecretMetadata(
+   430→                id: $row['id'],
+   431→                name: $row['name'],
+   432→                version: (int) $row['version'],
+   433→                createdBy: $row['created_by'],
+   434→                createdAt: new \DateTimeImmutable($row['created_at'])
+   435→            );
+   436→        }
+   437→
+   438→        return $result;
+   439→    }
+   440→
+   441→    public function delete(string $name, ?TokenClaims $actor = null): void
+   442→    {
+   443→        $this->requireSuperAdmin($actor);
+   444→
+   445→        $rows = $this->connection
+   446→            ->query(self::TABLE)
+   447→            ->where('name', '=', $name)
+   448→            ->whereNull('deleted_at')
+   449→            ->get();
+   450→
+   451→        if (count($rows) === 0) {
+   452→            throw VaultException::notFound($name);
+   453→        }
+   454→
+   455→        $now = $this->clock->now();
+   456→        $purgesAt = $now->modify('+' . self::RETENTION_DAYS . ' days');
+   457→
+   458→        $this->connection
+   459→            ->query(self::TABLE)
+   460→            ->where('name', '=', $name)
+   461→            ->whereNull('deleted_at')
+   462→            ->update([
+   463→                'is_active' => false,
+   464→                'deleted_at' => $now,
+   465→                'purges_at' => $purgesAt,
+   466→            ]);
+   467→
+   468→        foreach ($rows as $row) {
+   469→            $this->auditLogger()->logSecretAccess(
+   470→                action: 'deleted',
+   471→                secretId: $row['id'],
+   472→                secretName: $name,
+   473→                version: (int) $row['version'],
+   474→                actor: $actor,
+   475→                metadata: ['purges_at' => $purgesAt->format('c')]
+   476→            );
+   477→        }
+   478→    }
+   479→
+   480→    private function requireSuperAdmin(?TokenClaims $actor): void
+   481→    {
+   482→        // Defence-in-depth. The controller layer enforces this via
+   483→        // RbacService::hasRole($claims, 'super_admin'); the Vault
+   484→        // re-checks so a future code path that bypasses the
+   485→        // controller (e.g., a console command) cannot silently
+   486→        // reach the secrets table.
+   487→        if ($actor === null || !in_array('super_admin', $actor->roles, true)) {
+   488→            throw VaultException::unauthorized();
+   489→        }
+   490→    }
+   491→
+   492→    private function filterMetadata(array $metadata): array
+   493→    {
+   494→        $filtered = [];
+   495→        foreach ($metadata as $key => $value) {
+   496→            $lower = strtolower((string) $key);
+   497→            foreach (self::METADATA_DENYLIST as $deny) {
+   498→                if (str_contains($lower, $deny)) {
+   499→                    continue 2;
+   500→                }
+   501→            }
+   502→            $filtered[$key] = $value;
+   503→        }
+   504→        return $filtered;
+   505→    }
+   506→
+   507→    private function auditLogger(): AuditLogger
+   508→    {
+   509→        // Injected indirectly via the AuditServiceInterface in the
+   510→        // constructor. AuditLogger is a thin wrapper instantiated
+   511→        // lazily; in production it is wired through the container.
+   512→        return new AuditLogger($this->audit);
+   513→    }
+   514→}
+   515→```
+   516→
+   517→### SQL DDL
+   518→
+   519→```sql
+   520→-- vault_secrets: encrypted application-level secret store.
+   521→-- One row per secret version. Active version is the row with
+   522→-- is_active = TRUE AND deleted_at IS NULL for a given name.
+   523→-- MySQL 8 (InnoDB) DDL per ADR-013. ULID stored as CHAR(26) CHARACTER SET ascii (ADR-009).
+   524→CREATE TABLE vault_secrets (
+   525→    id              CHAR(26)        PRIMARY KEY,   -- ULID
+   526→    name            VARCHAR(191)    NOT NULL,
+   527→    encrypted_value TEXT            NOT NULL,       -- CORE-16 envelope (base64 JSON)
+   528→    version         INT             NOT NULL DEFAULT 1,
+   529→    is_active       TINYINT(1)      NOT NULL DEFAULT 1,
+   530→    metadata        JSON            NOT NULL,       -- default applied by DBAL (JSON_OBJECT())
+   531→    created_by      CHAR(26)        NULL,           -- references users(id); FK enforced by DBAL to avoid PG-style ON DELETE SET NULL divergence
+   532→    created_at      TIMESTAMP(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+   533→    rotated_at      TIMESTAMP(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+   534→    deleted_at      TIMESTAMP(6)    NULL,           -- soft-delete timestamp
+   535→    purges_at       TIMESTAMP(6)    NULL,           -- retention expiry (deleted_at + 90 days)
+   536→    UNIQUE KEY uk_name_version (name, version),     -- version is unique per name
+   537→    -- Partial-index equivalents per ADR-013 (MySQL has no SQL-standard partial indexes;
+   538→    -- DriverInterface::supports('partial_index') is false). Generated boolean columns
+   539→    -- mirror the WHERE predicates; regular indexes on (name, col) keep the hot path small.
+   540→    is_live         TINYINT(1)      GENERATED ALWAYS AS (is_active = 1 AND deleted_at IS NULL) STORED NOT NULL,
+   541→    is_purge_due    TINYINT(1)      GENERATED ALWAYS AS (deleted_at IS NOT NULL AND purges_at IS NOT NULL) STORED NOT NULL,
+   542→    is_rotate_due   TINYINT(1)      GENERATED ALWAYS AS (is_active = 1 AND deleted_at IS NULL) STORED NOT NULL,
+   543→    INDEX idx_vault_active (name, is_live),
+   544→    INDEX idx_vault_purge_due (purges_at, is_purge_due),
+   545→    INDEX idx_vault_rotate_due (rotated_at, is_rotate_due)
+   546→) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+   547→
+   548→-- Access control (per threat model §8.1 model; ADR-013 replaces PG RLS with MySQL
+   549→-- privileges + DBAL-enforced access control).
+   550→--
+   551→-- MySQL has no Row-Level Security (ADR-013). The access-control intent of the original
+   552→-- PG RLS policies is enforced by two mechanisms:
+   553→--
+   554→-- 1. MySQL privilege system (GRANT/REVOKE): the application DB user (`dglab_hub_app`)
+   555→--    has INSERT, SELECT, UPDATE only. DELETE is REVOKE'd. A separate `vault_purger`
+   556→--    role (used by the HUB-25 cron job) has DELETE granted on the table.
+   557→--
+   558→-- 2. DBAL-enforced row predicates (CORE-19 + HUB-21): the DBAL injects the
+   559→--    `deleted_at IS NULL OR purges_at > CURRENT_TIMESTAMP(6)` predicate into every
+   560→--    app-role SELECT/UPDATE, and the `purges_at IS NOT NULL AND purges_at < CURRENT_TIMESTAMP(6)`
+   561→--    predicate into every purger-role DELETE. This is application-enforced, not
+   562→--    DB-enforced — the documented trade-off of ADR-013. The DBAL rejects any
+   563→--    vault_secrets statement missing the required predicate context.
+   564→--
+   565→-- If the PostgreSQL driver is ever re-enabled (ADR-013, "next decision scale"), the
+   566→-- PG RLS DDL below can be re-introduced as the engine-level enforcement layer.
+   567→REVOKE DELETE ON vault_secrets FROM PUBLIC;
+   568→REVOKE DELETE ON vault_secrets FROM dglab_hub_app;
+   569→-- GRANT DELETE ON vault_secrets TO dglab_vault_purger;  -- issued by the HUB-25 cron connection
+   570→--
+   571→-- -- PostgreSQL RLS equivalent (disabled per ADR-013; retained for reference):
+   572→-- -- ALTER TABLE vault_secrets ENABLE ROW LEVEL SECURITY;
+   573→-- -- CREATE POLICY vault_app_access ON vault_secrets FOR ALL TO dglab_hub_app
+   574→-- --     USING (deleted_at IS NULL OR purges_at > NOW());
+   575→-- -- CREATE POLICY vault_purge_only ON vault_secrets FOR DELETE TO dglab_vault_purger
+   576→-- --     USING (purges_at IS NOT NULL AND purges_at < NOW());
+   577→```
+   578→
+   579→### Sequence Diagram
+   580→
+   581→```mermaid
+   582→sequenceDiagram
+   583→    autonumber
+   584→    participant Caller as super_admin caller
+   585→    participant Ctrl as VaultController
+   586→    participant Rbac as RbacService (HUB-04)
+   587→    participant VS as VaultService
+   588→    participant DB as PostgreSQL (vault_secrets)
+   589→    participant Enc as CORE-16 Encrypter
+   590→    participant Aud as AuditLogger → HUB-06
+   591→
+   592→    Caller->>Ctrl: POST /vault/retrieve {name: "jwt_signing_key"}
+   593→    Ctrl->>Rbac: hasRole(claims, "super_admin")
+   594→    Rbac-->>Ctrl: true
+   595→    Ctrl->>VS: retrieve("jwt_signing_key", claims)
+   596→    VS->>VS: requireSuperAdmin(claims) [defence-in-depth]
+   597→    VS->>DB: SELECT id, encrypted_value, version<br/>WHERE name=? AND is_active=TRUE<br/>AND deleted_at IS NULL
+   598→    DB-->>VS: row{ id, encrypted_value, version }
+   599→    VS->>Enc: decrypt(encrypted_value)
+   600→    Enc-->>VS: plaintext (AES-256-GCM verified)
+   601→    VS->>Aud: logSecretAccess("retrieved", id, name, version, actor, [])
+   602→    Aud->>Aud: AuditService::record(AuditRecord{<br/>action="vault.secret.retrieved",<br/>target_id=id, actor_id=claims.sub,<br/>metadata={name, version}})
+   603→    Aud-->>VS: ack
+   604→    VS-->>Ctrl: plaintext string
+   605→    Ctrl-->>Caller: 200 OK {value: plaintext}
+   606→```
+   607→
+   608→### State Diagram
+   609→
+   610→```mermaid
+   611→stateDiagram-v2
+   612→    direction TB
+   613→
+   614→    state "Secret Lifecycle" as Lifecycle {
+   615→        [*] --> Created: store() — version=1, is_active=TRUE
+   616→        Created --> Active: INSERT commits
+   617→        Active --> Rotated: rotate() — old version is_active=FALSE,<br/>new version v+1 is_active=TRUE
+   618→        Rotated --> Active: new version is the active row
+   619→        Active --> Deprecated: delete() — is_active=FALSE,<br/>deleted_at=NOW(), purges_at=NOW()+90d
+   620→        Rotated --> Deprecated: delete() on a rotated secret<br/>marks ALL versions deleted
+   621→        Deprecated --> Purged: HUB-25 cron purges<br/>where purges_at < NOW()
+   622→        Purged --> [*]
+   623→    }
+   624→
+   625→    state "Access State (per retrieve())" as Access {
+   626→        [*] --> Requested: caller invokes retrieve(name)
+   627→        Requested --> Authorized: RbacService.hasRole(claims, "super_admin") = TRUE
+   628→        Requested --> Rejected: not super_admin → VaultException(UNAUTHORIZED)
+   629→        Authorized --> Decrypted: SELECT active row,<br/>Encrypter.decrypt(envelope) succeeds
+   630→        Authorized --> DecryptFailed: AEAD tag mismatch →<br/>VaultException(DECRYPT_FAILED)
+   631→        Decrypted --> Logged: AuditLogger.logSecretAccess("retrieved")
+   632→        Logged --> Returned: plaintext returned to caller
+   633→        Returned --> [*]
+   634→        Rejected --> [*]
+   635→        DecryptFailed --> [*]
+   636→    }
+   637→```
+   638→
+   639→## Integration Strategy
+   640→
+   641→**Upward (consumes):** `VaultService` is constructed by the CORE-17 service provider during kernel boot and registered as a singleton in CORE-02. The provider wires four collaborators: (1) the `EncrypterInterface` singleton from CORE-16 (same instance used by HUB-04 for JWT signing-key storage — there is exactly one encrypter per process); (2) the default `ConnectionInterface` from CORE-19 (Vault uses the same MySQL connection as HUB-06 Audit, so audit records and secret reads are in the same transaction when needed); (3) the `AuditServiceInterface` singleton from HUB-06; (4) a `ClockInterface` (testable; production uses `SystemClock`, tests inject `FrozenClock`).
+   642→
+   643→**Downward (consumers):** HUB-04 (Identity) calls `retrieve('jwt_signing_key')` on kernel boot to load the ES256 private key envelope into `KeyRegistry`, and subscribes to CORE-03 `VaultSecretRotatedEvent` to reload the registry after rotation — no service restart required. BRIDGE-01 (Vanguard) calls `retrieve('cdn_payload_hmac_key')` on every inbound request; the result is cached in HUB-02 for 60 seconds with `invalidate-on-rotation` tag invalidation to avoid hitting the Vault on every request. HUB-09 (Event Bus) calls `retrieve("oauth_refresh_token:{$integrationId}")` before each outbound OAuth refresh; the integration ID is part of the secret name (not a separate column) so HUB-09 leverages the Vault's name uniqueness directly. HUB-22 (Ledger) calls `retrieve('stripe_secret_key')` before each charge.
+   644→
+   645→**Controller wiring:** `VaultController` (an ISPOKE-01 admin-panel route handler) enforces `super_admin` via `RbacService::hasRole($claims, 'super_admin')` returning 403 on failure. The controller never touches `vault_secrets` directly; it always goes through `VaultService`. The defence-in-depth re-check inside `VaultService::requireSuperAdmin()` ensures that a future console command or job worker that bypasses the controller cannot accidentally read secrets — only an authenticated `super_admin` token can pass.
+   646→
+   647→**Auto-rotation:** `SecretRotator` is registered with HUB-25 (Chronos) via a `#[Cron('0 3 * * *')]` attribute. Each secret's `metadata.rotation_interval_days` (default 90) controls whether it is due. The rotator looks up the registered `SecretGeneratorInterface` by secret name prefix (e.g., `jwt_signing_key` → `OpenSslPkeyGenerator`, `*_hmac_key` → `RandomBytesGenerator`), generates a fresh value, and calls `VaultService::rotate()`. The rotator runs as a system `super_admin` token minted through the break-glass path documented in the threat model §8.2.
+   648→
+   649→## Benchmark & Verification Methodology
+   650→
+   651→| Target | Method |
+   652→|---|---|
+   653→| Encrypt + store + retrieve cycle | **Harness:** PHPUnit `--group performance` test `VaultServicePerformanceTest::testStoreRetrieve1000Cycles`; loops 1,000 distinct `(name, value)` pairs through `store()` then `retrieve()`, measuring wall-clock via `microtime(true)`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3 with opcache, no Xdebug, MySQL 8 (InnoDB) in a service container. **Load model:** Single-threaded sequential, 1,000 cycles. **Assertion:** Per-cycle wall-clock is bounded by DB INSERT + AES-256-GCM encrypt + DB SELECT + AES-256-GCM decrypt; absolute target **provisional, unverified** until first measurement. |
+   654→| Retrieve latency (hot path) | **Harness:** PHPUnit `--group performance` test `VaultRetrieveLatencyTest::testRetrieveLatencyIsBoundedBySelectAndDecrypt`; pre-stores one secret, calls `retrieve()` 10,000 times, measures wall-clock per call via `microtime(true)`. **Baseline:** As above. **Load model:** 10,000 sequential retrieves of the same secret. **Assertion:** Median per-call wall-clock is bounded by DB SELECT + AES-256-GCM decrypt; absolute target **provisional, unverified**. |
+   655→| Rotation latency | **Harness:** PHPUnit `--group performance` test `VaultRotateLatencyTest::testRotate1000Versions`; pre-stores one secret, calls `rotate()` 1,000 times, measures wall-clock per call. **Baseline:** As above. **Load model:** 1,000 sequential rotations. **Assertion:** Per-rotation wall-clock is bounded by 2 DB writes (UPDATE + INSERT) inside a transaction + AES-256-GCM encrypt; absolute target **provisional, unverified**. |
+   656→| List latency | **Harness:** PHPUnit `--group performance` test `VaultListLatencyTest::testList1000Secrets`; pre-stores 1,000 secrets, calls `list()` once, measures wall-clock. **Baseline:** As above. **Load model:** 1,000-row SELECT. **Assertion:** Wall-clock is bounded by DB SELECT + row hydration; absolute target **provisional, unverified**. |
+   657→| Concurrent retrieve correctness | **Harness:** PHPUnit `--group performance` test `VaultConcurrencyTest::testConcurrentRetrieveDoesNotCorrupt`; spawns 50 parallel PHP processes via `pcntl_fork()`, each retrieves the same secret 100 times. **Baseline:** As above. **Load model:** 50 concurrent readers, 5,000 total retrieves. **Assertion:** All 5,000 retrieves return the same plaintext; no `DECRYPT_FAILED` exceptions (AES-256-GCM is stateless across concurrent reads). |
+   658→
+   659→**Iron rule:** every absolute target is marked **"provisional, unverified"** per Governance Rule 2. The first CI baseline run replaces these with measured numbers; the assertion is the *bound* (DB SELECT + AES-256-GCM decrypt), not a millisecond value.
+   660→
+   661→## CI Verification Criteria
+   662→
+   663→1. **Branch coverage 100% on `VaultService`.** PHPUnit with `--coverage --min-branch-coverage=100` on the `VaultService` class specifically. Every branch in `store()`, `retrieve()`, `rotate()`, `list()`, `delete()`, `requireSuperAdmin()`, and `filterMetadata()` must be exercised — including the duplicate-name path, the not-found path, the decrypt-failed path, and the metadata-denylist path.
+   664→2. **PHPStan level 8, zero baseline-ignored errors.** `phpstan.neon` sets `level: 8` and `treatPhpDocTypesAsCertain: true`; no `@phpstan-ignore` annotations permitted in `VaultService` or `AuditLogger`. Psalm taint analysis: no taint flow from the `$value` argument of `store()` or `$newValue` argument of `rotate()` to any sink other than `EncrypterInterface::encrypt()` — specifically, never to `error_log`, `echo`, `print`, `file_put_contents`, or any `__toString`.
+   665→3. **Encryption-at-rest test.** `EncryptionAtRestTest::testStoredValueIsEncryptedNotPlaintext`; stores a secret with a known plaintext value, then queries `vault_secrets.encrypted_value` directly via a raw PDO connection and asserts the plaintext does not appear as a substring of the stored envelope. Also asserts the envelope begins with `eyJ` (base64-encoded `{"`) per CORE-16's envelope format.
+   666→4. **Access-logging test.** `AccessLoggingTest::testEveryRetrieveCreatesAnAuditRecord`; stores one secret, retrieves it 5 times, asserts `SELECT COUNT(*) FROM audit_log WHERE action = 'vault.secret.retrieved' AND target_id = ?` returns 5. Also asserts none of the audit rows' `metadata` field contains the plaintext value.
+   667→5. **Rotation-retention test.** `RotationRetentionTest::testOldVersionRetainedAndDecryptableAfterRotation`; stores a secret, retrieves its plaintext (call it `$v1`), rotates with a new value, retrieves again (`$v2`), asserts `$v1 !== $v2`. Then queries the DB directly: asserts two rows exist for the secret name, the older has `is_active = FALSE`, the newer has `is_active = TRUE` and `version = 2`. Then retrieves the old version via a test-only `retrieveVersion($name, 1)` helper and asserts it equals `$v1`.
+   668→6. **Authorization test.** `AuthorizationTest::testNonSuperAdminGets403`; constructs a `TokenClaims` with `roles = ['admin']` (not `super_admin`), invokes `VaultService::retrieve('any_secret', $claims)`, asserts `VaultException` is thrown with `errorCode = 'UNAUTHORIZED'`. Same test for `store()`, `rotate()`, `list()`, `delete()`. Controller-layer test: `GET /api/vault/secrets` with a non-super_admin session → `403 Forbidden`.
+   669→7. **Deletion-retention test.** `DeletionRetentionTest::testDeletedSecretRetainedFor90Days`; stores a secret, deletes it, asserts the row still exists with `deleted_at IS NOT NULL` and `is_active = FALSE` immediately after delete. Asserts `purges_at` equals `deleted_at + 90 days`. Asserts `retrieve()` on the deleted secret throws `SECRET_NOT_FOUND` (because the WHERE clause filters on `deleted_at IS NULL`). Asserts a row-level security test connecting as `dglab_hub_app` cannot `DELETE` from `vault_secrets` (permission denied); only `dglab_vault_purger` can, and only on rows where `purges_at < NOW()`.
+   670→8. **Metadata denylist test.** `MetadataDenylistTest::testSensitiveKeysAreFiltered`; calls `store('foo', 'v', ['password' => 'x', 'api_token' => 'y', 'description' => 'ok', 'owner_team' => 'infra'])`, then queries the row's `metadata` JSONB directly; asserts it contains `description` and `owner_team` but not `password` or `api_token`.
+   671→9. **Tenant-isolation N/A test.** `VaultIsGlobalTest::testVaultIsNotTenantScoped`; documents the design decision that vault secrets are global system resources — stores a secret with `actor.tenant_id = 'tenant-a'`, retrieves it with `actor.tenant_id = 'tenant-b'` (both `super_admin`), asserts retrieval succeeds. (Per-tenant credentials live in HUB-21's `tenant_credentials`, not here.)
+   672→10. **Rotation transaction rollback test.** `RotationRollbackTest::testFailedRotationLeavesOldVersionActive`; mocks `EncrypterInterface::encrypt()` to throw on the second call (the new version's encryption), invokes `rotate()`, asserts `VaultException(ROTATE_FAILED)` is thrown. Queries the DB: asserts the old version still has `is_active = TRUE` and no new row was inserted (transaction rolled back).
+   673→
+   674→## Security Properties
+   675→
+   676→1. **Secrets are encrypted at rest with AES-256-GCM via CORE-16.** The `encrypted_value` column contains only CORE-16's base64-encoded envelope `{v, kid, iv, ciphertext, tag}` — never the plaintext. An attacker with raw DB access (e.g., a leaked SQL dump) cannot recover secret values without the CORE-16 KEK, which is held in DEPLOY-02's external secret manager (HashiCorp Vault / sealed-secrets / AWS Secrets Manager per threat model §6), not in the application database.
+   677→2. **Plaintext values are never logged.** The audit log records the access event (`action = 'vault.secret.retrieved'`, `target_id = secret ULID`, `metadata = {name, version}`) — never the value. CORE-09's redaction filter is a defence-in-depth backstop; the primary control is that `VaultService` never passes the value to `AuditLogger`. The metadata denylist (`password`, `secret`, `token`, `key`, `value`) prevents accidental plaintext leakage via the `$metadata` array passed to `store()`.
+   678→3. **All operations require the `super_admin` role.** Enforcement is layered: (a) the controller checks via `RbacService::hasRole($claims, 'super_admin')` and returns 403 on failure; (b) `VaultService::requireSuperAdmin()` re-checks as defence-in-depth so a future console command or job worker that bypasses the controller cannot silently read secrets. `super_admin` itself cannot be assigned via API (per threat model §8.2) — only via a break-glass Vault path that itself writes an HUB-06 entry.
+   679→4. **Secret rotation is non-disruptive.** `rotate()` retains the old version with `is_active = FALSE` for the 90-day retention window. Existing envelopes encrypted with the old key remain decryptable. The active-version pointer moves atomically inside a DB transaction (SELECT FOR UPDATE → UPDATE old → INSERT new). A failure mid-rotation rolls back; the old version remains active.
+   680→5. **All access is audited via HUB-06.** Every `store()`, `retrieve()`, `rotate()`, and `delete()` writes an audit record synchronously inside the same request. The audit record is tamper-evident via HUB-06's hash chain — an attacker who modifies the audit row to cover their tracks breaks the chain and is detected by the daily integrity verifier (per threat model §8.1).
+   681→6. **Deletion is soft; physical purge requires a separate role.** `delete()` sets `deleted_at = NOW()` and `is_active = FALSE`. The row is retained for 90 days for forensic recovery. Physical `DELETE` is REVOKE'd from the application user; only the `dglab_vault_purger` role can `DELETE`, and only on rows where `purges_at < NOW()` (enforced via row-level security policy). A HUB-25 cron job invokes the purger daily.
+   682→7. **Secret names are not sensitive; secret values are.** `list()` returns names (`jwt_signing_key`, `stripe_secret_key`, `cdn_payload_hmac_key`) but never values. Names are operational metadata — an attacker who knows the names still cannot decrypt without the CORE-16 KEK. This is a deliberate design choice: it allows admins to see *what* secrets exist without exposing *what they are*.
+   683→8. **No `unserialize()` is ever called on `encrypted_value` or `metadata`.** The envelope is base64-decoded then JSON-decoded (both safe). The `metadata` JSONB column is decoded via `json_decode` with `JSON_THROW_ON_ERROR` (PHP object-injection CVE elimination, same stance as CORE-15 and HUB-02). An attacker who gains INSERT on `vault_secrets` cannot achieve remote code execution via a crafted `metadata` payload.
+   684→
+   685→## Migration Notes
+   686→
+   687→**Landing sequence:**
+   688→1. Wait for CORE-02 (Step 1), CORE-16 + CORE-19 (Step 5), HUB-06 (Step 8 sibling) to ship.
+   689→2. Create the new package `packages/hub/vault/` with `composer.json` declaring `sovereign-stack/core-crypto`, `sovereign-stack/core-database`, `sovereign-stack/hub-audit`, `sovereign-stack/hub-identity`, and `sovereign-stack/hub-scheduler` dependencies.
+   690→3. Add the `vault_secrets` table migration to the application's CORE-19 migration set. The migration runs as the `dglab_vault_owner` role (used only by CI migrations, never by the application user) so it can `ALTER TABLE` later. Apply the `REVOKE DELETE` and row-level-security policies in the same migration.
+   691→4. Implement `VaultService`, `Secret`, `SecretMetadata`, `SecretRotator`, `AuditLogger`, `VaultException`, and the `SecretGeneratorInterface` implementations (`RandomBytesGenerator`, `OpenSslPkeyGenerator`).
+   692→5. Register `VaultService` as a singleton in CORE-02 via the `VaultServiceProvider` (CORE-17). Register `SecretRotator` with HUB-25 Scheduler via `#[Cron('0 3 * * *')]`.
+   693→6. Wire the `VaultController` (ISPOKE-01 admin panel) — `POST /vault/secrets`, `GET /vault/secrets`, `GET /vault/secrets/{name}`, `PUT /vault/secrets/{name}/rotate`, `DELETE /vault/secrets/{name}`. All routes require `super_admin` via `RbacService::hasRole()` middleware.
+   694→7. Seed the initial secrets: `jwt_signing_key` (HUB-04), `cdn_payload_hmac_key` (BRIDGE-01), `stripe_secret_key` (HUB-22), and any HUB-09 integration keys. Seeding is done via a one-shot CLI command (`bin/vault seed`) that reads from a sealed-secrets file or interactive prompt — never from a `.env` file in version control.
+   695→
+   696→**Downstream unblock order:** Once HUB-20 ships, BRIDGE-01 can ship (it needs `cdn_payload_hmac_key`); HUB-04 can ship its full JWT signing-key rotation flow (it needs `jwt_signing_key`); HUB-09 can ship third-party integrations (it needs per-integration OAuth tokens); HUB-22 can ship payment processing.
+   697→
+   698→**Rollback procedure:**
+   699→1. Remove the `packages/hub/vault/` package from `composer.json`.
+   700→2. Drop the `vault_secrets` table (or rename it to `vault_secrets_retired` for a 90-day observation window).
+   701→3. Revert consumers to reading secrets from environment variables: `getenv('JWT_SIGNING_KEY')`, `getenv('CDN_PAYLOAD_HMAC_KEY')`, etc. This is a **regression** in rotation (no version history, no rollback) and audit (no per-read HUB-06 record), but it is the safe fallback if HUB-20 must be removed.
+   702→4. Document the rollback as a known regression in the next release notes — the loss of audit logging on secret access is a compliance concern (per OWASP ASVS L2 V6.2) and must be re-mediated by re-deploying HUB-20 or by writing equivalent audit logging into the consumer code paths.
+   703→
+   704→**Forward compatibility:** The `metadata` JSONB column allows adding per-secret configuration (rotation interval, owner team, compliance scope) without a schema migration. The `SecretGeneratorInterface` allows adding new generator strategies (e.g., a future `DilithiumKeypairGenerator` for post-quantum signing per threat model §10.3) without touching `VaultService`. The `version` INT column supports up to 2^31 rotations per secret — well beyond any realistic rotation schedule.
+   705→
+   706→## SemVer Impact
+   707→**Minor** (1.0 → 1.1) when first landed — the package is new, no existing consumers to break. **Major** (1.x → 2.0) triggers if: (a) the `VaultServiceInterface` method signatures change; (b) the `vault_secrets` schema changes in a backwards-incompatible way (column rename, type change, NOT NULL added to an existing column); (c) the envelope format is upgraded (CORE-16's envelope version moves beyond `1` and `VaultService::retrieve()` dispatches on the new version, requiring a re-encryption migration); (d) the `super_admin` role check is moved from defence-in-depth to primary enforcement (a breaking change in the security contract). **Patch** for bug fixes, generator additions, and metadata-denylist expansions.
+   708→

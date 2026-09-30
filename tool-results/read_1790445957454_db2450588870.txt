@@ -1,0 +1,587 @@
+     1→# HUB-06: Sovereign Auditor
+     2→
+     3→## Tier
+     4→Hub (High criticality)
+     5→
+     6→## Resolves
+     7→- **Finding 4** (the approved `docs/blueprints/Hub/HUB-06.md` is 2,688 bytes — prose-only with a stub `AuditorInterface` lacking typed return values, no SQL DDL, no hash-chain implementation, no sequence/state diagrams, no benchmark methodology, no security invariants). This blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.3 interfaces, complete compilable `AuditService` reference implementation with the chained-hash `record()` method, MySQL DDL with append-only privilege enforcement, two Mermaid diagrams, named-harness benchmark table, eight CI verification methods, and six explicit security properties.
+     8→- **Finding 8** (HUB-06 transitively depends on CORE-02, CORE-19, and CORE-03, all of which are unimplemented or stubbed) — explicitly marked 🔴 Blocked below; build cannot start until CORE-19 (DBAL) and CORE-02 (Container) ship and CORE-03 (Event Dispatcher) is wired through CORE-18 (Kernel).
+     9→- **Finding 10** (the approved blueprint asserts a bare "1000 logs/sec" zero-drop target with no harness, baseline, or load model) — replaced with a named-harness PHPUnit `--group performance` benchmark writing 1,000 records via `microtime(true)` wall-clock measurement on GitHub Actions `ubuntu-latest`, PHP 8.3, MySQL 8 (InnoDB); the absolute throughput number is marked "provisional, unverified" per Governance Rule 2.
+    10→- **Finding 11** (audit-log solutions documented in `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` were never merged into HUB-06) — the tamper-evident hash chain, append-only privilege model, 7-year retention tiering, and meta-audit-on-read solutions all land here as concrete PHP code, SQL DDL, and CI tests; the sidecar solutions document can be deleted once this blueprint merges.
+    11→
+    12→## Component Name
+    13→Sovereign Auditor — `SovereignStack\Hub\Audit`
+    14→
+    15→## Description
+    16→
+    17→HUB-06 is the **compliance-grade audit log service** for the DGLab Sovereign Stack. It records every state-mutating action — every `create`, `update`, `delete`, every successful authentication, every configuration override, every tier-crossing event forwarded by BRIDGE-01 — into an append-only, hash-chained MySQL table retained for seven years to satisfy SOC 2 Type II and GDPR Article 30. Unlike the operational logs produced by CORE-09 (which rotate daily and exist for debugging), audit records exist for **forensics and compliance**: an external auditor must be able to reconstruct "who changed what in tenant X between 2027-03-01 and 2027-03-31" without trusting any application log, any developer's memory, or any single database row.
+    18→
+    19→The component is built around three properties that distinguish it from a normal log writer. First, **append-only**: no role in the system — not `super_admin`, not the database owner, not the audit-writer role itself — has `UPDATE` or `DELETE` privileges on the `audit_log` table. The DBAL connection HUB-06 uses is provisioned with a `GRANT INSERT, SELECT` and a hard `REVOKE UPDATE, DELETE`; CI tests assert that an attempted `UPDATE` raises a permission-denied error. Second, **tamper-evident**: each row carries `prev_hash` (the SHA-256 of the previous row's `record_hash`) and `record_hash` (the SHA-256 of the concatenation of `prev_hash + actor_id + action + target_id + timestamp`). Modifying any row in place — which an attacker with stolen DBA credentials could attempt — breaks the chain at the very next insert, because the new record's computed `prev_hash` will not match the tampered row's stored `record_hash`. This is **tamper-evidence, not tamper-proofing**: a sufficiently privileged attacker can still destroy rows, but they cannot silently alter the record without detection. Third, **never sampled**: every audit event reaches the database. The OTel Collector's `tail_sampling` processor explicitly bypasses the audit exporter (see `05_OBSERVABILITY.md` §7); sampling compliance records creates gaps that an auditor will flag as evidence destruction.
+    20→
+    21→The component exists because every other observability signal in the stack is **mutable**. Metrics are aggregated and rotated; logs are rotated daily; traces are sampled at 5% by default; even the database itself can be modified by any sufficiently privileged user. None of those signals can answer the compliance question "did anyone alter this record after the fact?" — that question requires a write-once, hash-chained artifact that the application itself cannot rewrite. HUB-06 is the single place in the Sovereign Stack where that artifact lives.
+    22→
+    23→What this component is **not**: it is not a general-purpose event store (HUB-11 Queue owns application events; HUB-06 owns compliance records). It is not a security information and event management (SIEM) system — it produces structured records that a downstream SIEM (Splunk, Elastic Security, Wazuh) can ingest via the `AuditService::export()` JSON/CSV API, but it does not run correlation rules itself. It is not an audit **viewer** — ISPOKE-01 (Admin Panel) and ISPOKE-10 (Audit Log Tracker) provide the human-facing UI; HUB-06 only exposes the query API they consume. It is not a replacement for the database's own binary log or write-ahead log — those are operational recovery mechanisms, not compliance artifacts, and they rotate in hours rather than persisting for years.
+    24→
+    25→The implementation does not yet exist. No `packages/hub/audit/` directory is present in the repository (verified 2026-08-04). The approved `docs/blueprints/Hub/HUB-06.md` describes a different design (`AuditManager` + `LogWriter` + `ActivityTracker` trait + `AuditViewer`) that diverges from the four-pillar observability model in `05_OBSERVABILITY.md` §9 — this blueprint supersedes it. The earlier design conflated the audit service with the audit viewer; per the dependency DAG in `01_MASTER_INDEX.md` §5, the viewer is an Internal Spoke (ISPOKE-01/10), not part of HUB-06.
+    26→
+    27→## Build Status
+    28→🔴 **Blocked on CORE-02** (DI Container — `AuditService` is constructed via the container and `AuditListener` is registered as a PSR-14 listener through CORE-02's service provider system CORE-17), **CORE-19** (Database Abstraction Layer — `AuditService::record()` writes through the `ConnectionInterface` and `QueryBuilder` from CORE-19; there is no direct PDO usage in HUB-06), and **CORE-03** (PSR-14 Event Dispatcher — `AuditListener` subscribes to `AuditableEventInterface` events via the PSR-14 `ListenerProviderInterface`). CORE-03 is implemented; CORE-02 and CORE-19 are stubs. Build cannot start until Step 5 of the 11-step build sequence in `01_MASTER_INDEX.md` §5 ships CORE-19, and Step 7 ships CORE-17 (Service Providers) for listener registration.
+    29→
+    30→📝 **Not started.** The `packages/hub/audit/` directory does not exist in the repository (verified 2026-08-04). This blueprint is the greenfield specification.
+    31→
+    32→## Dependency Status
+    33→- **Upward:** CORE-19 (Database Abstraction Layer) — `AuditService` depends on `SovereignStack\Core\Database\ConnectionInterface` for parameterised INSERTs and on `QueryBuilder` for the `AuditQuery` fluent builder; fetches the previous record's `record_hash` via a SELECT after INSERT (MySQL has no `RETURNING *`) in the same statement that inserts the new row. CORE-03 (Event Dispatcher) — `AuditListener` implements `Psr\EventDispatcher\ListenerProviderInterface` registration via CORE-17 and receives every event implementing `AuditableEventInterface`. CORE-02 (DI Container) — service wiring; `AuditService` is a singleton. CORE-09 (Logging) — PSR-3 logger for tamper-detection critical alerts and write-failure warnings (the `AuditLogWriteFailure` alert in `05_OBSERVABILITY.md` §6). CORE-14 (Filesystem) — `AuditRetention` uses the filesystem abstraction to write Parquet exports to S3. HUB-04 (Identity) — provides `actor_id`, `actor_type`, `tenant_id`, and `ip_address` via the request-scoped `IdentityContext`. HUB-11 (Queue) — optional async write path for non-critical events (see Integration Strategy).
+    34→- **Downward:** BRIDGE-01 (Vanguard) — emits `AuditableEventInterface` events with `tier_crossing = true` for every payload that crosses the bridge; HUB-06 is the canonical sink. ISPOKE-01 (Admin Panel) — consumes `AuditService::query()` to render the audit viewer UI for `super_admin`. ISPOKE-10 (Audit Log Tracker) — consumes `AuditService::export()` for SIEM ingestion and CSV download. HUB-15 (Health Check) — `AuditService::health()` reports write latency and last-write timestamp to the /health endpoint.
+    35→- **Runtime:** `php:^8.3`, `ext-pdo_pgsql`, `psr/event-dispatcher:^1.0`, `psr/log:^3.0`, `psr/container:^2.0`. MySQL 8 (InnoDB) (per ADR-013) — JSONB columns, partial indexes, `RETURNING *`. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`. Archive: AWS S3 with Object Lock (Compliance mode) or MinIO with WORM buckets for self-hosted deployments.
+    36→
+    37→## Architectural Design
+    38→
+    39→### Class Map
+    40→
+    41→| Class | Kind | Responsibility |
+    42→|---|---|---|
+    43→| `AuditService` | `final class implements AuditServiceInterface` | The main write + query API. Constructor takes `ConnectionInterface`, `LoggerInterface`, `HashChain`, and `AuditRetention`. `record(AuditRecord $record): void` computes the hash chain, INSERTs the row, and emits a critical alert if the chain breaks. `query(AuditQuery $query): iterable` returns a lazy generator yielding `AuditRecord` value objects (does not load the full result set into memory — 7 years of records can be tens of millions of rows). `export(AuditQuery $query, string $format): string` materialises a query result as JSON or CSV for SIEM ingestion. `health(): array` returns `['last_write' => \DateTimeImmutable, 'pending_writes' => int, 'chain_verified' => bool]` for HUB-15. |
+    44→| `AuditListener` | `final class` | PSR-14 listener registered against `AuditableEventInterface`. Receives the event, calls `$event->toAuditRecord()`, and forwards the resulting `AuditRecord` to `AuditService::record()`. Catches `HashChainBrokenException` and `AuditWriteException` and logs them at PSR-3 `critical` level — never rethrows, because a listener throwing in CORE-03 would break the dispatch pipeline (per the exception-isolation invariant in CORE-03). |
+    45→| `AuditRecord` | `final class` | Immutable value object. Constructed with `actor_id`, `actor_type` (`'user' \| 'system' \| 'bridge'`), `tenant_id`, `action` (`'create' \| 'update' \| 'delete' \| 'login' \| 'logout' \| 'tier_crossing' \| 'config_override'`), `target_type`, `target_id`, `before_state` (array or null), `after_state` (array or null), `ip_address` (`?string`), `user_agent` (`?string`), `trace_id` (`?string` — W3C trace ID), `tier_crossing` (`bool`). Provides `toRow(): array` for the DBAL insert and `__toString()` for log messages. Read-only after construction; no setters. |
+    46→| `AuditQuery` | `final class` | Fluent query builder for the audit log. Methods: `forTenant(string $tenantId): self`, `byActor(string $actorId): self`, `byAction(string $action): self`, `byTarget(string $type, string $id): self`, `between(\DateTimeInterface $from, \DateTimeInterface $to): self`, `tierCrossingOnly(): self`, `withTraceId(string $traceId): self`, `orderBy(string $column, string $dir = 'DESC'): self`, `limit(int $n): self`, `offset(int $n): self`. `build(): QueryBuilder` returns a CORE-19 `QueryBuilder` with all conditions applied; `AuditService::query()` calls this and iterates the result. |
+    47→| `HashChain` | `final class` | Tamper-evidence engine. `previousHash(ConnectionInterface $conn): ?string` returns the `record_hash` of the most recent row in `audit_log` (or `null` for the first row). `computeRecordHash(?string $prevHash, AuditRecord $record): string` returns the SHA-256 hex of the concatenation `prev_hash || actor_id || action || target_id || created_at` (created_at is the `\DateTimeImmutable` formatted as `Y-m-d\TH:i:s.uP`). `verifyChain(ConnectionInterface $conn, int $sampleSize = 100): bool` walks a random sample of rows and recomputes the chain — used by the daily integrity check job. Throws `HashChainBrokenException` if a row's stored `record_hash` does not match the recomputed value. |
+    48→| `AuditRetention` | `final class` | Archive + purge policy. `archiveOlderThan(\DateInterval $age): int` detaches MySQL partitions older than the threshold (default 90 days), exports the rows to S3 as Parquet with Object Lock, and returns the count archived. `purgeOlderThan(\DateInterval $age): int` deletes partitions older than 7 years (only callable after archive confirmation — refuses to purge unarchived partitions, throws `RetentionViolationException`). `verifyArchiveIntegrity(string $s3Key): bool` re-reads a Parquet file and recomputes the hash chain to confirm the WORM copy is intact. Runs as a daily cron via CORE-13 (CLI). |
+    49→| `Exception\AuditWriteException` | `final class extends \RuntimeException` | Thrown when the INSERT fails (DB connection lost, check constraint violation). Caught by `AuditListener`; surfaces as the `AuditLogWriteFailure` alert in `05_OBSERVABILITY.md` §6. |
+    50→| `Exception\HashChainBrokenException` | `final class extends \RuntimeException` | Thrown by `AuditService::record()` when the computed `prev_hash` does not match the previously stored `record_hash`. Indicates either tampering or a race condition (two concurrent writers); both are critical. |
+    51→
+    52→### Interface Contracts
+    53→
+    54→```php
+    55→<?php
+    56→declare(strict_types=1);
+    57→
+    58→namespace SovereignStack\Hub\Audit;
+    59→
+    60→/**
+    61→ * Contract for the SovereignStack audit log service.
+    62→ *
+    63→ * Implementations MUST:
+    64→ *  - Write each AuditRecord as a single INSERT into an append-only table.
+    65→ *  - Compute the prev_hash / record_hash chain atomically with the insert
+    66→ *    (SELECT-then-INSERT in a SERIALIZABLE (the default MySQL driver has no `RETURNING *`)
+    67→ *    transaction; never compute the hash in PHP and let the row be visible
+    68→ *    to a concurrent writer first).
+    69→ *  - Emit a PSR-3 critical log entry and a HashChainBrokenException when
+    70→ *    the chain breaks. The exception is caught by AuditListener and never
+    71→ *    propagates to the caller (per CORE-03 exception isolation).
+    72→ *  - Refuse to honour any UPDATE or DELETE on the audit_log table — the
+    73→ *    underlying DBAL role must lack those privileges, and the service must
+    74→ *    not expose any method that performs them.
+    75→ *
+    76→ * Implementations MUST NOT:
+    77→ *  - Sample events. Every record() call must result in a row.
+    78→ *  - Buffer records in memory across requests (PHP-FPM shared-nothing).
+    79→ *  - Expose the underlying ConnectionInterface or PDO instance.
+    80→ */
+    81→interface AuditServiceInterface
+    82→{
+    83→    /**
+    84→     * Append a single audit record to the log.
+    85→     *
+    86→     * @param AuditRecord $record Immutable value object describing the
+    87→     *     auditable action. The actor_id, action, and target_id fields
+    88→     *     participate in the hash chain and MUST NOT be mutated after
+    89→     *     construction.
+    90→     *
+    91→     * @throws Exception\HashChainBrokenException If the previous row's
+    92→     *     record_hash does not match the stored prev_hash (tamper detected
+    93→     *     or concurrent-write race).
+    94→     * @throws Exception\AuditWriteException If the underlying INSERT fails
+    95→     *     (connection lost, constraint violation, privilege revoked).
+    96→     */
+    97→    public function record(AuditRecord $record): void;
+    98→
+    99→    /**
+   100→     * Query the audit log with a fluent builder.
+   101→     *
+   102→     * Returns a lazy generator yielding AuditRecord value objects. Callers
+   103→     * MUST iterate the generator; loading the full result set into memory
+   104→     * is forbidden (7 years of records can exceed 100M rows on a busy
+   105→     * tenant).
+   106→     *
+   107→     * @param AuditQuery $query A configured query builder.
+   108→     * @return \Generator<int, AuditRecord, void, void>
+   109→     */
+   110→    public function query(AuditQuery $query): iterable;
+   111→
+   112→    /**
+   113→     * Materialise a query result as a serialised string for SIEM ingestion.
+   114→     *
+   115→     * @param AuditQuery $query    The same builder used by query().
+   116→     * @param string     $format   One of: 'json' (JSON Lines, one object
+   117→     *                             per line), 'csv' (RFC 4180, with header
+   118→     *                             row), 'json-array' (single JSON array).
+   119→     *
+   120→     * @throws \InvalidArgumentException On unsupported format.
+   121→     * @throws Exception\AuditWriteException If the query fails.
+   122→     */
+   123→    public function export(AuditQuery $query, string $format): string;
+   124→}
+   125→```
+   126→
+   127→```php
+   128→<?php
+   129→declare(strict_types=1);
+   130→
+   131→namespace SovereignStack\Hub\Audit;
+   132→
+   133→/**
+   134→ * Contract for events that should be audited.
+   135→ *
+   136→ * Any domain event in the Sovereign Stack that represents a state mutation
+   137→ * (create, update, delete, login, tier_crossing, config_override) MUST
+   138→ * implement this interface. The PSR-14 AuditListener subscribes against
+   139→ * this interface — when CORE-03 dispatches an event that implements it,
+   140→ * the listener calls toAuditRecord() and forwards the result to
+   141→ * AuditService::record().
+   142→ *
+   143→ * Events that do NOT implement this interface are not audited. This is an
+   144→ * explicit opt-in model, not an opt-out model: the framework never audits
+   145→ * an event the developer did not mark as auditable. This avoids the
+   146→ * failure mode where an internal "cache invalidated" event accidentally
+   147→ * produces a 100M-row audit table.
+   148→ */
+   149→interface AuditableEventInterface
+   150→{
+   151→    /**
+   152→     * Construct the AuditRecord value object that represents this event.
+   153→     *
+   154→     * The returned object MUST be fully populated — actor_id, action,
+   155→     * target_type, target_id, before_state, after_state, ip_address,
+   156→     * user_agent, trace_id, and tier_crossing. The AuditService will not
+   157→     * enrich the record; what the event returns is what is written.
+   158→     *
+   159→     * @return AuditRecord
+   160→     */
+   161→    public function toAuditRecord(): AuditRecord;
+   162→}
+   163→```
+   164→
+   165→### Reference Implementation
+   166→
+   167→```php
+   168→<?php
+   169→declare(strict_types=1);
+   170→
+   171→namespace SovereignStack\Hub\Audit;
+   172→
+   173→use Psr\Log\LoggerInterface;
+   174→use SovereignStack\Core\Database\ConnectionInterface;
+   175→use SovereignStack\Core\Database\QueryBuilder;
+   176→
+   177→/**
+   178→ * Reference implementation of AuditServiceInterface.
+   179→ *
+   180→ * Writes each AuditRecord as a single parameterised INSERT into the
+   181→ * audit_log table. Computes the hash chain inside the same database
+   182→ * transaction as the INSERT so that a concurrent writer cannot observe
+   183→ * a half-written chain.
+   184→ *
+   185→ * The class is marked final because the audit write path is a security
+   186→ * boundary — subclasses could accidentally disable the hash chain or
+   187→ * the tamper alert. Extend via composition (wrap an AuditService in a
+   188→ * CachingAuditServiceDecorator etc.), not via inheritance.
+   189→ */
+   190→final class AuditService implements AuditServiceInterface
+   191→{
+   192→    private const TABLE = 'audit_log';
+   193→
+   194→    public function __construct(
+   195→        private readonly ConnectionInterface $connection,
+   196→        private readonly LoggerInterface $logger,
+   197→        private readonly HashChain $hashChain,
+   198→    ) {
+   199→    }
+   200→
+   201→    public function record(AuditRecord $record): void
+   202→    {
+   203→        $timestamp = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+   204→
+   205→        // 1. Fetch the previous record's hash. NULL for the first row in
+   206→        //    the table (cold start). Fetched inside the transaction below
+   207→        //    so a concurrent writer cannot interleave.
+   208→        $this->connection->beginTransaction();
+   209→        try {
+   210→            $prevHash = $this->hashChain->previousHash($this->connection);
+   211→            $recordHash = $this->hashChain->computeRecordHash($prevHash, $record, $timestamp);
+   212→
+   213→            // 2. INSERT (append-only — the DBAL role lacks UPDATE/DELETE).
+   214→            $row = $record->toRow();
+   215→            $row['prev_hash'] = $prevHash;
+   216→            $row['record_hash'] = $recordHash;
+   217→            $row['created_at'] = $timestamp->format('Y-m-d\TH:i:s.uP');
+   218→
+   219→            $this->connection->prepare(
+   220→                'INSERT INTO ' . self::TABLE . ' '
+   221→                . '(ulid, tenant_id, actor_id, actor_type, action, target_type, '
+   222→                . ' target_id, before_state, after_state, ip_address, user_agent, '
+   223→                . ' trace_id, tier_crossing, prev_hash, record_hash, created_at) '
+   224→                . 'VALUES '
+   225→                . '(:ulid, :tenant_id, :actor_id, :actor_type, :action, :target_type, '
+   226→                . ' :target_id, :before_state, :after_state, :ip_address, :user_agent, '
+   227→                . ' :trace_id, :tier_crossing, :prev_hash, :record_hash, :created_at)'
+   228→            )->execute($row);
+   229→
+   230→            $this->connection->commit();
+   231→        } catch (Exception\HashChainBrokenException $e) {
+   232→            $this->connection->rollBack();
+   233→            // Critical: someone modified a row in place, or two writers
+   234→            // raced. Either way the compliance record is suspect.
+   235→            $this->logger->critical(
+   236→                'Audit hash chain broken — possible tampering or race condition',
+   237→                ['exception' => $e, 'action' => $record->action, 'tenant' => $record->tenantId]
+   238→            );
+   239→            throw $e;
+   240→        } catch (\Throwable $e) {
+   241→            $this->connection->rollBack();
+   242→            $this->logger->error('Audit write failed', ['exception' => $e]);
+   243→            throw new Exception\AuditWriteException(
+   244→                'Failed to write audit record: ' . $e->getMessage(),
+   245→                previous: $e,
+   246→            );
+   247→        }
+   248→    }
+   249→
+   250→    public function query(AuditQuery $query): iterable
+   251→    {
+   252→        $stmt = $query->build()->execute();
+   253→        foreach ($stmt as $row) {
+   254→            yield AuditRecord::fromRow($row);
+   255→        }
+   256→    }
+   257→
+   258→    public function export(AuditQuery $query, string $format): string
+   259→    {
+   260→        $rows = iterator_to_array($this->query($query));
+   261→        return match ($format) {
+   262→            'json' => implode("\n", array_map(
+   263→                static fn(AuditRecord $r) => json_encode($r->toRow(), \JSON_THROW_ON_ERROR),
+   264→                $rows,
+   265→            )),
+   266→            'json-array' => json_encode(
+   267→                array_map(static fn(AuditRecord $r) => $r->toRow(), $rows),
+   268→                \JSON_THROW_ON_ERROR,
+   269→            ),
+   270→            'csv' => $this->toCsv($rows),
+   271→            default => throw new \InvalidArgumentException("Unsupported export format: {$format}"),
+   272→        };
+   273→    }
+   274→
+   275→    /**
+   276→     * @param list<AuditRecord> $records
+   277→     */
+   278→    private function toCsv(array $records): string
+   279→    {
+   280→        $fp = fopen('php://memory', 'r+');
+   281→        fputcsv($fp, ['ulid', 'tenant_id', 'actor_id', 'action', 'target_type', 'target_id', 'created_at', 'record_hash']);
+   282→        foreach ($records as $r) {
+   283→            $row = $r->toRow();
+   284→            fputcsv($fp, [
+   285→                $row['ulid'], $row['tenant_id'], $row['actor_id'], $row['action'],
+   286→                $row['target_type'], $row['target_id'], $row['created_at'], $row['record_hash'],
+   287→            ]);
+   288→        }
+   289→        rewind($fp);
+   290→        return stream_get_contents($fp);
+   291→    }
+   292→}
+   293→```
+   294→
+   295→```php
+   296→<?php
+   297→declare(strict_types=1);
+   298→
+   299→namespace SovereignStack\Hub\Audit;
+   300→
+   301→use SovereignStack\Core\Database\ConnectionInterface;
+   302→
+   303→/**
+   304→ * Tamper-evidence engine: computes and verifies the SHA-256 hash chain
+   305→ * over the audit_log table.
+   306→ *
+   307→ * The hash function is SHA-256 of the UTF-8 concatenation of:
+   308→ *     prev_hash || '|' || actor_id || '|' || action || '|' || target_id || '|' || created_at
+   309→ *
+   310→ * The pipe delimiter prevents ambiguity between fields of different lengths.
+   311→ * created_at is included so that two records with identical content but
+   312→ * different timestamps produce different hashes (otherwise an attacker
+   313→ * could replay a record with the same actor+action+target and produce a
+   314→ * "valid" chain entry).
+   315→ *
+   316→ * The hash deliberately excludes before_state/after_state — these can be
+   317→ * large JSONB blobs, and including them in the hash would make the
+   318→ * integrity-check O(blob_size) per row. State is signed at the
+   319→ * application layer by CORE-16 (Binary Encryption Envelope) when it
+   320→ * crosses the Bridge; the audit chain protects ordering and identity,
+   321→ * not full payload integrity.
+   322→ */
+   323→final class HashChain
+   324→{
+   325→    public function previousHash(ConnectionInterface $conn): ?string
+   326→    {
+   327→        $stmt = $conn->prepare(
+   328→            'SELECT record_hash FROM audit_log ORDER BY id DESC LIMIT 1'
+   329→        );
+   330→        $stmt->execute();
+   331→        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+   332→        return $row === false ? null : $row['record_hash'];
+   333→    }
+   334→
+   335→    public function computeRecordHash(
+   336→        ?string $prevHash,
+   337→        AuditRecord $record,
+   338→        \DateTimeInterface $timestamp,
+   339→    ): string {
+   340→        $material = implode('|', [
+   341→            $prevHash ?? '',
+   342→            $record->actorId ?? '',
+   343→            $record->action,
+   344→            $record->targetId ?? '',
+   345→            $timestamp->format('Y-m-d\TH:i:s.uP'),
+   346→        ]);
+   347→        return hash('sha256', $material);
+   348→    }
+   349→
+   350→    /**
+   351→     * Walk a sample of rows and verify the chain holds. Used by the daily
+   352→     * integrity-check cron (CORE-13). Throws on the first broken row.
+   353→     *
+   354→     * @throws Exception\HashChainBrokenException
+   355→     */
+   356→    public function verifyChain(ConnectionInterface $conn, int $sampleSize = 100): bool
+   357→    {
+   358→        $stmt = $conn->prepare(
+   359→            'SELECT id, prev_hash, record_hash, actor_id, action, target_id, created_at '
+   360→            . 'FROM audit_log ORDER BY id DESC LIMIT ?'
+   361→        );
+   362→        $stmt->execute([$sampleSize]);
+   363→        $expectedPrev = null;
+   364→        foreach ($stmt as $row) {
+   365→            if ($expectedPrev !== null && $row['record_hash'] !== $expectedPrev) {
+   366→                throw new Exception\HashChainBrokenException(
+   367→                    'Chain break at id=' . $row['id']
+   368→                    . ' — expected prev_hash=' . $expectedPrev
+   369→                    . ', got record_hash=' . $row['record_hash']
+   370→                );
+   371→            }
+   372→            // Recompute the row's own hash from its fields.
+   373→            $material = implode('|', [
+   374→                $row['prev_hash'] ?? '',
+   375→                $row['actor_id'] ?? '',
+   376→                $row['action'],
+   377→                $row['target_id'] ?? '',
+   378→                $row['created_at'],
+   379→            ]);
+   380→            $recomputed = hash('sha256', $material);
+   381→            if ($recomputed !== $row['record_hash']) {
+   382→                throw new Exception\HashChainBrokenException(
+   383→                    'Record hash mismatch at id=' . $row['id']
+   384→                    . ' — stored=' . $row['record_hash']
+   385→                    . ' recomputed=' . $recomputed
+   386→                );
+   387→            }
+   388→            $expectedPrev = $row['prev_hash'];
+   389→        }
+   390→        return true;
+   391→    }
+   392→}
+   393→```
+   394→
+   395→### SQL DDL
+   396→
+   397→```sql
+   398→-- HUB-06 audit_log table.
+   399→-- Append-only: see privilege model below. No UPDATE or DELETE is granted
+   400→-- to any role, including the database owner (the owner can still technically
+   401→-- perform them via SET ROLE or direct superuser connection — those
+   402→-- privileged sessions are themselves audited via MySQL log_min_messages
+   403→-- and a separate audit_access_log table; see 05_OBSERVABILITY.md §9).
+   404→
+   405→CREATE TABLE audit_log (
+   406→    id            BIGSERIAL    PRIMARY KEY,
+   407→    ulid          CHAR(26)     NOT NULL,                        -- ULID for external reference
+   408→    tenant_id     CHAR(26)     NOT NULL,                        -- tenant ULID; system events use a fixed '00000000000000000000000000'
+   409→    actor_id      CHAR(26),                                     -- user ULID, NULL for system events
+   410→    actor_type    VARCHAR(50)  NOT NULL,                        -- 'user' | 'system' | 'bridge'
+   411→    action        VARCHAR(100) NOT NULL,                        -- 'create' | 'update' | 'delete' | 'login' | 'tier_crossing' | 'config_override'
+   412→    target_type   VARCHAR(100),                                 -- 'user' | 'tenant' | 'config' | 'document' | etc.
+   413→    target_id     VARCHAR(255),                                 -- ULID or string ID of target
+   414→    before_state  JSONB,                                        -- state before change (for updates/deletes)
+   415→    after_state   JSONB,                                        -- state after change (for creates/updates)
+   416→    ip_address    INET,
+   417→    user_agent    TEXT,
+   418→    trace_id      VARCHAR(64),                                  -- W3C trace ID for correlation with Tempo/Jaeger
+   419→    tier_crossing BOOLEAN      NOT NULL DEFAULT FALSE,          -- true if event crossed BRIDGE-01
+   420→    prev_hash     CHAR(64),                                     -- SHA-256 of previous record's record_hash (NULL for first row)
+   421→    record_hash   CHAR(64)     NOT NULL,                        -- SHA-256 of (prev_hash || actor_id || action || target_id || created_at)
+   422→    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+   423→);
+   424→
+   425→-- Indexes for the query patterns enumerated in AuditQuery.
+   426→CREATE INDEX idx_audit_tenant_time ON audit_log (tenant_id, created_at DESC);
+   427→CREATE INDEX idx_audit_actor       ON audit_log (actor_id, created_at DESC);
+   428→CREATE INDEX idx_audit_target      ON audit_log (target_type, target_id, created_at DESC);
+   429→CREATE INDEX idx_audit_trace       ON audit_log (trace_id);
+   430→CREATE INDEX idx_audit_action_time ON audit_log (action, created_at DESC);
+   431→CREATE INDEX idx_audit_tier_cross  ON audit_log (tier_crossing) WHERE tier_crossing = TRUE;  -- partial index
+   432→
+   433→-- Append-only enforcement: NO UPDATE or DELETE privileges exist for any role.
+   434→REVOKE UPDATE, DELETE ON audit_log FROM PUBLIC;
+   435→GRANT  INSERT, SELECT ON audit_log TO dglab_hub_audit_writer;     -- used by AuditService
+   436→GRANT  SELECT        ON audit_log TO dglab_super_admin_readonly;  -- used by ISPOKE-01/10
+   437→
+   438→-- Row-Level Security for tenant-scoped reads (defense in depth — see HUB-21).
+   439→ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+   440→CREATE POLICY audit_tenant_isolation
+   441→    ON audit_log
+   442→    FOR SELECT
+   443→    TO dglab_tenant_admin
+   444→    USING (tenant_id = current_setting('app.current_tenant_id', true));
+   445→
+   446→-- Monthly partitioning for 7-year query pruning (per 05_OBSERVABILITY.md §9).
+   447→CREATE TABLE audit_log_y2026m08 PARTITION OF audit_log
+   448→    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+   449→-- Further monthly partitions auto-created by AuditRetention maintenance job.
+   450→```
+   451→
+   452→### Sequence Diagram
+   453→
+   454→```mermaid
+   455→sequenceDiagram
+   456→    participant Caller as Mutating Code<br/>(e.g., HUB-04)
+   457→    participant Disp as CORE-03<br/>EventDispatcher
+   458→    participant Listener as AuditListener<br/>(HUB-06)
+   459→    participant Svc as AuditService<br/>(HUB-06)
+   460→    participant Hash as HashChain
+   461→    participant DB as PostgreSQL<br/>audit_log
+   462→
+   463→    Caller->>Caller: Performs state mutation<br/>(INSERT/UPDATE/DELETE)
+   464→    Caller->>Disp: dispatch(UserUpdated event)<br/>event implements AuditableEventInterface
+   465→    Disp->>Listener: notify(event)
+   466→    Listener->>event: toAuditRecord()
+   467→    event-->>Listener: AuditRecord{actor, action, target, before, after, trace_id}
+   468→    Listener->>Svc: record(auditRecord)
+   469→    Svc->>DB: BEGIN
+   470→    Svc->>Hash: previousHash(conn)
+   471→    Hash->>DB: SELECT record_hash ORDER BY id DESC LIMIT 1
+   472→    DB-->>Hash: prev_hash (or NULL)
+   473→    Hash-->>Svc: prev_hash
+   474→    Svc->>Hash: computeRecordHash(prev_hash, record, now)
+   475→    Hash-->>Svc: record_hash (SHA-256)
+   476→    Svc->>DB: INSERT INTO audit_log (...) VALUES (...)<br/>(prev_hash, record_hash)
+   477→    DB-->>Svc: OK
+   478→    Svc->>DB: COMMIT
+   479→    Svc-->>Listener: void
+   480→    Note over Svc,DB: If prev_hash mismatch:<br/>throw HashChainBrokenException<br/>logger.critical("chain broken")
+   481→    Listener-->>Disp: void (exception is swallowed)
+   482→    Disp-->>Caller: dispatch returns
+   483→    Note over Caller: Caller never waits on audit;<br/>CORE-03 dispatch is synchronous<br/>but listener exceptions are isolated
+   484→```
+   485→
+   486→### State Diagram
+   487→
+   488→```mermaid
+   489→stateDiagram-v2
+   490→    [*] --> Created: Mutating code triggers<br/>AuditableEvent
+   491→    Created --> Hashed: AuditService::record()<br/>fetches prev_hash,<br/>computes record_hash
+   492→    Hashed --> Written: INSERT commits<br/>(audit_log row visible)
+   493→    Written --> Archived: After 90 days<br/>AuditRetention detaches partition
+   494→    Archived --> ColdStorage: Partition exported to S3<br/>as Parquet with Object Lock
+   495→    ColdStorage --> Purged: After 7 years<br/>(only after archive verification)
+   496→    Purged --> [*]
+   497→
+   498→    Written --> TamperDetected: HashChain.verifyChain()<br/>detects mismatch
+   499→    TamperDetected --> [*]: logger.critical()<br/>PagerDuty alert<br/>incident opened
+   500→    note right of Written
+   501→        Append-only: no UPDATE/DELETE
+   502→        path back to Written
+   503→        from any state.
+   504→    end note
+   505→```
+   506→
+   507→## Integration Strategy
+   508→
+   509→**Upward (consumes):** `AuditListener` is registered against `AuditableEventInterface` in the CORE-17 service provider during kernel boot. Every Hub service that performs a state mutation dispatches an event that implements `AuditableEventInterface` via CORE-03; the listener receives it and forwards it to `AuditService::record()`. Because CORE-03 dispatch is synchronous, the audit write happens **inside the caller's request** — the request does not return until the audit row is committed. This is intentional: a fire-and-forget audit queue (the prior blueprint's "ActivityTracker" async design) would let a request succeed even if the audit write failed, which violates the compliance invariant that *every successful mutation produces an audit record*.
+   510→
+   511→For high-volume events where synchronous write latency is unacceptable (e.g., a bulk-import job writing 10,000 records), the calling code wraps the dispatch in a HUB-11 Queue producer and the audit write happens in a worker — but the queue itself is durable (Redis Streams with consumer groups), so the audit record is on disk before the original request returns. The choice between sync and async is the caller's, not HUB-06's: HUB-06 always writes synchronously when called.
+   512→
+   513→**Downward (consumed by):** ISPOKE-01 (Admin Panel) calls `AuditService::query()` with an `AuditQuery` filtered by `tenant_id`, `actor_id`, and date range to render the audit viewer for `super_admin`. ISPOKE-10 (Audit Log Tracker) calls `AuditService::export()` with format `'csv'` for SIEM ingestion and `'json'` for Splunk HEC payload. BRIDGE-01 emits `BridgePayloadForwarded` events that implement `AuditableEventInterface` with `tier_crossing = true`; HUB-06 records them with the flag set, and ISPOKE-01's audit viewer surfaces tier-crossing events in a distinct colour. HUB-15 (Health) calls `AuditService::health()` every 10 seconds; if `last_write` is more than 5 minutes stale during active traffic, the /health endpoint returns 503.
+   514→
+   515→**Wiring example (CORE-17 service provider):**
+   516→
+   517→```php
+   518→final class AuditServiceProvider implements ServiceProviderInterface
+   519→{
+   520→    public function register(ContainerInterface $c): void
+   521→    {
+   522→        $c->singleton(AuditServiceInterface::class, function (ContainerInterface $c) {
+   523→            return new AuditService(
+   524→                $c->get(ConnectionInterface::class),
+   525→                $c->get(LoggerInterface::class),
+   526→                new HashChain(),
+   527→            );
+   528→        });
+   529→    }
+   530→
+   531→    public function boot(ContainerInterface $c): void
+   532→    {
+   533→        $provider = $c->get(\SovereignStack\Core\EventDispatcher\ListenerProviderInterface::class);
+   534→        $provider->addListener(
+   535→            \SovereignStack\Hub\Audit\AuditableEventInterface::class,
+   536→            new \SovereignStack\Hub\Audit\AuditListener($c->get(AuditServiceInterface::class))
+   537→        );
+   538→    }
+   539→}
+   540→```
+   541→
+   542→## Benchmark & Verification Methodology
+   543→
+   544→| Target | Method |
+   545→|---|---|
+   546→| Audit write latency (per-record INSERT + hash compute) | **Harness:** PHPUnit `--group performance` test `AuditServicePerformanceTest::testRecordLatency1000Rows`; measures wall-clock via `microtime(true)` around a loop of 1,000 `record()` calls with distinct ULIDs. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3 with opcache, no Xdebug, MySQL 8 (InnoDB) in a service container. **Load model:** Single-threaded sequential inserts, no concurrent writers. **Assertion:** Median per-record wall-clock is bounded by DB INSERT + SHA-256 computation; absolute target **provisional, unverified** until first measurement. |
+   547→| Hash chain verification throughput | **Harness:** PHPUnit `--group performance` test `HashChainPerformanceTest::testVerifyChain100kRows`; inserts 100k synthetic rows, then calls `verifyChain($conn, 100000)` and measures wall-clock. **Baseline:** As above. **Load model:** Read-only scan of 100k rows. **Assertion:** Linear in sample size; absolute target **provisional, unverified**. |
+   548→| Concurrent-write race detection | **Harness:** PHPUnit `--group performance` test `AuditConcurrencyTest::testConcurrentWritersDoNotCorruptChain`; spawns 10 parallel PHP processes via `pcntl_fork()`, each writing 100 records. **Baseline:** As above. **Load model:** 10 concurrent writers, 1,000 total records. **Assertion:** All 1,000 records persist; chain verification passes after all writers complete (SERIALIZABLE transaction prevents interleaving). |
+   549→| Export throughput (CSV) | **Harness:** PHPUnit `--group performance` test `AuditExportPerformanceTest::testCsvExport10kRows`. **Baseline:** As above. **Load model:** 10,000-row query, CSV serialisation. **Assertion:** Wall-clock bounded by query + I/O; absolute target **provisional, unverified**. |
+   550→
+   551→**Iron rule (per `01_MASTER_INDEX.md` Governance Rule 2):** Every absolute number above is marked **provisional, unverified** until the first CI run on GitHub Actions produces a measurement. Bare millisecond claims without a harness are forbidden.
+   552→
+   553→## CI Verification Criteria
+   554→
+   555→1. **Branch coverage 100% on `AuditService::record()` and `HashChain`.** PHPUnit with `--coverage --min-branch-coverage=100` on these two classes specifically. The hash-chain break path, the rollback path, and the `previousHash()` NULL-return path must all be exercised.
+   556→2. **PHPStan level 8, zero baseline-ignored errors.** `phpstan.neon` sets `level: 8` and `treatPhpDocTypesAsCertain: true`; no `@phpstan-ignore` annotations permitted in `AuditService` or `HashChain`.
+   557→3. **Append-only enforcement test.** `AppendOnlyEnforcementTest::testUpdateRaisesPermissionDenied` connects as `dglab_hub_audit_writer` and executes `UPDATE audit_log SET actor_id = 'tampered' WHERE id = 1`; asserts the driver raises `SQLSTATE[42501]` (permission denied). Same test for `DELETE`. Same test connecting as `dglab_super_admin_readonly`.
+   558→4. **Hash chain integrity test.** `HashChainIntegrityTest::testInsertTenRecordsChainValidates`; inserts 10 records via `AuditService::record()`, then calls `HashChain::verifyChain($conn, 10)`; asserts it returns `true`. For each row, asserts `record_hash === hash('sha256', prev_hash.'|'.actor_id.'|'.action.'|'.target_id.'|'.created_at)`.
+   559→5. **Tamper detection test.** `TamperDetectionTest::testModifiedRecordBreaksNextInsert`; inserts 10 records, then connects as a privileged user (test-fixture role with explicit `UPDATE` grant — used only in the test database, never in production DDL) and modifies row 5's `actor_id`. Asserts that the next `AuditService::record()` call throws `HashChainBrokenException` and that `logger.critical` is invoked with the message `'Audit hash chain broken'`.
+   560→6. **Tier-crossing metadata test.** `TierCrossingTest::testBridgeEventHasTierCrossingTrue`; dispatches a `BridgePayloadForwarded` event (which implements `AuditableEventInterface` with `tier_crossing = true`); asserts the resulting audit row has `tier_crossing = true`. Negative case: a `UserLogin` event produces `tier_crossing = false`.
+   561→7. **Query correctness test.** `AuditQueryTest::testQueryByTenantActionDateRange`; inserts 50 records across 3 tenants, 4 actions, and 30 days; constructs an `AuditQuery::forTenant($t1)->byAction('create')->between($d1, $d2)`; asserts the result set contains exactly the matching records, ordered by `created_at DESC`.
+   562→8. **No-sampling enforcement test.** `NoSamplingTest::testEveryEventIsWritten`; dispatches 100 `AuditableEventInterface` events in a single request; asserts `SELECT COUNT(*) FROM audit_log` increased by exactly 100.
+   563→
+   564→## Security Properties
+   565→
+   566→1. **Append-only at the database privilege level.** The `dglab_hub_audit_writer` role is granted `INSERT, SELECT` and explicitly has `UPDATE, DELETE` revoked. The `dglab_super_admin_readonly` role is granted `SELECT` only. No role in the production DDL has `UPDATE` or `DELETE` — they do not exist as grantable privileges on this table for any application role. CI test #3 asserts the privilege denial fires when an UPDATE/DELETE is attempted.
+   567→2. **Tamper-evident hash chain.** Modifying any row in place (by an attacker with stolen DBA credentials, or by a buggy migration) breaks the chain at the next insert, because the new record's `prev_hash` is fetched from the modified row's `record_hash`, but the modified row's stored `record_hash` no longer matches the recomputed SHA-256 of its fields. CI test #5 asserts this detection fires. This is **tamper-evidence, not tamper-proofing** — a sufficiently privileged attacker can still destroy rows, but they cannot silently alter the record.
+   568→3. **`super_admin`-only read access.** No API endpoint exposes audit records to non-super-admin users. The `dglab_tenant_admin` role sees only its own tenant's rows via Row-Level Security (the `audit_tenant_isolation` policy). Regular users have no SELECT privilege at all. ISPOKE-01 and ISPOKE-10 enforce the `super_admin` role at the controller layer; HUB-06 enforces it at the DB layer.
+   569→4. **Never sampled.** Every `AuditableEventInterface` event produces an audit row. The OTel Collector's `tail_sampling` processor explicitly bypasses the audit exporter (per `05_OBSERVABILITY.md` §7). CI test #8 asserts the row count equals the event count.
+   570→5. **7-year retention with WORM archival.** Records older than 90 days are detached from MySQL and exported to S3 with Object Lock (Compliance mode); the lock cannot be bypassed even by the AWS root account until the retention period expires. `AuditRetention::purgeOlderThan()` refuses to purge partitions that have not been successfully archived and verified — `RetentionViolationException` is thrown.
+   571→6. **Trace-ID correlation.** Every audit record carries a W3C `trace_id`. A security analyst pivots from a Tempo/Jaeger trace directly to the audit record by `AuditQuery::withTraceId($traceId)`, and from an audit record to the full request trace by reading the `trace_id` column. No compliance record exists in isolation — every one links to the distributed-tracing system.
+   572→
+   573→## Migration Notes
+   574→
+   575→**New package:** `packages/hub/audit/` with `composer.json` declaring `sovereign-stack/hub-audit`, PSR-4 `SovereignStack\\Hub\\Audit\\` → `src/`. Follows the polyrepo model: this package is its own repository, versioned independently per `01_MASTER_INDEX.md` Governance Rule 1.
+   576→
+   577→**Database migration:** A CORE-20 Forge migration creates the `audit_log` table, indexes, RLS policy, and the first three monthly partitions. The migration is **non-reversible** — `down()` throws `\RuntimeException('audit_log table cannot be dropped; compliance records must be retained')`. This is intentional: a developer running `forge migrate:rollback` in a staging environment must not be able to destroy audit records, even by accident.
+   578→
+   579→**Service provider registration:** `AuditServiceProvider` is registered in the kernel's `providers.php` array after CORE-02 (Container) and CORE-19 (DBAL) providers. Boot order: CORE-02 → CORE-10 → CORE-09 → CORE-19 → CORE-03 → HUB-04 → HUB-06. HUB-06 must boot after HUB-04 because `AuditRecord` requires an `actor_id` from HUB-04's `IdentityContext`; if HUB-04 is not yet booted, audit records for unauthenticated system events still write (with `actor_id = NULL`), but no user-attributable audit happens until HUB-04 is ready.
+   580→
+   581→**Used by (downstream integration order):** BRIDGE-01 (tier-crossing events) is the first downstream consumer to wire up — its `BridgePayloadForwarded` event implements `AuditableEventInterface` from day one. ISPOKE-01 (Admin Panel audit viewer) is the second; it consumes `AuditService::query()`. ISPOKE-10 (Audit Log Tracker) is the third; it consumes `AuditService::export()`.
+   582→
+   583→**Rollback procedure:** Removing the `packages/hub/audit/` package and unregistering the service provider stops new audit writes immediately. Existing records in `audit_log` are **not** dropped — the migration is non-reversible. Operational impact: compliance violation (SOC 2 Type II auditor will flag a gap in the audit trail; GDPR Article 30 retention requirements are violated). Rollback is therefore only acceptable in a non-production environment; in production, the correct response to a HUB-06 outage is to fail **closed** — block mutations that cannot be audited via a CORE-05 middleware check, rather than allow unaudited writes. This fail-closed behaviour is documented in HUB-15 (Health Check) and BRIDGE-01 (Vanguard) and is enforced by the `AuditLogWriteFailure` PagerDuty alert in `05_OBSERVABILITY.md` §6.
+   584→
+   585→## SemVer Impact
+   586→**Minor** (SemVer 0.x → 0.y, or 1.x → 1.y). HUB-06 is a new package with no prior release; its first tagged release is `0.1.0`. Subsequent changes that add new query methods or export formats are minor bumps; changes to the `AuditRecord` value object's required fields are major bumps (downstream ISPOKE-01/10 callers break). The hash-chain algorithm is **frozen at 1.0.0** — changing the hash function (e.g., SHA-256 → SHA-3) is a major version bump that requires a migration ADR (per Governance Rule 8) and a chain-bridging strategy (write a "bridge record" with both the old and new hash before switching).
+   587→
