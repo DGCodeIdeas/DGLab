@@ -1,0 +1,702 @@
+     1→# ELQ → DGLab Spoke Migration Analysis
+     2→
+     3→**Source repo:** https://github.com/DGCodeIdeas/ELQ
+     4→**Analysis date:** 2026-09-30
+     5→**Status:** Analysis complete. Code implementation deferred per user instruction.
+     6→**Analyst task ID:** ELQ-ANALYSIS-6
+     7→
+     8→---
+     9→
+    10→## 1. Executive Summary
+    11→
+    12→ELQ (publicly named **Eloqui** in `metadata.json`) is a TypeScript/Angular 21 single-page application that markets itself as "a Notion-style block editor with Linguix-style quality inspector, document-aware AI paraphrasing across fiction (SFW/NSFW), academic, and legal registers, BYOK zero-knowledge privacy, and writing productivity analytics." It is a single-developer prototype (~17,400 LOC across 27 TypeScript source files plus a 1,749-line Express server shim) that has been iterated through six commits over a short period, with **no README, no LICENSE, no docs/ directory, and ~45 throwaway `test-*.js`/`test-*.cjs` Puppeteer smoke scripts left at the repository root.** Its primary language is TypeScript 5.8 on Angular 21 (zoneless, signals-first, OnPush throughout); its backend is a single CommonJS Express router (`server-api.cjs`) that proxies all AI calls through Google's `@google/genai` SDK plus an OpenAI-compatible fetch fallback layer; its persistence is **client-side IndexedDB with at-rest AES-GCM-256 encryption**, with no server-side storage of user documents. The codebase is sophisticated in domain logic (paraphrase register taxonomy, readability metrics, AO3 EPUB ingestion) but architecturally single-tier: everything lives behind one Angular DI tree with no abstraction boundaries between domain, infrastructure, and UI.
+    13→
+    14→What's worth keeping from ELQ is **almost all of its domain logic and its clever multi-provider AI failover pattern**, but **almost none of its infrastructure** — Angular DI, RxJS, IndexedDB, server-side `server-api.cjs`, and WebCrypto-in-browser patterns all need either re-platforming to PHP 8.4 or replacement by existing DGLab Hub/Core packages. The three highest-value cherry-picks are: (1) the **22 document-type × 10 paraphrase-style taxonomy** with its surrounding-context-aware prompt assembly (`src/services/paraphrase.types.ts` + `server-api.cjs:298-396`); (2) the **multi-provider AI router with hierarchical failover** (Gemini SDK → OpenAI-compatible fetch → Pollinations zero-key → rule-based local fallback) (`server-api.cjs:39-296` + `src/services/ai.service.ts`); and (3) the **readability metrics engine** (5 formulae + 6 audience profiles + syllable counter with abbrevation-aware sentence splitter) (`src/services/readability.service.ts`).
+    15→
+    16→The proposed Spoke decomposition is **one ESPOKE ("Eloq") consuming 16 ISPOKEs** (9 Abstractions, 7 Features), of which **6 ISPOKEs are flagged `reusable: true`** (AI Inference Hub, Paraphrase Engine, Linguix Reviewer, Readability Auditor, RAG Retriever, Remote Backup Orchestrator, EPUB Importer, Manuscript Exporter, BYOK Vault, Privacy Ledger, Theme Manager) and **4 ISPOKEs are flagged `reusable: false`** (Document Vault, Block Editor Surface, Censorship Engine, Productivity Metrics). Three capabilities surface as **Hub-promotion candidates** (BYOK Vault → potential generic secret-vault Hub; Remote Backup Orchestrator → potential generic backup-dispatch Hub; Privacy & Audit Ledger → potential generic audit Hub) — all three should be **deferred until a second consumer appears** per the consumer-side composition rule. The Auth & RBAC Stub is rejected as a standalone ISPOKE and absorbed into existing HUB-04 Identity.
+    17→
+    18→---
+    19→
+    20→## 2. ELQ Repository Overview
+    21→
+    22→### 2.1 Primary language & framework
+    23→
+    24→| Property | Value | Source |
+    25→|---|---|---|
+    26→| Primary language | TypeScript 5.8 (`~5.8.2`) | `package.json:31` |
+    27→| UI framework | Angular 21.1 (standalone components, signals, zoneless) | `package.json:13-20`; `index.tsx:4` uses `provideZonelessChangeDetection()` |
+    28→| CSS framework | Tailwind CSS (`latest`, loaded via CDN script in `index.html:12`) | `package.json:26` |
+    29→| Server runtime | Node.js + Express + CommonJS (`server.cjs`, `server-api.cjs`) | `server.cjs:1-21` |
+    30→| AI SDK | `@google/genai` `^1.37.0` | `package.json:21` |
+    31→| Build tooling | `@angular/build:application` (esbuild-based); `vite ^6.2.0` declared as devDep but unused | `angular.json:13`; `package.json:32` |
+    32→| Test tooling | `puppeteer ^25.10.0` only — **no unit-test runner declared** (no Jest/Vitest/Karma) | `package.json:30`; see `test-*.js` files at repo root |
+    33→
+    34→### 2.2 Primary purpose
+    35→
+    36→Per `metadata.json:1-6`:
+    37→
+    38→> **Eloqui — Private AI Writing Assistant & Block Editor.** A Notion-style block editor with Linguix-style quality inspector, document-aware AI paraphrasing across fiction (SFW/NSFW), academic, and legal registers, BYOK zero-knowledge privacy, and writing productivity analytics.
+    39→
+    40→The user-visible surface is a single-page web app (served at `/` by `server.cjs`) that exposes a three-pane writing environment: left sidebar = library of manuscripts/chapters; center = contenteditable block editor; right sidebar = AI chat with chapter/book/dictionary/search/unfiltered modes. Modals (auth, BYOK, models, privacy, metrics, export, backup) overlay the editor. The Express server is a thin API router for `/api/ai/*` and `/api/backup/remote/*` — **no document persistence server-side**, no user account database, no server-side sessions. All document state lives in the browser IndexedDB encrypted with an AES-GCM-256 master key stored in `localStorage`.
+    41→
+    42→### 2.3 Top-level directory inventory
+    43→
+    44→```
+    45→/home/z/my-project/external/ELQ/
+    46→├── .angular/              (Angular CLI cache, gitignored)
+    47→├── .git/                  (6 commits)
+    48→├── public/sample.epub     (AO3-style sample EPUB fixture)
+    49→├── src/
+    50→│   ├── app.component.{ts,html}     (root component, 955-line HTML template)
+    51→│   ├── components/                 (11 Angular standalone components)
+    52→│   │   ├── auth-modal/             (192 LOC — localStorage-only auth stub)
+    53→│   │   ├── backup-modal/           (1335 LOC — the largest component)
+    54→│   │   ├── byok-modal/             (302 LOC — BYOK API key manager)
+    55→│   │   ├── chat/                   (503 LOC — right sidebar AI chat)
+    56→│   │   ├── editor/                 (editor.component.ts 471 LOC + block.component.ts 432 LOC + 2 HTML templates)
+    57→│   │   ├── export-modal/           (613 LOC — PDF/MD/TXT/HTML/EPUB export)
+    58→│   │   ├── metrics-modal/          (709 LOC — readability + word count + goals)
+    59→│   │   ├── models-modal/           (972 LOC — model hub UI for probe/test/curated catalog)
+    60→│   │   ├── paraphrase/             (879 LOC — paraphrase modal with diff view)
+    61→│   │   └── privacy-modal/          (225 LOC — privacy policy dashboard)
+    62→│   └── services/                   (14 services + 1 types file)
+    63→│       ├── ai.service.ts          (437 LOC — Gemini + multi-provider router)
+    64→│       ├── auth.service.ts         (215 LOC — localStorage auth + RBAC + reset tokens)
+    65→│       ├── backup.service.ts       (1397 LOC — the largest service)
+    66→│       ├── block.service.ts        (1047 LOC — central document/chapter state)
+    67→│       ├── crypto.service.ts       (204 LOC — AES-GCM-256 + BYOK key vault)
+    68→│       ├── export.service.ts       (755 LOC — PDF/MD/TXT/HTML/EPUB generation)
+    69→│       ├── import.service.ts       (382 LOC — EPUB + AO3 ingestion)
+    70→│       ├── model.service.ts        (823 LOC — curated model catalog + custom models)
+    71→│       ├── paraphrase.types.ts     (309 LOC — 22 doc types + 10 styles)
+    72→│       ├── privacy.service.ts      (134 LOC — audit log + policies)
+    73→│       ├── rag.service.ts          (157 LOC — in-memory vector store + BM25 fallback)
+    74→│       ├── readability.service.ts  (604 LOC — 5 readability formulae + 6 audience profiles)
+    75→│       ├── storage.service.ts      (242 LOC — IndexedDB + chapter encryption)
+    76→│       └── theme.service.ts        (91 LOC — light/dark/system)
+    77→├── server.cjs                (21 LOC — bare Express static + /api mount)
+    78→├── server-api.cjs            (1749 LOC — all 12 API endpoints + AI provider router)
+    79→├── proxy.conf.cjs            (37 LOC — Angular dev-server proxy to localhost:3001)
+    80→├── angular.json              (66 LOC)
+    81→├── index.html                (271 LOC — Tailwind CDN + index.tsx entry)
+    82→├── index.tsx                 (12 LOC — Angular bootstrap)
+    83→├── package.json              (34 LOC)
+    84→├── metadata.json             (6 LOC — AI Studio app descriptor)
+    85→├── bun.lock + package-lock.json
+    86→├── Isekaied_to_Save_the.epub (fixture)
+    87→├── screenshot.png + test-final-verification.png
+    88→├── tsconfig.json + tsconfig.temp.json + tsconfig.temp2.json
+    89→└── test-*.js / test-*.cjs × 28 files (Puppeteer smoke scripts, no test runner)
+    90→```
+    91→
+    92→### 2.4 Approximate size
+    93→
+    94→| Metric | Count |
+    95→|---|---|
+    96→| TypeScript source files | 27 (14 services + 12 components + 1 bootstrap) |
+    97→| Total TypeScript LOC (services) | 7,056 |
+    98→| Total TypeScript LOC (components) | 6,633 |
+    99→| HTML template LOC | 1,591 (1 root + 2 editor) |
+   100→| Express server LOC | 1,749 (`server-api.cjs`) + 21 (`server.cjs`) + 37 (`proxy.conf.cjs`) |
+   101→| Config/HTML/TSX LOC | ~400 (`angular.json` + `index.html` + `index.tsx` + 3 tsconfigs) |
+   102→| **Total project LOC (excl. test scripts)** | **~17,450** |
+   103→| Test scripts (Puppeteer smoke) | 28 files, ~12,000 LOC (not part of porting target) |
+   104→| Production dependencies | 11 (Angular ×6, genai, jspdf, jszip, marked, rxjs, tailwindcss) |
+   105→| Dev dependencies | 4 (puppeteer, typescript, vite, @types/node) |
+   106→| Git commits | 6 (`788c108` Initial → `8544bdf` dark mode) |
+   107→
+   108→### 2.5 License
+   109→
+   110→**No LICENSE file exists at the repo root.** The `.gitignore` (`/home/z/my-project/external/ELQ/.gitignore:1-24`) does not mention licensing. `package.json:3` declares `"private": true` — meaning the package is not intended for npm distribution but does **not** by itself grant any rights. The repository is published on GitHub under `DGCodeIdeas/ELQ`, suggesting the author intends some form of open sharing, but the **absence of a LICENSE file means default "All Rights Reserved" applies under both US and EU copyright law.** This is a **flag-red cherry-picking risk** (see §4.5 below): any direct code lift would technically require explicit permission from the rightsholder.
+   111→
+   112→The 22-document-type and 10-style prompt taxonomy, the readability formulae (which are public-domain algorithms), and the architectural patterns (which are uncopyrightable ideas) can be reimplemented freely. **Direct verbatim source porting of TypeScript → PHP should not proceed without an explicit license grant from the ELQ author.** This analysis assumes the user has or will obtain such permission, or will treat this document as the boundary (i.e., re-implement from analysis, not from source).
+   113→
+   114→---
+   115→
+   116→## 3. Architectural Pattern Audit
+   117→
+   118→This section is organized by the **14 Angular services** + the **Express backend** + the **11 components** + the **client persistence layer** + the **AI provider router**, because that is how ELQ is actually structured (services are the seam between UI and infrastructure).
+   119→
+   120→### 3.1 Central reactive state: `BlockService` (`src/services/block.service.ts`, 1047 LOC)
+   121→
+   122→- **What it does.** Holds the entire client-side state of the application: documents array, current document, active chapter, active chat session, derived metrics (word count, reading time, sentence-length distribution), censorship report, paraphrase modal context, RAG index trigger, autosave debounce timer.
+   123→- **Structure.** Angular `@Injectable({providedIn: 'root'})` singleton. Reactive primitives: 17 `signal()` properties + 28 `computed()` derived values + 2 `effect()` side-effect pipelines (autosave + RAG reindex). Uses `inject()` for constructor-less DI.
+   124→- **External deps.** `StorageService` (IndexedDB layer), `RagService`, `ReadabilityService`. At module load also imports `JSZip` for export.
+   125→- **Internal deps.** Consumed by every component and most other services.
+   126→- **State management.** In-memory only (lost on reload unless `StorageService.saveDocument()` flushes to IndexedDB). Debounced autosave at 1200ms (`block.service.ts:277`). RAG reindex trigger at 5s idle (`block.service.ts:296`).
+   127→- **API surface.** No HTTP endpoints — internal Angular service consumed via `inject()`.
+   128→- **Verdict.** Tightly coupled to Angular's signal/computed/effect primitives. State shape (Document/Chapter/ChatSession/Goals) is portable; the reactive harness is not.
+   129→
+   130→### 3.2 Client persistence: `StorageService` (`src/services/storage.service.ts`, 242 LOC)
+   131→
+   132→- **What it does.** IndexedDB wrapper. Stores one document per record (`{keyPath: 'id'}`). Encrypts chapter content via `CryptoService.encryptText()` before `put()`; decrypts on `get()`. Adds legacy migration defaults on read (empty `chapters` → seed chapter; missing `wordCountHistory` → `[]`; missing `goals` → defaults).
+   133→- **Structure.** Plain IndexedDB promise-based API (no Dexie, no idb-keyval).
+   134→- **External deps.** `CryptoService`, `PrivacyService`. Browser `indexedDB`, `crypto.randomUUID()`.
+   135→- **Internal deps.** Consumed by `BlockService`, `BackupService`, `MetricsModalComponent`.
+   136→- **State management.** IndexedDB `EloquiDB` v4, object store `documents`.
+   137→- **API surface.** `saveDocument(doc)`, `getDocument(id)`, `getAllDocuments()`, `deleteDocument(id)`.
+   138→- **Verdict.** IndexedDB is browser-only. PHP port replaces this with a MySQL-backed repository (DGLab `core/dbal` pattern, ADR-013) and a separate at-rest envelope (DGLab `core/crypto`). The Document/Chapter value-object shapes (defined at `storage.service.ts:5-60`) are directly portable as PHP DTOs.
+   139→
+   140→### 3.3 At-rest crypto + BYOK vault: `CryptoService` (`src/services/crypto.service.ts`, 204 LOC)
+   141→
+   142→- **What it does.** Two responsibilities conflated: (a) **per-document AES-GCM-256 at-rest encryption** of chapter content using a 256-bit master key stored as hex in `localStorage` under `eloqui_master_key_raw`; (b) **BYOK API key vault** — a `ApiKeyConfig[]` list of provider-key pairs persisted in `localStorage` under `eloqui_byok_api_keys`, with `getActiveKeyForProvider(provider)` lookup.
+   143→- **Structure.** Singleton; uses native `window.crypto.subtle` for AES-GCM + PBKDF2 + SHA-256 fingerprinting. Encryption marker `__ELOQUI_ENC_V1__:` prefix on ciphertext.
+   144→- **External deps.** Native WebCrypto only.
+   145→- **Internal deps.** Consumed by `StorageService` (encrypt/decrypt chapters), `AiService` (BYOK key resolution per provider).
+   146→- **State management.** Two `localStorage` keys + one in-memory `CryptoKey` handle + 4 `signal()`s for reactive UI.
+   147→- **API surface.** `encryptText(plaintext)`/`decryptText(payload)`, `setRawKey(hex)`, `generateNewMasterKey()`, `toggleAtRestEncryption(bool)`, `saveApiKey(config)`, `removeApiKey(name)`, `getActiveKeyForProvider(provider)`.
+   148→- **Verdict.** AES-GCM-256 with a 12-byte IV prepended to ciphertext + base64-encoded + magic-string marker is a sound but ELQ-specific envelope format. The DGLab `core/crypto` `Envelope` (PR #260) already implements a versioned JSON envelope with `kid` (key id), `iv`, `ciphertext`, and `sodium_memzero` — **the DGLab envelope is strictly superior and supersedes ELQ's format.** The BYOK vault is a separable capability worth promoting to a Hub (see §6.4).
+   149→
+   150→### 3.4 AI provider router + Linguix reviewer: `AiService` (`src/services/ai.service.ts`, 437 LOC) + `server-api.cjs:39-296`
+   151→
+   152→- **What it does.** Unified multi-provider AI invocation layer. Routes prompts to one of: (a) Google Gemini via `@google/genai` SDK; (b) custom OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, private HTTP) via fetch; (c) Pollinations zero-key free public router; (d) Groq; (e) OpenRouter; (f) Cerebras. Implements 6 prompt modes (`fast`, `dictionary`, `uncensored`, `shorten`, `expand`, `formal`, `casual`, `simplify`, `active_voice`, etc.) and 5 task surfaces (`generateText`, `reviewText`, `paraphraseText`, `chatStream`, `getEmbedding`).
+   153→- **Structure.** Client-side `AiService` is a thin fetch wrapper that delegates model/key resolution to `ModelService` and provider-specific path construction to the server. Server-side `executeUnifiedModelPrompt()` (`server-api.cjs:60-296`) is a 240-line router with explicit branching by `modelId` prefix (e.g. `pollinations-`, `groq/`, `openrouter/`, `cerebras/`, gemini default) and SSE streaming with manual word-chunking for non-Gemini providers (lines 868-893).
+   154→- **External deps.** `@google/genai` server-side only; native `fetch` everywhere else; `AbortSignal.timeout(10000)` for custom endpoints.
+   155→- **Internal deps.** Consumed by `BlockService` (for editor tools), `ChatComponent` (streaming chat), `EditorComponent` (Linguix review), `ParaphraseModalComponent`.
+   156→- **State management.** Stateless on server (each request is independent). Client `AiService` holds a `linguixScore` signal + a `localLinguisticReview` rule-based fallback (duplicate words, common typos, filler phrases — `ai.service.ts:65-131`).
+   157→- **API surface.** Five Express endpoints (all POST):
+   158→  - `POST /api/ai/test-model` (`server-api.cjs:678`) — latency probe for a curated/custom model
+   159→  - `POST /api/ai/generate` (`server-api.cjs:713`) — text generation with 10 mode-specific prompt templates
+   160→  - `POST /api/ai/chat` (`server-api.cjs:807`) — streaming SSE chat with 5 history roles
+   161→  - `POST /api/ai/review` (`server-api.cjs:920`) — Linguix-style grammar review, returns structured JSON via Gemini's `responseSchema`
+   162→  - `POST /api/ai/paraphrase` (`server-api.cjs:1022`) — document-type/style-aware paraphrasing with 4 alternatives + fitScore
+   163→  - `POST /api/ai/embed` (`server-api.cjs:1229`) — embeddings with 3-model failover list (`gemini-embedding-001`, `-2`, `-2-preview`)
+   164→- **Verdict.** The hierarchical failover (Gemini native SDK → OpenAI-compatible fetch with `AbortSignal.timeout(10s)` → Pollinations zero-key → rule-based local fallback) is the most valuable architectural pattern in the entire repo. Worth extracting verbatim into a reusable ISPOKE.
+   165→
+   166→### 3.5 Paraphrase taxonomy + prompt assembly: `paraphrase.types.ts` (309 LOC) + `server-api.cjs:298-396`
+   167→
+   168→- **What it does.** Defines 22 document types across 5 categories (Fiction & Creative ×9 incl. NSFW/Horror/AO3; Academic & Research ×5; Legal & Regulatory ×3; Professional & Business ×3; Specialized & Media ×2). Each type has an `id`, `name`, `description`, `badge`, `icon` (Material Symbols), and a long-form prompt fragment stored server-side in `DOCUMENT_TYPE_DESCRIPTIONS` (`server-api.cjs:298-383`). Also defines 10 paraphrase styles (natural, closer, vivid, concise, dramatic, formal, simplified, active, lyrical, dialogue) with parallel client-side metadata and server-side `PARAPHRASE_STYLE_GUIDES` (`server-api.cjs:385-396`).
+   169→- **Structure.** Pure TypeScript type definitions + two const arrays + two server-side prompt dictionaries. **No logic** — just data.
+   170→- **Verdict.** Highest-value cherry-pick in the repo. The taxonomy is the product. The client/server split is suboptimal (style metadata duplicated) but the content is gold.
+   171→
+   172→### 3.6 Local fallback paraphraser: `localParaphraseFallback` (`server-api.cjs:398-670`)
+   173→
+   174→- **What it does.** When all AI providers fail, returns hardcoded alternatives for: (a) single words (`said` → `murmured`/`stated`/`whispered`/`declared`; `walked`/`looked`/`important` similarly); (b) legal documents (operative covenant, express disclaimer, statutory alignment templates); (c) academic documents (empirical hedging, dialectical synthesis, methodological qualifier templates); (d) NSFW documents (somatic intensity, atmospheric immersion, sensory texture templates); (e) general fiction (atmospheric depth, operative rhythm, sensory & visceral templates).
+   175→- **Structure.** Pure function with 270 lines of branching.
+   176→- **Verdict.** Useful for graceful degradation but very ELQ-specific. Reimplement selectively if at all — most of this is just sample alternatives that the LLM should produce.
+   177→
+   178→### 3.7 Local Linguix fallback: `localLinguisticReview` (`ai.service.ts:65-131` + `server-api.cjs:672+`)
+   179→
+   180→- **What it does.** Rule-based grammar review returning structured `Suggestion[]` (original, suggestion, type, explanation). Three rule families: (1) duplicate consecutive words (`/\b([a-zA-Z]{2,})\s+\1\b/gi`); (2) 10 common typos (`teh`/`recieve`/`seperate`/`definately`/`occured`/`untill`/`truely`/`wierd`/`accomodate`/`goverment`); (3) 5 filler phrases (`in order to`/`at the present time`/`due to the fact that`/`in the event that`/`for the purpose of`).
+   181→- **Verdict.** Trivial to port. Useful as zero-AI-cost prefilter to avoid wasting LLM calls on obvious errors.
+   182→
+   183→### 3.8 RAG retriever: `RagService` (`src/services/rag.service.ts`, 157 LOC)
+   184→
+   185→- **What it does.** Chapter chunking (500 words with 50-word overlap, capped at 50 chunks total) → batch embeddings via `AiService.getBatchEmbeddings()` (concurrency 3) → in-memory cosine similarity retrieval with BM25 keyword fallback when embeddings fail.
+   186→- **Structure.** Singleton; in-memory `Chunk[]` array (no persistence); progress signal for UI spinner.
+   187→- **External deps.** `AiService.getEmbedding()` (which calls `/api/ai/embed`). Native `crypto.randomUUID()` for chunk IDs.
+   188→- **Internal deps.** Consumed by `ChatComponent` (book mode), `BlockService` (reindex trigger).
+   189→- **Verdict.** Functional but minimal. The 50-chunk cap and `setTimeout(25)` yield to main thread are browser-event-loop-specific. PHP port uses `HUB-14 Search` or `HUB-31 Real-Time Analytics` for vector storage; HUB-10 Queue for batch embedding.
+   190→
+   191→### 3.9 Readability engine: `ReadabilityService` (`src/services/readability.service.ts`, 604 LOC)
+   192→
+   193→- **What it does.** Computes 5 readability formulae (Flesch Reading Ease, Flesch-Kincaid Grade Level, Gunning Fog, Coleman-Liau, Automated Readability Index) + sentence-length distribution + 6 audience profiles (Middle Grade, Young Adult, General Fiction, Literary Fiction, Academic/Technical, Casual/Web) + audience-match feedback with 5 status levels (optimal/slightly_dense/too_dense/slightly_simple/too_simple).
+   194→- **Structure.** Singleton; pure functions (`analyzeText`, `evaluateAudienceMatch`, `countSyllables`, `splitIntoSentences`). Robust English syllable counter with heuristics for silent 'e', 'le' syllable, trailing 'ed'/'es' patterns, vowel-group counting, and special-case adjustment for `ia|io|iu|eo|ua|uo` diphthongs (`readability.service.ts:465-508`). Abbreviation-aware sentence splitter protects `Mr.`/`Mrs.`/`Dr.`/`Prof.`/`St.`/`Sr.`/`Jr.`/`e.g.`/`i.e.`/`etc.`/`vs.`/`approx.`/`No.`/decimal numbers/ellipses (`readability.service.ts:412-452`).
+   195→- **External deps.** None.
+   196→- **Internal deps.** Consumed by `BlockService` (active chapter readability signals + audience match signals), `MetricsModalComponent`.
+   197→- **Verdict.** **Pure library code, no Angular-specific primitives, no I/O.** The single most directly portable service in the repo. PHP port is line-by-line translation.
+   198→
+   199→### 3.10 Backup orchestrator: `BackupService` (`src/services/backup.service.ts`, 1397 LOC) + `server-api.cjs:1271-1750`
+   200→
+   201→- **What it does.** Six backup methods × five remote targets. **Methods**: `encrypted_vault` (AES-GCM-256 with PBKDF2-SHA256 100k iterations, JSON envelope with `format`/`version`/`kdf`/`cipher`/`salt`/`iv`/`ciphertext`/`checksumSha256`), `json_vault` (plain JSON), `zip_bundle` (multi-folder markdown ZIP with Manifest.json + Manuscripts/ + ChatHistory/ + Analytics/wordcount-history.csv), `incremental` (delta since last backup timestamp), `active_doc` (single doc only), `disaster_html` (single-file self-contained HTML reader for catastrophic recovery — `backup.service.ts:938-1129`). **Remotes**: `download` (browser `<a download>`), `local_dir` (FileSystemDirectoryHandle via File System Access API), `github` (REST API PUT to repo contents or Gist), `s3` (hand-rolled AWS SigV4 with `crypto.createHmac`), `webdav` (PROPFIND/OPTIONS), `webhook` (POST/PUT with HMAC-SHA256 secret).
+   202→- **Structure.** Singleton with separate orchestration (`executeBackup(method, remoteId, customPassword)`) and dispatch (`downloadFileLocally`, `writeToLocalDirectory`, fetch to `/api/backup/remote/{github,s3,webdav,webhook}`). Auto-backup scheduler with localStorage-persisted settings + interval timer.
+   203→- **External deps.** `JSZip` (zip generation); `BackupService.computeSha256()` via `window.crypto.subtle.digest`. Server-side uses native `crypto` for AWS SigV4 signing + GitHub token verification.
+   204→- **Internal deps.** Consumed by `BlockService` (restore), `BackupModalComponent`.
+   205→- **API surface.** 5 Express endpoints (all POST, all under `/api/backup/remote/`): `test-connection`, `github`, `s3`, `webdav`, `webhook`.
+   206→- **State management.** 5 localStorage keys (`REMOTES_STORAGE_KEY`, `LOGS_STORAGE_KEY`, `SETTINGS_STORAGE_KEY`, `LAST_BACKUP_TIME_KEY`, plus per-user reset tokens in AuthService).
+   207→- **Verdict.** The most over-engineered service in the repo. 1397 LOC for what is essentially "save the docs to N places." The disaster-HTML generator (193 LOC, `backup.service.ts:938-1129`) is a clever touch worth keeping as a UX pattern. The multi-target dispatch is generic enough to be a Hub candidate.
+   208→
+   209→### 3.11 EPUB importer: `ImportService` (`src/services/import.service.ts`, 382 LOC)
+   210→
+   211→- **What it does.** Parses `.epub` (a ZIP) and `.txt` files into `Chapter[]`. EPUB pipeline: read `META-INF/container.xml` → find OPF rootfile → read OPF manifest + spine + TOC (NCX or XHMTL) → for each spine item, parse the HTML and either detect AO3 metadata (rating/warnings/categories/fandom/relationships/tags/stats from `dl.tags`/`.byline`/`blockquote.userstuff` selectors) and build a preface chapter, or extract paragraphs/quotes/hr as content. Aggressive attribute sanitization (`on*`/`mso-*`/`style`/`class`/`id` stripped).
+   212→- **Structure.** Stateless service; two methods (`importTxt`, `importEpub`).
+   213→- **External deps.** `JSZip` for unzip; `DOMParser` for XML/HTML parsing; `crypto.randomUUID()`.
+   214→- **Verdict.** Highly valuable. The AO3-specific metadata extraction is a niche feature but the EPUB→Chapters pipeline is generic. PHP port replaces `DOMParser` with `DOMDocument` or `Masterminds/HTML5` + `zip_archive` for unzip.
+   215→
+   216→### 3.12 Manuscript exporter: `ExportService` (`src/services/export.service.ts`, 755 LOC)
+   217→
+   218→- **What it does.** Five export formats: `pdf` (jsPDF with running headers/footers, redaction-aware, page breaks between chapters), `markdown`, `txt`, `html`, `epub` (JSZip with `mimetype`/`OEBPS/`/`META-INF/container.xml`). Redaction-aware (respects per-doc `censorshipConfig` + 6 redaction styles). Optional metadata banner (export date, chapter count, redaction note).
+   219→- **Structure.** Stateless service; `generatePreview(options)` returns stats; `exportDocument(options)` triggers browser download.
+   220→- **External deps.** `jsPDF`, `JSZip`, `BlockService` (current doc state).
+   221→- **Verdict.** Most of jsPDF's complexity (font metrics, page breaks, running headers) maps to `tcpdf` or `mpdf` in PHP. The EPUB generation (JSZip) maps to `zip_archive`. Markdown/TXT/HTML are trivial string assembly. The redaction-aware content generation is the valuable seam.
+   222→
+   223→### 3.13 Censorship & redaction engine: inline in `BlockService` (`block.service.ts:431-498`)
+   224→
+   225→- **What it does.** Maintains a per-document `CensorshipConfig { redactionStyle: 'blackout'|'blackbar'|'blur'|'spoiler'|'asterisks'|'redact_pill', customBlacklist: string[] }`. Detects sensitive terms (default list of 21 profanities + custom blacklist) via word-boundary regex. Renders HTML with sensitive terms wrapped in CSS-styled `<span>` elements per style. Toggleable per-doc (`isUncensored` flag) for "unfiltered mode."
+   226→- **Structure.** Pure functions on `BlockService`. CSS classes defined in `index.html:197-245`.
+   227→- **Verdict.** Content-filtering UX pattern. The "neutral parity" framing (filtered vs. unfiltered as a per-doc toggle rather than a global policy) is a deliberate design choice that should be preserved in the port.
+   228→
+   229→### 3.14 Privacy & audit ledger: `PrivacyService` (`src/services/privacy.service.ts`, 134 LOC)
+   230→
+   231→- **What it does.** Client-side audit log of 5 event categories (document, encryption, ai_inference, byok, auth) with 4 statuses (allowed, encrypted, revoked, processed). Capped at 100 entries, persisted in `localStorage` under `eloqui_privacy_audit_log`. Defines 5 privacy policy items (zero retention, local encryption, no training, BYOK isolation, unbiased neutrality) as a static array. Zero-telemetry toggle persisted under `eloqui_telemetry_disabled`.
+   232→- **Verdict.** Useful pattern. The "privacy policy as a static array of guarantees" is a good UX pattern. Maps to a Hub audit capability.
+   233→
+   234→### 3.15 Auth & RBAC stub: `AuthService` (`src/services/auth.service.ts`, 215 LOC)
+   235→
+   236→- **What it does.** localStorage-based user accounts with 3 roles (admin, writer, reviewer) and 4 role-derived permission computeds (`canEdit`, `canManageModels`, `canManageBYOK`, `canAccessPrivacy`). Cryptographically-secure 24-byte password reset tokens (15-min expiry, stored in `localStorage` under `eloqui_password_resets`). No real authentication — `login(email)` just looks up the email in the local users list and sets `isAuthenticated` to true.
+   237→- **Verdict.** A demo stub. Not production-ready. **Reject as standalone ISPOKE.** Map directly onto DGLab HUB-04 Identity (already shipped, PR #268) — its `User` entity, `UserId`/`Email`/`RoleIdentifier` value objects, JWT (ES256), and `AuthMiddleware` (PSR-15) cover all of ELQ's auth surface.
+   238→
+   239→### 3.16 Theme manager: `ThemeService` (`src/services/theme.service.ts`, 91 LOC)
+   240→
+   241→- **What it does.** Three-state theme mode (light/dark/system). Listens to `prefers-color-scheme: dark` media query. Synchronizes DOM `<html>` class + `color-scheme` CSS property. Anti-flash pre-hydration script in `index.html:48-60` reads `localStorage` before Angular boots.
+   242→- **Verdict.** Trivial. The anti-flash pattern is the only interesting bit — it's a useful pattern for any server-rendered app that supports dark mode.
+   243→
+   244→### 3.17 Model catalog: `ModelService` (`src/services/model.service.ts`, 823 LOC)
+   245→
+   246→- **What it does.** Curated catalog of ~20 free LLMs across 6 categories (instant-free Pollinations, groq, openrouter, cerebras, local Ollama, gemini). Each curated entry has 14 metadata fields (architecture, version, contextWindow, speedTokPerSec, latencyTier, isFree, keyRequirement, freeTierDetails, keySetupUrl, privacyTier, capabilities[], limitations[], recommendedFor, testedLatencyMs, testStatus, lastTestedSnippet). Custom-model support (user-defined OpenAI-compatible endpoints with temperature + systemPrompt + per-task assignment).
+   247→- **Structure.** Singleton; signal-based state; localStorage persistence for custom models + task-role assignments.
+   248→- **Verdict.** The catalog is essentially a static data table + a UI for managing user-defined endpoints. The catalog itself is ephemeral (model names change monthly); the pattern of "task-role assignment" (one model for grammar, another for drafting, another for chat) is worth preserving.
+   249→
+   250→### 3.18 Express backend: `server-api.cjs` (1749 LOC)
+   251→
+   252→- **What it does.** Single CommonJS file holding: (1) Gemini client factory + safety settings factory; (2) `generateContentWithFailover` (tries `gemini-2.5-flash` → `2.0-flash` → `1.5-flash` → `1.5-flash-8b`); (3) `executeUnifiedModelPrompt` (the 240-line multi-provider router, lines 60-296); (4) the two prompt dictionaries (`DOCUMENT_TYPE_DESCRIPTIONS`, `PARAPHRASE_STYLE_GUIDES`); (5) `localParaphraseFallback` (270 LOC); (6) 12 Express routes (1 health, 5 AI, 1 embed, 5 backup). Uses native `fetch` + native `crypto` (for AWS SigV4) + native `Buffer`.
+   253→- **Verdict.** This file is the spine of ELQ's AI surface. It needs to be split across multiple PHP ISPOKEs (AI provider router ISPOKE, paraphrase taxonomy ISPOKE, backup dispatch ISPOKE) — none of which should remain a 1749-line monolith.
+   254→
+   255→### 3.19 Component layer (11 components, 6633 LOC total)
+   256→
+   257→| Component | LOC | Key responsibility | Reactive primitives |
+   258→|---|---|---|---|
+   259→| `app.component` | 259 (ts) + 955 (html) | Root layout: 3 panes + modal router + keyboard shortcuts + import/drag-drop | 8 signals |
+   260→| `editor.editor` | 471 | ContentEditable host, paste sanitizer, Linguix scan, paraphrase selection range tracking | 10 signals + 1 effect |
+   261→| `editor.block` | 432 | Single block (paragraph/h1/h2/bullet/code/quote/divider), slash-menu, inline AI tools | 5 signals |
+   262→| `chat` | 503 | Streaming chat with 5 modes (chapter/book/dictionary/search/uncensored), markdown render via `marked`, RAG retrieval | 5 signals + 1 computed |
+   263→| `metrics-modal` | 709 | Readability dashboard, audience selector, word count history sparkline, goals | 0 own state (reads from BlockService) |
+   264→| `models-modal` | 972 | Model catalog UI, latency probe, custom model CRUD | 8 signals |
+   265→| `paraphrase-modal` | 879 | Document-type picker, style picker, surrounding-context toggle, diff view, 4 alternatives | 9 signals + 2 computed |
+   266→| `export-modal` | 613 | Format picker, redaction toggle, preview, scope picker | 4 signals |
+   267→| `backup-modal` | 1335 | Remote config CRUD, backup method picker, restore inspection, auto-backup scheduler UI | 12 signals |
+   268→| `byok-modal` | 302 | BYOK key CRUD per provider | 0 (delegates to CryptoService) |
+   269→| `privacy-modal` | 225 | Policy dashboard, audit log viewer, telemetry toggle | 0 (delegates to PrivacyService) |
+   270→| `auth-modal` | 192 | Login/signup/role-switch/reset-password forms | 0 (delegates to AuthService) |
+   271→
+   272→- **Pattern.** Every component is `standalone: true`, `changeDetection: ChangeDetectionStrategy.OnPush`, signals-first. Templates are inline (with two exceptions: `editor.component.html` and `block.component.html`). Heavy Tailwind class usage in templates.
+   273→- **Verdict.** Angular component layer does not port to PHP — it must be **completely re-platformed to SuperPHP templates** (per ADR-005). The UX flows (modals, slash menus, selection range tracking, streaming chat) are the cherry-pickable patterns, not the components themselves.
+   274→
+   275→### 3.20 Build & dev infrastructure
+   276→
+   277→- `angular.json` (66 LOC) — standard Angular 21 build config; production hashing; dev server on `0.0.0.0:3000`; proxy to `127.0.0.1:3001` for `/api/*`; `allowedHosts` includes Google AI Studio Cloud Run preview hosts.
+   278→- `proxy.conf.cjs` (37 LOC) — Express-based proxy server that mounts `apiRouter` at `/api` and listens on `127.0.0.1:3001`. Permissive CORS (`*`).
+   279→- `index.tsx` (12 LOC) — Angular bootstrap with `provideZonelessChangeDetection()`.
+   280→- `index.html` (271 LOC) — Tailwind via CDN script; inline `tailwind.config`; inline custom CSS for review highlights, censorship styles, markdown body, scrollbar; import-map for esm.sh dependencies.
+   281→- `tsconfig.json` + 2 temp variants — standard Angular strict mode.
+   282→- 28 `test-*.js`/`test-*.cjs` Puppeteer smoke scripts — ad-hoc functional tests, no test runner.
+   283→
+   284→**Verdict.** The Angular/Vite/CDN-Tailwind toolchain does not map to DGLab. The dev-server-as-proxy pattern is interesting but suboptimal — DGLab uses FrankenPHP workers (ADR-017) for HTTP serving, not an Express dev shim.
+   285→
+   286→---
+   287→
+   288→## 4. Cherry-Pick List
+   289→
+   290→### 4.1 Architectural Patterns
+   291→
+   292→#### 4.1.1 Hierarchical AI provider failover
+   293→
+   294→- **What.** The pattern of trying Gemini SDK first, then a sequence of fallback Gemini models (`2.5-flash` → `2.0-flash` → `1.5-flash` → `1.5-flash-8b`), then an OpenAI-compatible fetch, then a zero-key public router (Pollinations), then a rule-based local heuristic. Each layer catches its own errors and falls through to the next.
+   295→- **Why it's valuable.** AI providers rate-limit, deprecate models, and have regional outages. A hierarchical failover that degrades gracefully (cloud → zero-key public → local rule-based) is the difference between a working product and a 502 page. DGLab has no equivalent pattern today — each Hub/Spoke that talks to an LLM would benefit.
+   296→- **How to extract.** `server-api.cjs:39-296` (the `executeUnifiedModelPrompt` router + `generateContentWithFailover` Gemini cascade + Pollinations branch). Depends on: native `fetch`, native `crypto` for any HMAC signing, optionally `@google/genai` SDK (PHP port replaces with PSR-18 HTTP client calling Gemini REST directly).
+   297→- **Risks.** The Gemini SDK call shape (`client.models.generateContent({model, contents, config})`) is JS-specific; PHP port must use Gemini's REST API directly. Pollinations is a free public service with no SLA — relying on it for production is fragile.
+   298→- **Verdict.** **KEEP-WITH-MODIFICATION** — pattern is gold, but each provider branch must be reimplemented for PHP.
+   299→
+   300→#### 4.1.2 SSE streaming for non-Gemini providers
+   301→
+   302→- **What.** For Gemini, true token-streaming via `client.models.generateContentStream()` writing `data: {text: chunk}` SSE events. For non-Gemini providers that don't natively stream, the server issues a single non-streaming request and then artificially word-chunks the response (split on `/(\s+)/`, emit 2 tokens at a time) to give the UI the feel of streaming.
+   303→- **Why it's valuable.** Real streaming is critical for chat UX (perceived latency drops 5-10×). The fake-streaming fallback is a pragmatic compromise for providers that don't support SSE.
+   304→- **How to extract.** `server-api.cjs:837-916` (the `/api/ai/chat` endpoint).
+   305→- **Risks.** PHP 8.4 + FrankenPHP supports SSE natively; the fake-streaming approach is technically dishonest (the model has already returned all text) but UX-valuable.
+   306→- **Verdict.** **KEEP-WITH-MODIFICATION** — implement true streaming where available, fake-streaming only when the provider lacks it.
+   307→
+   308→#### 4.1.3 Document-type × style taxonomy as a static data table
+   309→
+   310→- **What.** 22 document types × 10 paraphrase styles, each with a long-form prompt fragment that primes the LLM for the appropriate register. Two parallel arrays: client-side metadata (id/name/description/badge/icon/category) and server-side prompt fragments (`DOCUMENT_TYPE_DESCRIPTIONS[docType].prompt`, `PARAPHRASE_STYLE_GUIDES[style]`).
+   311→- **Why it's valuable.** This is the **core IP of the product**. The taxonomy encodes domain knowledge (the difference between "operative covenant" legal drafting and "somatic intensity" NSFW prose) that takes significant domain expertise to produce.
+   312→- **How to extract.** `src/services/paraphrase.types.ts:49-309` (client metadata) + `server-api.cjs:298-396` (prompt fragments). The two should be **unified into a single source of truth** in the PHP port.
+   313→- **Risks.** The prompts are LLM-output-quality-dependent and may need tuning for different models. The "NSFW" / "uncensored" prompts carry content-policy risk depending on the chosen provider's safety settings.
+   314→- **Verdict.** **KEEP** — directly portable as a PHP `enum` + prompt-builder class.
+   315→
+   316→#### 4.1.4 BYOK per-provider routing
+   317→
+   318→- **What.** User-supplied API keys (`ApiKeyConfig[]` with `provider`/`name`/`key`/`endpointUrl`/`isActive`) stored client-side; resolution logic picks the right key based on the model's `providerType` (gemini vs. groq vs. openrouter vs. cerebras vs. custom endpoint).
+   319→- **Why it's valuable.** BYOK is a competitive feature for privacy-conscious users and a cost-shifting mechanism (user pays their own LLM bill).
+   320→- **How to extract.** `src/services/crypto.service.ts:186-204` (the BYOK vault methods) + `src/services/ai.service.ts:31-62` (`resolveModelPayload`).
+   321→- **Risks.** Storing API keys in `localStorage` is **insecure** (any XSS = total key compromise). PHP port should use the DGLab `core/crypto` `Encrypter` + `KeyRegistry` (PR #260) with `SensitiveParameterValue` redaction in logs and `sodium_memzero` after use.
+   322→- **Verdict.** **KEEP-WITH-MODIFICATION** — pattern is valuable, storage must move to encrypted server-side vault.
+   323→
+   324→#### 4.1.5 Anti-flash dark-mode pre-hydration script
+   325→
+   326→- **What.** Inline `<script>` in `index.html:48-60` runs synchronously before Angular boots, reads `localStorage.getItem('eloqui_theme')`, and applies the `dark` class to `<html>` before the first paint. Prevents the flash-of-wrong-theme that occurs when SSR/CSR happens before the theme signal is read.
+   327→- **Why it's valuable.** Trivial but improves perceived quality. Critical for any DGLab app that supports user-themeable dark mode.
+   328→- **How to extract.** `index.html:48-60` — 13 lines of plain JS.
+   329→- **Verdict.** **KEEP** — direct copy, even in SuperPHP templates the inline script pattern works.
+   330→
+   331→#### 4.1.6 Encrypted-vault backup envelope format
+   332→
+   333→- **What.** JSON envelope `{format: 'eloqui-vault-encrypted', version: 1, kdf: 'PBKDF2-SHA256', iterations: 100000, cipher: 'AES-GCM-256', salt, iv, ciphertext, timestamp, checksumSha256}`. PBKDF2-SHA256 with 100k iterations to derive the AES key from a password.
+   334→- **Why it's valuable.** A self-describing, versioned, password-derivable encryption envelope for portable backups.
+   335→- **How to extract.** `src/services/backup.service.ts:846-894`.
+   336→- **Risks.** DGLab `core/crypto` `Envelope` (PR #260) already implements a **strictly superior** envelope: versioned, `kid` (key id) for multi-key rotation, `sodium_memzero` after use. **Do not adopt ELQ's envelope** — adopt DGLab's, and write a one-time importer for ELQ backups if migration is needed.
+   337→- **Verdict.** **REJECT** as a target format. **KEEP-WITH-MODIFICATION** as a migration concern (one-time importer for existing ELQ user backups).
+   338→
+   339→#### 4.1.7 Multi-target backup dispatch
+   340→
+   341→- **What.** Five remote targets (download, local_dir, GitHub repo+gist, S3+R2+MinIO, WebDAV, webhook) with a unified `RemoteConfig` interface. Each target implements: `testConnection()` (verify credentials), `executeBackup()` (upload payload), and (implicitly) `restore()` (download payload).
+   342→- **Why it's valuable.** Generic across any DGLab app that has user-generated content (LMS course exports, Showcase portfolios, Codex knowledge bases). The "save to my GitHub repo" pattern is especially compelling for technical users.
+   343→- **How to extract.** `src/services/backup.service.ts:121-239` (remote config + dispatch) + `server-api.cjs:1271-1750` (server-side handlers for GitHub REST API, AWS SigV4, WebDAV PROPFIND, webhook POST).
+   344→- **Risks.** The AWS SigV4 hand-rolled implementation (`server-api.cjs:1356-1370`) is fragile — use the official `aws-sdk-php` library instead. The GitHub REST API calls are stable but rate-limited (5000 req/hour per token).
+   345→- **Verdict.** **KEEP-WITH-MODIFICATION** — promote to Hub candidate (see §6.4).
+   346→
+   347→#### 4.1.8 Disaster-recovery HTML reader
+   348→
+   349→- **What.** A 193-line generator that emits a single self-contained HTML file with embedded CSS + JS that can render all manuscripts, chapters, and chat history offline in any browser — even if the original app is gone. Designed for catastrophic-recovery scenarios (lost IndexedDB, lost encryption key, but you have this one HTML file on a USB stick).
+   350→- **Why it's valuable.** A genuinely thoughtful UX pattern for any document-creation app. Demonstrates a commitment to user data sovereignty.
+   351→- **How to extract.** `src/services/backup.service.ts:938-1129`.
+   352→- **Risks.** The generated HTML is large (full content inline). PHP port should offer this as one of several backup methods.
+   353→- **Verdict.** **KEEP** — distinctive UX feature worth preserving.
+   354→
+   355→### 4.2 Domain Logic
+   356→
+   357→#### 4.2.1 Readability formulae + audience profiles
+   358→
+   359→- **What.** Five readability formulae (Flesch Reading Ease, Flesch-Kincaid Grade Level, Gunning Fog, Coleman-Liau, Automated Readability Index) computed from raw HTML. Six audience profiles with target grade ranges (Middle Grade 4.0-6.5, Young Adult 6.0-8.5, General Fiction 7.0-9.5, Literary Fiction 9.5-13.0, Academic/Technical 12.0-18.0, Casual/Web 5.0-7.5) and benchmark authors (Percy Jackson, Hunger Games, Stephen King, Toni Morrison, scientific papers, Royal Road).
+   360→- **Why it's valuable.** Readability metrics are universal writing aids. The audience-profile-matching UX (show a green/amber/red badge indicating whether your prose matches your target reader) is a distinctive product feature.
+   361→- **How to extract.** `src/services/readability.service.ts:1-604` — pure TypeScript, no Angular primitives, no I/O. The 6 audience profiles at lines 70-143 are static data.
+   362→- **Risks.** The syllable counter is English-only. The abbreviation-aware sentence splitter handles 13 English abbreviations; multi-language support would need expansion.
+   363→- **Verdict.** **KEEP** — direct line-by-line port to PHP.
+   364→
+   365→#### 4.2.2 AO3 EPUB metadata extraction
+   366→
+   367→- **What.** When importing an EPUB, detect if the source was Archive of Our Own by looking for `archiveofourown.org` URLs or `.userstuff`/`.userstuff1`/`.userstuff2`/`dl.tags` selectors. If AO3, extract structured metadata (Rating, Archive Warning, Categories, Fandom, Relationships, Additional Tags, Stats) from `dl.tags`, byline from `.byline`, summary from `blockquote.userstuff`. Generate a formatted "Work Info & Preface" chapter with Tailwind-styled badges.
+   368→- **Why it's valuable.** AO3 is the largest fanfiction archive; this importer is a one-way door for fanfic authors migrating to ELQ. The metadata extraction is AO3-specific but the pattern (detect-source-then-extract-structured-metadata) is generalizable.
+   369→- **How to extract.** `src/services/import.service.ts:113-153` (detection + extraction) + `:177-275` (preface HTML generation).
+   370→- **Risks.** AO3's HTML structure is stable but undocumented; future AO3 redesigns could break selectors.
+   371→- **Verdict.** **KEEP** — distinctive onboarding feature for the fanfic use case.
+   372→
+   373→#### 4.2.3 EPUB spine+manifest+TOC parser
+   374→
+   375→- **What.** Standard EPUB-2 parser: reads `META-INF/container.xml` for the OPF rootfile path, reads OPF for `<manifest>` (id→href map) and `<spine>` (itemref order), reads NCX or XHTML TOC for chapter titles. Handles root-directory paths, href URL-encoding, missing TOC files.
+   376→- **Why it's valuable.** Generic EPUB ingestion. Any DGLab app that needs to import EPUB (LMS course content, Codex document corpus, Showcase portfolio) can consume this.
+   377→- **How to extract.** `src/services/import.service.ts:40-103`.
+   378→- **Risks.** EPUB-3 (which uses nav.xhtml instead of toc.ncx) is partially supported. PHP port should use a proper EPUB library.
+   379→- **Verdict.** **KEEP-WITH-MODIFICATION** — port to PHP with proper EPUB-3 support.
+   380→
+   381→#### 4.2.4 Censorship redaction with 6 visual styles
+   382→
+   383→- **What.** Per-document `CensorshipConfig { redactionStyle: 6-style enum, customBlacklist: string[] }`. Word-boundary regex detects sensitive terms (default 21 profanities + user blacklist). 6 visual styles: `blackout` (█ chars), `blackbar` (black span), `blur` (CSS blur filter), `spoiler` (gray box that reveals on click), `asterisks` (***), `redact_pill` ([REDACTED] pill). Per-doc toggle `isUncensored` bypasses entirely.
+   384→- **Why it's valuable.** Allows the same document to render in two modes (filtered for sharing, unfiltered for author). The "neutral parity" framing — filtered vs. unfiltered as a deliberate user choice rather than a global platform policy — is a strong design principle.
+   385→- **How to extract.** `src/services/block.service.ts:429-498` (`detectSensitiveTerms` + `redactHtml`).
+   386→- **Risks.** The default sensitive-terms list is hand-curated and English-only. PHP port should make this configurable.
+   387→- **Verdict.** **KEEP** — distinctive UX feature.
+   388→
+   389→#### 4.2.5 Local Linguix rule-based fallback
+   390→
+   391→- **What.** Rule-based grammar review: duplicate consecutive word detection, 10 common typo corrections, 5 filler-phrase simplifications. Returns structured `Suggestion[]`.
+   392→- **Why it's valuable.** Zero-AI-cost prefilter for obvious errors. Saves LLM calls.
+   393→- **How to extract.** `src/services/ai.service.ts:65-131` (client-side) + `server-api.cjs:672+` (server-side mirror).
+   394→- **Risks.** Trivial — easy to expand with more rules.
+   395→- **Verdict.** **KEEP** — trivial to port, useful as a free prefilter.
+   396→
+   397→#### 4.2.6 Word-count history + writing goals + streaks
+   398→
+   399→- **What.** Per-document `WordCountHistoryPoint[]` (timestamp, wordCount, chapterTitle). Per-document `WritingGoals { documentTarget, dailyTarget, wordsWrittenToday, lastActiveDate, currentStreak }`. Computed progress percentages and streak maintenance logic.
+   400→- **Why it's valuable.** Writing-productivity gamification. Distinctive authorial UX (NaNoWriMo-style goal tracking).
+   401→- **How to extract.** `src/services/storage.service.ts:30-42` (types) + `src/services/block.service.ts:159-173` (computeds).
+   402→- **Verdict.** **KEEP** — small but valuable domain logic.
+   403→
+   404→### 4.3 Infrastructure
+   405→
+   406→#### 4.3.1 IndexedDB document store with per-chapter encryption
+   407→
+   408→- **What.** IndexedDB object store with one record per document; each chapter's content is encrypted via AES-GCM-256 before `put()` and decrypted on `get()`. Master key persisted in `localStorage` as hex.
+   409→- **Why it's valuable.** Demonstrates at-rest encryption at the field level (per-chapter) rather than the database level. Useful pattern for high-sensitivity fields in a larger DB.
+   410→- **How to extract.** `src/services/storage.service.ts:97-145`.
+   411→- **Risks.** localStorage-as-key-storage is XSS-vulnerable (see §4.1.4). Browser-only.
+   412→- **Verdict.** **REJECT** as a porting target — replaced by DGLab `core/dbal` + `core/crypto` server-side. **KEEP** the per-chapter encryption idea as an ADR consideration for DGLab's "document" domain.
+   413→
+   414→#### 4.3.2 Debounced autosave + throttled RAG reindex
+   415→
+   416→- **What.** `effect()` watches the current document signal; on any change, sets a 1200ms debounce timer to flush to IndexedDB; separately, a 5s idle timer triggers RAG reindex if the chapter signature changed. Both timers are canceled if a new change arrives.
+   417→- **Why it's valuable.** Saves writes (IndexedDB writes are expensive on Firefox). Avoids reindexing on every keystroke.
+   418→- **How to extract.** `src/services/block.service.ts:268-303`.
+   419→- **Risks.** Browser event loop only. PHP port: autosave becomes a server-side `flush()` after `POST /chapters/{id}` with coalescing; RAG reindex becomes a queue job triggered on chapter save.
+   420→- **Verdict.** **KEEP-WITH-MODIFICATION** — pattern translates to server-side write coalescing + queue-side reindex trigger.
+   421→
+   422→#### 4.3.3 Vector store with cosine similarity + BM25 fallback
+   423→
+   424→- **What.** In-memory `Chunk[]` with cosine similarity scoring. BM25-ish keyword fallback (custom scoring with `(matches / (matches + 1.5)) * (term.length > 4 ? 2.0 : 1.0)` — not standard BM25, just a heuristic).
+   425→- **Why it's valuable.** Demonstrates the embedding→similarity→keyword fallback chain. The pattern is sound.
+   426→- **How to extract.** `src/services/rag.service.ts:1-157`.
+   427→- **Risks.** In-memory only (lost on reload). 50-chunk hard cap. BM25 implementation is non-standard.
+   428→- **Verdict.** **REJECT** as direct port — replaced by DGLab HUB-14 Search (vector store) + HUB-31 Real-Time Analytics. **KEEP** the cosine similarity + keyword fallback pattern as a design reference.
+   429→
+   430→### 4.4 UX Patterns
+   431→
+   432→#### 4.4.1 Notion-style slash-menu block editor
+   433→
+   434→- **What.** `contentEditable` host with a 7-block-type vocabulary (paragraph/h1/h2/bullet/code/quote/divider). Slash-menu opens when user types `/`. Paste sanitizer strips dangerous tags (`script`/`style`/`iframe`/etc.) and attributes (`on*`/`data-*`/`mso-*`/`v:`/`o:`/`style`/`class`/`id`). Selection range tracking with `preRange`/`postRange` to capture surrounding context for paraphrase.
+   435→- **Why it's valuable.** The block-editor UX is the central editor surface. Selection-range tracking for context-aware paraphrase is the cleverest UX touch in the repo.
+   436→- **How to extract.** `src/components/editor/editor.component.ts:79-470` + `src/components/editor/block.component.ts:1-432`.
+   437→- **Risks.** `document.execCommand('insertHTML')` is deprecated. Modern editors (ProseMirror, Tipap, Lexical) use their own DOM abstraction. PHP/SSR port would need a different approach (HTMX-based or a JS editor like Tipap).
+   438→- **Verdict.** **KEEP-WITH-MODIFICATION** — UX pattern is valuable, but the `execCommand`-based implementation must be replaced with a modern editor framework.
+   439→
+   440→#### 4.4.2 Floating-pill paraphrase trigger on selection
+   441→
+   442→- **What.** On `document.selectionchange`, if the selection is non-empty and inside the editor, position a floating pill above the selection (top = rect.top - 44, left = rect.left + rect.width / 2). Pill contains a "Paraphrase" button that opens the paraphrase modal pre-populated with the selected text + 800-char context before + 800-char context after.
+   443→- **Why it's valuable.** Discoverable paraphrase UX — no need to highlight-then-navigate-menu.
+   444→- **How to extract.** `src/components/editor/editor.component.ts:305-410`.
+   445→- **Verdict.** **KEEP** — UX pattern.
+   446→
+   447→#### 4.4.3 Review-mode inline suggestion highlights
+   448→
+   449→- **What.** Linguix/Grammarly-style inline highlights with 4 category colors: red (Grammar/Spelling), purple (Style/Tone), blue (Clarity), emerald (Alternative). Selected suggestion shows amber highlight. CSS classes `.review-error`/`.review-style`/`.review-clarity`/`.review-alternative`/`.review-active` defined in `index.html:108-148`.
+   450→- **Why it's valuable.** Industry-standard review UX.
+   451→- **How to extract.** `index.html:108-148` (CSS) + `src/components/editor/editor.component.ts:239-294` (linguix scan + accept/dismiss/applyAll).
+   452→- **Verdict.** **KEEP** — direct port.
+   453→
+   454→#### 4.4.4 Modal-via-signal pattern
+   455→
+   456→- **What.** Each modal has a `show*Modal = signal(false)` on the root component. `openModal('metrics'|'models'|...)` sets the appropriate signal. ESC key closes topmost modal. Keyboard shortcuts (Ctrl+Shift+B = backup, Ctrl+E = export, Ctrl+\ = left sidebar, Ctrl+J = right sidebar, Ctrl+Shift+D = theme toggle) wired via `(window:keydown)` host listener.
+   457→- **Why it's valuable.** Clean modal management for SPAs. Keyboard shortcut discoverability.
+   458→- **How to extract.** `src/app.component.ts:64-91` (modal signals) + `:117-166` (keyboard shortcuts).
+   459→- **Risks.** PHP SSR doesn't have "signals" — but the pattern of "named modal open/close via centralized router" maps to Livewire/SuperPHP actions.
+   460→- **Verdict.** **KEEP-WITH-MODIFICATION** — pattern translates; primitive changes.
+   461→
+   462→### 4.5 Cherry-pick verdict tally
+   463→
+   464→| Verdict | Count |
+   465→|---|---|
+   466→| **KEEP** | 9 (4.1.3, 4.1.5, 4.1.8, 4.2.1, 4.2.2, 4.2.4, 4.2.5, 4.2.6, 4.4.3) |
+   467→| **KEEP-WITH-MODIFICATION** | 9 (4.1.1, 4.1.2, 4.1.4, 4.1.7, 4.2.3, 4.3.2, 4.4.1, 4.4.4, 4.1.6-as-migration) |
+   468→| **REJECT** | 3 (4.1.6 as target format, 4.3.1 IndexedDB, 4.3.3 in-memory vector store) |
+   469→| **DEFER** | 0 |
+   470→
+   471→---
+   472→
+   473→## 5. PHP Porting Plan
+   474→
+   475→### 5.1 Language-feature mapping
+   476→
+   477→| ELQ (TypeScript) construct | PHP 8.4 equivalent | Notes |
+   478→|---|---|---|
+   479→| `signal(value)` / `computed(() => ...)` / `effect(() => ...)` | State held in service object; computeds are methods; effects are removed | Angular signals are runtime reactivity primitives; PHP is request-scoped. For SSE/streaming, use Fibers (ADR-017). For long-lived state, use session or DB. |
+   480→| `@Injectable({providedIn: 'root'})` | PSR-11 container singleton registration | DGLab `core/container` (PR-shipped) already supports this. |
+   481→| `inject(Service)` | Constructor injection | DGLab lint rule forbids `$container->resolve(` in non-container callers (see worklog Task 59). |
+   482→| `async/await` | PHP Fibers (ADR-017) or sync code | Native async for HTTP calls: use `ext-curl` Multi or `Revolt` event loop. For typical request-scoped code, sync `file_get_contents` + `ext-curl` is fine. |
+   483→| `AsyncGenerator<string>` | Generator (`yield`) inside a Fiber | `chatStream()` (`ai.service.ts:319`) returns an async generator that yields chunks. PHP equivalent: `function chatStream(...): \Generator` yielding strings, with the underlying HTTP request running inside a Fiber for non-blocking SSE. |
+   484→| TypeScript interfaces (`interface Document`, `interface Chapter`) | PHP interfaces or readonly classes | Use `readonly class` + `public readonly string $id` for value objects. Use interfaces for repositories. |
+   485→| TypeScript discriminated unions (`type AiMode = 'fast' \| 'uncensored' \| ...`) | PHP enum (`enum AiMode: string { case Fast = 'fast'; ... }`) | PHP 8.1+ backed enums are strictly superior to string-union types. |
+   486→| TypeScript literal types (`'paragraph' \| 'h1' \| 'h2' \| ...`) | PHP enum (backed) | Same as above. |
+   487→| `CryptoKey` (WebCrypto) | `OpenSSL` extension or `sodium` extension | DGLab `core/crypto` `Encrypter` already wraps `openssl_encrypt` with AES-256-GCM + `sodium_memzero`. Use it. |
+   488→| `window.crypto.subtle.encrypt({name: 'AES-GCM', iv}, key, data)` | `\DGLab\Core\Crypto\Encrypter::encrypt($plaintext, $kid)` | Drop-in replacement. The DGLab envelope is JSON-serialized with version, kid, iv, ciphertext. |
+   489→| `window.crypto.subtle.digest('SHA-256', data)` | `hash('sha256', $data, false)` | Native PHP. |
+   490→| `window.crypto.subtle.deriveKey({name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256'}, ...)` | `hash_pbkdf2('sha256', $password, $salt, 100000, 32, true)` | DGLab `core/crypto` `Hasher` already does HKDF-SHA256; for PBKDF2 use `hash_pbkdf2` directly. |
+   491→| `window.crypto.getRandomValues(new Uint8Array(N))` | `random_bytes(N)` | Native PHP. |
+   492→| `indexedDB.open(name, version)` + `onupgradeneeded` + `transaction` + `objectStore` | Skip entirely; use MySQL via `core/dbal` | IndexedDB is browser-only. PHP port replaces with server-side persistence. |
+   493→| `localStorage.getItem(key)` / `setItem(key, value)` | Session (`$_SESSION`) or DB-backed user preferences | localStorage is browser-only. For server-side per-user storage, use MySQL `user_preferences` table; for ephemeral UI state, use sessions. |
+   494→| `DOMParser.parseFromString(html, 'text/html')` | `DOMDocument` or `Masterminds/HTML5` | Native `DOMDocument` is HTML4-lenient; for HTML5, use `Masterminds/HTML5` package. For XML (EPUB OPF), `simplexml_load_string` or `DOMDocument`. |
+   495→| `JSZip.loadAsync(file)` | `ZipArchive::open()` + `getFromName()` | Native PHP extension. |
+   496→| `jsPDF` | `tcpdf` or `mpdf` or `dompdf` | All three are mature. `tcpdf` is most feature-complete; `mpdf` is easiest for HTML→PDF; `dompdf` is fastest for HTML→PDF but less accurate. |
+   497→| `marked.parse(markdownText)` | `league/commonmark` or `cebe/markdown` | Both are PSR-15-friendly. `league/commonmark` is more configurable. |
+   498→| `@angular/forms` (FormControl, FormGroup) | Native PHP form handling or `laminas-form` | For SuperPHP SSR, forms are just POST handlers. |
+   499→| `@angular/common` (ngFor, ngIf) | SuperPHP templates (per ADR-005) | ADR-005 ratified SuperPHP as the template language. Angular control-flow syntax (`@if`/`@for`) maps closely to SuperPHP's control flow. |
+   500→| RxJS `Observable`/`Subject` | PSR-14 EventDispatcher + Fibers | DGLab `core/event-dispatcher` ships PSR-14. For long-running streams, use Fibers + Generator. |
+   501→| Express middleware chain | PSR-15 middleware pipeline | DGLab `core/middleware` ships `MiddlewarePipeline`. |
+   502→| `app.use('/api', apiRouter)` | Route registration on `core/router` | DGLab `core/router` supports attribute-loaded routes (`#[Route('/api/ai/chat', methods: ['POST'])]`). |
+   503→| `express.json({limit: '15mb'})` body parser | PSR-7 `ServerRequest::getParsedBody()` | Body size limit configured at FrankenPHP worker level, not middleware. |
+   504→| `fetch(url, {method, headers, body, signal: AbortSignal.timeout(10000)})` | PSR-18 `ClientInterface::sendRequest($request)` + `GuzzleHttp\Exception\ConnectException` for timeout | DGLab standard is PSR-18. For timeout, set `Guzzle`'s `timeout` option. |
+   505→| `res.setHeader('Content-Type', 'text/event-stream')` + `res.write('data: ...')` | `header('Content-Type: text/event-stream')` + `echo 'data: ...'` + `flush()` | FrankenPHP supports SSE natively. Use `connection: keep-alive`. |
+   506→| `process.env.GEMINI_API_KEY` | `getenv('GEMINI_API_KEY')` or DGLab `core/config` env loader | DGLab `core/config` ships `EnvLoader`. |
+   507→| `Buffer.from(str).toString('base64')` | `base64_encode($str)` | Native. |
+   508→| `crypto.createHash('sha256').update(data).digest('hex')` | `hash('sha256', $data)` | Native. |
+   509→| `crypto.createHmac('sha256', key).update(data).digest('hex')` | `hash_hmac('sha256', $data, $key)` | Native. Used for AWS SigV4 in `server-api.cjs:1356-1370`. |
+   510→| `new Date().toISOString()` | `(new \DateTimeImmutable())->format(\DateTimeInterface::ATOM)` | Use `DateTimeImmutable` for value semantics. |
+   511→| `Math.max(a, b)` / `Math.min(a, b)` | `max($a, $b)` / `min($a, $b)` | Native. |
+   512→| `Math.round(x * 10) / 10` | `round($x, 1)` | Native. |
+   513→| `Math.sqrt(x)` | `sqrt($x)` | Native. |
+   514→| `Array.from(set)` | `array_values(iterator_to_array($set))` or `array_unique($arr)` | Native. |
+   515→| `string.match(regex)` with named groups | `preg_match($regex, $subject, $matches)` | PHP regex syntax differs slightly (delimiters required). |
+   516→| `string.replace(regex, callback)` | `preg_replace_callback($regex, $callback, $subject)` | Native. Used for censorship redaction (`block.service.ts:470`). |
+   517→| `new Uint8Array(N).map(...)` | `str_repeat('\0', N)` then unpack, or `array_fill(0, N, 0)` | Prefer `random_bytes(N)` for crypto. |
+   518→| TypeScript strict null checks | PHPStan level 6 + nullable type declarations | DGLab enforces PHPStan `^2.2`. |
+   519→| `import { X } from 'path'` | `use DGLab\...\X;` + PSR-4 autoload | Standard. |
+   520→
+   521→### 5.2 Framework-feature mapping
+   522→
+   523→| ELQ framework feature | PHP equivalent | Migration notes |
+   524→|---|---|---|
+   525→| Angular DI (`@Injectable`, `inject()`) | PSR-11 container (`core/container`) | Constructor injection everywhere. No property injection. Service definitions in `ApplicationFactory`. |
+   526→| Angular standalone components | SuperPHP templates (per ADR-005) | Templates are `.phtml` files; component logic becomes a Presenter class. |
+   527→| Angular `OnPush` change detection | Not applicable (PHP is request-scoped) | For SSE, use Fibers + manual flush. |
+   528→| Angular signals/computed/effect | Service state + computed methods | No runtime reactivity in PHP. UI updates require full request/response or SSE push. |
+   529→| Angular `@ViewChild` | DI (inject the presenter/template data) | Different paradigm: in SSR, you don't query the DOM; you compute the data before render. |
+   530→| Angular `@Output` event emitters | Form POST actions or AJAX endpoints | SuperPHP forms submit to PHP endpoints; the response re-renders. |
+   531→| Angular `Router` | `core/router` with attribute routes | `#[Route('/api/ai/chat', methods: ['POST'])]` on a controller method. |
+   532→| Angular `HttpClient` | PSR-18 `ClientInterface` | Use `GuzzleHttp\Client` or `nyholm/psr7` + `kriswallsmith/buzz`. |
+   533→| Angular `FormControl` / `FormGroup` | Plain HTML forms + server-side validation | Use `laminas-validator` for server-side rules. |
+   534→| Tailwind via CDN | Tailwind compiled at build time | DGLab should compile Tailwind at build time (not CDN) for production. |
+   535→| `zoneless` change detection | N/A | No change detection in SSR. |
+   536→| Express app + Router | FrankenPHP + `core/router` | Routes registered in `ApplicationFactory`. |
+   537→| Express `express.json()` body parser | PSR-7 `ServerRequestInterface::getParsedBody()` | Body parsing is PSR-7 standard. |
+   538→| Express middleware | PSR-15 middleware (`core/middleware`) | `MiddlewarePipeline` ships with `CallableMiddlewareAdapter`. |
+   539→| `bun.lock` / `package-lock.json` | `composer.lock` | Standard. |
+   540→| `puppeteer` smoke tests | PHPUnit + Panther or Cypress | ELQ's 28 test scripts are ad-hoc; DGLab standard is PHPUnit. For E2E, use `behat/mink-selenium2-driver` or Cypress. |
+   541→
+   542→### 5.3 Standard-library mapping
+   543→
+   544→| ELQ JS library | PHP equivalent | Migration notes |
+   545→|---|---|---|
+   546→| `jszip` (EPUB/backup zip generation) | `ZipArchive` (ext-zip) | Native. For EPUB generation, `ZipArchive` + manual `mimetype` first entry (stored, not deflated). |
+   547→| `jspdf` | `tcpdf` or `mpdf` or `dompdf` | `mpdf` is closest to ELQ's usage (HTML→PDF with running headers/footers). |
+   548→| `marked` (Markdown rendering) | `league/commonmark` | Configure with `GithubFlavoredMarkdownExtension` for tables/strikethrough. |
+   549→| `@google/genai` (Gemini SDK) | PSR-18 HTTP client + Google AI REST API | The `@google/genai` SDK is a thin wrapper around the REST API. Use `guzzlehttp/psr7` + `google/apiclient` or roll a thin client. |
+   550→| RxJS Observables | PSR-14 events + Fibers (for streams) | For `chatStream()`, use `Generator<string>` yielding SSE chunks inside a Fiber. |
+   551→| `fetch()` | PSR-18 `ClientInterface` | Standardize on `GuzzleHttp\Client` with `extended-cache-mode` for connection pooling. |
+   552→| `Buffer` (Node) | Native PHP strings | PHP strings are byte-strings. No `Buffer` type needed. |
+   553→| `crypto` (Node) | `ext-openssl` + `ext-sodium` + `hash_*` functions | DGLab `core/crypto` already wraps this. |
+   554→| `DOMParser` (browser) | `DOMDocument` (ext-dom) or `Masterminds/HTML5` | For HTML5, prefer `Masterminds/HTML5` (DOMDocument is HTML4). |
+   555→| `crypto.randomUUID()` | ` Ramsey\Uuid\Uuid::uuid4()` or `Symfony\Component\Uid\Uuid::v4()` | DGLab ADR-009 ratifies ULID over UUID — use `symfony/uid` Ulid. |
+   556→| `window.matchMedia('(prefers-color-scheme: dark)')` | Server-side: read `Sec-CH-Prefers-Color-Scheme` header (Chrome) | For non-supporting browsers, fall back to localStorage or a server-side default. |
+   557→| `navigator.clipboard.writeText(text)` | Browser feature only — PHP cannot write to clipboard | UI feature; not a porting concern. |
+   558→| `File` API (browser) | `Psr\Http\Message\UploadedFileInterface` | Server-side file uploads. |
+   559→| `FileSystemDirectoryHandle` (File System Access API) | Not portable — browser-only | Replace with server-side filesystem (`core/filesystem`, already shipped). |
+   560→
+   561→### 5.4 Tooling mapping
+   562→
+   563→| ELQ tool | PHP equivalent | Migration notes |
+   564→|---|---|---|
+   565→| TypeScript compiler (`tsc`) | PHPStan `^2.2` (already in DGLab) | Strict mode level 6. |
+   566→| ESLint | PHPStan + PSalter + `php-cs-fixer` | DGLab standard. |
+   567→| `@angular/cli` (`ng serve`, `ng build`) | `composer` + `core/dev-cli` (CORE-20, not yet shipped) | ADR-014 ratifies SDLC as canonical. |
+   568→| Vite (declared but unused) | Not needed — PHP doesn't bundle by default | For Tailwind, use `tailwindcss/tailwindcss` standalone binary or `aurorawp/tailwindcss` npm package in a build step. |
+   569→| `puppeteer` (smoke tests) | PHPUnit + Panther for E2E | ELQ's 28 test scripts are throwaway; DGLab standard is PHPUnit. |
+   570→| `bun.lock` | `composer.lock` | Standard. |
+   571→| `package.json` scripts (`dev`, `build`, `start`, `preview`) | `composer scripts` | Standard. |
+   572→| `tsconfig.json` strict mode | PHPStan level 6 | Standard. |
+   573→
+   574→### 5.5 Non-trivial port migration notes
+   575→
+   576→**SSE streaming for AI chat.** ELQ's `chatStream()` (`ai.service.ts:319-389`) is an `AsyncGenerator<string>` that fetches an SSE endpoint, reads chunks via `ReadableStream.getReader()`, decodes via `TextDecoder`, and yields parsed `data: {text: ...}` events. PHP 8.4 + FrankenPHP supports SSE natively via `header('Content-Type: text/event-stream')` + `echo` + `flush()`. The server-side endpoint (`server-api.cjs:807-917`) uses Gemini's `generateContentStream()` for true streaming or fake word-chunks the response for non-Gemini. PHP port: server endpoint uses `GuzzleHttp\Client->requestAsync()` with `'stream' => true` + ` Psr\Http\Message\StreamInterface::read()` in a Fiber-yielding loop. Client-side, fetch + ReadableStream works unchanged.
+   577→
+   578→**IndexedDB → MySQL persistence.** ELQ stores Documents in IndexedDB (`storage.service.ts:78-95`), encrypting chapter content before `put()`. The PHP port stores Documents in MySQL via DGLab `core/dbal`, with chapter content encrypted via DGLab `core/crypto` `Encrypter::encrypt()` using a per-user key from `KeyRegistry`. The "per-chapter encryption" granularity is preserved by encrypting the `content` column of the `chapters` table, not the entire `documents` row. Migration: write a one-time importer that reads ELQ's IndexedDB export (via a JSON backup file the user generates through the Backup modal) and inserts into MySQL.
+   579→
+   580→**EPUB import.** ELQ's `importEpub()` uses `JSZip.loadAsync(file)` then `DOMParser.parseFromString(content, 'application/xml')` for OPF/NCX and `'text/html'` for chapter content. PHP port: `ZipArchive::open($file->getStreamPath())` + `getFromName('META-INF/container.xml')` + `simplexml_load_string()` for XML/OPF/NCX, and `Masterminds/HTML5::loadHTML($html)` for chapter content (DOMDocument is HTML4-lenient). The AO3-specific selectors (`.userstuff`, `dl.tags`, `.byline`) work identically in `Masterminds/HTML5` via `XPath` or CSS selectors (`Symfony\Component\CssSelector`).
+   581→
+   582→**Multi-provider AI router.** ELQ's `executeUnifiedModelPrompt()` (`server-api.cjs:60-296`) branches on `modelId` prefix: `pollinations-`, `groq/`, `openrouter/`, `cerebras/`, custom endpoint URL, or default Gemini. PHP port: an `AiProviderRouter` class with a chain of `AiProviderStrategy` implementations, each with a `supports(string $modelId): bool` and `invoke(Prompt $prompt): Response` method. The Gemini native SDK call becomes a direct REST call to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` with the `x-goog-api-key` header. The OpenAI-compatible strategy is a single PSR-18 client call to `{endpoint}/chat/completions`.
+   583→
+   584→**Paraphrase taxonomy as enum + builder.** ELQ stores the 22 document types as a const array of objects in `paraphrase.types.ts:49-236` and the prompt fragments as a separate `DOCUMENT_TYPE_DESCRIPTIONS` dict in `server-api.cjs:298-383`. PHP port unifies these: `enum DocumentType: string { case NovelSfw = 'novel_sfw'; ... }` with a `promptFragment(): string` method on each case (PHP enum methods). Same for `enum ParaphraseStyle`. A `ParaphrasePromptBuilder` service assembles the final prompt from `{docType, style, customInstruction, surroundingContext, contextBefore, contextAfter, selectionType}`.
+   585→
+   586→**Censorship redaction regex callback.** ELQ's `redactHtml()` (`block.service.ts:451-486`) uses a complex regex callback to wrap sensitive terms in styled spans while preserving HTML tag boundaries (`/(>|^)([^<]+)(<|$)/g` then `text.replace(/\b(term1|term2|...)\b/gi, callback)`). PHP port: `preg_replace_callback('/(>|^)([^<]+)(<|$)/', function($m) use ($terms, $style) { return $m[1] . preg_replace_callback('/\b(' . implode('|', $terms) . ')\b/i', fn($w) => $this->renderSpan($w[0], $style), $m[2]) . $m[3]; }, $html)`. Identical algorithm; PHP closures + `use` capture.
+   587→
+   588→**Backup envelope format migration.** ELQ's encrypted-vault format (`backup.service.ts:846-894`) uses `{format, version, kdf, iterations, cipher, salt, iv, ciphertext, checksumSha256}`. DGLab `core/crypto` `Envelope` uses `{v, kid, iv, ciphertext, ...}`. To migrate existing ELQ user backups: a one-time `EloquiBackupImporter` reads the ELQ envelope, derives the AES key via `hash_pbkdf2('sha256', $password, $salt, 100000, 32, true)`, decrypts with `openssl_decrypt($ciphertext, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv)`, and re-encrypts with DGLab `Encrypter::encrypt($plaintext, $newKid)` for storage in the new system. The user must supply their password once.
+   589→
+   590→**AWS SigV4 hand-rolled → aws-sdk-php.** ELQ's S3 backup endpoint (`server-api.cjs:1347-1380`) hand-rolls AWS SigV4 signing with native `crypto` module. PHP port: use `aws-sdk-php`'s `S3Client::putObject()` directly. The hand-rolled signing is fragile (canonical header ordering, query string encoding) and should not be reproduced.
+   591→
+   592→---
+   593→
+   594→## 6. Spoke Decomposition
+   595→
+   596→This section applies the **ESPOKE/ISPOKE model** as refined in APP-MODEL-REFINEMENT-5:
+   597→
+   598→> **ESPOKE** = singular external identity of an application. One ESPOKE per app. Owns public surface + composition policy + entry orchestration. Does NOT do domain logic, business rules, direct Hub calls, state, or long-running work. Lint rule restricts ESPOKE imports to `Spoke\*` and `Application\*` namespaces.
+   599→>
+   600→> **ISPOKE** = internal composable capability. Many per app. May be shared (many-to-many) via consumer-side composition policy (no bilateral consent).
+   601→>
+   602→> **Hub** = generic platform capability reusable across all DGLab apps. If a capability is useful to *every* DGLab app, it's a Hub, not an ISPOKE.
+   603→>
+   604→> **Classification** = `abstraction` (reusable infrastructure worker) or `feature` (app-specific domain logic) — metadata, not type.
+   605→>
+   606→> **`reusable: true`** = other ESPOKEs may consume via their Application Manifest; `reusable: false` = private, lint-enforced.
+   607→
+   608→### 6.1 Proposed ISPOKE inventory
+   609→
+   610→The proposed Eloq ESPOKE consumes 16 ISPOKEs. Placeholder IDs are used; actual IDs assigned during admission per the SDLC.
+   611→
+   612→---
+   613→
+   614→#### 6.1.1 ISPOKE-E1: Document Vault
+   615→
+   616→```
+   617→Capability: Document/Chapter persistence + at-rest encryption + autosave
+   618→ELQ source: src/services/block.service.ts (1047 LOC), src/services/storage.service.ts (242 LOC), src/services/block.service.ts:80-303 (state + autosave effect)
+   619→Proposed ISPOKE ID: ISPOKE-E1 (placeholder)
+   620→Classification: feature
+   621→Reusable: false
+   622→Consumes (Hub capabilities): HUB-04 Identity (user ownership), HUB-06 Auditor (save events), HUB-20 Vault (key material if server-side key vault desired)
+   623→Consumes (Core): CORE-02 DBAL, CORE-16 Crypto (Envelope for at-rest encryption), CORE-03 EventDispatcher (autosave events), CORE-14 Filesystem (disaster HTML if applicable)
+   624→Description: Per-user document/chapter repository with field-level AES-GCM-256 encryption of chapter content, debounced autosave coalescing, and per-chapter save events. Stores Document {id, title, lastModified, chapters[], chatSessions[], wordCountHistory[], goals, isUncensored, censorshipConfig, documentType} and Chapter {id, title, content (encrypted), lastModified}. The Document and Chapter value-object shapes defined at storage.service.ts:5-60 are directly portable as PHP readonly classes.
+   625→Migration notes: ELQ uses IndexedDB with a single-object-store model and per-chapter encryption before put(). PHP port uses MySQL `documents` and `chapters` tables via CORE-02 DBAL, with the `content` column encrypted via CORE-16 Crypto Encrypter using a per-user KEK from HUB-20 Vault. Autosave debounce (1200ms in ELQ) becomes a server-side write-coalescing pattern: client sends PATCH /chapters/{id} with content; server debounces by flushing on a 1s timer or on session-end. The "Document" aggregate root (with its 9 optional fields and legacy migration defaults at storage.service.ts:155-191) is a value object worth defining once and reusing everywhere.
+   626→Why this classification: feature — this is the core domain aggregate root of the Eloq application. Document/Chapter/ChatSession/Goals are Eloq-specific shapes, not generic infrastructure. Other apps (LMS Course, Showcase Product, Codex Knowledge Base) have different aggregate roots. NOT reusable because the Document schema is Eloq-specific.
+   627→Potential consumers: none (private to Eloq ESPOKE).
+   628→```
+   629→
+   630→---
+   631→
+   632→#### 6.1.2 ISPOKE-E2: Block Editor Surface
+   633→
+   634→```
+   635→Capability: Notion-style contentEditable block editor with 7 block types, slash-menu, paste sanitizer, selection-range tracking
+   636→ELQ source: src/components/editor/editor.component.ts (471 LOC), src/components/editor/block.component.ts (432 LOC), src/components/editor/*.html (636 LOC), index.html:84-91 (empty-block CSS), src/services/block.service.ts:17-78 (htmlToBlocks/blocksToHtml)
+   637→Proposed ISPOKE ID: ISPOKE-E2 (placeholder)
+   638→Classification: feature
+   639→Reusable: false
+   640→Consumes (Hub capabilities): HUB-26 UI Elements (for shared primitives)
+   641→Consumes (Core): CORE-07 SuperPHP Templates (ADR-005), CORE-11 SuperPHP Compiler, CORE-12 SuperPHP Runtime
+   642→Description: Authoring surface for chapter content. 7 block types (paragraph, h1, h2, bullet, code, quote, divider). Slash-menu opens on `/` keystroke. Paste sanitizer strips forbidden tags (script/style/iframe/object/embed/link/meta/svg/canvas/form/input) and attributes (on*/data-*/mso-*/v:*/o:*/style/class/id). Selection-range tracking with preRange/postRange for context-aware paraphrase (800 chars before/after). Floating-pill paraphrase trigger above selection.
+   643→Migration notes: Angular component layer does NOT port directly. The contentEditable host + document.execCommand('insertHTML') approach is deprecated and fragile. Recommended PHP-port approach: use a modern JS editor (Tipap, ProseMirror, or Lexical) loaded as an ES module on the client; the PHP SSR layer renders the initial HTML and exposes REST endpoints for content updates (/chapters/{id}/content PATCH). The paste sanitizer logic (editor.component.ts:163-213) ports to PHP for server-side validation of submitted HTML. The htmlToBlocks/blocksToHtml converters (block.service.ts:17-78) port directly to PHP.
+   644→Why this classification: feature — the editor surface IS the Eloq product. Block vocabulary (paragraph/h1/h2/bullet/code/quote/divider) is writing-app-specific. NOT reusable because other apps have different content models.
+   645→Potential consumers: none (private to Eloq ESPOKE).
+   646→```
+   647→
+   648→---
+   649→
+   650→#### 6.1.3 ISPOKE-E3: AI Inference Hub
+   651→
+   652→```
+   653→Capability: Multi-provider AI invocation router with hierarchical failover
+   654→ELQ source: server-api.cjs:39-296 (executeUnifiedModelPrompt + generateContentWithFailover), src/services/ai.service.ts:31-62 (resolveModelPayload), src/services/model.service.ts (curated model catalog + custom endpoints)
+   655→Proposed ISPOKE ID: ISPOKE-E3 (placeholder)
+   656→Classification: abstraction
+   657→Reusable: true
+   658→Consumes (Hub capabilities): HUB-20 Vault (BYOK key storage, SensitiveParameterValue for keys)
+   659→Consumes (Core): CORE-18 Kernel (HTTP entry), CORE-02 DBAL (model catalog persistence if needed), CORE-03 EventDispatcher (request lifecycle events)
+   660→Description: Provider-agnostic AI invocation layer. Routes prompts by modelId prefix to one of: (a) Google Gemini REST API; (b) OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, custom HTTP); (c) Pollinations zero-key public router; (d) Groq; (e) OpenRouter; (f) Cerebras. Hierarchical failover: Gemini 2.5-flash → 2.0-flash → 1.5-flash → 1.5-flash-8b → OpenAI-compatible → Pollinations → rule-based local. SSE streaming for true streaming providers; fake word-chunked streaming for non-streaming providers. Unified model payload resolution (modelId + customKey + customModel config).
+   661→Migration notes: The Gemini SDK (@google/genai) is JS-only; PHP port calls the Gemini REST API directly via PSR-18 HTTP client. The OpenAI-compatible branch (server-api.cjs:73-119) ports line-by-line — just Guzzle POST to {endpoint}/chat/completions. The Pollinations branch (server-api.cjs:122-180) is a single Guzzle call. The hierarchical failover pattern (try → catch → try next model) is the same algorithm in any language. The "task-role assignment" pattern (one model for grammar, another for drafting) from model.service.ts:50-57 should be preserved as a TaskModelConfig value object.
+   662→Why this classification: abstraction — this is reusable infrastructure, not Eloq-specific domain logic. Any DGLab app that calls an LLM (Codex for document Q&A, LMS for adaptive content, Showcase for product copywriting) would consume this ISPOKE. REUSE because multi-provider AI routing is universally valuable.
+   663→Potential consumers: Codex ESPOKE (document Q&A), LMS ESPOKE (adaptive course content), Showcase ESPOKE (product description generation).
+   664→```
+   665→
+   666→---
+   667→
+   668→#### 6.1.4 ISPOKE-E4: Paraphrase Engine
+   669→
+   670→```
+   671→Capability: Document-type × style-aware paraphrase prompt assembly + alternative generation
+   672→ELQ source: src/services/paraphrase.types.ts (309 LOC, 22 doc types + 10 styles), server-api.cjs:298-396 (DOCUMENT_TYPE_DESCRIPTIONS + PARAPHRASE_STYLE_GUIDES), server-api.cjs:1022-1226 (/api/ai/paraphrase endpoint), server-api.cjs:398-670 (localParaphraseFallback), src/components/paraphrase/paraphrase-modal.component.ts (879 LOC)
+   673→Proposed ISPOKE ID: ISPOKE-E4 (placeholder)
+   674→Classification: feature
+   675→Reusable: true
+   676→Consumes (Hub capabilities): none
+   677→Consumes (Core): CORE-03 EventDispatcher (paraphrase-applied event for audit), CORE-16 Crypto (no direct use)
+   678→Consumes (ISPOKE): ISPOKE-E3 (AI Inference Hub — invokes the LLM)
+   679→Description: Assembles paraphrase prompts from {documentType, style, selectionType, customInstruction, surroundingContext, contextBefore, contextAfter, useSurroundingContext, isDocUncensored}. Returns 4 alternatives each with {text, label, tone, explanation, fitScore}. 22 document types across 5 categories (Fiction SFW/NSFW/Speculative/Suspense/Horror/YA/Historical/Poetry/Fanfic × 9; Academic Research/Thesis/LitReview/STEM/Humanities × 5; Legal Contract/Brief/Compliance × 3; Business Memo/TechDocs/Marketing × 3; Journalism/Memoir × 2). 10 paraphrase styles (natural/closer/vivid/concise/dramatic/formal/simplified/active/lyrical/dialogue). Local fallback dictionary for common words (said/walked/looked/important) and register-specific templates (legal operative covenant, academic empirical hedging, NSFW somatic intensity).
+   680→Migration notes: The 22 doc types + 10 styles become PHP enums with method implementations (promptFragment(): string) on each case, unifying the client metadata (paraphrase.types.ts:49-309) and server prompt fragments (server-api.cjs:298-396) into a single source of truth. The prompt assembly logic (server-api.cjs:1065-1110) becomes a ParaphrasePromptBuilder service. The local fallback (server-api.cjs:398-670) is 270 LOC of hardcoded templates — port selectively, since the LLM should produce these dynamically.
+   681→Why this classification: feature — paraphrasing is a domain capability, not pure infrastructure. However, the paraphrase taxonomy is reusable beyond Eloq: Codex (technical doc paraphrasing), LMS (course content rewriting for different reading levels), Showcase (product description variation) could all consume this ISPOKE. The 22 doc types cover academic, legal, business, and journalism registers — not just fiction. REUSE because the taxonomy is broad enough to serve non-fiction apps.
+   682→Potential consumers: Codex ESPOKE (technical doc paraphrasing for different audiences), LMS ESPOKE (rewriting course content for different reading levels).
+   683→```
+   684→
+   685→---
+   686→
+   687→#### 6.1.5 ISPOKE-E5: Linguix Quality Reviewer
+   688→
+   689→```
+   690→Capability: Grammar/spelling/clarity/style/tone review with structured suggestions + score
+   691→ELQ source: src/services/ai.service.ts:65-131 (localLinguisticReview), server-api.cjs:920-1019 (/api/ai/review endpoint with Gemini responseSchema), src/components/editor/editor.component.ts:239-294 (scan + accept/dismiss/applyAll), index.html:108-148 (review-highlight CSS)
+   692→Proposed ISPOKE ID: ISPOKE-E5 (placeholder)
+   693→Classification: feature
+   694→Reusable: true
+   695→Consumes (Hub capabilities): none
+   696→Consumes (Core): CORE-03 EventDispatcher (review-applied event for audit)
+   697→Consumes (ISPOKE): ISPOKE-E3 (AI Inference Hub)
+   698→Description: Linguix/Grammarly-style inline grammar review. Returns Suggestion[] = {original, suggestion, type: Spelling|Grammar|Clarity|Style|Tone, explanation}. Computes a Linguix score 0-100 from issue density. Local rule-based fallback: duplicate word detection, 10 common typo corrections, 5 filler-phrase simplifications. UI renders inline highlights with 4 category colors (red/purple/blue/emerald) + active suggestion in amber.
+   699→Migration notes: The Gemini responseSchema (server-api.cjs:940-952) ports to PHP as a structured JSON schema passed to the Gemini REST API's `generationConfig.responseSchema` field. The local rule-based reviewer (ai.service.ts:65-131) ports line-by-line — regex + dictionary lookup. The CSS classes (index.html:108-148) port unchanged. The accept/dismiss/applyAll UI flow (editor.component.ts:269-294) becomes SuperPHP form actions.
+   700→Why this classification: feature — quality review is a writing-app domain feature. REUSE because the Linguix-pattern (inline grammar highlights + accept/dismiss UX) applies to any document-creation app. Codex (code documentation review), LMS (student essay grading), Showcase (product copy QA) could all consume this ISPOKE.
+
+[showing lines 1-700 of 1233; use offset=701 with limit to continue reading]

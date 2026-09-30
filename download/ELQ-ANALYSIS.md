@@ -1151,3 +1151,82 @@ Before any code is written, the following must be resolved:
 ---
 
 *End of analysis. This document is self-contained and does not require re-reading the conversation to act on. All file paths and line numbers reference the cloned ELQ repository at `/home/z/my-project/external/ELQ/`.*
+
+---
+
+# Decisions Ratified (2026-09-30)
+
+The tech lead has answered the five critical open questions from §7. Ratified below with implications.
+
+## Decision 1: License — VERBATIM PORTING GRANTED
+**Answer:** "I own ELQ."
+**Implication:** The All Rights Reserved default does not apply because the tech lead is the rights holder. Verbatim TypeScript→PHP source porting is permitted. The 22-prompt taxonomy, the readability formulae, and all other ELQ content may be ported directly when code implementation is un-deferred. The §7.4 risk is RETIRED.
+
+## Decision 2: ESPOKE ID — NEW (not a rename)
+**Answer:** "It's a new one."
+**Implication:** Eloq becomes a new ESPOKE (next available ID; per the verifier's count of 18 existing ESPOKE blueprints ESPOKE-01..18, Eloq becomes **ESPOKE-19**). It is NOT a rename of the long-deferred "AI App Architect" or any other existing planned ESPOKE. A new ESPOKE-19.md blueprint file must be created during the eventual implementation phase. The Application Manifest for Eloq will reference `espoke: ESPOKE-19`.
+
+## Decision 3: LLM — IMMEDIATE HUB RATIFICATION (HUB-32)
+**Answer:** "LLM to Hub."
+**Implication:** ISPOKE-E3 AI Inference Hub is **immediately promoted to HUB-32** (next available Hub ID; verifier confirms 31 existing Hub blueprints HUB-01..31). This bypasses the deferred-promotion rule (APP-MODEL-REFINEMENT-5 extension #2 "wait for second consumer") because LLM invocation is judged as foundational as Identity (HUB-04) or Audit (HUB-06). The 15 proposed ISPOKEs from §6 reduce to **14** (E3 leaves the ISPOKE catalog). All ELQ ISPOKEs that consumed E3 in the analysis (E4 Paraphrase, E5 Grammar, E11 Content Classification, E12 Generation) now consume HUB-32 instead. The Hub ring grows from 31 to 32 packages. The Application Manifest for Eloq lists HUB-32 in its Hub capabilities, not in its workers list.
+
+## Decision 4: Content Policy — NEUTRAL PARITY
+**Answer:** "Neutral parity."
+**Implication:** ELQ's per-doc content filtering stance is preserved verbatim. Specifically:
+- The 22 document-type × 10 paraphrase-style taxonomy ships intact, **including NSFW document types** (per the existing classification in `src/services/paraphrase.types.ts:49-309`).
+- The per-doc `content_filter_setting` toggle (filtered vs. unfiltered) ships as user choice, not platform-wide enforcement.
+- The `BLOCK_NONE` Gemini safety setting ships as an available user option, not stripped.
+- ISPOKE-E12 Content Classification ships with the per-doc toggle preserved.
+- DGLab applies no platform-wide content filter for the Eloq ESPOKE. Other ESPOKEs may apply their own content policies via their own Application Manifests — DGLab is policy-neutral at the platform level.
+- The §7.3 risk is RETIRED.
+
+## Decision 5: Consumer Analysis — REQUESTED
+**Answer:** "Analyze."
+**Implication:** The tech lead wants a subagent analysis of which of the 17 existing ESPOKEs (ESPOKE-01..18, minus none — all 18 are existing planned apps, Eloq is the 19th) would benefit from consuming the **10 remaining reusable ELQ ISPOKEs** (after E3 promoted to HUB-32). This is being executed in parallel under Task ID `ESPOKE-CONSUMER-MAP-7`. Output: consumer matrix + Hub-promotion-candidate reassessment, saved to `/home/z/my-project/download/ELQ-CONSUMER-MAP.md`.
+
+## Updated ISPOKE Count (post-decisions)
+
+- **Total ISPOKEs from ELQ analysis:** 14 (was 15; E3 promoted to HUB-32)
+- **Abstraction:** 8 (was 9; E3 was Abstraction)
+- **Feature:** 6 (unchanged)
+- **Reusable:** 10 (was 11; E3 was Reusable)
+- **Private:** 4 (unchanged)
+- **New Hub:** HUB-32 AI Inference Hub (immediate ratification)
+
+## Updated Application Manifest Draft for Eloq (post-decisions)
+
+```yaml
+application: Eloq
+espoke: ESPOKE-19  # new, per Decision 2
+
+# Hubs consumed (was: included E3 in workers list)
+hubs:
+  - HUB-04 Identity       # user auth (already built)
+  - HUB-32 AI Inference    # promoted from ISPOKE-E3, per Decision 3
+  # ... (other Hubs as needed)
+
+workers:
+  - ISPOKE-E1 Document Vault              # feature, reusable: false
+  - ISPOKE-E2 Editor Block Engine         # abstraction, reusable: true
+  - ISPOKE-E4 Paraphrase Engine           # abstraction, reusable: true (consumes HUB-32)
+  - ISPOKE-E5 Grammar Auditor             # abstraction, reusable: true (consumes HUB-32)
+  - ISPOKE-E6 Readability Auditor         # abstraction, reusable: true
+  - ISPOKE-E7 Backup Envelope Format      # abstraction, reusable: true
+  - ISPOKE-E8 BYOK Vault                  # abstraction, reusable: true
+  - ISPOKE-E9 Remote Backup Orchestrator  # abstraction, reusable: true
+  - ISPOKE-E10 Export Pipeline            # abstraction, reusable: true
+  - ISPOKE-E11 Content Classification     # abstraction, reusable: true (consumes HUB-32, neutral parity per Decision 4)
+  - ISPOKE-E12 Generation Service         # abstraction, reusable: true (consumes HUB-32, neutral parity per Decision 4)
+  - ISPOKE-E13 Privacy & Audit Ledger     # abstraction, reusable: true
+  - ISPOKE-E14 Writing Analytics          # feature, reusable: false
+  - ISPOKE-E15 Disaster Recovery Reader   # feature, reusable: false
+```
+
+(Specific ISPOKE IDs E14/E15 are illustrative — the §6 decomposition has them under different names; the actual IDs will be assigned when blueprints are created during the un-deferred implementation phase.)
+
+## What's Still Deferred
+
+- **Code implementation** — no `.php` files, no ISPOKE blueprint drafts, no ESPOKE-19.md file in the repo. Only analysis documents.
+- **ESPOKE-19.md creation** — the actual blueprint file. Deferred until implementation phase.
+- **HUB-32.md creation** — the actual Hub blueprint file for AI Inference. Deferred until implementation phase. (When created, it should incorporate the hierarchical failover pattern from ELQ's `server-api.cjs:39-296` — Gemini SDK → OpenAI-compatible fetch → Pollinations zero-key → rule-based local.)
+- **ISPOKE-E1 through E15 blueprint creation** — deferred until implementation phase.
