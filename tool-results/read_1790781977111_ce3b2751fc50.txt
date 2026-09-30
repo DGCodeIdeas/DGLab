@@ -1,0 +1,1048 @@
+     1→import { Injectable, signal, computed, effect, inject } from '@angular/core';
+     2→import { StorageService, Document, Chapter, ChatMessage, ChatSession, WordCountHistoryPoint, WritingGoals, Block, CensorshipConfig } from './storage.service';
+     3→import { RagService } from './rag.service';
+     4→import { ReadabilityService, ReadabilityMetrics, AudienceMatchResult } from './readability.service';
+     5→import JSZip from 'jszip';
+     6→
+     7→export const DEFAULT_SENSITIVE_TERMS = [
+     8→  'fuck', 'fucking', 'fucked', 'fucker',
+     9→  'shit', 'shitty', 'bullshit',
+    10→  'bitch', 'bitches',
+    11→  'asshole', 'ass', 'bastard',
+    12→  'dick', 'pussy', 'cock', 'cunt',
+    13→  'damn', 'dammit', 'hell',
+    14→  'whore', 'slut'
+    15→];
+    16→
+    17→export function htmlToBlocks(html: string): Block[] {
+    18→  if (!html || !html.trim()) {
+    19→    return [{ id: crypto.randomUUID(), type: 'paragraph', content: '' }];
+    20→  }
+    21→  try {
+    22→    const parser = new DOMParser();
+    23→    const doc = parser.parseFromString(html, 'text/html');
+    24→    const blocks: Block[] = [];
+    25→    const children = Array.from(doc.body.children);
+    26→
+    27→    if (children.length === 0) {
+    28→      const text = doc.body.textContent || '';
+    29→      return [{ id: crypto.randomUUID(), type: 'paragraph', content: text }];
+    30→    }
+    31→
+    32→    for (const child of children) {
+    33→      const tag = child.tagName.toLowerCase();
+    34→      const text = (child.textContent || '').trim();
+    35→      if (tag === 'h1') {
+    36→        blocks.push({ id: crypto.randomUUID(), type: 'h1', content: text });
+    37→      } else if (tag === 'h2') {
+    38→        blocks.push({ id: crypto.randomUUID(), type: 'h2', content: text });
+    39→      } else if (tag === 'ul') {
+    40→        const lis = Array.from(child.querySelectorAll('li'));
+    41→        if (lis.length > 0) {
+    42→          lis.forEach(li => {
+    43→            blocks.push({ id: crypto.randomUUID(), type: 'bullet', content: (li.textContent || '').trim() });
+    44→          });
+    45→        } else {
+    46→          blocks.push({ id: crypto.randomUUID(), type: 'bullet', content: text });
+    47→        }
+    48→      } else if (tag === 'pre' || tag === 'code') {
+    49→        blocks.push({ id: crypto.randomUUID(), type: 'code', content: text });
+    50→      } else if (tag === 'blockquote') {
+    51→        blocks.push({ id: crypto.randomUUID(), type: 'quote', content: text });
+    52→      } else if (tag === 'hr') {
+    53→        blocks.push({ id: crypto.randomUUID(), type: 'divider', content: '' });
+    54→      } else {
+    55→        blocks.push({ id: crypto.randomUUID(), type: 'paragraph', content: text });
+    56→      }
+    57→    }
+    58→
+    59→    return blocks.length > 0 ? blocks : [{ id: crypto.randomUUID(), type: 'paragraph', content: '' }];
+    60→  } catch {
+    61→    return [{ id: crypto.randomUUID(), type: 'paragraph', content: html.replace(/<[^>]*>/g, '') }];
+    62→  }
+    63→}
+    64→
+    65→export function blocksToHtml(blocks: Block[]): string {
+    66→  if (!blocks || blocks.length === 0) return '<p></p>';
+    67→  return blocks.map(b => {
+    68→    switch (b.type) {
+    69→      case 'h1': return `<h1>${b.content}</h1>`;
+    70→      case 'h2': return `<h2>${b.content}</h2>`;
+    71→      case 'bullet': return `<ul><li>${b.content}</li></ul>`;
+    72→      case 'code': return `<pre><code>${b.content}</code></pre>`;
+    73→      case 'quote': return `<blockquote>${b.content}</blockquote>`;
+    74→      case 'divider': return `<hr/>`;
+    75→      default: return `<p>${b.content}</p>`;
+    76→    }
+    77→  }).join('');
+    78→}
+    79→
+    80→@Injectable({
+    81→  providedIn: 'root'
+    82→})
+    83→export class BlockService {
+    84→  private storage = inject(StorageService);
+    85→  ragService = inject(RagService);
+    86→  readabilityService = inject(ReadabilityService);
+    87→
+    88→  // State
+    89→  readonly isLoading = signal(true);
+    90→  readonly documents = signal<Document[]>([]);
+    91→  readonly currentDocId = signal<string | null>(null);
+    92→  readonly currentDoc = signal<Document | null>(null);
+    93→  
+    94→  // Chapter State
+    95→  readonly activeChapterId = signal<string | null>(null);
+    96→  
+    97→  // Chat State
+    98→  readonly activeSessionId = signal<string | null>(null);
+    99→
+   100→  readonly saveStatus = signal<'saved' | 'saving' | 'error'>('saved');
+   101→  readonly lastSavedAt = signal<Date | null>(null);
+   102→
+   103→  private saveTimer: any = null;
+   104→  private ragTimer: any = null;
+   105→  private lastIndexedSignature = '';
+   106→  
+   107→  // Derived state for the editor
+   108→  readonly chapters = computed(() => this.currentDoc()?.chapters || []);
+   109→  
+   110→  readonly activeChapter = computed(() => {
+   111→      const chapters = this.chapters();
+   112→      const id = this.activeChapterId();
+   113→      return chapters.find(c => c.id === id) || null;
+   114→  });
+   115→
+   116→  readonly activeChapterIndex = computed(() => {
+   117→    const chapters = this.chapters();
+   118→    const id = this.activeChapterId();
+   119→    const idx = chapters.findIndex(c => c.id === id);
+   120→    return idx >= 0 ? idx : 0;
+   121→  });
+   122→
+   123→  readonly activeChapterContent = computed(() => this.activeChapter()?.content || '');
+   124→  readonly activeChapterTitle = computed(() => this.activeChapter()?.title || 'Untitled');
+   125→  
+   126→  readonly docTitle = computed(() => this.currentDoc()?.title || 'Untitled');
+   127→  
+   128→  // Stats (Aggregated across all chapters, memory-efficient)
+   129→  readonly wordCount = computed(() => {
+   130→     const chapters = this.chapters();
+   131→     let count = 0;
+   132→     for (const c of chapters) {
+   133→         if (!c.content) continue;
+   134→         // Fast word count without heavy regex allocations
+   135→         const clean = c.content.replace(/<[^>]*>/g, ' ');
+   136→         const words = clean.trim().split(/\s+/);
+   137→         if (words.length === 1 && words[0] === '') continue;
+   138→         count += words.length;
+   139→     }
+   140→     return count;
+   141→  });
+   142→
+   143→  // Alias for templates/components calling totalWordCount
+   144→  readonly totalWordCount = computed(() => this.wordCount());
+   145→  
+   146→  // Entire Book Content (Fallback for small books)
+   147→  readonly entireBookContent = computed(() => {
+   148→      return this.chapters().map(c => `--- CHAPTER: ${c.title} ---\n${c.content}`).join('\n\n');
+   149→  });
+   150→
+   151→  readonly readingTime = computed(() => {
+   152→      return Math.ceil(this.wordCount() / 200); 
+   153→  });
+   154→
+   155→  readonly speakingTime = computed(() => {
+   156→      return Math.ceil(this.wordCount() / 130);
+   157→  });
+   158→
+   159→  // Writing Productivity Goals
+   160→  readonly documentTarget = computed(() => this.currentDoc()?.goals?.documentTarget || 3000);
+   161→  readonly dailyTarget = computed(() => this.currentDoc()?.goals?.dailyTarget || 500);
+   162→  readonly wordsWrittenToday = computed(() => this.currentDoc()?.goals?.wordsWrittenToday || 0);
+   163→  readonly currentStreak = computed(() => this.currentDoc()?.goals?.currentStreak || 1);
+   164→
+   165→  readonly documentProgress = computed(() => {
+   166→    const target = this.documentTarget() || 1;
+   167→    return Math.min(100, Math.round((this.wordCount() / target) * 100));
+   168→  });
+   169→
+   170→  readonly dailyProgress = computed(() => {
+   171→    const target = this.dailyTarget() || 1;
+   172→    return Math.min(100, Math.round((this.wordsWrittenToday() / target) * 100));
+   173→  });
+   174→
+   175→  // --- Real-time Readability & Audience Calibration Metrics ---
+   176→  readonly activeChapterReadability = computed<ReadabilityMetrics>(() => {
+   177→    return this.readabilityService.analyzeText(this.activeChapterContent());
+   178→  });
+   179→
+   180→  readonly fullDocumentReadability = computed<ReadabilityMetrics>(() => {
+   181→    const chapters = this.chapters();
+   182→    if (chapters.length === 0) return this.readabilityService.analyzeText('');
+   183→    const fullText = chapters.map(c => c.content || '').join('\n\n');
+   184→    return this.readabilityService.analyzeText(fullText);
+   185→  });
+   186→
+   187→  readonly activeAudienceMatch = computed<AudienceMatchResult>(() => {
+   188→    const metrics = this.activeChapterReadability();
+   189→    const profile = this.readabilityService.currentAudienceProfile();
+   190→    return this.readabilityService.evaluateAudienceMatch(metrics, profile);
+   191→  });
+   192→
+   193→  readonly fullDocAudienceMatch = computed<AudienceMatchResult>(() => {
+   194→    const metrics = this.fullDocumentReadability();
+   195→    const profile = this.readabilityService.currentAudienceProfile();
+   196→    return this.readabilityService.evaluateAudienceMatch(metrics, profile);
+   197→  });
+   198→
+   199→  // --- Document Type / Register Signal ---
+   200→  readonly documentType = computed<string>(() => this.currentDoc()?.documentType || 'novel_sfw');
+   201→
+   202→  // --- Document Filtering / Unfiltered Processing Signals (Neutral Parity) ---
+   203→  readonly isUncensored = computed(() => this.currentDoc()?.isUncensored ?? false);
+   204→  readonly isUnfiltered = computed(() => this.isUncensored());
+   205→  readonly processingMode = computed<'filtered' | 'unfiltered'>(() => this.isUnfiltered() ? 'unfiltered' : 'filtered');
+   206→  readonly censorshipConfig = computed<CensorshipConfig>(() => this.currentDoc()?.censorshipConfig || {
+   207→    redactionStyle: 'spoiler',
+   208→    customBlacklist: []
+   209→  });
+   210→  readonly redactionStyle = computed(() => this.censorshipConfig().redactionStyle || 'spoiler');
+   211→  readonly customBlacklist = computed(() => this.censorshipConfig().customBlacklist || []);
+   212→
+   213→  readonly allSensitiveTerms = computed(() => {
+   214→    const custom = this.customBlacklist() || [];
+   215→    const set = new Set([...DEFAULT_SENSITIVE_TERMS, ...custom.map(t => t.toLowerCase().trim())]);
+   216→    return Array.from(set).filter(Boolean);
+   217→  });
+   218→
+   219→  readonly activeChapterCensorshipReport = computed(() => {
+   220→    const content = this.activeChapterContent();
+   221→    if (!content) return { count: 0, terms: [] as string[] };
+   222→    return this.detectSensitiveTerms(content);
+   223→  });
+   224→
+   225→  readonly sensitiveTermsCount = computed(() => this.activeChapterCensorshipReport().count);
+   226→
+   227→  readonly activeChapterRenderedHtml = computed(() => {
+   228→    return this.redactHtml(this.activeChapterContent());
+   229→  });
+   230→
+   231→  readonly documentCensorshipReport = computed(() => {
+   232→    const chapters = this.chapters();
+   233→    let count = 0;
+   234→    const termSet = new Set<string>();
+   235→    for (const c of chapters) {
+   236→      if (!c.content) continue;
+   237→      const res = this.detectSensitiveTerms(c.content);
+   238→      count += res.count;
+   239→      res.terms.forEach(t => termSet.add(t));
+   240→    }
+   241→    return { count, terms: Array.from(termSet) };
+   242→  });
+   243→
+   244→  readonly wordCountHistory = computed(() => {
+   245→    const history = this.currentDoc()?.wordCountHistory || [];
+   246→    if (history.length === 0) {
+   247→      // Generate initial baseline points if empty so line chart is immediately visible
+   248→      const now = Date.now();
+   249→      const current = this.wordCount();
+   250→      return [
+   251→        { timestamp: now - 3600000 * 24 * 3, wordCount: Math.max(0, Math.round(current * 0.35)) },
+   252→        { timestamp: now - 3600000 * 24 * 2, wordCount: Math.max(0, Math.round(current * 0.6)) },
+   253→        { timestamp: now - 3600000 * 24, wordCount: Math.max(0, Math.round(current * 0.85)) },
+   254→        { timestamp: now, wordCount: current }
+   255→      ];
+   256→    }
+   257→    return history;
+   258→  });
+   259→  
+   260→  // Derived state for chat
+   261→  readonly sessions = computed(() => this.currentDoc()?.chatSessions || []);
+   262→  readonly activeSession = computed(() => {
+   263→     const s = this.sessions();
+   264→     const id = this.activeSessionId();
+   265→     return s.find(session => session.id === id) || null;
+   266→  });
+   267→
+   268→  constructor() {
+   269→    this.loadDocuments();
+   270→    
+   271→    // Debounced Auto-save effect (prevents locking up memory & IndexedDB on fast typing/pasting/streaming)
+   272→    effect(() => {
+   273→      const doc = this.currentDoc();
+   274→      if (doc) {
+   275→        this.saveStatus.set('saving');
+   276→        if (this.saveTimer) clearTimeout(this.saveTimer);
+   277→        this.saveTimer = setTimeout(() => {
+   278→          this.storage.saveDocument(doc).then(() => {
+   279→            this.saveStatus.set('saved');
+   280→            this.lastSavedAt.set(new Date());
+   281→          }).catch(err => {
+   282→            console.error('Save failed', err);
+   283→            this.saveStatus.set('error');
+   284→          });
+   285→        }, 1200);
+   286→      }
+   287→    });
+   288→
+   289→    // Throttled Idle RAG Indexing Trigger (waits 5s after user stops editing, only if content changed)
+   290→    effect(() => {
+   291→        const doc = this.currentDoc();
+   292→        if (doc && doc.chapters && doc.chapters.length > 0) {
+   293→            // Compute a light signature of chapter lengths and titles
+   294→            const signature = doc.chapters.map(c => `${c.id}:${c.title}:${c.content.length}`).join('|');
+   295→            if (signature !== this.lastIndexedSignature) {
+   296→                if (this.ragTimer) clearTimeout(this.ragTimer);
+   297→                this.ragTimer = setTimeout(() => {
+   298→                    this.lastIndexedSignature = signature;
+   299→                    this.ragService.indexChapters(doc.chapters);
+   300→                }, 5000);
+   301→            }
+   302→        }
+   303→    });
+   304→  }
+   305→
+   306→  async loadDocuments() {
+   307→    this.isLoading.set(true);
+   308→    try {
+   309→        const docs = await this.storage.getAllDocuments();
+   310→        this.documents.set(docs);
+   311→        if (docs.length > 0 && !this.currentDocId()) {
+   312→          this.selectDocument(docs[0].id);
+   313→        } else if (docs.length === 0) {
+   314→          await this.createNewDocument();
+   315→        }
+   316→    } finally {
+   317→        setTimeout(() => {
+   318→            this.isLoading.set(false);
+   319→        }, 500);
+   320→    }
+   321→  }
+   322→
+   323→  async createNewDocument() {
+   324→    const defaultSession: ChatSession = {
+   325→        id: crypto.randomUUID(),
+   326→        title: 'New Chat',
+   327→        messages: [{role: 'model', text: 'I\'m ready to help with your book.'}],
+   328→        timestamp: Date.now()
+   329→    };
+   330→
+   331→    const firstChapter: Chapter = {
+   332→        id: crypto.randomUUID(),
+   333→        title: 'Chapter 1',
+   334→        content: '<h1>Chapter 1</h1><p>Start writing here...</p>',
+   335→        lastModified: Date.now()
+   336→    };
+   337→
+   338→    const newDoc: Document = {
+   339→      id: crypto.randomUUID(),
+   340→      title: 'Untitled Book',
+   341→      lastModified: Date.now(),
+   342→      chapters: [firstChapter],
+   343→      chatSessions: [defaultSession],
+   344→      isUncensored: false,
+   345→      censorshipConfig: {
+   346→        redactionStyle: 'spoiler',
+   347→        customBlacklist: []
+   348→      }
+   349→    };
+   350→    
+   351→    await this.storage.saveDocument(newDoc);
+   352→    this.documents.update(docs => [...docs, newDoc]);
+   353→    this.selectDocument(newDoc.id);
+   354→  }
+   355→
+   356→  async createDocumentFromImport(title: string, chapters: Chapter[]) {
+   357→    const defaultSession: ChatSession = {
+   358→        id: crypto.randomUUID(),
+   359→        title: 'New Chat',
+   360→        messages: [{role: 'model', text: 'I\'m ready to help with your book.'}],
+   361→        timestamp: Date.now()
+   362→    };
+   363→
+   364→    const newDoc: Document = {
+   365→      id: crypto.randomUUID(),
+   366→      title: title,
+   367→      lastModified: Date.now(),
+   368→      chapters: chapters,
+   369→      chatSessions: [defaultSession],
+   370→      isUncensored: false,
+   371→      censorshipConfig: {
+   372→        redactionStyle: 'spoiler',
+   373→        customBlacklist: []
+   374→      }
+   375→    };
+   376→    
+   377→    await this.storage.saveDocument(newDoc);
+   378→    this.documents.update(docs => [...docs, newDoc]);
+   379→    this.selectDocument(newDoc.id);
+   380→  }
+   381→
+   382→  async deleteDocument(id: string) {
+   383→    await this.storage.deleteDocument(id);
+   384→    this.documents.update(docs => docs.filter(d => d.id !== id));
+   385→    
+   386→    if (this.currentDocId() === id) {
+   387→       this.currentDoc.set(null);
+   388→       this.currentDocId.set(null);
+   389→       this.activeSessionId.set(null);
+   390→       this.activeChapterId.set(null);
+   391→       const remaining = this.documents();
+   392→       if (remaining.length > 0) {
+   393→           this.selectDocument(remaining[0].id);
+   394→       } else {
+   395→           this.createNewDocument();
+   396→       }
+   397→    }
+   398→  }
+   399→
+   400→  selectDocument(id: string) {
+   401→    this.currentDocId.set(id);
+   402→    this.storage.getDocument(id).then(doc => {
+   403→      if (doc) {
+   404→          if (!doc.chatSessions) doc.chatSessions = [];
+   405→          
+   406→          this.currentDoc.set(doc);
+   407→          
+   408→          // Select first chapter
+   409→          if (doc.chapters && doc.chapters.length > 0) {
+   410→              this.activeChapterId.set(doc.chapters[0].id);
+   411→          } else {
+   412→               // Should not happen due to migration, but safe fallback
+   413→               this.addChapter();
+   414→          }
+   415→
+   416→          if (doc.chatSessions && doc.chatSessions.length > 0) {
+   417→              this.activeSessionId.set(doc.chatSessions[0].id);
+   418→          } else {
+   419→              this.createChatSession();
+   420→          }
+   421→      }
+   422→    });
+   423→  }
+   424→
+   425→  updateTitle(newTitle: string) {
+   426→    this.currentDoc.update(doc => doc ? { ...doc, title: newTitle, lastModified: Date.now() } : null);
+   427→  }
+   428→
+   429→  // --- Censorship & Redaction Methods ---
+   430→
+   431→  detectSensitiveTerms(text: string): { count: number; terms: string[] } {
+   432→    if (!text) return { count: 0, terms: [] };
+   433→    const plainText = text.replace(/<[^>]*>/g, ' ');
+   434→    const terms = this.allSensitiveTerms();
+   435→    let count = 0;
+   436→    const detected = new Set<string>();
+   437→
+   438→    for (const term of terms) {
+   439→      if (!term.trim()) continue;
+   440→      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+   441→      const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
+   442→      const matches = plainText.match(regex);
+   443→      if (matches && matches.length > 0) {
+   444→        count += matches.length;
+   445→        detected.add(term.toLowerCase());
+   446→      }
+   447→    }
+   448→    return { count, terms: Array.from(detected) };
+   449→  }
+   450→
+   451→  redactHtml(html: string): string {
+   452→    if (!html) return '';
+   453→    // Uncensored Mode: Return full raw creative text without any redactions
+   454→    if (this.isUncensored()) {
+   455→      return html;
+   456→    }
+   457→
+   458→    const terms = this.allSensitiveTerms();
+   459→    if (terms.length === 0) return html;
+   460→
+   461→    const style = this.redactionStyle();
+   462→    const escapedTerms = terms
+   463→      .map(t => t.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+   464→      .filter(Boolean)
+   465→      .join('|');
+   466→    
+   467→    if (!escapedTerms) return html;
+   468→    const regex = new RegExp(`\\b(${escapedTerms})\\b`, 'gi');
+   469→
+   470→    return html.replace(/(>|^)([^<]+)(<|$)/g, (match, prefix, text, suffix) => {
+   471→      const replacedText = text.replace(regex, (word: string) => {
+   472→        if (style === 'blackbar' || style === 'blackout') {
+   473→          return `<span class="censored-blackbar" title="Censored term: Click to reveal" onclick="this.classList.toggle('unredacted')">${'█'.repeat(Math.max(4, word.length))}</span>`;
+   474→        } else if (style === 'blur') {
+   475→          return `<span class="censored-blur" title="Censored term: Click to reveal" onclick="this.classList.toggle('unredacted')">${word}</span>`;
+   476→        } else if (style === 'asterisks') {
+   477→          return `<span class="censored-spoiler" title="Censored term: Click to reveal" onclick="this.classList.toggle('unredacted')">${'*'.repeat(Math.max(3, word.length))}</span>`;
+   478→        } else if (style === 'redact_pill') {
+   479→          return `<span class="censored-pill" title="Censored term: Click to reveal" onclick="this.classList.toggle('unredacted')">[REDACTED]</span>`;
+   480→        } else {
+   481→          return `<span class="censored-spoiler" title="Censored term: Click to reveal" onclick="this.classList.toggle('unredacted')">${word}</span>`;
+   482→        }
+   483→      });
+   484→      return prefix + replacedText + suffix;
+   485→    });
+   486→  }
+   487→
+   488→  toggleDocumentCensorship(forced?: boolean) {
+   489→    this.currentDoc.update(doc => {
+   490→      if (!doc) return null;
+   491→      const next = forced !== undefined ? forced : !doc.isUncensored;
+   492→      return { ...doc, isUncensored: next, lastModified: Date.now() };
+   493→    });
+   494→  }
+   495→
+   496→  toggleCensorshipMode(forced?: boolean) {
+   497→    this.toggleDocumentCensorship(forced);
+   498→  }
+   499→
+   500→  toggleProcessingMode(forced?: boolean) {
+   501→    this.toggleDocumentCensorship(forced);
+   502→  }
+   503→
+   504→  setProcessingMode(mode: 'filtered' | 'unfiltered') {
+   505→    this.toggleDocumentCensorship(mode === 'unfiltered');
+   506→  }
+   507→
+   508→  setDocumentType(type: string): void {
+   509→    const isMature = type === 'novel_nsfw';
+   510→    this.currentDoc.update(doc => {
+   511→      if (!doc) return null;
+   512→      return {
+   513→        ...doc,
+   514→        documentType: type,
+   515→        isUncensored: isMature ? true : doc.isUncensored,
+   516→        lastModified: Date.now()
+   517→      };
+   518→    });
+   519→  }
+   520→
+   521→  setRedactionStyle(style: 'blackout' | 'blackbar' | 'blur' | 'spoiler' | 'asterisks' | 'redact_pill') {
+   522→    this.currentDoc.update(doc => {
+   523→      if (!doc) return null;
+   524→      const config = doc.censorshipConfig || { redactionStyle: 'spoiler', customBlacklist: [] };
+   525→      return {
+   526→        ...doc,
+   527→        censorshipConfig: { ...config, redactionStyle: style },
+   528→        lastModified: Date.now()
+   529→      };
+   530→    });
+   531→  }
+   532→
+   533→  setCensorshipRedactionStyle(style: 'blackout' | 'blackbar' | 'blur' | 'spoiler' | 'asterisks' | 'redact_pill') {
+   534→    this.setRedactionStyle(style);
+   535→  }
+   536→
+   537→  addCustomBlacklistTerm(term: string) {
+   538→    const clean = term.trim().toLowerCase();
+   539→    if (!clean) return;
+   540→    this.currentDoc.update(doc => {
+   541→      if (!doc) return null;
+   542→      const config = doc.censorshipConfig || { redactionStyle: 'spoiler', customBlacklist: [] };
+   543→      const currentList = config.customBlacklist || [];
+   544→      if (currentList.includes(clean)) return doc;
+   545→      return {
+   546→        ...doc,
+   547→        censorshipConfig: {
+   548→          ...config,
+   549→          customBlacklist: [...currentList, clean]
+   550→        },
+   551→        lastModified: Date.now()
+   552→      };
+   553→    });
+   554→  }
+   555→
+   556→  removeCustomBlacklistTerm(term: string) {
+   557→    const clean = term.trim().toLowerCase();
+   558→    this.currentDoc.update(doc => {
+   559→      if (!doc) return null;
+   560→      const config = doc.censorshipConfig || { redactionStyle: 'spoiler', customBlacklist: [] };
+   561→      return {
+   562→        ...doc,
+   563→        censorshipConfig: {
+   564→          ...config,
+   565→          customBlacklist: (config.customBlacklist || []).filter(t => t.toLowerCase() !== clean)
+   566→        },
+   567→        lastModified: Date.now()
+   568→      };
+   569→    });
+   570→  }
+   571→
+   572→  cleanSanitizeActiveChapter() {
+   573→    const content = this.activeChapterContent();
+   574→    if (!content) return;
+   575→    const terms = this.allSensitiveTerms();
+   576→    if (terms.length === 0) return;
+   577→
+   578→    const escapedTerms = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+   579→    const regex = new RegExp(`\\b(${escapedTerms})\\b`, 'gi');
+   580→    const cleaned = content.replace(/(>|^)([^<]+)(<|$)/g, (match, prefix, text, suffix) => {
+   581→      const replacedText = text.replace(regex, (word: string) => `[${word[0]}***]`);
+   582→      return prefix + replacedText + suffix;
+   583→    });
+   584→    this.updateActiveChapterContent(cleaned);
+   585→  }
+   586→
+   587→  cleanSanitizeWholeDocument() {
+   588→    this.currentDoc.update(doc => {
+   589→      if (!doc) return null;
+   590→      const terms = this.allSensitiveTerms();
+   591→      if (terms.length === 0) return doc;
+   592→      const escapedTerms = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+   593→      const regex = new RegExp(`\\b(${escapedTerms})\\b`, 'gi');
+   594→
+   595→      const cleanedChapters = doc.chapters.map(c => {
+   596→        const cleaned = c.content.replace(/(>|^)([^<]+)(<|$)/g, (match, prefix, text, suffix) => {
+   597→          const replacedText = text.replace(regex, (word: string) => `[${word[0]}***]`);
+   598→          return prefix + replacedText + suffix;
+   599→        });
+   600→        return { ...c, content: cleaned, lastModified: Date.now() };
+   601→      });
+   602→
+   603→      return { ...doc, chapters: cleanedChapters, lastModified: Date.now() };
+   604→    });
+   605→  }
+   606→
+   607→  updateGoals(documentTarget: number, dailyTarget: number) {
+   608→    this.currentDoc.update(doc => {
+   609→      if (!doc) return null;
+   610→      const goals: WritingGoals = {
+   611→        ...(doc.goals || {
+   612→          wordsWrittenToday: 0,
+   613→          lastActiveDate: new Date().toISOString().split('T')[0],
+   614→          currentStreak: 1
+   615→        }),
+   616→        documentTarget,
+   617→        dailyTarget
+   618→      };
+   619→      return { ...doc, goals, lastModified: Date.now() };
+   620→    });
+   621→  }
+   622→
+   623→  recordWordCountSnapshot() {
+   624→    this.currentDoc.update(doc => {
+   625→      if (!doc) return null;
+   626→      const currentCount = this.wordCount();
+   627→      const history = [...(doc.wordCountHistory || [])];
+   628→      
+   629→      const newPoint: WordCountHistoryPoint = {
+   630→        timestamp: Date.now(),
+   631→        wordCount: currentCount,
+   632→        chapterTitle: this.activeChapterTitle()
+   633→      };
+   634→      
+   635→      const updatedHistory = [...history, newPoint].slice(-30);
+   636→      return { ...doc, wordCountHistory: updatedHistory, lastModified: Date.now() };
+   637→    });
+   638→  }
+   639→
+   640→  // --- Chapter Management ---
+   641→
+   642→  selectChapter(id: string) {
+   643→      this.activeChapterId.set(id);
+   644→  }
+   645→  
+   646→  selectNextChapter() {
+   647→      const chapters = this.chapters();
+   648→      const currentId = this.activeChapterId();
+   649→      const idx = chapters.findIndex(c => c.id === currentId);
+   650→      if (idx !== -1 && idx < chapters.length - 1) {
+   651→          this.selectChapter(chapters[idx + 1].id);
+   652→      }
+   653→  }
+   654→
+   655→  selectPrevChapter() {
+   656→      const chapters = this.chapters();
+   657→      const currentId = this.activeChapterId();
+   658→      const idx = chapters.findIndex(c => c.id === currentId);
+   659→      if (idx > 0) {
+   660→          this.selectChapter(chapters[idx - 1].id);
+   661→      }
+   662→  }
+   663→
+   664→  addChapter() {
+   665→      const newChapter: Chapter = {
+   666→          id: crypto.randomUUID(),
+   667→          title: `Chapter ${this.chapters().length + 1}`,
+   668→          content: `<p>Start writing chapter ${this.chapters().length + 1}...</p>`,
+   669→          lastModified: Date.now()
+   670→      };
+   671→      
+   672→      this.currentDoc.update(doc => {
+   673→          if (!doc) return null;
+   674→          return { ...doc, chapters: [...doc.chapters, newChapter] };
+   675→      });
+   676→      this.activeChapterId.set(newChapter.id);
+   677→  }
+   678→
+   679→  updateActiveChapterContent(content: string) {
+   680→      const id = this.activeChapterId();
+   681→      if (!id) return;
+   682→
+   683→      this.currentDoc.update(doc => {
+   684→          if (!doc) return null;
+   685→          const newChapters = doc.chapters.map(c => {
+   686→              if (c.id === id) {
+   687→                  // Try to extract title from first h1/h2
+   688→                  let title = c.title;
+   689→                  // Simple check if content changed significantly enough to re-parse title? 
+   690→                  // Maybe too expensive. Let's just keep title manual or updated on specific events.
+   691→                  // For now, keep content sync.
+   692→                  return { ...c, content, lastModified: Date.now() };
+   693→              }
+   694→              return c;
+   695→          });
+   696→          return { ...doc, chapters: newChapters, lastModified: Date.now() };
+   697→      });
+   698→  }
+   699→  
+   700→  updateActiveChapterTitle(title: string) {
+   701→      const id = this.activeChapterId();
+   702→      if (!id) return;
+   703→      this.currentDoc.update(doc => {
+   704→          if (!doc) return null;
+   705→          const newChapters = doc.chapters.map(c => c.id === id ? { ...c, title } : c);
+   706→          return { ...doc, chapters: newChapters };
+   707→      });
+   708→  }
+   709→
+   710→  // --- Chat ---
+   711→
+   712→  createChatSession() {
+   713→      const doc = this.currentDoc();
+   714→      if (!doc) return;
+   715→
+   716→      const newSession: ChatSession = {
+   717→          id: crypto.randomUUID(),
+   718→          title: 'New Chat',
+   719→          messages: [{role: 'model', text: 'How can I help you with this document today?'}],
+   720→          timestamp: Date.now()
+   721→      };
+   722→
+   723→      this.currentDoc.update(d => {
+   724→          if (!d) return null;
+   725→          return { ...d, chatSessions: [newSession, ...(d.chatSessions || [])] };
+   726→      });
+   727→      this.activeSessionId.set(newSession.id);
+   728→  }
+   729→
+   730→  selectChatSession(sessionId: string) {
+   731→      this.activeSessionId.set(sessionId);
+   732→  }
+   733→
+   734→  deleteChatSession(sessionId: string) {
+   735→      const doc = this.currentDoc();
+   736→      if (!doc) return;
+   737→      
+   738→      this.currentDoc.update(d => {
+   739→          if (!d) return null;
+   740→          const newSessions = (d.chatSessions || []).filter(s => s.id !== sessionId);
+   741→          return { ...d, chatSessions: newSessions };
+   742→      });
+   743→      
+   744→      if (this.activeSessionId() === sessionId) {
+   745→          const sessions = this.sessions();
+   746→          if (sessions.length > 0) {
+   747→              this.activeSessionId.set(sessions[0].id);
+   748→          } else {
+   749→              this.createChatSession(); 
+   750→          }
+   751→      }
+   752→  }
+   753→
+   754→  updateActiveSessionMessages(messages: ChatMessage[]) {
+   755→      const sessionId = this.activeSessionId();
+   756→      if (!sessionId) return;
+   757→      
+   758→      this.currentDoc.update(d => {
+   759→          if (!d) return null;
+   760→          const sessions = [...(d.chatSessions || [])];
+   761→          const index = sessions.findIndex(s => s.id === sessionId);
+   762→          if (index !== -1) {
+   763→              sessions[index] = { ...sessions[index], messages, timestamp: Date.now() };
+   764→          }
+   765→          return { ...d, chatSessions: sessions };
+   766→      });
+   767→  }
+   768→
+   769→  // --- Export ---
+   770→  
+   771→  async downloadDocument(format: 'html' | 'txt' | 'markdown' | 'json' | 'epub' | 'pdf', options?: { respectRedactions?: boolean }) {
+   772→     const doc = this.currentDoc();
+   773→     if (!doc) return;
+   774→
+   775→     const shouldRedact = options?.respectRedactions !== undefined ? options.respectRedactions : !this.isUncensored();
+   776→     const style = this.redactionStyle();
+   777→
+   778→     if (format === 'epub') {
+   779→         await this.exportEpub(doc, shouldRedact);
+   780→         return;
+   781→     }
+   782→
+   783→     if (format === 'pdf') {
+   784→       const { jsPDF } = await import('jspdf');
+   785→       const pdf = new jsPDF({
+   786→         orientation: 'portrait',
+   787→         unit: 'pt',
+   788→         format: 'letter'
+   789→       });
+   790→       const margin = 54;
+   791→       const pageWidth = pdf.internal.pageSize.getWidth();
+   792→       const printableWidth = pageWidth - (margin * 2);
+   793→       let currentY = margin;
+   794→
+   795→       pdf.setFont('times', 'bold');
+   796→       pdf.setFontSize(22);
+   797→       const titleLines = pdf.splitTextToSize(doc.title || 'Untitled', printableWidth);
+   798→       pdf.text(titleLines, margin, currentY + 16);
+   799→       currentY += (titleLines.length * 26) + 20;
+   800→
+   801→       for (let i = 0; i < doc.chapters.length; i++) {
+   802→         const ch = doc.chapters[i];
+   803→         if (i > 0) {
+   804→           pdf.addPage();
+   805→           currentY = margin + 20;
+   806→         }
+   807→         pdf.setFont('times', 'bold');
+   808→         pdf.setFontSize(15);
+   809→         pdf.text(ch.title || `Chapter ${i + 1}`, margin, currentY);
+   810→         currentY += 22;
+   811→
+   812→         let raw = ch.content || '';
+   813→         if (shouldRedact) {
+   814→           raw = this.redactHtml(raw);
+   815→         }
+   816→         const div = document.createElement('div');
+   817→         div.innerHTML = raw.replace(/<\/p>/gi, '\n\n').replace(/<br\s*[\/]?>/gi, '\n');
+   818→         const text = (div.textContent || '').trim();
+   819→         
+   820→         pdf.setFont('times', 'normal');
+   821→         pdf.setFontSize(11);
+   822→         const paragraphs = text.split('\n\n').filter(p => p.trim().length > 0);
+   823→         for (const p of paragraphs) {
+   824→           const lines = pdf.splitTextToSize(p, printableWidth);
+   825→           for (const line of lines) {
+   826→             if (currentY > pdf.internal.pageSize.getHeight() - margin - 30) {
+   827→               pdf.addPage();
+   828→               currentY = margin + 20;
+   829→               pdf.setFont('times', 'normal');
+   830→               pdf.setFontSize(11);
+   831→             }
+   832→             pdf.text(line, margin, currentY);
+   833→             currentY += 15;
+   834→           }
+   835→           currentY += 6;
+   836→         }
+   837→       }
+   838→
+   839→       pdf.save(`${(doc.title || 'Untitled').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+   840→       return;
+   841→     }
+   842→     
+   843→     // Join all chapters for other formats
+   844→     let fullContent = doc.chapters.map(c => {
+   845→       const raw = c.content || '';
+   846→       return shouldRedact ? this.redactHtml(raw) : raw;
+   847→     }).join('\n\n<hr class="chapter-break" />\n\n');
+   848→     
+   849→     if (format === 'txt') {
+   850→         const div = document.createElement('div');
+   851→         div.innerHTML = fullContent;
+   852→         let text = div.textContent || '';
+   853→         if (shouldRedact) {
+   854→           const terms = this.allSensitiveTerms();
+   855→           if (terms.length > 0) {
+   856→             const escaped = terms.map(t => t.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).filter(Boolean).join('|');
+   857→             if (escaped) {
+   858→               const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+   859→               text = text.replace(regex, (m: string) => {
+   860→                 if (style === 'blackbar' || style === 'blackout') return '█'.repeat(Math.max(4, m.length));
+   861→                 if (style === 'asterisks') return '*'.repeat(Math.max(3, m.length));
+   862→                 return '[REDACTED]';
+   863→               });
+   864→             }
+   865→           }
+   866→         }
+   867→         fullContent = text;
+   868→     } else if (format === 'markdown') {
+   869→        let md = fullContent
+   870→           .replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n')
+   871→           .replace(/<h2>(.*?)<\/h2>/g, '## $1\n\n')
+   872→           .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+   873→           .replace(/<[^>]*>/g, '');
+   874→        if (shouldRedact) {
+   875→          const terms = this.allSensitiveTerms();
+   876→          if (terms.length > 0) {
+   877→            const escaped = terms.map(t => t.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).filter(Boolean).join('|');
+   878→            if (escaped) {
+   879→              const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+   880→              md = md.replace(regex, (m: string) => {
+   881→                if (style === 'blackbar' || style === 'blackout') return '█'.repeat(Math.max(4, m.length));
+   882→                if (style === 'asterisks') return '*'.repeat(Math.max(3, m.length));
+   883→                return '[REDACTED]';
+   884→              });
+   885→            }
+   886→          }
+   887→        }
+   888→        fullContent = md;
+   889→     }
+   890→
+   891→     const mime = format === 'json' ? 'application/json' : (format === 'txt' ? 'text/plain' : 'text/html');
+   892→     const ext = format === 'markdown' ? 'md' : format;
+   893→     
+   894→     const finalData = format === 'json' ? JSON.stringify(doc, null, 2) : fullContent;
+   895→
+   896→     const blob = new Blob([finalData], { type: mime });
+   897→     const url = URL.createObjectURL(blob);
+   898→     const a = document.createElement('a');
+   899→     a.href = url;
+   900→     a.download = `${(doc.title || 'Untitled').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
+   901→     a.click();
+   902→     URL.revokeObjectURL(url);
+   903→  }
+   904→
+   905→  private async exportEpub(doc: Document, shouldRedact = false) {
+   906→      const zip = new JSZip();
+   907→      
+   908→      // 1. mimetype
+   909→      zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+   910→      
+   911→      // 2. META-INF
+   912→      zip.file("META-INF/container.xml", `<?xml version="1.0"?>
+   913→<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+   914→   <rootfiles>
+   915→      <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+   916→   </rootfiles>
+   917→</container>`);
+   918→
+   919→      // 3. Content
+   920→      let manifest = '';
+   921→      let spine = '';
+   922→      let tocNcx = `<?xml version="1.0" encoding="UTF-8"?>
+   923→<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+   924→  <head>
+   925→    <meta name="dtb:uid" content="${doc.id}"/>
+   926→    <meta name="dtb:depth" content="1"/>
+   927→    <meta name="dtb:totalPageCount" content="0"/>
+   928→    <meta name="dtb:maxPageNumber" content="0"/>
+   929→  </head>
+   930→  <docTitle><text>${doc.title || 'Untitled'}</text></docTitle>
+   931→  <navMap>`;
+   932→
+   933→      doc.chapters.forEach((chapter, i) => {
+   934→          const filename = `chapter${i+1}.xhtml`;
+   935→          const xhtml = `<?xml version="1.0" encoding="utf-8"?>
+   936→<!DOCTYPE html>
+   937→<html xmlns="http://www.w3.org/1999/xhtml">
+   938→<head>
+   939→  <title>${chapter.title}</title>
+   940→  <style>
+   941→    body { font-family: serif; line-height: 1.6; margin: 2em; }
+   942→    h1 { text-align: center; margin-bottom: 2em; }
+   943→  </style>
+   944→</head>
+   945→<body>
+   946→  ${shouldRedact ? this.redactHtml(chapter.content) : chapter.content}
+   947→</body>
+   948→</html>`;
+   949→          
+   950→          zip.file(`OEBPS/${filename}`, xhtml);
+   951→          
+   952→          manifest += `<item id="ch${i+1}" href="${filename}" media-type="application/xhtml+xml"/>\n`;
+   953→          spine += `<itemref idref="ch${i+1}"/>\n`;
+   954→          
+   955→          tocNcx += `
+   956→    <navPoint id="navPoint-${i+1}" playOrder="${i+1}">
+   957→      <navLabel><text>${chapter.title}</text></navLabel>
+   958→      <content src="${filename}"/>
+   959→    </navPoint>`;
+   960→      });
+   961→
+   962→      tocNcx += `\n  </navMap>\n</ncx>`;
+   963→      zip.file("OEBPS/toc.ncx", tocNcx);
+   964→
+   965→      const opf = `<?xml version="1.0" encoding="utf-8"?>
+   966→<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="2.0">
+   967→  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+   968→    <dc:title>${doc.title || 'Untitled'}</dc:title>
+   969→    <dc:language>en</dc:language>
+   970→    <dc:identifier id="BookId">${doc.id}</dc:identifier>
+   971→  </metadata>
+   972→  <manifest>
+   973→    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+   974→    ${manifest}
+   975→  </manifest>
+   976→  <spine toc="ncx">
+   977→    ${spine}
+   978→  </spine>
+   979→</package>`;
+   980→
+   981→      zip.file("OEBPS/content.opf", opf);
+   982→
+   983→      const blob = await zip.generateAsync({ type: "blob" });
+   984→      const url = URL.createObjectURL(blob);
+   985→      const a = document.createElement('a');
+   986→      a.href = url;
+   987→      a.download = `${(doc.title || 'Untitled').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.epub`;
+   988→      a.click();
+   989→      URL.revokeObjectURL(url);
+   990→  }
+   991→
+   992→  /**
+   993→   * Restores vault documents from a backup payload
+   994→   */
+   995→  async restoreVault(restoredDocs: Document[], mode: 'merge' | 'replace'): Promise<void> {
+   996→    if (!restoredDocs || restoredDocs.length === 0) return;
+   997→
+   998→    if (mode === 'replace') {
+   999→      // Delete existing documents
+  1000→      const current = this.documents();
+  1001→      for (const d of current) {
+  1002→        await this.storage.deleteDocument(d.id);
+  1003→      }
+  1004→      // Save all restored documents
+  1005→      for (const d of restoredDocs) {
+  1006→        await this.storage.saveDocument(d);
+  1007→      }
+  1008→      this.documents.set(restoredDocs);
+  1009→      if (restoredDocs.length > 0) {
+  1010→        this.selectDocument(restoredDocs[0].id);
+  1011→      }
+  1012→    } else {
+  1013→      // Merge mode
+  1014→      const existing = [...this.documents()];
+  1015→      const existingMap = new Map(existing.map(d => [d.id, d]));
+  1016→
+  1017→      for (const d of restoredDocs) {
+  1018→        if (existingMap.has(d.id)) {
+  1019→          // If already exists, generate a new ID or replace if newer
+  1020→          const existingDoc = existingMap.get(d.id)!;
+  1021→          if (d.lastModified > existingDoc.lastModified) {
+  1022→            existingMap.set(d.id, d);
+  1023→            await this.storage.saveDocument(d);
+  1024→          } else {
+  1025→            // Keep local newer, or add as copy if titles differ
+  1026→            const copyDoc: Document = {
+  1027→              ...d,
+  1028→              id: crypto.randomUUID(),
+  1029→              title: `${d.title} (Restored Copy)`
+  1030→            };
+  1031→            existingMap.set(copyDoc.id, copyDoc);
+  1032→            await this.storage.saveDocument(copyDoc);
+  1033→          }
+  1034→        } else {
+  1035→          existingMap.set(d.id, d);
+  1036→          await this.storage.saveDocument(d);
+  1037→        }
+  1038→      }
+  1039→
+  1040→      const merged = Array.from(existingMap.values());
+  1041→      this.documents.set(merged);
+  1042→      if (restoredDocs.length > 0) {
+  1043→        this.selectDocument(restoredDocs[0].id);
+  1044→      }
+  1045→    }
+  1046→  }
+  1047→}
+  1048→
