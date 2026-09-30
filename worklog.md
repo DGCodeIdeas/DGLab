@@ -1215,3 +1215,35 @@ Stage Summary:
 - Total blueprint-declared Core-internal edges: 45. Verified-in-code: 7. Verified-in-composer (composer.json require): 6 additional. Declared-but-unverified (blueprint-only, consumer not yet implemented OR composer.json doesn't require): 4. Optional (blueprint declares soft; not gating admission): 28. INTEGRATION (external services): 6 (C14→S3 optional, C15→Redis production, C16→libargon2 build, C19→MySQL production, C01→git CLI, C01→CI HTTP API).
 - Implementation status ground truth (replaces INDEX.md's three contradictory statements about CORE-02): 13 of 20 Core blueprints have implementations on disk (C01 at orchestrator/, C02/C03/C04/C05/C06/C08/C09/C10/C14/C16/C18/C19 at packages/core/). 7 of 20 not implemented (C07 Lexer, C11 Parser, C12 Compiler, C13 CLI, C15 Cache, C17 Service Providers, C20 Dev CLI/Forge). The ARCHITECTURE_BASELINE.md snapshot from 2026-09-24 lists 11 (it predates C14 Filesystem being added; the orchestrator/ path was not counted).
 - Next steps recommended for tech-lead review: (1) review the 3 documents at /home/z/my-project/download/; (2) commit to Architecture/Core/ as authoritative source for ADR-021 Tier-Stratified Build Order; (3) decide whether ADR-021 uses the 13-edge strict-verified DAG (4 waves) or the 45-edge blueprint-declared DAG (would give more waves with deeper sequencing); (4) update INDEX.md §5.2 with corrected direction for C18→C06/C15→C14/C17→C13/C20→C13 + removal of C16→C15 + addition of 11 missing edges; (5) update INDEX.md §5.3 Step 8 from 30 to 32 Hub blueprints (post-HUB-31 + post-HUB-32); (6) author HUB-32 AI Inference Hub blueprint (ratified today, no blueprint file yet); (7) track C04↔C05 namespace collision as future minor-version-breaking-change coordination across C04/C05/C18 + future HUB-08/BRIDGE-01.
+
+---
+Task ID: PR-ADR-021-9
+Agent: Main (Super Z)
+Task: Push all ADR-021 changes as a single PR to DGLab
+
+Work Log:
+- Created feature branch `adr-021-tier-stratified-build-order` from main
+- Wrote ADR-021 at `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` (194 lines) — ratifies: 5-tier structure, 5 edge types (COMPILE/RUNTIME/INTEGRATION/CAPABILITY/OPTIONAL), Eligible(X) admission formula, 6-criteria capability gate, Core waves (4: 15/2/2/1), HUB-32 immediate ratification, ESPOKE-19 Eloq ratification, E11/E12 lint rule, E4 deferral, E15→HUB-26 absorption, HUB-10/HUB-25 relocation to Runtime tier, known latent defects documented (C04↔C05 namespace collision, C17 forward-declaration stub, H05/H07 Rate Limiter duplication)
+- Wrote HUB-32 stub at `Architecture/Hub/HUB-32.md` (88 lines) — AI Inference Hub, depth 1, hierarchical failover pattern reference from ELQ `server-api.cjs:39-296`, consumers include E4/E5/E11/E12 + ESPOKE-17 Concierge
+- Wrote ESPOKE-19 stub at `Architecture/Spoke/External/ESPOKE-19.md` (108 lines) — Eloq private AI writing assistant, composition policy with 14 ISPOKEs + 2 Hub capabilities, neutral parity content policy per tech-lead decision
+- Copied Core DAG files from `download/` to `Architecture/Core/`: CORE-DEPENDENCY-DAG.md (656 lines), CORE-CAPABILITY-DAG.md (475 lines), CORE-BUILD-ORDER.md (320 lines)
+- Prepended SUPERSEDED notices to `Architecture/Hub/HUB-10.md` and `HUB-25.md` — relocated to Runtime tier as RUNTIME-03/RUNTIME-04 per ADR-021 §12
+- Updated `Architecture/INDEX.md` (6 edits via MultiEdit):
+  - Freshness stamp: 2026-08-12 → 2026-09-30
+  - Hub inventory: HUB-01..31 → HUB-01..32 (HUB-32 added; HUB-10/HUB-25 noted as superseded)
+  - ESPOKE inventory: ESPOKE-01..18 → ESPOKE-01..19 (ESPOKE-19 Eloq added)
+  - Added ADR-021 row to ADR table
+  - Added SUPERSEDED banner at §5 (entire section) pointing to per-tier DAG files
+  - Added SUPERSEDED banner at §5.3 with specific defect list (Step 2 false-parallelism, Step 3 inverted order, Step 5 over-cautious, Step 6 arbitrary SuperPHP, Step 8 stale Hub count)
+  - Added note at §6 (Deploy tier) about ADR-021 relocation + DEPLOY-01 staleness vs ADR-017
+- Committed all 9 files (1,884 insertions, 4 deletions) as `3af7e51` on feature branch `adr-021-tier-stratified-build-order`
+- Initially committed to main (shell session reset between calls); corrected by moving branch pointer and resetting main to `b0f7fa4`
+- Attempted push to origin (may fail without credentials — user can push manually)
+
+Stage Summary:
+- PR ready on branch `adr-021-tier-stratified-build-order` at commit `3af7e51`
+- 9 files changed: 6 new (ADR-021, HUB-32, ESPOKE-19, 3 Core DAG files), 3 modified (HUB-10, HUB-25, INDEX.md)
+- Total: 1,884 insertions, 4 deletions
+- Push command: `git push -u origin adr-021-tier-stratified-build-order`
+- PR creation URL: https://github.com/DGCodeIdeas/DGLab/pull/new/adr-021-tier-stratified-build-order
+- Worklog and download/ analysis files are gitignored (local-only artifacts)
