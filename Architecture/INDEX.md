@@ -2,7 +2,7 @@
 
 **Status:** Canonical.
 **Scope:** the polyrepo, tier-isolated Sovereign Stack (Core → Hub → Bridge → Spokes → Deploy).
-**Last verified against `main`:** 2026-08-12.
+**Last verified against `main`:** 2026-10-01 (ADR-021 reconciliation: HUB-10/HUB-25 relocated to Runtime tier; HUB-32 + ESPOKE-19 ratified pending canonical publication; §5.2/§5.3 superseded by per-tier DAGs per ADR-021).
 **Merged from:** `01_MASTER_INDEX(4).md` (governance rules, DAG, build sequence, fidelity bar) and
 `01_MASTER_INDEX(5).md` (the eight cross-reference drift patterns, HUB-31 registration, Finding 15).
 Five other `01_MASTER_INDEX*` revisions are archived under `Analysis_Critiques_Rewrites/`.
@@ -10,6 +10,28 @@ Five other `01_MASTER_INDEX*` revisions are archived under `Analysis_Critiques_R
 This document is the **single source of truth** for the DGLab Sovereign Stack architecture. If any
 other document disagrees with this index on an ID→component mapping, a tier count, or a
 cross-reference, **this index is correct and the other document is stale** (Governance Rule 1).
+
+
+
+## §0. Authority Boundary (per ADR-021 §11)
+
+> **INDEX is the canonical registry of architectural identity and governance, while dependency graphs are generated authoritative views of declared intent and verified implementation state.**
+
+**INDEX owns:**
+- IDs, names, tier membership, numbering
+- Canonical status (Accepted / Proposed / Superseded)
+- ADR relationships
+- Governance rules
+
+**INDEX does NOT own (generated, not manually maintained):**
+- Actual Composer dependencies (use Verified DAG)
+- Actual namespace imports (use Verified DAG)
+- Actual implementation status (use generated baseline)
+- Actual topological ordering (use generated build order)
+- Actual test state (use CI)
+
+**Derived facts are generated from repository evidence, not hand-maintained in INDEX.** This prevents the documentation drift that occurred when INDEX manually maintained implementation counts that diverged from the actual repository state.
+
 
 ---
 
@@ -20,15 +42,16 @@ cross-reference, **this index is correct and the other document is stale** (Gove
 | Path | Contents |
 |---|---|
 | `Architecture/Core/CORE-01..20` | 20 Core-tier blueprints |
-| `Architecture/Hub/HUB-01..31` | 31 Hub-tier blueprints |
+| `Architecture/Hub/HUB-01..31` | 31 Hub-tier blueprints (**HUB-10 and HUB-25 SUPERSEDED** — relocated to Runtime tier as RUNTIME-03/RUNTIME-04 per ADR-021 §12; **HUB-32 AI Inference Hub ratified pending canonical publication** per ADR-021 §13 — blueprint file not yet created; active Hub count = 31 − 2 relocated = 29 + 1 pending = 30) |
 | `Architecture/Spoke/Internal/ISPOKE-01..27` | 27 Internal Spoke blueprints (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26/27 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
-| `Architecture/Spoke/External/ESPOKE-01..18` | 18 External Spoke blueprints (ESPOKE-16/17/18 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
+| `Architecture/Spoke/External/ESPOKE-01..18` | 18 External Spoke blueprints (ESPOKE-16/17/18 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015; **ESPOKE-19 Eloq ratified pending canonical publication** per ADR-021 §14 — blueprint file not yet created) |
 | `Architecture/Spoke/Bridge/BRIDGE-01` | 1 Bridge blueprint |
 | `Architecture/Deploy/DEPLOY-00..04` | 5 Deploy blueprints (all documented; 00 renamed, 02/03/04 promoted from stubs on 2026-08-05) |
 | `Architecture/ADRs/ADR-001..010` | 10 Accepted Architecture Decision Records |
 | `Architecture/ADRs/ADR-012` | **Accepted** (2026-08-12) — post-quantum JWT algorithm-agility roadmap; 3-phase plan (Phase 0: configurable `alg` allowlist; Phase 1: hybrid ES256+ML-DSA-65; Phase 2: PQ-only). Records the OD-02 decision. Extends (does not supersede) ADR-003. |
 | `Architecture/ADRs/ADR-013` | **Accepted** (2026-08-05) — MySQL 8 (InnoDB) primary datastore; **supersedes ADR-007** (PostgreSQL), which is now relegated behind the CORE-19 driver (disabled by default) |
 | `Architecture/ADRs/ADR-014` | **Accepted** (2026-08-12) — ratifies SDLC-AGRD v3.4(3) Spiral Deepening as the canonical SDLC; anchors `MEMORY-GOVERNANCE.md` Tier-3 rule. Closes D-06. |
+| `Architecture/ADRs/ADR-021` | **Accepted** (2026-09-30; amended 2026-10-01) — tier-stratified build order with two-DAG governance model. Establishes: Declared Architecture DAG (architectural intent) + Verified Implementation DAG (repository reality), both authoritative for different purposes. Four edge status categories (VERIFIED/DECLARED_ONLY/UNDECLARED_VERIFIED/INVALID). Machine-readable edge metadata schema (8 fields, 4 dimensions: edge_type + requiredness + declared/verified→status + gates). Three-axis status model (implementation_depth + integration_completeness + production_gate). Build order as generated artifact. INDEX authority evolution (identity/governance only). Tier-local DAG contract. Multigraph semantics (edge identity = source + target + edge_type). Relocates HUB-10/HUB-25 to Runtime tier. Ratifies HUB-32 AI Inference Hub + ESPOKE-19 Eloq (pending canonical publication). **Supersedes §5.2 (monolithic Mermaid) and §5.3 (11-step global build sequence).** Companion docs: `Core/CORE-VERIFIED-DAG.md`, `Core/CORE-DECLARED-DAG.md`, `Core/CORE-CAPABILITY-DAG.md`, `Core/CORE-BUILD-ORDER.md`. |
 | `Architecture/ADRs/ADR-015` | **Proposed** (2026-08-12; ratification deferred until V1 ships against Bet 3 Hub Full) — promotes the 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) from design-only to canonical; count 96 → 101. Closes D-02 and D-15. |
 | `Architecture/ADRs/ADR-011` | 1 **Proposed** ADR (HUB-31) — not accepted, not counted |
 | `Architecture/CrossCutting/` | STRUCTURE-01..09, OBSERVABILITY, GLOSSARY, THREAT_MODEL, **NUCLEAR-GRADE-DOCTRINE** (binding on Core tier — Step 5 packages CORE-19/15/14/16 since 2026-09-20; CORE-18 Kernel pilot added 2026-09-23; remaining Core packages bound in principle, per-package application sections landing incrementally per doctrine §11) |
@@ -199,7 +222,7 @@ mismatch.
 | Deploy | 5 | 0 | **5** |
 | **Total** | **102** | **0** | **102** |
 
-**HUB-31 is accepted** per `ADR-011` (2026-08-13). Hub tier: 31 blueprints. Total canonical: **102**.
+**HUB-31 is accepted** per `ADR-011` (2026-08-13). Hub tier: 31 declared blueprints. **Per ADR-021 (2026-09-30): HUB-10 and HUB-25 relocated to Runtime tier (RUNTIME-03/RUNTIME-04), reducing active Hub count to 29. HUB-32 AI Inference Hub ratified pending canonical publication (not yet counted in active inventory).** Total canonical: **102** declared blueprints (unchanged — relocations are tier reassignments, not blueprint removals).
 The 5 hospitality blueprints (`ISPOKE-26/27`, `ESPOKE-16/17/18`) *are* counted — they were promoted
 from design-only to canonical on 2026-08-12 per ADR-015 (Proposed, ratification deferred until the
 hospitality V1 track ships against Bet 3 Hub Full).
@@ -224,6 +247,19 @@ vertical is a parallel track that starts after Bet 3 Hub Full, not on the critic
 ---
 
 ## §5. Tier dependency DAG & build sequence
+
+> **⚠️ SUPERSEDED by ADR-021 (2026-09-30).** This entire section (§5.1 edge convention, §5.2 monolithic Mermaid DAG, §5.3 11-step global build sequence) is **superseded** by the tier-stratified build order ratified in `ADR-021`.
+>
+> **What replaces it:**
+> - §5.1 (edge convention) is preserved — the Upward/Downward terminology is still binding.
+> - §5.2 (monolithic Mermaid) is superseded by per-tier DAGs. The authoritative Core DAGs live at `Architecture/Core/CORE-VERIFIED-DAG.md` (13-edge verified implementation DAG) and `Architecture/Core/CORE-DECLARED-DAG.md` (45-edge declared architecture DAG). Hub/Spoke/Deploy/Runtime per-tier DAGs will be derived in follow-up PRs.
+> - §5.3 (11-step global build sequence) is superseded by per-tier derived build orders. The authoritative Core build order lives at `Architecture/Core/CORE-BUILD-ORDER.md` (4 topological waves). Hub/Spoke/Deploy/Runtime build orders will be derived in follow-up PRs.
+>
+> **Why superseded:** per `INDEX-VERIFY-3` and `CORE-DAG-RECONCILIATION-8` worklog audits, §5.2's "selected critical" Hub subset was inconsistent with §4's own criticality table; §5.3 had 4 of 7 Core-tier steps wrong; §5.2 missed the C18→C06 edge; and the monolithic Mermaid mixed 6 concerns in one block.
+>
+> This section is retained for historical reference. **Do not derive build orders from it.** Use the per-tier DAG files referenced in ADR-021 instead.
+>
+> ---
 
 ### §5.1 Edge-direction convention (binding)
 
@@ -370,7 +406,9 @@ graph TD
     class D01,D02,D03,D04 deploy
 ```
 
-### §5.3 Build sequence (11 steps)
+### §5.3 Build sequence (11 steps) — ⚠️ SUPERSEDED
+
+> **SUPERSEDED by ADR-021 (2026-09-30) and `Architecture/Core/CORE-BUILD-ORDER.md`.** The 11-step global build sequence is no longer authoritative. Per-tier derived build orders replace it.
 
 The archived evaluation's sequence (`CORE-01 → 02 → 03 → 05 → 06 → 07 → 10`) is derived from the stale
 Core numbering and is wrong (Finding 2). The correct *order*, derived from the DAG above, still holds

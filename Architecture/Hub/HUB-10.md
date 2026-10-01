@@ -1,3 +1,9 @@
+> **⚠️ SUPERSEDED by ADR-021 §12 (2026-09-30).** HUB-10 (Queue Worker) has been **relocated to the Runtime tier** as **RUNTIME-03 (Worker)**. This blueprint is retained for historical reference; new work should reference the Runtime tier per ADR-021. The Hub ring active count is reduced by this relocation (31 − 2 relocated = 29 active Hubs).
+>
+> **Reason:** HUB-10's primary purpose is to BE the long-running worker substrate, not to consume Hub capabilities — it is a runtime-tier package masquerading as Hub-tier. See ADR-021 §12 for full rationale.
+
+---
+
 # PHASE HUB-10: Queue & Job Dispatcher
 
 ## Tier
