@@ -1,10 +1,14 @@
-# ADR-021: Tier-Stratified Build Order with Typed-Edge DAGs
+# ADR-021: Tier-Stratified Build Order with Two-DAG Governance Model
 
-**Status:** Accepted  
-**Date:** 2026-09-30  
-**Author:** DGCI (architecture lead)  
-**Supersedes:** `Architecture/INDEX.md §5.3` (11-step global build sequence — superseded by per-tier derived build orders)  
-**Companion:** `Architecture/Core/CORE-DEPENDENCY-DAG.md`, `Architecture/Core/CORE-CAPABILITY-DAG.md`, `Architecture/Core/CORE-BUILD-ORDER.md` — authoritative Core DAGs derived from actual blueprint + code inspection  
+**Status:** Accepted (amended 2026-10-01 — original ADR ratified single-DAG model; this amendment establishes the two-DAG governance model per SAAI + Z.ai convergence)
+**Date:** 2026-09-30 (original); 2026-10-01 (amendment)
+**Author:** DGCI (architecture lead)
+**Supersedes:** `Architecture/INDEX.md §5.3` (11-step global build sequence — superseded by per-tier derived build orders) and `Architecture/INDEX.md §5.2` (monolithic Mermaid — superseded by per-tier declared + verified DAGs)
+**Companion:**
+- `Architecture/Core/CORE-VERIFIED-DAG.md` — 13-edge verified implementation DAG (Composer + source imports + filesystem evidence)
+- `Architecture/Core/CORE-DECLARED-DAG.md` — 45-edge declared architecture DAG (blueprint Upward/Downward + ADR + SPEC intent)
+- `Architecture/Core/CORE-CAPABILITY-DAG.md` — capability delivery DAG (CAPABILITY-typed edges)
+- `Architecture/Core/CORE-BUILD-ORDER.md` — generated build order (derived from verified DAG + SDLC admission state; do not edit manually)
 **Related:** ADR-014 (SDLC-AGRD canonical), ADR-017 (Fiber-based cooperative runtime), ADR-005 (SuperPHP over Blade/Twig)
 
 ---
@@ -22,13 +26,15 @@ DGLab's `INDEX.md §5` currently combines six concerns in a single monolithic Me
 
 The `CORE-DAG-RECONCILIATION-8` audit verified against actual blueprint + code inspection that **4 of 7 Core-tier steps in §5.3 are wrong**: Step 2 false-parallelism (C10→C09→C08 is sequential per composer.json); Step 3 inverted order (C18 is the sink at Wave 3, not Step 3); Step 5 over-cautious entry criterion (15 of 20 packages can start immediately).
 
-The deeper structural problem: a single global build sequence cannot express that rings have fundamentally different natures. A depth-2 badge means one thing for CORE-02 Container (PHPUnit happy path, real), another for HUB-04 Identity (PHPUnit + MySQL round-trip, real), and a third for BRIDGE-01 Vanguard (needs FrankenPHP serving HTTP to be real). The single depth scale silently degraded to the weakest interpretation, and the runtime substrate became invisible to the SDLC's admission rule.
+The `ELQ-DECISIONS-RATIFY-6.5` baseline regeneration (`Task 70`) confirmed: 13 Core implementations (not 11), PHP ^8.4 (not 8.3 as README claims), 21 ADRs (not 20), 102 blueprints, 20 implemented packages. README and INDEX are stale.
 
-This ADR ratifies the tier-stratified model that fixes these defects at the root.
+The deeper structural problem: a single global build sequence cannot express that rings have fundamentally different natures, and a single DAG cannot distinguish architectural intent from implementation reality. The original ADR-021 (2026-09-30) ratified the 13-edge verified DAG as "authoritative" and the 45-edge declared view as "intent, not authoritative for admission." SAAI and Z.ai independently identified this as a false choice — both DAGs are authoritative, for different questions.
+
+This amendment establishes the **two-DAG governance model** that fixes these defects at the root.
 
 ## Decision
 
-**Adopt a tier-stratified build order with typed-edge DAGs.** Each tier owns its own complete internal DAG (dependency + capability) and a derived build order. Cross-tier dependencies live in a separate Integration DAG. The SDLC's admission rule uses an `Eligible(X)` formula that gates admission on dependency closure + capability prerequisites + architecture gate + SDLC admission, replacing the hand-numbered 11-step global sequence.
+**Adopt a tier-stratified build order with two-DAG governance.** Each tier owns two authoritative DAGs with different scopes: a **Declared Architecture DAG** (architectural intent) and a **Verified Implementation DAG** (repository reality). Build orders are generated artifacts derived from both DAGs plus SDLC admission state — not independently authored. The SDLC's admission rule uses an `Eligible(X)` formula that gates admission on dependency closure + capability prerequisites + architecture gate + SDLC admission.
 
 ### 1. The Five Tiers
 
@@ -42,19 +48,96 @@ This ADR ratifies the tier-stratified model that fixes these defects at the root
 
 ### 2. The Five Edge Types
 
-Per the second-AI proposal refined through SAAI's consumer-side composition critique:
-
 | Edge type | Meaning | Example |
 |---|---|---|
 | **COMPILE** | Must exist at build time (composer require) | `C10 → C09` (Logger requires Config) |
 | **RUNTIME** | Must exist at runtime (worker, request loop, scheduler) | `C18 → RUNTIME-01` (Kernel needs FrankenPHP worker) |
 | **INTEGRATION** | Must exist for external service calls | `C19 → MySQL`, `C14 → S3` |
 | **CAPABILITY** | Must exist for capability delivery (delivery pressure, not composer pressure) | `C19 → HUB-04` (DBAL enables Identity) |
-| **OPTIONAL** | Nice to have; doesn't gate admission | (declared-but-unverified edges per CORE-DAG-RECONCILIATION-8) |
+| **OPTIONAL** | Nice to have; doesn't gate admission | (declared-but-unverified edges) |
 
-**CONSENT edges are NOT used.** Per SAAI's critique (APP-MODEL-REFINEMENT-5): consumer-side composition policy lives in each ESPOKE's Application Manifest as governance metadata, not in the dependency DAG. An ISPOKE's `reusable: false` flag is lint-enforced (no other ESPOKE may declare it in their composition policy without an ADR promotion).
+### 3. Two-DAG Governance Model (LOCKED)
 
-### 3. The `Eligible(X)` Admission Rule
+**Each tier owns two authoritative DAGs with different scopes:**
+
+| DAG | Authority | Source | Drives |
+|---|---|---|---|
+| **DECLARED DAG** (e.g., `CORE-DECLARED-DAG.md`) | Architectural intent ("should be") | Blueprints, ADRs, SPECs, declared `Upward` dependencies, capability contracts | Capability planning, architecture gates, identifying missing implementation work |
+| **VERIFIED DAG** (e.g., `CORE-VERIFIED-DAG.md`) | Repository reality ("is proven") | Composer manifests + PHP namespace imports + filesystem/package structure + generated implementation metadata + verified integration tests | Build eligibility, package-level ordering, SDLC admission |
+
+**Neither DAG overrides the other.** They answer different questions. The naming makes the authority boundary obvious — no future engineer asks "which one is the real DAG."
+
+```
+                 ARCHITECTURE
+                      │
+             ┌────────┴────────┐
+             ▼                 ▼
+       DECLARED DAG       VERIFIED DAG
+       "should be"         "is proven"
+             │                 │
+             └────────┬────────┘
+                      ▼
+                SDLC ADMISSION
+                      │
+             ┌────────┴────────┐
+             ▼                 ▼
+       Capability Gates    Implementation Gates
+             │                 │
+             └────────┬────────┘
+                      ▼
+               Build Eligibility
+```
+
+### 4. Four Edge Status Categories (LOCKED)
+
+Each edge's status is determined by comparing the declared and verified DAGs:
+
+| Status | Declared | Verified | Meaning | Action |
+|---|---|---|---|---|
+| `VERIFIED` | ✓ | ✓ | Implemented architectural dependency | None — healthy |
+| `DECLARED_ONLY` | ✓ | ✗ | Architectural work still required | Implement to close the gap |
+| `UNDECLARED_VERIFIED` | ✗ | ✓ | Architectural drift — investigate | Declare the edge or remove the dependency |
+| `INVALID` | ✗ | ✗ | No dependency | Prevents noise accumulation |
+
+**Example:** `CORE-18 → CORE-17` is `DECLARED_ONLY` — the blueprint declares the dependency but C17 is not implemented. The kernel's `Stub/ProviderRegistryInterface.php` is the evidence of the declared-but-unverified edge.
+
+### 5. Machine-Readable Edge Metadata Schema (LOCKED)
+
+Each edge is a structured record with 9 fields:
+
+```yaml
+source: CORE-18          # consuming component
+target: CORE-17          # consumed component
+tier: Core               # Core/Hub/Bridge/Spoke/Deploy/Runtime
+kind: RUNTIME            # COMPILE/RUNTIME/INTEGRATION/CAPABILITY/OPTIONAL
+declared: true           # architecture explicitly declares it
+verified: false          # repository evidence confirms it
+status: DECLARED_ONLY   # VERIFIED/DECLARED_ONLY/UNDECLARED_VERIFIED/INVALID
+evidence:                # proof sources
+  - packages/core/kernel/src/Stub/ProviderRegistryInterface.php
+gate: production         # which gate this edge affects (build/runtime/integration/production)
+```
+
+This makes the DAG **machine-generated and machine-verified** — not hand-maintained. Drift between declared and verified becomes automatically detectable. Future tooling (`scripts/generate-verified-dag.py`, `scripts/generate-declared-dag.py`, `scripts/compare-dags.py`) will produce and compare these records automatically.
+
+### 6. Three-Axis Status Model (replaces single "depth" number)
+
+The current SDLC depth scale (1-6) conflates three orthogonal concepts. This ADR establishes a three-axis model:
+
+| Axis | What it measures | Evidence | Example |
+|---|---|---|---|
+| `implementation_depth` | Does the code exist + pass PHPUnit/PHPStan? | Source files + test results | C18: depth 2 (code exists, tests pass) |
+| `integration_completeness` | Is the assembled-system wiring complete? | Verified DAG edges + stub analysis | C18: PARTIALLY WIRED (C17 stub = no-op boot) |
+| `production_gate` | What's required for production readiness? | Declared DAG edges not yet verified | C18: C17 required (provider system must exist) |
+
+This applies beyond Core — Hub and Spoke packages will have the same pattern (unit tests pass while assembled-system capabilities remain incomplete).
+
+**C18 example (the clearest case):**
+- `implementation_depth`: 2 (Kernel code exists, 15 PHPUnit tests pass)
+- `integration_completeness`: PARTIALLY WIRED (`EmptyProviderRegistry` no-op stub for C17)
+- `production_gate`: C17 required (provider system must exist before boot is real)
+
+### 7. The `Eligible(X)` Admission Rule
 
 ```
 Eligible(X) =
@@ -68,9 +151,7 @@ Eligible(X) =
         (capacity, findings, throughput calibration, cooldown status)
 ```
 
-The SDLC's lap model becomes: "from the Eligible set, pick the next unit based on critical path, application need, security, maturity, findings, throughput." No more hand-numbered steps.
-
-### 4. The Six-Criteria Capability Gate
+### 8. Six-Criteria Capability Gate
 
 A tier is "at gate" when ALL of:
 1. Required dependency closure exists (typed edges satisfied)
@@ -82,10 +163,11 @@ A tier is "at gate" when ALL of:
 
 **Not "all N complete."** A tier can be at-gate with 12 of 20 Core blueprints at depth 2 if those 12 satisfy the application path requirement.
 
-### 5. Core Build Order (Authoritative)
+### 9. Core DAGs (Two Views, Both Authoritative)
 
-Per `CORE-DAG-RECONCILIATION-8`, derived from the 13-edge strict-verified DAG (honest current-state view; the 45-edge blueprint-declared view is documented in `CORE-DEPENDENCY-DAG.md §4` as architectural intent, not authoritative for admission):
+Per `CORE-DAG-RECONCILIATION-8` + `Task 70` baseline evidence:
 
+**CORE-VERIFIED-DAG** (13 edges, repository evidence):
 | Wave | Count | Packages |
 |---|---|---|
 | 0 | 15 | C01, C02, C03, C04, C07, C10, C11, C12, C13, C14, C15, C16, C17, C19, C20 |
@@ -93,102 +175,148 @@ Per `CORE-DAG-RECONCILIATION-8`, derived from the 13-edge strict-verified DAG (h
 | 2 | 2 | C06, C08 |
 | 3 | 1 | C18 |
 
-**Core is contract-coupled, not class-coupled.** Verified: only C18 Kernel imports sibling Core namespaces in src/. The other 11 implemented packages use only PSR contracts. This collapses the topological wave computation to 4 waves for 20 packages (15 sit in Wave 0).
+**CORE-DECLARED-DAG** (45 edges, blueprint intent):
+Documented in `Architecture/Core/CORE-DECLARED-DAG.md`. Includes future/assembled-system edges not yet observable in PHP code (e.g., `C18 → C17` declared but C17 not yet implemented).
 
-### 6. HUB-32 AI Inference Hub (Immediate Ratification)
+**Core is contract-coupled, not class-coupled.** Verified: only C18 Kernel imports sibling Core namespaces in src/. The other 11 implemented packages use only PSR contracts. This collapses the verified wave computation to 4 waves for 20 packages (15 sit in Wave 0).
 
-**ISPOKE-E3 from the ELQ analysis is immediately promoted to HUB-32**, bypassing the deferred-promotion rule (APP-MODEL-REFINEMENT-5 extension #2 "wait for second consumer"). LLM invocation is judged as foundational as Identity (HUB-04) or Audit (HUB-06). The Hub ring grows from 31 to 32 packages. All ELQ ISPOKEs that consumed E3 (E4 Paraphrase, E5 Grammar, E11 Content Classification, E12 Generation) now consume HUB-32.
+### 10. Build Order as Generated Artifact (LOCKED)
 
-The hierarchical failover pattern from ELQ's `server-api.cjs:39-296` (Gemini SDK → OpenAI-compatible fetch → Pollinations zero-key → rule-based local fallback, with model cascade) is the reference design for HUB-32's implementation when code is admitted.
+> **Build-order documents are generated from the current architecture and repository evidence. Do not edit manually.**
 
-### 7. ESPOKE-19 Eloq (New Application)
+Build order = f(Declared DAG, Verified DAG, Capability requirements, Current implementation state, SDLC admission). The `CORE-BUILD-ORDER.md` file carries a "Generated, do not edit manually" header. Future tooling will regenerate it automatically.
 
-**Eloq is ratified as ESPOKE-19**, a new External Spoke (not a rename of an existing planned app). The 19th ESPOKE consumes HUB-32 (AI Inference) + HUB-04 (Identity) and composes 14 ISPOKEs from the ELQ analysis (post E3→HUB-32 promotion): E1, E2, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E15. Content policy: **neutral parity** — the 22 document-type × 10 paraphrase-style taxonomy ships intact including NSFW doc-types; per-doc `content_filter_setting` toggle preserved as user choice; `BLOCK_NONE` Gemini safety setting available. DGLab is policy-neutral at the platform level.
+### 11. INDEX Authority Evolution (LOCKED)
 
-### 8. ISPOKE Contract Lint Rule (E11/E12 Resolution)
+**INDEX owns:** identity and governance (IDs, names, tier membership, numbering, canonical status, ADR relationships, governance rules).
 
-**An ISPOKE with `reusable: true` MAY NOT transitively depend on an ISPOKE with `reusable: false`** without making the dependency optional (no-op when no config provided). This resolves the ISPOKE-E11 (Manuscript Exporter, `reusable: true`) → ISPOKE-E12 (Censorship & Redaction Engine, `reusable: false`) hidden dependency surfaced by `ESPOKE-CONSUMER-MAP-7`. E11's redaction-aware feature must be made optional (no-op when no `CensorshipConfig` is provided) to unblock 3 cross-ESPOKE consumers (Billing, Beacon, Forge).
+**INDEX does NOT own:** repository-derived facts (actual Composer dependencies, actual namespace imports, actual implementation status, actual topological ordering, actual test state). Those are generated.
 
-### 9. ISPOKE-E4 Paraphrase Engine (Deferred)
+> INDEX is the canonical registry of architectural identity and governance, while dependency graphs are generated authoritative views of declared intent and verified implementation state.
 
-**ISPOKE-E4 (Paraphrase Engine) is deferred** until the Eloq ESPOKE-19 ships or new content-creation ESPOKEs are admitted. Per `ESPOKE-CONSUMER-MAP-7`: 0 YES consumers in the existing 18 ESPOKEs. The 22 doc-types are heavily weighted toward fiction/academic/legal registers that no existing ESPOKE produces. The weakest-fit ISPOKE.
+### 12. Tier-Local DAG Contract (LOCKED)
 
-### 10. ISPOKE-E15 Theme Manager (HUB-26 Absorption Target)
+Every tier gets the same two-DAG treatment:
 
-**ISPOKE-E15 (Theme Manager) is ratified as a HUB-26 absorption target**, not a new HUB-33. Per `ESPOKE-CONSUMER-MAP-7`: E15 crosses the 50% Hub-promotion threshold (61.1% YES, 11 of 18 ESPOKEs). The right move is to absorb E15's 91 LOC pure-library implementation into HUB-26 UI Elements when HUB-26 ships, not create a 33rd Hub.
+```
+Core     → CORE-DECLARED-DAG + CORE-VERIFIED-DAG
+Hub      → HUB-DECLARED-DAG + HUB-VERIFIED-DAG
+Bridge   → BRIDGE-DECLARED-DAG + BRIDGE-VERIFIED-DAG
+Spoke    → APP-DECLARED-DAG + APP-VERIFIED-DAG (per-application)
+Deploy   → DEPLOY-DECLARED-DAG + DEPLOY-VERIFIED-DAG
+Runtime  → RUNTIME-DECLARED-DAG + RUNTIME-VERIFIED-DAG
+```
 
-### 11. Hub-Promotion Reassessments
+The global graph becomes a **derived integration view**, not another independently maintained graph.
+
+### 13. HUB-32 AI Inference Hub (Immediate Ratification — ratified pending canonical publication)
+
+**ISPOKE-E3 from the ELQ analysis is immediately promoted to HUB-32**, bypassing the deferred-promotion rule. LLM invocation is judged as foundational as Identity (HUB-04) or Audit (HUB-06). The Hub ring grows from 31 to 32 packages. All ELQ ISPOKEs that consumed E3 now consume HUB-32.
+
+**Status: ratified pending canonical publication.** The HUB-32 blueprint file does not yet exist in `Architecture/Hub/`. INDEX.md still says 31 Hubs. This is intentional — the decision is ratified; the canonical blueprint is deferred to the implementation phase.
+
+### 14. ESPOKE-19 Eloq (New Application — ratified pending canonical publication)
+
+**Eloq is ratified as ESPOKE-19**, a new External Spoke. Consumes HUB-32 + HUB-04, composes 14 ISPOKEs from the ELQ analysis. Content policy: **neutral parity** — the 22 document-type × 10 paraphrase-style taxonomy ships intact including NSFW doc-types; per-doc `content_filter_setting` toggle preserved as user choice; `BLOCK_NONE` Gemini safety setting available.
+
+**Status: ratified pending canonical publication.** The ESPOKE-19 blueprint file does not yet exist. INDEX.md still says 18 ESPOKEs.
+
+### 15. ISPOKE Contract Lint Rule (E11/E12 Resolution — LOCKED)
+
+**An ISPOKE with `reusable: true` MAY NOT transitively depend on an ISPOKE with `reusable: false`** without making the dependency explicitly `OPTIONAL`. This is an architecture lint invariant, not just a documentation note.
+
+### 16. Namespace Root Lint Rule (LOCKED)
+
+> **A namespace root belongs to exactly one package unless an explicit namespace-partition contract exists.**
+
+This catches the C04↔C05 collision (`SovereignStack\Core\Http\` shared root) and should become an enforceable rule in `architecture-boundary-lint.py`, not just a documented defect.
+
+### 17. ISPOKE-E4 Paraphrase Engine (Deferred)
+
+**ISPOKE-E4 is deferred** until the Eloq ESPOKE-19 ships or new content-creation ESPOKEs are admitted. Per `ESPOKE-CONSUMER-MAP-7`: 0 YES consumers in the existing 18 ESPOKEs.
+
+### 18. ISPOKE-E15 Theme Manager (HUB-26 Absorption Target)
+
+**ISPOKE-E15 is ratified as a HUB-26 absorption target**, not a new HUB-33. Per `ESPOKE-CONSUMER-MAP-7`: E15 crosses the 50% Hub-promotion threshold (61.1% YES, 11 of 18 ESPOKEs). Absorb into HUB-26 UI Elements when HUB-26 ships.
+
+### 19. Hub-Promotion Reassessments
 
 Per `ESPOKE-CONSUMER-MAP-7`:
-- **ISPOKE-E13 (Privacy & Audit Ledger)**: PARTIAL SPLIT reaffirmed — mechanism → HUB-06 Auditor (already shipped); slim policy-label ISPOKE stays at 11.1% YES.
-- **ISPOKE-E8 (BYOK Vault)**: demoted from DEFER Hub candidate to ISPOKE (5.6% YES, only ESPOKE-17 Concierge consumes).
-- **ISPOKE-E9 (Remote Backup Orchestrator)**: demoted from DEFER Hub candidate to ISPOKE (11.1% YES, 2 consumers). S3 target delegated to HUB-11 Cloud Storage.
+- **ISPOKE-E13 (Privacy & Audit Ledger)**: PARTIAL SPLIT reaffirmed — mechanism → HUB-06 Auditor; slim policy-label ISPOKE stays.
+- **ISPOKE-E8 (BYOK Vault)**: demoted to ISPOKE (5.6% YES, 1 consumer).
+- **ISPOKE-E9 (Remote Backup Orchestrator)**: demoted to ISPOKE (11.1% YES, 2 consumers). S3 target delegated to HUB-11 Cloud Storage.
 
-### 12. HUB-10 and HUB-25 Relocation to Runtime Tier
+### 20. HUB-10 and HUB-25 Relocation to Runtime Tier
 
-**HUB-10 (Queue Worker) and HUB-25 (Chronos TaskRunner) relocate from Hub tier to Runtime tier** as RUNTIME-03 (Worker) and RUNTIME-04 (Scheduler). Their primary purpose is to BE the long-running process substrate, not to consume Hub capabilities — they are runtime-tier packages masquerading as Hub-tier. The Hub ring drops from 32 to 30 packages (31 existing + HUB-32 ratified − HUB-10 relocated − HUB-25 relocated = 30). HUB-10 and HUB-25 blueprint files are marked SUPERSEDED with redirect pointers to RUNTIME-03 and RUNTIME-04.
+**HUB-10 (Queue Worker) and HUB-25 (Chronos TaskRunner) relocate from Hub tier to Runtime tier** as RUNTIME-03 (Worker) and RUNTIME-04 (Scheduler). Their primary purpose is to BE the long-running process substrate, not to consume Hub capabilities.
 
-### 13. Known Latent Defects (Documented, Not Fixed in This ADR)
+### 21. Known Latent Defects (Documented, Not Fixed in This ADR)
 
 Per `CORE-DAG-RECONCILIATION-8`:
-- **C04↔C05 namespace collision** — Both `http-message/composer.json` and `middleware/composer.json` declare `"SovereignStack\\Core\\Http\\": "src/"` as the PSR-4 root. Latent bug: adding a class to one package with the same name as a class in the other would silently alias. Remediation plan: namespace split (`SovereignStack\Core\Http\Message\*` vs `SovereignStack\Core\Http\Middleware\*`) in a future ADR.
-- **C18 forward-declaration stub for C17** — `kernel/src/Stub/ProviderRegistryInterface.php` + `EmptyProviderRegistry.php` are local-to-kernel placeholders for the not-yet-implemented CORE-17. C18 boots with `EmptyProviderRegistry` (no-op) — boot-phase `registerAll()`/`bootAll()` calls are silent no-ops until C17 lands. **C18's depth-2 badge is conditional.** The depth scale should be amended to express "depth 2 with stubs" vs "depth 2 fully wired" in a future ADR.
-- **H05/H07 Rate Limiter duplication** — H05's blueprint Upward reads "HUB-04, CORE-19, HUB-02" but CORE-15's Downward says "HUB-07 (Rate Limiter)". H05 and H07 may be duplicate Rate Limiter Hubs. The Capability DAG includes H07 but not H05. Tech-lead decision pending.
+- **C04↔C05 namespace collision** — Both `http-message/composer.json` and `middleware/composer.json` declare `"SovereignStack\\Core\\Http\\": "src/"` as the PSR-4 root. Remediation: namespace split in a future ADR. The namespace root lint rule (§16) will catch this going forward.
+- **C18 forward-declaration stub for C17** — `kernel/src/Stub/ProviderRegistryInterface.php` + `EmptyProviderRegistry.php` are placeholders. C18's `implementation_depth` is 2 but `integration_completeness` is PARTIALLY WIRED and `production_gate` requires C17. The three-axis status model (§6) captures this precisely.
+- **H05/H07 Rate Limiter duplication** — H05 and H07 may be duplicate Rate Limiter Hubs. Tech-lead decision pending.
 
 ## Consequences
 
 ### Positive
 
-1. **Runtime substrate becomes visible to the SDLC.** The missing layer (Anvil v3, systemd timers) is now a first-class tier with depth requirements. Depth-2 claims for runtime-touching packages are no longer fiction.
-2. **Build orders derived, not hand-numbered.** Topological waves calculated from verified edges eliminate the arbitrary sequencing that put SuperPHP at "Step 6" despite having no Kernel dependency.
-3. **Per-tier depth calibration via Capability DAG.** CAPABILITY-typed edges capture tier-specific verification requirements (e.g., "end-to-end HTTP round-trip verified" as a CAPABILITY edge from BRIDGE-01 to RUNTIME-01) without forcing per-tier depth scales.
-4. **Application-model clarity.** ESPOKE/ISPOKE many-to-many with consumer-side composition policy; `reusable` flag lint-enforced; Application Manifest as first-class artifact.
-5. **HUB-32 unblocks 4 ELQ ISPOKEs** (E4, E5, E11, E12) and future AI-consuming ESPOKEs.
+1. **Two-DAG governance prevents drift.** Declared and verified DAGs answer different questions; both are authoritative. Drift between them becomes automatically detectable via the four edge status categories.
+2. **Runtime substrate becomes visible to the SDLC.** The missing layer (Anvil v3, systemd timers) is now a first-class tier with depth requirements.
+3. **Build orders derived, not hand-numbered.** Topological waves calculated from verified edges eliminate arbitrary sequencing.
+4. **Three-axis status model** separates implementation depth from integration completeness from production gate — no more conflating "tests pass" with "production ready."
+5. **Machine-readable edge metadata** enables future tooling to auto-generate DAGs, compare them, and detect drift.
+6. **INDEX authority evolution** prevents manual maintenance of derived facts — "never manually maintain what the repo can derive."
+7. **HUB-32 unblocks 4 ELQ ISPOKEs** and future AI-consuming ESPOKEs.
 
 ### Negative
 
-1. **Documentation explosion.** Each tier gets its own DAG + capability DAG + build order + (for Applications) per-app manifests. Total documentation surface grows significantly. Mitigated by derivation from blueprints (not hand-maintained) and the `generate-architecture-baseline.py` rewrite planned for the next PR.
-2. **HUB-10 and HUB-25 relocation** breaks any external references to those IDs. The blueprints are marked SUPERSEDED with redirect pointers, but downstream consumers (including this ADR's references) must update.
-3. **Core DAG has two views** (13-edge strict-verified vs 45-edge blueprint-declared). The strict-verified view is authoritative for admission, but the declared view must be maintained as architectural intent. This dual-view maintenance is overhead.
-4. **Known latent defects (§13) are documented but not fixed.** The C04↔C05 namespace collision and C17 forward-declaration stub are tracked for future ADRs.
+1. **Documentation surface grows.** Each tier gets two DAGs + capability DAG + build order. Mitigated by generation from blueprints + repository evidence (not hand-maintained).
+2. **HUB-10 and HUB-25 relocation** breaks external references. Blueprints are marked SUPERSEDED with redirect pointers.
+3. **DAG generator tooling not yet built.** The two-DAG model is ratified but the scripts (`generate-verified-dag.py`, `generate-declared-dag.py`, `compare-dags.py`, `generate-build-order.py`) are tracked as future tasks. Until they exist, DAGs are hand-maintained markdown.
+4. **Known latent defects (§21) are documented but not fixed.** The C04↔C05 namespace collision and C17 forward-declaration stub are tracked for future ADRs.
 
 ### Neutral / Gated
 
-1. **SDLC-AGRD v4.0 rewrite** — this ADR ratifies the tier-stratified model; the SDLC document itself must be rewritten from v3.5 (single-lap model) to v4.0 (per-tier laps + Eligible(X) admission). Tracked as a separate PR.
-2. **`generate-architecture-baseline.py` rewrite** — the baseline generator must report per-tier depth, cross-tier admission-gate status, and runtime substrate readiness (Tier A depth). Also addresses the stale-blueprint-source / no-require-edges / PHP-Python-twin issues identified in `SDLC-AUDIT-1`. Tracked as a separate PR.
-3. **Cross-tier admission-gate fitness function** — new FF in `scripts/fitness/` that checks "does every depth-N claim in tier X satisfy its admission gate?" Catches the runtime-fiction problem structurally going forward. Tracked as a separate PR.
-4. **Codex/LMS/Showcase planning** — per `ESPOKE-CONSUMER-MAP-7`, the original ELQ analysis assumed consumers that don't exist in the 18-ESPOKE catalog. Tech-lead decision pending: are Codex/LMS/Showcase planned as new ESPOKEs? Their addition would significantly boost YES counts for E4, E5, E6, E7.
+1. **SDLC-AGRD v4.0 rewrite** — implements the Eligible(X) admission rule + per-tier laps. Tracked as a separate PR.
+2. **DAG generator scripts** — `scripts/generate-verified-dag.py` etc. Tracked as future tasks.
+3. **Cross-tier admission-gate fitness function** — new FF in `scripts/fitness/`. Tracked as a separate PR.
+4. **Hub/Spoke/Deploy/Runtime per-tier DAGs** — Core is first; others follow the same two-DAG methodology.
 
 ## Rejected Alternatives
 
 | Alternative | Why Rejected |
 |---|---|
-| **Single global build sequence (status quo)** | Verified defective: 4 of 7 Core-tier steps wrong; "selected critical" Hub subset inconsistent with §4; 3 contradictory CORE-02 statuses; missed C18→C06 edge. |
-| **Tier-stratified laps (keep unified lap structure, make each lap tier-scoped)** | Forces synchronization that doesn't match reality (Tier A work doesn't fit in a "lap" — it's ops work, not code). Per-tier separation is cleaner. |
-| **Bilateral CONSENT edges (my original proposal)** | Per SAAI's critique: ownership was theater; consent is governance metadata, not a dependency; consumer-side composition policy is sufficient. |
-| **Per-tier depth scales (my original proposal)** | Subsumed by the Capability DAG. CAPABILITY-typed edges capture tier-specific verification requirements more generally than per-tier depth scales. |
-| **45-edge blueprint-declared DAG as authoritative** | Not honest about current state. The strict-verified 13-edge DAG (4 waves) is authoritative for admission; the 45-edge declared view is documented as architectural intent. |
-| **Immediate OS-metaphor Phase-0 packages** (pulse/scheduler/tracer) | Months of work. Only worth it if the OS metaphor is a real product differentiator. Deferred per `SDLC-AUDIT-1` §F.1. |
+| **Single global build sequence (status quo)** | Verified defective: 4 of 7 Core-tier steps wrong; "selected critical" Hub subset inconsistent; 3 contradictory CORE-02 statuses. |
+| **Single authoritative DAG (original ADR-021 §5)** | False choice between 13-edge verified and 45-edge declared. Both answer different questions; both are authoritative. Forces choosing "which is the real DAG" when both are real. |
+| **Tier-stratified laps** | Forces synchronization that doesn't match reality (Runtime work doesn't fit in a "lap" — it's ops work, not code). |
+| **Bilateral CONSENT edges** | Per SAAI: ownership was theater; consent is governance metadata, not a dependency. Consumer-side composition policy is sufficient. |
+| **Per-tier depth scales** | Subsumed by the three-axis status model + Capability DAG. |
+| **45-edge declared DAG as sole authority** | Not honest about current state — would ignore the fact that most edges are not yet verified in code. |
+| **13-edge verified DAG as sole authority** | Loses architectural intent — would miss `C18 → C17` (declared but not yet implemented) and other future-looking edges. |
 
 ## Relationship to Other Documents
 
 | Document | Relationship |
 |---|---|
-| `INDEX.md §5.3` | **SUPERSEDED** by this ADR. The 11-step global build sequence is no longer authoritative. |
-| `INDEX.md §5.2` | **SUPERSEDED** by per-tier DAGs. The monolithic Mermaid block is replaced by `Architecture/Core/CORE-DEPENDENCY-DAG.md` (and future Hub/Spoke/Deploy equivalents). |
-| `Architecture/Core/CORE-DEPENDENCY-DAG.md` | **NEW** — authoritative Core dependency DAG (typed edges, 13-edge strict-verified view authoritative, 45-edge declared view documented). |
-| `Architecture/Core/CORE-CAPABILITY-DAG.md` | **NEW** — authoritative Core capability DAG (CAPABILITY-typed edges to Hub consumers). |
-| `Architecture/Core/CORE-BUILD-ORDER.md` | **NEW** — authoritative Core build order (4 topological waves derived from the strict-verified DAG). |
-| `Architecture/Hub/HUB-32.md` | **NEW** — AI Inference Hub stub (depth 1, implementation deferred). |
-| `Architecture/Spoke/External/ESPOKE-19.md` | **NEW** — Eloq External Spoke stub (depth 1, implementation deferred). |
-| `Architecture/Hub/HUB-10.md` | **SUPERSEDED** — relocated to Runtime tier as RUNTIME-03. Blueprint marked SUPERSEDED with redirect. |
-| `Architecture/Hub/HUB-25.md` | **SUPERSEDED** — relocated to Runtime tier as RUNTIME-04. Blueprint marked SUPERSEDED with redirect. |
-| `ADR-014` (SDLC-AGRD canonical) | Companion. SDLC v3.5 → v4.0 rewrite will implement this ADR's Eligible(X) admission rule. |
-| `ADR-017` (Fiber-based cooperative runtime) | Compatible. The cooperative scheduler remains conceptual (deferred per SDLC-AUDIT-1 §F.1); the request-lifecycle Kernel (C18) is the runtime-touching Core package. |
-| `ADR-005` (SuperPHP over Blade/Twig) | Compatible. CORE-07/11/12 remain in Core tier as pure compiler chain; not blocking anything currently admitted. |
-| `download/ELQ-ANALYSIS.md` | Reference — the 14 ISPOKE decomposition (post E3→HUB-32) and Decisions Ratified section. |
-| `download/ELQ-CONSUMER-MAP.md` | Reference — the 10×18 consumer matrix and Hub-promotion reassessments. |
+| `INDEX.md §5.3` | **SUPERSEDED** — 11-step global build sequence replaced by per-tier generated build orders. |
+| `INDEX.md §5.2` | **SUPERSEDED** — monolithic Mermaid replaced by per-tier declared + verified DAGs. |
+| `Architecture/Core/CORE-VERIFIED-DAG.md` | **NEW** (renamed from `CORE-DEPENDENCY-DAG.md`) — 13-edge verified implementation DAG. |
+| `Architecture/Core/CORE-DECLARED-DAG.md` | **NEW** — 45-edge declared architecture DAG. |
+| `Architecture/Core/CORE-CAPABILITY-DAG.md` | Existing — capability delivery DAG (CAPABILITY-typed edges). |
+| `Architecture/Core/CORE-BUILD-ORDER.md` | Existing — updated with "Generated, do not edit manually" header. |
+| `Architecture/Hub/HUB-32.md` | **Ratified pending canonical publication** — blueprint file to be created during implementation phase. |
+| `Architecture/Spoke/External/ESPOKE-19.md` | **Ratified pending canonical publication** — blueprint file to be created during implementation phase. |
+| `Architecture/Hub/HUB-10.md` | **SUPERSEDED** — relocated to Runtime as RUNTIME-03. |
+| `Architecture/Hub/HUB-25.md` | **SUPERSEDED** — relocated to Runtime as RUNTIME-04. |
+| `scripts/generate-architecture-baseline-v2.py` | **NEW** — evidence-collection script for baseline generation. |
+| `download/ARCHITECTURE_BASELINE.md` | Generated artifact — evidence snapshot, not committed (gitignored, reproducible by running the script). |
+| ADR-014 | Companion. SDLC v3.5 → v4.0 rewrite implements Eligible(X) admission rule. |
+| ADR-017 | Compatible. Request-lifecycle Kernel (C18) is the runtime-touching Core package. |
+| ADR-005 | Compatible. CORE-07/11/12 remain in Core tier as pure compiler chain. |
 
 ## Provenance
 
-Ratifies the tier-stratified build order model developed through the conversation arc documented in `/home/z/my-project/worklog.md` entries SDLC-AUDIT-1 through ELQ-DECISIONS-RATIFY-6.5. The Core DAG was derived from actual blueprint + code inspection (CORE-DAG-RECONCILIATION-8); the consumer matrix was derived from reading all 18 ESPOKE blueprints (ESPOKE-CONSUMER-MAP-7); the ELQ ISPOKE decomposition was derived from cloning and analyzing the ELQ repository (ELQ-ANALYSIS-6). Tech-lead decisions ratified 2026-09-30: (1) license granted (owns ELQ); (2) Eloq is new ESPOKE-19; (3) LLM to Hub (HUB-32 immediate); (4) neutral parity content policy; (5) consumer analysis requested (executed in ESPOKE-CONSUMER-MAP-7).
+Original ADR-021 ratified 2026-09-30 (PR #283). This amendment (2026-10-01) establishes the two-DAG governance model per SAAI + Z.ai convergence analysis: both Declared and Verified DAGs are authoritative for different purposes; neither overrides the other. The four edge status categories, machine-readable edge metadata schema, three-axis status model, INDEX authority evolution, tier-local DAG contract, and namespace root lint rule are new ratifications. The five tiers, five edge types, Eligible(X) formula, HUB-32/ESPOKE-19 ratification, HUB-10/HUB-25 relocation, and ISPOKE contract lint rule are carried forward from the original ADR.
+
+Baseline evidence from `Task 70` (commit `84d68da`): 20 implemented packages, 200 PHP source files, 88 test files, 21 ADRs, 102 blueprints, PHP ^8.4 confirmed across all packages.
