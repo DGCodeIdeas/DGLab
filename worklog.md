@@ -1294,3 +1294,57 @@ Stage Summary:
   - Task 73 (pending): SDLC-AGRD v3.5 → v4.0 rewrite (implements Eligible(X) admission rule)
 - PAT ghp_...IWx used for push + API operations. User should revoke after merge.
 - Bad PR (adr-021-tier-stratified-build-order at 3af7e51) deleted from remote.
+
+---
+Task ID: 72-73 (Edge Dimension Model — Ratify + Amend ADR-021 — COMPLETED)
+Agent: main
+Task: Task 72: ratify the edge dimension model (4 edge_types + requiredness + derived status + gates list + evidence). Task 73: amend ADR-021 with the 7 scoped precision corrections per SAAI's review.
+
+Work Log:
+- SAAI ratified the Task 72 model with two corrections:
+  1. `evidence` = "evidence supporting the edge's current state" (not just verification evidence) — declaration evidence for DECLARED_ONLY, verification evidence for VERIFIED, drift evidence for UNDECLARED_VERIFIED
+  2. Multigraph generator rule: edge identity = `source + target + edge_type` (not just source + target) — prevents overwriting COMPILE edge when discovering CAPABILITY edge between same components
+- SAAI confirmed `gates` as a list (not scalar) — one edge can affect multiple gates
+- SAAI confirmed exactly one `edge_type` per edge — multiple semantics = separate edges (multigraph)
+- Created branch adr-021-edge-dimension-amendment from main (eb0ca0b).
+- Made 7 scoped amendments to ADR-021 via MultiEdit:
+  1. §2: "Five Edge Types" → "Four Edge Types + Requiredness Dimension" — removed OPTIONAL from edge_type, added requiredness: REQUIRED | OPTIONAL as independent dimension. Added critical note: DECLARED_ONLY ≠ OPTIONAL.
+  2. §5: edge metadata schema — `kind` → `edge_type`; removed OPTIONAL from values; added `requiredness: REQUIRED`; `gate` (scalar) → `gates` (list); refined evidence definition; updated field count (9 → 8 fields, 4 dimensions)
+  3. §7: Eligible(X) formula — changed from "all COMPILE/RUNTIME/INTEGRATION edges" to "every REQUIRED incoming edge has its required gates satisfied"; added key principle: edge_type tells HOW, requiredness determines WHETHER, gates tells WHAT
+  4. §8: Six-Criteria Capability Gate — formalized "Tier population ≠ Required production closure" (required closure is a SUBSET of the tier, not the whole tier)
+  5. §8.5 (NEW): Multigraph Semantics — same source/target pair can have multiple edges with different edge_types; generator edge identity = source + target + edge_type
+  6. Rejected Alternatives: added "Single-enum edge_type" (conflated 3 dimensions) and "Scalar gate field" (can't express multi-gate impact) as rejected
+  7. Status/Date/Provenance: updated for amendment 2
+- Committed as b09acd3 (1 file, 68 insertions, 24 deletions).
+- Pushed to remote branch adr-021-edge-dimension-amendment (after fixing branch persistence issue — commit initially went to main, moved to feature branch via git branch + reset + force push).
+- Opened PR #288 via GitHub API with full body.
+- Polled CI after 60s:
+  - Path Gate: ✅ completed/success — gate job working correctly
+  - PHPUnit + PHPStan: completed/skipped (no packages/** changes — correct)
+  - pr-title-lint: ✅ success
+  - architecture-lint: ❌ failure (pre-existing, NOT required, doesn't block)
+- **PR #288 MERGED NORMALLY (no admin override)** — gate job satisfied required Packages CI check. Second consecutive clean merge via the gate.
+- Merged as 9769f7eabe7a (squash merge).
+- Synced local main with GitHub (main now at 9769f7e).
+
+Stage Summary:
+- PR #288 merged: https://github.com/DGCodeIdeas/DGLab/pull/288
+- Commit: b09acd3 (local) / 9769f7e (merge commit on main)
+- 1 file changed (ADR-021 only — strictly scoped per SAAI), 68 insertions, 24 deletions
+- ADR-021 now has 2 amendments:
+  - Amendment 1 (PR #287): two-DAG governance model
+  - Amendment 2 (PR #288): edge dimension refinement
+- Edge dimension model is now canonical:
+  - edge_type: COMPILE | RUNTIME | INTEGRATION | CAPABILITY (exactly one per edge)
+  - requiredness: REQUIRED | OPTIONAL (independent of edge_type)
+  - declared + verified → status: VERIFIED | DECLARED_ONLY | UNDECLARED_VERIFIED | INVALID (derived)
+  - gates: list of BUILD | RUNTIME | INTEGRATION | PRODUCTION (one or more)
+  - evidence: evidence supporting the edge's current state
+  - Multigraph: edge identity = source + target + edge_type
+- CI workflow healthy: gate job passes for docs-only PRs (2 consecutive clean merges)
+- Next steps (not yet started):
+  - INDEX reconciliation (reflect HUB-10/HUB-25 relocation + HUB-32/ESPOKE-19 pending publication)
+  - Hub DAG reconciliation (HUB-DECLARED-DAG + HUB-VERIFIED-DAG)
+  - DAG generator scripts (generate-verified-dag.py, generate-declared-dag.py, compare-dags.py)
+  - SDLC-AGRD v4.0 rewrite (implements Eligible(X) admission rule)
+  - core/kernel test failure investigation (pre-existing, blocks code PRs)
