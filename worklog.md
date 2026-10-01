@@ -1348,3 +1348,31 @@ Stage Summary:
   - DAG generator scripts (generate-verified-dag.py, generate-declared-dag.py, compare-dags.py)
   - SDLC-AGRD v4.0 rewrite (implements Eligible(X) admission rule)
   - core/kernel test failure investigation (pre-existing, blocks code PRs)
+
+---
+Task ID: 74 (INDEX Reconciliation — RE-APPLIED via PR #290 — COMPLETED)
+Agent: main
+Task: Previous PR #289 merged empty due to branch persistence issue (commit went to local main, push sent wrong commit to remote branch). Re-applied via PR #290 using cherry-pick of the correct commit (e828f42).
+
+Work Log:
+- Discovered PR #289 merge was a no-op: the remote branch was at the same commit as main (fb2517a), not at e828f42 (which had the changes). The squash merge produced an empty merge because there were no commits to merge.
+- Root cause: bash session branch persistence issue — `git checkout -b` in one bash call doesn't persist to the next. The commit went to local main instead of the feature branch.
+- Fix: cherry-picked commit e828f42 (which has the actual changes) onto a new branch task-74-index-v2, pushed, opened PR #290, merged.
+- PR #290 CI: Path Gate ✅, pr-title-lint ✅, PHPUnit skipped (docs-only), architecture-lint ❌ (pre-existing, not required).
+- PR #290 merged as 49f960e746bb (squash merge).
+- Synced local main with GitHub (main now at 49f960e).
+- Verified changes on main:
+  - Freshness stamp: 2026-10-01 ✅
+  - Authority Boundary: present ✅
+  - ADR-021 entry: present ✅
+  - SUPERSEDED banners: present ✅
+  - HUB-10.md: SUPERSEDED notice ✅
+  - HUB-25.md: SUPERSEDED notice ✅
+
+Stage Summary:
+- PR #290 merged: https://github.com/DGCodeIdeas/DGLab/pull/290
+- Commit: e828f42 (cherry-picked) / 49f960e (merge commit on main)
+- 3 files changed: INDEX.md (7 edits + §0 authority boundary), HUB-10.md (SUPERSEDED), HUB-25.md (SUPERSEDED)
+- INDEX now fully reconciled with ADR-021 on main
+- CI workflow healthy: 4th consecutive clean merge via gate job (#287, #288, #289, #290 — though #289 was empty)
+- Next in dependency order: Hub DAG generation/reconciliation (HUB-DECLARED-DAG + HUB-VERIFIED-DAG)
