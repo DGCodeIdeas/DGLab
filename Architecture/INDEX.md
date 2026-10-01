@@ -141,7 +141,7 @@ Full descriptions and categories: `CrossCutting/GLOSSARY.md` §1.2.
 | HUB-07 | Sovereign Throttle | HUB-22 | Sovereign Ledger (Billing) |
 | HUB-08 | Sovereign Gateway | HUB-23 | Sovereign Reporter |
 | **HUB-09** | **Sovereign Signal (Event Bus)** — *renamed from "Sovereign Pulse"* | HUB-24 | Sovereign GraphQL Registry |
-| HUB-10 | Sovereign Queue | HUB-25 | Sovereign Chronos (Scheduler) |
+| ~~HUB-10~~ | ~~Sovereign Queue~~ ⚠️ SUPERSEDED (→ RUNTIME-03) | ~~HUB-25~~ | ~~Sovereign Chronos~~ ⚠️ SUPERSEDED (→ RUNTIME-04) |
 | HUB-11 | Sovereign Cloud Storage | HUB-26 | Sovereign UI (Elements) |
 | HUB-12 | Sovereign Notify | HUB-27 | Sovereign Sentinel (Headers) |
 | HUB-13 | Sovereign Translator | **HUB-28** | **Sovereign Versioner** — API versioning, *not* analytics |
@@ -215,7 +215,7 @@ mismatch.
 | Tier | Documented | Placeholder-only | **Total files** |
 |---|---|---|---|
 | Core | 20 | 0 | **20** |
-| Hub | 31 | 0 | **31** |
+| Hub | 31 declared (29 active + 2 superseded) | 0 | **31 declared** (29 active per ADR-021) |
 | Internal Spoke | 27 | 0 | **27** |
 | External Spoke | 18 | 0 | **18** |
 | Bridge | 1 | 0 | **1** |
