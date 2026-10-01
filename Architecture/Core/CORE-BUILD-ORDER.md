@@ -1,9 +1,14 @@
-# CORE-BUILD-ORDER — Authoritative Core-tier Topological Build Waves
+# CORE-BUILD-ORDER — Generated Core-tier Topological Build Waves
 
-**Task ID:** CORE-DAG-RECONCILIATION-8
-**Source of truth:** Verified edges from `CORE-DEPENDENCY-DAG.md` §4.1 (7 verified-in-code + 6 verified-in-composer + 4 declared-but-unverified + 28 optional).
-**Status:** DRAFT — saved to `/home/z/my-project/download/` for tech-lead review before commit to `Architecture/Core/`.
-**Date:** 2026-09-30
+<!-- GENERATED ARTIFACT — Do not edit manually. -->
+<!-- Generated from: CORE-VERIFIED-DAG + CORE-DECLARED-DAG + SDLC admission state -->
+<!-- Reproducible by: scripts/generate-build-order.py (future) -->
+<!-- Authority: Implementation reality + SDLC admission. Not authoritative for architectural intent. -->
+
+**Source of truth:** Verified edges from `CORE-VERIFIED-DAG.md` (13 edges: 7 verified-in-code + 6 verified-in-composer).
+**Declared view:** `CORE-DECLARED-DAG.md` (45 edges — includes future/assembled-system relationships).
+**Status:** GENERATED — derived from verified DAG + SDLC admission state.
+**Date:** 2026-09-30 (original); 2026-10-01 (regenerated after two-DAG model ratification)
 
 ---
 

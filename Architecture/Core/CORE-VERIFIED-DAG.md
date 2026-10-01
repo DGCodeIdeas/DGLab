@@ -1,11 +1,12 @@
-# CORE-DEPENDENCY-DAG — Authoritative Core-tier Dependency DAG
+# CORE-VERIFIED-DAG — Verified Implementation DAG
 
-**Task ID:** CORE-DAG-RECONCILIATION-8
+**Authority:** Repository implementation reality ("is proven").
 **Source of truth:** 20 blueprint files at `/home/z/my-project/Architecture/Core/CORE-01.md` … `CORE-20.md`
 **Implementation truth:** code at `/home/z/my-project/packages/core/` + `/home/z/my-project/orchestrator/`
 **Derived from:** direct inspection of (a) each blueprint's `## Dependency Status` section, (b) each implemented package's `composer.json`, (c) each implemented package's `src/*.php` `use` statements via `rg`.
-**Status:** DRAFT — saved to `/home/z/my-project/download/` for tech-lead review before commit to `Architecture/Core/`.
-**Date:** 2026-09-30
+**Companion:** `CORE-DECLARED-DAG.md` (45-edge architectural intent DAG — includes future/assembled-system edges not yet verified in code).
+**Status:** Authoritative for build eligibility + package-level ordering + SDLC admission.
+**Date:** 2026-09-30 (original); 2026-10-01 (renamed from CORE-DEPENDENCY-DAG per ADR-021 two-DAG model)
 
 ---
 
