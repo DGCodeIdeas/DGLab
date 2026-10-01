@@ -1,0 +1,757 @@
+     1→# Hub Edge Inventory — HUB-DAG-EVIDENCE-75 (Phase 1)
+     2→
+     3→**Task ID:** HUB-DAG-EVIDENCE-75
+     4→**Agent:** General-purpose (Hub DAG evidence reconciliation)
+     5→**Date:** 2026-10-01
+     6→**Authority:** ADR-021 §11 (two-DAG governance model) — DECLARED DAG (architectural intent) vs VERIFIED DAG (repository reality)
+     7→**Scope:** Hub-tier DAG evidence reconciliation ONLY. This is an **analysis document** (gitignored, in `download/`). DAG files (`Architecture/Hub/HUB-VERIFIED-DAG.md`, `HUB-DECLARED-DAG.md`) are **Phase 2** deliverables, not produced here.
+     8→
+     9→---
+    10→
+    11→## §0. Methodology (inherited from CORE-DAG-RECONCILIATION-8 + ADR-021 Amendment 2)
+    12→
+    13→Per ADR-021 Amendment 2, every edge has 4 dimensions:
+    14→- **edge_type**: COMPILE | RUNTIME | INTEGRATION | CAPABILITY (exactly one)
+    15→- **requiredness**: REQUIRED | OPTIONAL (independent of edge_type)
+    16→- **declared/verified → status**: VERIFIED | DECLARED_ONLY | UNDECLARED_VERIFIED | INVALID (derived)
+    17→- **gates**: list of BUILD | RUNTIME | INTEGRATION | PRODUCTION
+    18→
+    19→Per ADR-021 §11, the Hub tier has TWO authoritative DAGs:
+    20→- **DECLARED DAG** — from blueprint Upward/Downward/Transitive Core sections (architectural intent)
+    21→- **VERIFIED DAG** — from composer.json `require` + `use SovereignStack\*` source imports (repository reality)
+    22→
+    23→This inventory is the **evidence base** for both DAGs. It does NOT decide direction corrections or build waves — those are Phase 2 deliverables after tech-lead review.
+    24→
+    25→**Status definitions (per ADR-021):**
+    26→- `VERIFIED` — declared in blueprint AND verified in composer/source
+    27→- `DECLARED_ONLY` — declared in blueprint, not verified in code (target may not yet be implemented)
+    28→- `UNDECLARED_VERIFIED` — verified in composer/source, but not formally declared in blueprint's Upward list
+    29→- `INVALID` — declared AND verified AND target does not exist in active inventory (none expected for Hub tier)
+    30→
+    31→---
+    32→
+    33→## §1. Step 1 — Active Hub blueprints
+    34→
+    35→Per `/home/z/my-project/Architecture/INDEX.md` §2.2 (canonical Hub map) and ADR-021 §12:
+    36→
+    37→**Filesystem reality:** 31 Hub blueprint files exist at `/home/z/my-project/Architecture/Hub/HUB-01.md` through `HUB-31.md`.
+    38→
+    39→**Tier-state reality (per ADR-021 + Task 74):**
+    40→- HUB-10 (Sovereign Queue) — **SUPERSEDED**, relocated to Runtime tier as RUNTIME-03
+    41→- HUB-25 (Sovereign Chronos / Scheduler) — **SUPERSEDED**, relocated to Runtime tier as RUNTIME-04
+    42→- HUB-32 (AI Inference Hub) — **ratified pending canonical publication** (no blueprint file at `Architecture/Hub/HUB-32.md`); worklog Task 72-73 (ELQ-DECISIONS-RATIFY-6.5) ratifies but defers file creation
+    43→
+    44→**Active Hub blueprints for DAG purposes = 31 − 2 superseded = 29.**
+    45→
+    46→The 29 active Hub blueprints (with their §2.2 names):
+    47→
+    48→| ID | Name | Criticality |
+    49→|---|---|---|
+    50→| HUB-01 | Sovereign Hub Config & Flags | Critical |
+    51→| HUB-02 | Sovereign Cache & State | Critical |
+    52→| HUB-03 | Sovereign Asset Engine | High |
+    53→| HUB-04 | Sovereign Identity & Authentication | Critical |
+    54→| HUB-05 | Sovereign Guardian (RBAC) | Critical |
+    55→| HUB-06 | Sovereign Auditor | High |
+    56→| HUB-07 | Sovereign Throttle | High |
+    57→| HUB-08 | Sovereign Gateway | Critical |
+    58→| HUB-09 | Sovereign Signal (Event Bus) — *renamed from "Pulse"* | Critical |
+    59→| HUB-11 | Sovereign Cloud Storage | High |
+    60→| HUB-12 | Sovereign Notify | High |
+    61→| HUB-13 | Sovereign Translator | Medium |
+    62→| HUB-14 | Sovereign Search | High |
+    63→| HUB-15 | Sovereign Pulse (Health Check & Service Discovery) | High |
+    64→| HUB-16 | Sovereign Hub Weaver | Medium |
+    65→| HUB-17 | Sovereign Webhook Nexus | High |
+    66→| HUB-18 | Sovereign Media Forge | Medium |
+    67→| HUB-19 | Sovereign Guard (Validation) | Critical |
+    68→| HUB-20 | Sovereign Vault | Critical |
+    69→| HUB-21 | Sovereign Nexus (Tenancy) | Critical |
+    70→| HUB-22 | Sovereign Ledger (Billing) | High |
+    71→| HUB-23 | Sovereign Reporter | Medium |
+    72→| HUB-24 | Sovereign GraphQL Registry | High |
+    73→| HUB-26 | Sovereign UI (Elements) | High |
+    74→| HUB-27 | Sovereign Sentinel (Headers) | High |
+    75→| HUB-28 | Sovereign Versioner — *API versioning, not analytics* | Medium |
+    76→| HUB-29 | Sovereign Hub Spec (Testing) | High |
+    77→| HUB-30 | Sovereign Hub-CLI | High |
+    78→| HUB-31 | Sovereign Real-time Analytics | Medium |
+    79→
+    80→**Total active Hub blueprints: 29** (INDEX.md §4 criticality counts: 9 Critical [10 − HUB-10] + 14 High [15 − HUB-25] + 6 Medium = 29 — confirmed).
+    81→
+    82→---
+    83→
+    84→## §2. Step 2 — Declared edges extracted from each Hub blueprint
+    85→
+    86→For each active Hub blueprint, the `## Dependency Status` section was extracted via `awk '/^## Dependency Status/{flag=1;next} /^## /{flag=0} flag'`. Three blueprint formats were observed:
+    87→
+    88→- **Format A** (HUB-01, 02, 04, 05, 07, 08, 09, 11, 12, 13, 14, 15, 16, 18, 19, 20): has `Upward` + `Downward` + (sometimes) `Runtime` subsections
+    89→- **Format B** (HUB-03, 06): has `Upward` + `Downward` + sometimes a correction note
+    90→- **Format C** (HUB-17, 18, 21, 22, 23, 24, 26, 27, 28, 29, 30, 31): has `Direct Hub` + `Transitive Core` + (sometimes) `Downward` subsections. `Direct Hub` = Hub-internal Upward; `Transitive Core` = Core-tier Upward.
+    91→
+    92→**Edges are extracted as `(source = this Hub) → (target = each listed ID)` from Upward/Direct Hub/Transitive Core.** Downward entries are recorded as the *reverse* direction: `(source = listed consumer) → (target = this Hub)`. Edges that appear in BOTH the consumer's Upward AND the producer's Downward are recorded once with both declaring sources in the Evidence column.
+    93→
+    94→### §2.1 Declared Upward edges per blueprint (one row per declared source→target)
+    95→
+    96→#### HUB-01 (Config & Flags) — `Architecture/Hub/HUB-01.md` line 2
+    97→- **Upward:** CORE-02, CORE-10, CORE-19, HUB-02, CORE-09 *(soft — diagnostic emission on cache miss)*
+    98→- **Downward:** HUB-04, HUB-06, HUB-08, HUB-15, every Internal Spoke, every External Spoke, BRIDGE-01
+    99→- **Edges:** HUB-01→CORE-02, HUB-01→CORE-10, HUB-01→CORE-19, HUB-01→CORE-09, HUB-01→HUB-02 (5 upward) + HUB-04→HUB-01, HUB-06→HUB-01, HUB-08→HUB-01, HUB-15→HUB-01 (4 downward-only)
+   100→
+   101→#### HUB-02 (Cache & State) — `Architecture/Hub/HUB-02.md` line 8
+   102→- **Upward:** `psr/simple-cache`, `psr/cache`, `ext-redis`, `ext-json` (all PSR/external — NOT Core blueprints); **Required at compile time:** CORE-15 (`SovereignStack\Core\Cache\AdapterInterface`); **Optional:** CORE-16 (`SovereignStack\Core\Crypto\EncrypterInterface` — only when `encrypt: true`)
+   103→- **Downward:** HUB-01, HUB-04, HUB-07, HUB-09, HUB-10 *(superseded source)*, HUB-15, HUB-20, every Spoke, BRIDGE-01
+   104→- **Edges:** HUB-02→CORE-15 *(REQUIRED),* HUB-02→CORE-16 *(OPTIONAL)* (2 upward). HUB-20→HUB-02 (1 downward-only; HUB-10→HUB-02 excluded as source superseded).
+   105→
+   106→#### HUB-03 (Asset Engine) — `Architecture/Hub/HUB-03.md` line 14
+   107→- **Upward:** CORE-14, CORE-10, HUB-11 *(with DAG-correction note)*
+   108→- **Downward:** HUB-26
+   109→- **Edges:** HUB-03→CORE-14, HUB-03→CORE-10, HUB-03→HUB-11 (3 upward). HUB-26→HUB-03 already in HUB-26 Upward (duplicate).
+   110→
+   111→#### HUB-04 (Identity) — `Architecture/Hub/HUB-04.md` line 28
+   112→- **Upward:** CORE-02, CORE-09 *(soft — audit trail)*, CORE-10, CORE-16, CORE-19, HUB-02, HUB-07, HUB-21
+   113→- **Downward:** BRIDGE-01, HUB-06, HUB-08, ISPOKE-01, ESPOKE-01
+   114→- **Edges:** HUB-04→CORE-02, HUB-04→CORE-09, HUB-04→CORE-10, HUB-04→CORE-16, HUB-04→CORE-19, HUB-04→HUB-02, HUB-04→HUB-07, HUB-04→HUB-21 (8 upward). HUB-06→HUB-04, HUB-08→HUB-04 already in their Upward (duplicates).
+   115→
+   116→#### HUB-05 (Guardian / RBAC) — `Architecture/Hub/HUB-05.md` line 34
+   117→- **Upward:** HUB-04, CORE-19, HUB-02
+   118→- **Downward:** ISPOKE-01, every Spoke (UI/action role gating)
+   119→- **Edges:** HUB-05→HUB-04, HUB-05→CORE-19, HUB-05→HUB-02 (3 upward). No Hub-internal downward.
+   120→
+   121→#### HUB-06 (Auditor) — `Architecture/Hub/HUB-06.md` line 40
+   122→- **Upward:** CORE-19, CORE-03, CORE-02, CORE-09, CORE-14, HUB-04, HUB-11 *(labelled "Queue" — see §7 Gap 1)*
+   123→- **Downward:** BRIDGE-01, ISPOKE-01, ISPOKE-10, HUB-15
+   124→- **Edges:** HUB-06→CORE-19, HUB-06→CORE-03, HUB-06→CORE-02, HUB-06→CORE-09, HUB-06→CORE-14, HUB-06→HUB-04, HUB-06→HUB-11 (7 upward, of which HUB-06→HUB-11 is a label-vs-INDEX contradiction). HUB-15→HUB-06 (1 downward-only).
+   125→
+   126→#### HUB-07 (Rate Limiter) — `Architecture/Hub/HUB-07.md` line 46
+   127→- **Upward:** HUB-02, CORE-04
+   128→- **Downward:** HUB-04, HUB-08, HUB-12
+   129→- **Edges:** HUB-07→HUB-02, HUB-07→CORE-04 (2 upward). HUB-04→HUB-07, HUB-08→HUB-07 already in their Upward (duplicates). HUB-12→HUB-07 (1 downward-only).
+   130→
+   131→#### HUB-08 (Gateway) — `Architecture/Hub/HUB-08.md` line 53
+   132→- **Upward:** CORE-04, CORE-05, CORE-06, CORE-09, CORE-10, CORE-18, HUB-04, HUB-07
+   133→- **Downward:** Every Spoke, BRIDGE-01
+   134→- **Edges:** HUB-08→CORE-04, HUB-08→CORE-05, HUB-08→CORE-06, HUB-08→CORE-09, HUB-08→CORE-10, HUB-08→CORE-18, HUB-08→HUB-04, HUB-08→HUB-07 (8 upward). No Hub-internal downward.
+   135→
+   136→#### HUB-09 (Signal / Event Bus) — `Architecture/Hub/HUB-09.md` line 59
+   137→- **Upward:** CORE-03, HUB-02, HUB-10 *(superseded — see §7 Gap 2)*
+   138→- **Downward:** HUB-17, HUB-22, any Spoke reacting to Hub-tier state changes
+   139→- **Edges:** HUB-09→CORE-03, HUB-09→HUB-02, HUB-09→HUB-10 (3 upward, of which HUB-09→HUB-10 has superseded target). HUB-17→HUB-09 already in HUB-17 Upward (duplicate). HUB-22→HUB-09 (1 downward-only).
+   140→
+   141→#### HUB-11 (Cloud Storage) — `Architecture/Hub/HUB-11.md` line 66
+   142→- **Upward:** CORE-14, CORE-10
+   143→- **Downward:** HUB-03, HUB-18, HUB-23
+   144→- **Edges:** HUB-11→CORE-14, HUB-11→CORE-10 (2 upward). All Hub-internal downward already in their Upward (duplicates).
+   145→
+   146→#### HUB-12 (Notify) — `Architecture/Hub/HUB-12.md` line 72
+   147→- **Upward:** HUB-04, HUB-10 *(superseded)*, CORE-12
+   148→- **Downward:** HUB-23, HUB-22, any Spoke sending user-facing notifications
+   149→- **Edges:** HUB-12→HUB-04, HUB-12→HUB-10 *(superseded)*, HUB-12→CORE-12 (3 upward). HUB-23→HUB-12 already in HUB-23 Upward (duplicate). HUB-22→HUB-12 (1 downward-only).
+   150→
+   151→#### HUB-13 (Translator) — `Architecture/Hub/HUB-13.md` line 78
+   152→- **Upward:** CORE-10, HUB-02
+   153→- **Downward:** HUB-19, HUB-26
+   154→- **Edges:** HUB-13→CORE-10, HUB-13→HUB-02 (2 upward). All Hub-internal downward already in their Upward (duplicates).
+   155→
+   156→#### HUB-14 (Search) — `Architecture/Hub/HUB-14.md` line 83
+   157→- **Upward:** CORE-19, HUB-10 *(superseded)*
+   158→- **Downward:** HUB-08, any Spoke implementing `SearchableInterface`
+   159→- **Edges:** HUB-14→CORE-19, HUB-14→HUB-10 *(superseded)* (2 upward). HUB-08→HUB-14 (1 downward-only).
+   160→
+   161→#### HUB-15 (Pulse / Health Check) — `Architecture/Hub/HUB-15.md` line 89
+   162→- **Upward:** `psr/log`, `psr/event-dispatcher`, `psr/cache`, `psr/simple-cache` (via HUB-02), `ext-curl`; **Required at compile time:** CORE-02, CORE-10, HUB-02; **Optional:** CORE-19 (only when `hub_health_event_log` table is in use)
+   163→- **Downward (regular):** CORE-01, BRIDGE-01, ISPOKE-01, DEPLOY-01, HUB-08 *(future dynamic `ServiceRegistry` consults HUB-15 state)*
+   164→- **Downward (reverse — see §7 Gap 3):** "Every Hub service (HUB-01, HUB-02, HUB-04, HUB-06, HUB-08, HUB-19, HUB-20) — owns its own `/health` endpoint per the contract in this blueprint; HUB-15 polls it." *(literal text says HUB-15 polls — these are semantically Upward but declared in Downward section)*
+   165→- **Edges:** HUB-15→CORE-02 *(REQUIRED, COMPILE),* HUB-15→CORE-10 *(REQUIRED, COMPILE),* HUB-15→CORE-19 *(OPTIONAL, COMPILE),* HUB-15→HUB-02 *(REQUIRED, COMPILE)* (4 upward) + HUB-15→HUB-01, HUB-15→HUB-04, HUB-15→HUB-06, HUB-15→HUB-08, HUB-15→HUB-19, HUB-15→HUB-20 (6 reverse-downward) + HUB-08→HUB-15 (1 regular downward — creates bidirectional cycle HUB-08↔HUB-15 with HUB-15→HUB-08, see §7 Gap 4).
+   166→
+   167→#### HUB-16 (Hub Weaver / Merge Gate) — `Architecture/Hub/HUB-16.md` line 95
+   168→- **Upward:** CORE-01 *(implemented)*, HUB-15 *(not implemented)*
+   169→- **Downward:** "every other Hub component — this is the 'Merge Gate' for the tier per the original design intent" *(too generic to enumerate — see §7 Gap 5)*
+   170→- **Edges:** HUB-16→CORE-01, HUB-16→HUB-15 (2 upward). Generic downward skipped.
+   171→
+   172→#### HUB-17 (Webhook Nexus) — `Architecture/Hub/HUB-17.md` line 101
+   173→- **Direct Hub:** HUB-09, HUB-10 *(superseded)*, HUB-06, HUB-08
+   174→- **Transitive Core:** CORE-06, CORE-04, CORE-19, CORE-03
+   175→- **Downward:** HUB-22
+   176→- **Edges:** HUB-17→HUB-09, HUB-17→HUB-10 *(superseded)*, HUB-17→HUB-06, HUB-17→HUB-08, HUB-17→CORE-06, HUB-17→CORE-04, HUB-17→CORE-19, HUB-17→CORE-03 (8 upward). HUB-22→HUB-17 already in HUB-22 Upward (duplicate).
+   177→
+   178→#### HUB-18 (Media Forge) — `Architecture/Hub/HUB-18.md` line 107
+   179→- **Direct Hub:** HUB-11, HUB-10 *(superseded)*, HUB-02
+   180→- **Transitive Core:** CORE-14, CORE-19, CORE-15
+   181→- **Downward:** (none declared)
+   182→- **Edges:** HUB-18→HUB-11, HUB-18→HUB-10 *(superseded)*, HUB-18→HUB-02, HUB-18→CORE-14, HUB-18→CORE-19, HUB-18→CORE-15 (6 upward).
+   183→
+   184→#### HUB-19 (Validation) — `Architecture/Hub/HUB-19.md` line 112
+   185→- **Upward:** `php:^8.3`, `ext-filter`, `ext-mbstring`, `ext-pcre`; **Compile-time:** CORE-19 *(required only by `UniqueRule`)*; **Optional:** CORE-09 *(via `psr/log:^3.0`)*, HUB-13
+   186→- **Downward:** Every Hub controller (HUB-01, HUB-04, HUB-06, HUB-08, HUB-17, HUB-20), every Spoke controller, BRIDGE-01, CORE-08
+   187→- **Edges:** HUB-19→CORE-19 *(REQUIRED, COMPILE)*, HUB-19→CORE-09 *(OPTIONAL)*, HUB-19→HUB-13 *(OPTIONAL)* (3 upward). HUB-01→HUB-19, HUB-04→HUB-19, HUB-06→HUB-19, HUB-08→HUB-19, HUB-17→HUB-19, HUB-20→HUB-19 (6 downward-only). CORE-08→HUB-19 is CAPABILITY edge (Core→Hub) — not in Hub-tier DAG inventory but noted.
+   188→
+   189→#### HUB-20 (Vault) — `Architecture/Hub/HUB-20.md` line 118
+   190→- **Upward:** CORE-16 *(hard)*, CORE-19 *(hard)*, CORE-02 *(hard)*, HUB-06 *(hard)*, HUB-04 *(hard)*, HUB-25 *(soft — superseded)*
+   191→- **Downward:** HUB-04, HUB-09, BRIDGE-01, HUB-22, HUB-25 *(superseded source)*
+   192→- **Edges:** HUB-20→CORE-16 *(REQUIRED)*, HUB-20→CORE-19 *(REQUIRED)*, HUB-20→CORE-02 *(REQUIRED)*, HUB-20→HUB-06 *(REQUIRED)*, HUB-20→HUB-04 *(REQUIRED)*, HUB-20→HUB-25 *(OPTIONAL, superseded)* (6 upward). HUB-04→HUB-20, HUB-09→HUB-20 (2 downward-only). HUB-22→HUB-20 already in HUB-22 Upward (duplicate). HUB-25→HUB-20 has superseded source — skip.
+   193→
+   194→#### HUB-21 (Sovereign Nexus / Tenancy) — `Architecture/Hub/HUB-21.md` line 124
+   195→- **Direct Hub:** HUB-01, HUB-04, HUB-08
+   196→- **Transitive Core:** CORE-19, CORE-10, CORE-02
+   197→- **Downward:** HUB-01, HUB-02, HUB-11, ISPOKE-01, every tenant-scoped Spoke
+   198→- **Edges:** HUB-21→HUB-01, HUB-21→HUB-04, HUB-21→HUB-08, HUB-21→CORE-19, HUB-21→CORE-10, HUB-21→CORE-02 (6 upward). HUB-01→HUB-21, HUB-02→HUB-21, HUB-11→HUB-21 (3 downward-only — note: HUB-01→HUB-21 is a NEW cycle with HUB-21→HUB-01; see §7 Gap 6).
+   199→
+   200→#### HUB-22 (Ledger / Billing) — `Architecture/Hub/HUB-22.md` line 131
+   201→- **Direct Hub:** HUB-21, HUB-20, HUB-06, HUB-17
+   202→- **Transitive Core:** CORE-19, CORE-03
+   203→- **Downward:** any Spoke gating features on subscription status
+   204→- **Edges:** HUB-22→HUB-21, HUB-22→HUB-20, HUB-22→HUB-06, HUB-22→HUB-17, HUB-22→CORE-19, HUB-22→CORE-03 (6 upward). No Hub-internal downward.
+   205→
+   206→#### HUB-23 (Reporter) — `Architecture/Hub/HUB-23.md` line 137
+   207→- **Direct Hub:** HUB-11, HUB-10 *(superseded)*, HUB-12, HUB-25 *(superseded — Scheduler, added; was referenced in prose as "to be defined" but omitted from the formal list even after HUB-25 was written)*
+   208→- **Transitive Core:** CORE-19, CORE-14
+   209→- **Downward:** (none declared)
+   210→- **Edges:** HUB-23→HUB-11, HUB-23→HUB-10 *(superseded)*, HUB-23→HUB-12, HUB-23→HUB-25 *(superseded)*, HUB-23→CORE-19, HUB-23→CORE-14 (6 upward).
+   211→
+   212→#### HUB-24 (GraphQL Registry) — `Architecture/Hub/HUB-24.md` line 143
+   213→- **Direct Hub:** HUB-08, HUB-04, HUB-05
+   214→- **Transitive Core:** CORE-02, CORE-06, CORE-04
+   215→- **Downward:** (none declared)
+   216→- **Edges:** HUB-24→HUB-08, HUB-24→HUB-04, HUB-24→HUB-05, HUB-24→CORE-02, HUB-24→CORE-06, HUB-24→CORE-04 (6 upward).
+   217→
+   218→#### HUB-26 (UI Elements) — `Architecture/Hub/HUB-26.md` line 148
+   219→- **Direct Hub:** HUB-03, HUB-13
+   220→- **Transitive Core:** CORE-11, CORE-12
+   221→- **Downward:** ISPOKE-01, ESPOKE-01, every Spoke
+   222→- **Edges:** HUB-26→HUB-03, HUB-26→HUB-13, HUB-26→CORE-11, HUB-26→CORE-12 (4 upward). No Hub-internal downward.
+   223→
+   224→#### HUB-27 (Sentinel / Headers) — `Architecture/Hub/HUB-27.md` line 154
+   225→- **Direct Hub:** HUB-08, HUB-01
+   226→- **Transitive Core:** CORE-04, CORE-05
+   227→- **Downward:** (none declared)
+   228→- **Edges:** HUB-27→HUB-08, HUB-27→HUB-01, HUB-27→CORE-04, HUB-27→CORE-05 (4 upward).
+   229→
+   230→#### HUB-28 (Versioner) — `Architecture/Hub/HUB-28.md` line 159
+   231→- **Direct Hub:** HUB-08, HUB-15
+   232→- **Transitive Core:** CORE-06, CORE-18
+   233→- **Downward:** (none declared)
+   234→- **Edges:** HUB-28→HUB-08, HUB-28→HUB-15, HUB-28→CORE-06, HUB-28→CORE-18 (4 upward).
+   235→
+   236→#### HUB-29 (Hub Spec / Testing) — `Architecture/Hub/HUB-29.md` line 164
+   237→- **Direct Hub:** HUB-15, HUB-16
+   238→- **Transitive Core:** CORE-20, CORE-08
+   239→- **Downward:** (none declared)
+   240→- **Edges:** HUB-29→HUB-15, HUB-29→HUB-16, HUB-29→CORE-20, HUB-29→CORE-08 (4 upward).
+   241→
+   242→#### HUB-30 (Hub CLI) — `Architecture/Hub/HUB-30.md` line 169
+   243→- **Direct Hub:** HUB-21, HUB-15, HUB-10 *(superseded)*, HUB-02
+   244→- **Transitive Core:** CORE-13, CORE-20
+   245→- **Downward:** (none declared)
+   246→- **Edges:** HUB-30→HUB-21, HUB-30→HUB-15, HUB-30→HUB-10 *(superseded)*, HUB-30→HUB-02, HUB-30→CORE-13, HUB-30→CORE-20 (6 upward).
+   247→
+   248→#### HUB-31 (Real-time Analytics) — `Architecture/Hub/HUB-31.md` line 174
+   249→- **Direct Hub:** HUB-02, HUB-10 *(superseded — durable-write queue)*, HUB-25 *(superseded — scheduled rollup compaction)*, HUB-21
+   250→- **Transitive Core:** CORE-19, CORE-02, CORE-18
+   251→- **Downward:** ISPOKE-05, ISPOKE-12, ISPOKE-13
+   252→- **Edges:** HUB-31→HUB-02, HUB-31→HUB-10 *(superseded)*, HUB-31→HUB-25 *(superseded)*, HUB-31→HUB-21, HUB-31→CORE-19, HUB-31→CORE-02, HUB-31→CORE-18 (7 upward). No Hub-internal downward.
+   253→
+   254→---
+   255→
+   256→## §3. Step 3 — Hub implementation packages (filesystem reality)
+   257→
+   258→`/home/z/my-project/packages/hub/` contains exactly **2 packages**:
+   259→
+   260→| Package path | composer.json `name` | Blueprint ID (from `description`) | `src/` PHP files | `tests/` PHP files | Path-repo targets |
+   261→|---|---|---|---|---|---|
+   262→| `packages/hub/config/` | `sovereign-stack/hub-config` | HUB-01 (Sovereign Hub Config & Flags) | 13 | 5 | `../../core/container`, `../../core/config` |
+   263→| `packages/hub/identity/` | `sovereign-stack/hub-identity` | HUB-04 (Global Identity & Authentication) | 15 | 5 | *(none — only `require` entries)* |
+   264→
+   265→**Total implemented Hub packages: 2** (representing 2 of 29 active Hub blueprints — 6.9% implementation depth).
+   266→
+   267→Cross-checked against other directories:
+   268→- `/home/z/my-project/orchestrator/` → `sovereign-stack/orchestrator` description: "CORE-01: Polyrepo Orchestrator" (NOT a Hub package)
+   269→- `/home/z/my-project/packages/spoke/internal/` → 3 packages (lms, showcase, codex) — all ESPOKE/ISPOKE
+   270→- `/home/z/my-project/packages/spoke/external/` → 1 package (canvas) — ESPOKE-01
+   271→- `/home/z/my-project/packages/bridge/` → 1 package (vanguard) — BRIDGE-01
+   272→
+   273→No Hub implementations exist outside `packages/hub/`. The 27 unimplemented Hub blueprints (HUB-02, HUB-03, HUB-05, HUB-06, HUB-07, HUB-08, HUB-09, HUB-11, HUB-12, HUB-13, HUB-14, HUB-15, HUB-16, HUB-17, HUB-18, HUB-19, HUB-20, HUB-21, HUB-22, HUB-23, HUB-24, HUB-26, HUB-27, HUB-28, HUB-29, HUB-30, HUB-31) have NO code on disk.
+   274→
+   275→---
+   276→
+   277→## §4. Step 4 — Verified edges (composer.json + source imports)
+   278→
+   279→### §4.1 HUB-01 (config package) — verified edges
+   280→
+   281→**`packages/hub/config/composer.json` `require` (lines 7–14):**
+   282→```
+   283→"sovereign-stack/core-container": "*",   → CORE-02
+   284→"sovereign-stack/core-config": "*",      → CORE-10
+   285→```
+   286→(plus `php`, `ext-json`, `ext-hash`, `psr/container` — not Core blueprints)
+   287→
+   288→**Source imports (`rg "^use SovereignStack" packages/hub/config/src/`):**
+   289→```
+   290→packages/hub/config/src/HubConfigRegistry.php:7:use SovereignStack\Core\Config\ConfigInterface;
+   291→```
+   292→(1 source-level import → CORE-10)
+   293→
+   294→**Verified Hub→Core edges for HUB-01 = 2** (both via composer.json; 1 also confirmed at source level)
+   295→- HUB-01 → CORE-02 (COMPILE — composer.json `require`)
+   296→- HUB-01 → CORE-10 (COMPILE — composer.json `require` + source `ConfigInterface`)
+   297→
+   298→### §4.2 HUB-04 (identity package) — verified edges
+   299→
+   300→**`packages/hub/identity/composer.json` `require` (lines 7–22):**
+   301→```
+   302→"sovereign-stack/core-container": "*",          → CORE-02
+   303→"sovereign-stack/core-config": "*",             → CORE-10
+   304→"sovereign-stack/core-crypto": "*",             → CORE-16
+   305→"sovereign-stack/core-dbal": "*",               → CORE-19
+   306→"sovereign-stack/core-http-message": "*",       → CORE-04
+   307→"sovereign-stack/core-kernel": "*",             → CORE-18
+   308→"sovereign-stack/core-event-dispatcher": "*",   → CORE-03
+   309→"sovereign-stack/core-logger": "*",             → CORE-09
+   310→```
+   311→(plus `php`, `ext-json`, `ext-openssl`, `psr/container`, `psr/http-message`, `psr/http-server-middleware`, `psr/log` — PSR contracts not Core blueprints per se)
+   312→
+   313→**Source imports (`rg "^use SovereignStack\\Core" packages/hub/identity/src/`):**
+   314→```
+   315→packages/hub/identity/src/Application/Service/IdentityApplicationService.php:4:use SovereignStack\Core\Crypto\PasswordHasher;            → CORE-16
+   316→packages/hub/identity/src/Http/AuthMiddleware.php:8:use SovereignStack\Core\Kernel\RequestContext;                              → CORE-18
+   317→packages/hub/identity/src/Infrastructure/Persistence/MySQLUserRepository.php:5:use SovereignStack\Core\Database\ConnectionInterface;  → CORE-19
+   318→```
+   319→(3 distinct cross-package source imports into Core. CORE-10 is composer-only — no direct source import into Core\Config namespace exists, though `psr/container` is imported.)
+   320→
+   321→**Verified Hub→Core edges for HUB-04 = 8** (all via composer.json; 3 also confirmed at source level)
+   322→- HUB-04 → CORE-02 (COMPILE — composer.json `require` core-container)
+   323→- HUB-04 → CORE-10 (COMPILE — composer.json `require` core-config)
+   324→- HUB-04 → CORE-16 (COMPILE — composer.json `require` core-crypto + source `PasswordHasher`)
+   325→- HUB-04 → CORE-19 (COMPILE — composer.json `require` core-dbal + source `ConnectionInterface`)
+   326→- HUB-04 → CORE-04 (COMPILE — composer.json `require` core-http-message)
+   327→- HUB-04 → CORE-18 (COMPILE — composer.json `require` core-kernel + source `RequestContext`)
+   328→- HUB-04 → CORE-03 (COMPILE — composer.json `require` core-event-dispatcher)
+   329→- HUB-04 → CORE-09 (COMPILE — composer.json `require` core-logger)
+   330→
+   331→### §4.3 Hub→Hub verified edges
+   332→
+   333→`rg "sovereign-stack/hub-" packages/hub/*/composer.json` returned only the two `name` fields (no `require` entries). Source-level search `rg "^use SovereignStack\\\\Hub\\\\" packages/hub/{identity,config}/src/` returned ONLY intra-package imports (`SovereignStack\Hub\Identity\*` inside identity package, `SovereignStack\Hub\Config\*` inside config package).
+   334→
+   335→**Verified Hub→Hub edges = 0.**
+   336→
+   337→No Hub package's `composer.json` requires any other Hub package, and no Hub package's source code imports any `SovereignStack\Hub\<OtherPackage>\*` class. The Hub tier is currently a contract-coupled set of independent packages — every cross-Hub dependency is declared in blueprint prose but NOT expressed in code or composer.
+   338→
+   339→---
+   340→
+   341→## §5. Step 5 — Master edge inventory
+   342→
+   343→**One row per unique `(source, target)` tuple.** Edges to superseded HUB-10/HUB-25 are included for completeness and flagged. Downward-only declarations (producer-acknowledged consumer that consumer doesn't formally declare) are marked with `↓-only` in the Evidence column. Edges with target as a non-Hub/non-Core (e.g., BRIDGE-01, ISPOKE, ESPOKE) are out of scope for Hub-tier DAG and omitted.
+   344→
+   345→### §5.1 Hub→Hub edges (87 unique)
+   346→
+   347→| # | Source | Target | Edge Type | Required-ness | Declared By | Verified | Status | Evidence |
+   348→|---|---|---|---|---|---|---|---|---|
+   349→| 1 | HUB-01 | HUB-02 | UNKNOWN | UNKNOWN | HUB-01 Up | ✗ | DECLARED_ONLY | HUB-01.md line 2 |
+   350→| 2 | HUB-01 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-19.md line 113 |
+   351→| 3 | HUB-01 | HUB-21 | UNKNOWN | UNKNOWN | HUB-21 Down (↓-only) — also cycle w/ row 56 | ✗ | DECLARED_ONLY | HUB-21.md line 126 |
+   352→| 4 | HUB-02 | HUB-21 | UNKNOWN | UNKNOWN | HUB-21 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-21.md line 126 |
+   353→| 5 | HUB-03 | HUB-11 | UNKNOWN | UNKNOWN | HUB-03 Up | ✗ | DECLARED_ONLY | HUB-03.md line 14 |
+   354→| 6 | HUB-04 | HUB-01 | UNKNOWN | UNKNOWN | HUB-01 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-01.md line 3 |
+   355→| 7 | HUB-04 | HUB-02 | UNKNOWN | UNKNOWN | HUB-04 Up + HUB-02 Down | ✗ | DECLARED_ONLY | HUB-04.md line 28; HUB-02.md line 9 |
+   356→| 8 | HUB-04 | HUB-07 | UNKNOWN | UNKNOWN | HUB-04 Up + HUB-07 Down | ✗ | DECLARED_ONLY | HUB-04.md line 28; HUB-07.md line 47 |
+   357→| 9 | HUB-04 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-19.md line 113 |
+   358→| 10 | HUB-04 | HUB-20 | UNKNOWN | UNKNOWN | HUB-20 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-20.md line 119 |
+   359→| 11 | HUB-04 | HUB-21 | UNKNOWN | UNKNOWN | HUB-04 Up + HUB-21 Down | ✗ | DECLARED_ONLY | HUB-04.md line 28; HUB-21.md line 126 |
+   360→| 12 | HUB-05 | HUB-02 | UNKNOWN | UNKNOWN | HUB-05 Up | ✗ | DECLARED_ONLY | HUB-05.md line 34 |
+   361→| 13 | HUB-05 | HUB-04 | UNKNOWN | UNKNOWN | HUB-05 Up | ✗ | DECLARED_ONLY | HUB-05.md line 34 |
+   362→| 14 | HUB-06 | HUB-01 | UNKNOWN | UNKNOWN | HUB-01 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-01.md line 3 |
+   363→| 15 | HUB-06 | HUB-04 | UNKNOWN | UNKNOWN | HUB-06 Up + HUB-04 Down | ✗ | DECLARED_ONLY | HUB-06.md line 40; HUB-04.md line 29 |
+   364→| 16 | HUB-06 | HUB-11 | UNKNOWN | UNKNOWN | HUB-06 Up *(labelled "Queue" — see §7 Gap 1)* | ✗ | DECLARED_ONLY | HUB-06.md line 40 |
+   365→| 17 | HUB-06 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-19.md line 113 |
+   366→| 18 | HUB-07 | HUB-02 | UNKNOWN | UNKNOWN | HUB-07 Up + HUB-02 Down | ✗ | DECLARED_ONLY | HUB-07.md line 46; HUB-02.md line 9 |
+   367→| 19 | HUB-08 | HUB-01 | UNKNOWN | UNKNOWN | HUB-01 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-01.md line 3 |
+   368→| 20 | HUB-08 | HUB-04 | UNKNOWN | UNKNOWN | HUB-08 Up + HUB-04 Down | ✗ | DECLARED_ONLY | HUB-08.md line 53; HUB-04.md line 29 |
+   369→| 21 | HUB-08 | HUB-07 | UNKNOWN | UNKNOWN | HUB-08 Up + HUB-07 Down | ✗ | DECLARED_ONLY | HUB-08.md line 53; HUB-07.md line 47 |
+   370→| 22 | HUB-08 | HUB-14 | UNKNOWN | UNKNOWN | HUB-14 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-14.md line 84 |
+   371→| 23 | HUB-08 | HUB-15 | UNKNOWN | UNKNOWN | HUB-15 Down (↓-only) — cycle w/ row 38 | ✗ | DECLARED_ONLY | HUB-15.md line 90 |
+   372→| 24 | HUB-08 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-19.md line 113 |
+   373→| 25 | HUB-09 | HUB-02 | UNKNOWN | UNKNOWN | HUB-09 Up + HUB-02 Down | ✗ | DECLARED_ONLY | HUB-09.md line 59; HUB-02.md line 9 |
+   374→| 26 | HUB-09 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-09 Up | ✗ | DECLARED_ONLY *(target superseded)* | HUB-09.md line 59 |
+   375→| 27 | HUB-09 | HUB-20 | UNKNOWN | UNKNOWN | HUB-20 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-20.md line 119 |
+   376→| 28 | HUB-11 | HUB-21 | UNKNOWN | UNKNOWN | HUB-21 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-21.md line 126 |
+   377→| 29 | HUB-12 | HUB-04 | UNKNOWN | UNKNOWN | HUB-12 Up | ✗ | DECLARED_ONLY | HUB-12.md line 72 |
+   378→| 30 | HUB-12 | HUB-07 | UNKNOWN | UNKNOWN | HUB-07 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-07.md line 47 |
+   379→| 31 | HUB-12 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-12 Up | ✗ | DECLARED_ONLY *(target superseded)* | HUB-12.md line 72 |
+   380→| 32 | HUB-13 | HUB-02 | UNKNOWN | UNKNOWN | HUB-13 Up + HUB-02 Down | ✗ | DECLARED_ONLY | HUB-13.md line 78; HUB-02.md line 9 |
+   381→| 33 | HUB-14 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-14 Up | ✗ | DECLARED_ONLY *(target superseded)* | HUB-14.md line 83 |
+   382→| 34 | HUB-15 | HUB-01 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down + HUB-01 Down | ✗ | DECLARED_ONLY | HUB-15.md line 90; HUB-01.md line 3 |
+   383→| 35 | HUB-15 | HUB-02 | UNKNOWN | REQUIRED | HUB-15 Up + HUB-02 Down + HUB-15 reverse-Down | ✗ | DECLARED_ONLY | HUB-15.md line 89; HUB-02.md line 9 |
+   384→| 36 | HUB-15 | HUB-04 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down | ✗ | DECLARED_ONLY | HUB-15.md line 90 |
+   385→| 37 | HUB-15 | HUB-06 | UNKNOWN | UNKNOWN | HUB-06 Down + HUB-15 reverse-Down | ✗ | DECLARED_ONLY | HUB-06.md line 41; HUB-15.md line 90 |
+   386→| 38 | HUB-15 | HUB-08 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down — cycle w/ row 23 | ✗ | DECLARED_ONLY *(cycle)* | HUB-15.md line 90 |
+   387→| 39 | HUB-15 | HUB-19 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down | ✗ | DECLARED_ONLY | HUB-15.md line 90 |
+   388→| 40 | HUB-15 | HUB-20 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down | ✗ | DECLARED_ONLY | HUB-15.md line 90 |
+   389→| 41 | HUB-16 | HUB-15 | UNKNOWN | UNKNOWN | HUB-16 Up | ✗ | DECLARED_ONLY | HUB-16.md line 95 |
+   390→| 42 | HUB-17 | HUB-06 | UNKNOWN | UNKNOWN | HUB-17 Direct Hub | ✗ | DECLARED_ONLY | HUB-17.md line 101 |
+   391→| 43 | HUB-17 | HUB-08 | UNKNOWN | UNKNOWN | HUB-17 Direct Hub | ✗ | DECLARED_ONLY | HUB-17.md line 101 |
+   392→| 44 | HUB-17 | HUB-09 | UNKNOWN | UNKNOWN | HUB-17 Direct Hub + HUB-09 Down | ✗ | DECLARED_ONLY | HUB-17.md line 101; HUB-09.md line 60 |
+   393→| 45 | HUB-17 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-17 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-17.md line 101 |
+   394→| 46 | HUB-17 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-19.md line 113 |
+   395→| 47 | HUB-18 | HUB-02 | UNKNOWN | UNKNOWN | HUB-18 Direct Hub | ✗ | DECLARED_ONLY | HUB-18.md line 107 |
+   396→| 48 | HUB-18 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-18 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-18.md line 107 |
+   397→| 49 | HUB-18 | HUB-11 | UNKNOWN | UNKNOWN | HUB-18 Direct Hub + HUB-11 Down | ✗ | DECLARED_ONLY | HUB-18.md line 107; HUB-11.md line 67 |
+   398→| 50 | HUB-19 | HUB-13 | UNKNOWN | OPTIONAL | HUB-19 Up + HUB-13 Down | ✗ | DECLARED_ONLY | HUB-19.md line 112; HUB-13.md line 79 |
+   399→| 51 | HUB-20 | HUB-02 | UNKNOWN | UNKNOWN | HUB-02 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-02.md line 9 |
+   400→| 52 | HUB-20 | HUB-04 | UNKNOWN | REQUIRED | HUB-20 Up + HUB-20 Down *(self-acknowledgment)* | ✗ | DECLARED_ONLY | HUB-20.md line 118, 119 |
+   401→| 53 | HUB-20 | HUB-06 | UNKNOWN | REQUIRED | HUB-20 Up | ✗ | DECLARED_ONLY | HUB-20.md line 118 |
+   402→| 54 | HUB-20 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-19.md line 113 |
+   403→| 55 | HUB-20 | HUB-25 *(SUPERSEDED)* | UNKNOWN | OPTIONAL | HUB-20 Up | ✗ | DECLARED_ONLY *(target superseded)* | HUB-20.md line 118 |
+   404→| 56 | HUB-21 | HUB-01 | UNKNOWN | UNKNOWN | HUB-21 Direct Hub + HUB-21 Down — cycle w/ row 3 | ✗ | DECLARED_ONLY *(cycle)* | HUB-21.md line 124, 126 |
+   405→| 57 | HUB-21 | HUB-04 | UNKNOWN | UNKNOWN | HUB-21 Direct Hub | ✗ | DECLARED_ONLY | HUB-21.md line 124 |
+   406→| 58 | HUB-21 | HUB-08 | UNKNOWN | UNKNOWN | HUB-21 Direct Hub | ✗ | DECLARED_ONLY | HUB-21.md line 124 |
+   407→| 59 | HUB-22 | HUB-06 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub | ✗ | DECLARED_ONLY | HUB-22.md line 131 |
+   408→| 60 | HUB-22 | HUB-09 | UNKNOWN | UNKNOWN | HUB-09 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-09.md line 60 |
+   409→| 61 | HUB-22 | HUB-12 | UNKNOWN | UNKNOWN | HUB-12 Down (↓-only) | ✗ | DECLARED_ONLY | HUB-12.md line 73 |
+   410→| 62 | HUB-22 | HUB-17 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub + HUB-17 Down | ✗ | DECLARED_ONLY | HUB-22.md line 131; HUB-17.md line 103 |
+   411→| 63 | HUB-22 | HUB-20 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub + HUB-20 Down | ✗ | DECLARED_ONLY | HUB-22.md line 131; HUB-20.md line 119 |
+   412→| 64 | HUB-22 | HUB-21 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub | ✗ | DECLARED_ONLY | HUB-22.md line 131 |
+   413→| 65 | HUB-23 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-23 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-23.md line 137 |
+   414→| 66 | HUB-23 | HUB-11 | UNKNOWN | UNKNOWN | HUB-23 Direct Hub + HUB-11 Down | ✗ | DECLARED_ONLY | HUB-23.md line 137; HUB-11.md line 67 |
+   415→| 67 | HUB-23 | HUB-12 | UNKNOWN | UNKNOWN | HUB-23 Direct Hub + HUB-12 Down | ✗ | DECLARED_ONLY | HUB-23.md line 137; HUB-12.md line 73 |
+   416→| 68 | HUB-23 | HUB-25 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-23 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-23.md line 137 |
+   417→| 69 | HUB-24 | HUB-04 | UNKNOWN | UNKNOWN | HUB-24 Direct Hub | ✗ | DECLARED_ONLY | HUB-24.md line 143 |
+   418→| 70 | HUB-24 | HUB-05 | UNKNOWN | UNKNOWN | HUB-24 Direct Hub | ✗ | DECLARED_ONLY | HUB-24.md line 143 |
+   419→| 71 | HUB-24 | HUB-08 | UNKNOWN | UNKNOWN | HUB-24 Direct Hub | ✗ | DECLARED_ONLY | HUB-24.md line 143 |
+   420→| 72 | HUB-26 | HUB-03 | UNKNOWN | UNKNOWN | HUB-26 Direct Hub + HUB-03 Down | ✗ | DECLARED_ONLY | HUB-26.md line 148; HUB-03.md line 17 |
+   421→| 73 | HUB-26 | HUB-13 | UNKNOWN | UNKNOWN | HUB-26 Direct Hub + HUB-13 Down | ✗ | DECLARED_ONLY | HUB-26.md line 148; HUB-13.md line 79 |
+   422→| 74 | HUB-27 | HUB-01 | UNKNOWN | UNKNOWN | HUB-27 Direct Hub | ✗ | DECLARED_ONLY | HUB-27.md line 154 |
+   423→| 75 | HUB-27 | HUB-08 | UNKNOWN | UNKNOWN | HUB-27 Direct Hub | ✗ | DECLARED_ONLY | HUB-27.md line 154 |
+   424→| 76 | HUB-28 | HUB-08 | UNKNOWN | UNKNOWN | HUB-28 Direct Hub | ✗ | DECLARED_ONLY | HUB-28.md line 159 |
+   425→| 77 | HUB-28 | HUB-15 | UNKNOWN | UNKNOWN | HUB-28 Direct Hub | ✗ | DECLARED_ONLY | HUB-28.md line 159 |
+   426→| 78 | HUB-29 | HUB-15 | UNKNOWN | UNKNOWN | HUB-29 Direct Hub | ✗ | DECLARED_ONLY | HUB-29.md line 164 |
+   427→| 79 | HUB-29 | HUB-16 | UNKNOWN | UNKNOWN | HUB-29 Direct Hub | ✗ | DECLARED_ONLY | HUB-29.md line 164 |
+   428→| 80 | HUB-30 | HUB-02 | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | ✗ | DECLARED_ONLY | HUB-30.md line 169 |
+   429→| 81 | HUB-30 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-30.md line 169 |
+   430→| 82 | HUB-30 | HUB-15 | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | ✗ | DECLARED_ONLY | HUB-30.md line 169 |
+   431→| 83 | HUB-30 | HUB-21 | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | ✗ | DECLARED_ONLY | HUB-30.md line 169 |
+   432→| 84 | HUB-31 | HUB-02 | UNKNOWN | UNKNOWN | HUB-31 Direct Hub | ✗ | DECLARED_ONLY | HUB-31.md line 174 |
+   433→| 85 | HUB-31 | HUB-10 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-31 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-31.md line 174 |
+   434→| 86 | HUB-31 | HUB-21 | UNKNOWN | UNKNOWN | HUB-31 Direct Hub | ✗ | DECLARED_ONLY | HUB-31.md line 174 |
+   435→| 87 | HUB-31 | HUB-25 *(SUPERSEDED)* | UNKNOWN | UNKNOWN | HUB-31 Direct Hub | ✗ | DECLARED_ONLY *(target superseded)* | HUB-31.md line 174 |
+   436→
+   437→**Decomposition of Hub→Hub edges:**
+   438→- 61 declared in some Upward list (Upward or Direct Hub)
+   439→- 26 declared ONLY in Downward lists (producer-acknowledged but consumer-undeclared — asymmetric drift)
+   440→- 22 of the 87 are declared from BOTH sides (consumer Up + producer Down) — consistent declarations
+   441→- 11 of the 87 have superseded targets (8 to HUB-10, 3 to HUB-25) — see §7 Gap 2
+   442→- 0 of the 87 are verified in code
+   443→
+   444→### §5.2 Hub→Core edges (74 unique: 71 declared + 3 undeclared-verified)
+   445→
+   446→| # | Source | Target | Edge Type | Required-ness | Declared By | Verified | Status | Evidence |
+   447→|---|---|---|---|---|---|---|---|---|
+   448→| 1 | HUB-01 | CORE-02 | COMPILE | UNKNOWN | HUB-01 Up | ✓ (composer) | **VERIFIED** | packages/hub/config/composer.json line 12 |
+   449→| 2 | HUB-01 | CORE-09 | UNKNOWN | OPTIONAL | HUB-01 Up *(soft)* | ✗ | DECLARED_ONLY | HUB-01.md line 2 |
+   450→| 3 | HUB-01 | CORE-10 | COMPILE | UNKNOWN | HUB-01 Up | ✓ (composer + src) | **VERIFIED** | packages/hub/config/composer.json line 13; src/HubConfigRegistry.php:7 |
+   451→| 4 | HUB-01 | CORE-19 | UNKNOWN | UNKNOWN | HUB-01 Up | ✗ | DECLARED_ONLY | HUB-01.md line 2 |
+   452→| 5 | HUB-02 | CORE-15 | COMPILE | REQUIRED | HUB-02 Up | ✗ | DECLARED_ONLY | HUB-02.md line 8 |
+   453→| 6 | HUB-02 | CORE-16 | UNKNOWN | OPTIONAL | HUB-02 Up | ✗ | DECLARED_ONLY | HUB-02.md line 8 |
+   454→| 7 | HUB-03 | CORE-10 | UNKNOWN | UNKNOWN | HUB-03 Up | ✗ | DECLARED_ONLY | HUB-03.md line 14 |
+   455→| 8 | HUB-03 | CORE-14 | UNKNOWN | UNKNOWN | HUB-03 Up | ✗ | DECLARED_ONLY | HUB-03.md line 14 |
+   456→| 9 | HUB-04 | CORE-02 | COMPILE | UNKNOWN | HUB-04 Up | ✓ (composer) | **VERIFIED** | packages/hub/identity/composer.json line 15 |
+   457→| 10 | HUB-04 | CORE-03 | COMPILE | UNKNOWN | *(not in formal Upward — UNDECLARED)* | ✓ (composer) | **UNDECLARED_VERIFIED** | packages/hub/identity/composer.json line 21 *(mentioned in HUB-04 body Runtime line 30)* |
+   458→| 11 | HUB-04 | CORE-04 | COMPILE | UNKNOWN | *(not in formal Upward — UNDECLARED)* | ✓ (composer) | **UNDECLARED_VERIFIED** | packages/hub/identity/composer.json line 19 |
+   459→| 12 | HUB-04 | CORE-09 | COMPILE | OPTIONAL | HUB-04 Up *(soft)* | ✓ (composer) | **VERIFIED** | packages/hub/identity/composer.json line 22 |
+   460→| 13 | HUB-04 | CORE-10 | COMPILE | UNKNOWN | HUB-04 Up | ✓ (composer) | **VERIFIED** | packages/hub/identity/composer.json line 16 |
+   461→| 14 | HUB-04 | CORE-16 | COMPILE | UNKNOWN | HUB-04 Up | ✓ (composer + src) | **VERIFIED** | packages/hub/identity/composer.json line 17; src/Application/Service/IdentityApplicationService.php:4 |
+   462→| 15 | HUB-04 | CORE-18 | COMPILE | UNKNOWN | *(not in formal Upward — UNDECLARED)* | ✓ (composer + src) | **UNDECLARED_VERIFIED** | packages/hub/identity/composer.json line 20; src/Http/AuthMiddleware.php:8 |
+   463→| 16 | HUB-04 | CORE-19 | COMPILE | UNKNOWN | HUB-04 Up | ✓ (composer + src) | **VERIFIED** | packages/hub/identity/composer.json line 18; src/Infrastructure/Persistence/MySQLUserRepository.php:5 |
+   464→| 17 | HUB-05 | CORE-19 | UNKNOWN | UNKNOWN | HUB-05 Up | ✗ | DECLARED_ONLY | HUB-05.md line 34 |
+   465→| 18 | HUB-06 | CORE-02 | UNKNOWN | UNKNOWN | HUB-06 Up | ✗ | DECLARED_ONLY | HUB-06.md line 40 |
+   466→| 19 | HUB-06 | CORE-03 | UNKNOWN | UNKNOWN | HUB-06 Up | ✗ | DECLARED_ONLY | HUB-06.md line 40 |
+   467→| 20 | HUB-06 | CORE-09 | UNKNOWN | UNKNOWN | HUB-06 Up | ✗ | DECLARED_ONLY | HUB-06.md line 40 |
+   468→| 21 | HUB-06 | CORE-14 | UNKNOWN | UNKNOWN | HUB-06 Up | ✗ | DECLARED_ONLY | HUB-06.md line 40 |
+   469→| 22 | HUB-06 | CORE-19 | UNKNOWN | UNKNOWN | HUB-06 Up | ✗ | DECLARED_ONLY | HUB-06.md line 40 |
+   470→| 23 | HUB-07 | CORE-04 | UNKNOWN | UNKNOWN | HUB-07 Up | ✗ | DECLARED_ONLY | HUB-07.md line 46 |
+   471→| 24 | HUB-08 | CORE-04 | UNKNOWN | UNKNOWN | HUB-08 Up | ✗ | DECLARED_ONLY | HUB-08.md line 53 |
+   472→| 25 | HUB-08 | CORE-05 | UNKNOWN | UNKNOWN | HUB-08 Up | ✗ | DECLARED_ONLY | HUB-08.md line 53 |
+   473→| 26 | HUB-08 | CORE-06 | UNKNOWN | UNKNOWN | HUB-08 Up | ✗ | DECLARED_ONLY | HUB-08.md line 53 |
+   474→| 27 | HUB-08 | CORE-09 | UNKNOWN | UNKNOWN | HUB-08 Up | ✗ | DECLARED_ONLY | HUB-08.md line 53 |
+   475→| 28 | HUB-08 | CORE-10 | UNKNOWN | UNKNOWN | HUB-08 Up | ✗ | DECLARED_ONLY | HUB-08.md line 53 |
+   476→| 29 | HUB-08 | CORE-18 | UNKNOWN | UNKNOWN | HUB-08 Up | ✗ | DECLARED_ONLY | HUB-08.md line 53 |
+   477→| 30 | HUB-09 | CORE-03 | UNKNOWN | UNKNOWN | HUB-09 Up | ✗ | DECLARED_ONLY | HUB-09.md line 59 |
+   478→| 31 | HUB-11 | CORE-10 | UNKNOWN | UNKNOWN | HUB-11 Up | ✗ | DECLARED_ONLY | HUB-11.md line 66 |
+   479→| 32 | HUB-11 | CORE-14 | UNKNOWN | UNKNOWN | HUB-11 Up | ✗ | DECLARED_ONLY | HUB-11.md line 66 |
+   480→| 33 | HUB-12 | CORE-12 | UNKNOWN | UNKNOWN | HUB-12 Up | ✗ | DECLARED_ONLY | HUB-12.md line 72 |
+   481→| 34 | HUB-13 | CORE-10 | UNKNOWN | UNKNOWN | HUB-13 Up | ✗ | DECLARED_ONLY | HUB-13.md line 78 |
+   482→| 35 | HUB-14 | CORE-19 | UNKNOWN | UNKNOWN | HUB-14 Up | ✗ | DECLARED_ONLY | HUB-14.md line 83 |
+   483→| 36 | HUB-15 | CORE-02 | COMPILE | REQUIRED | HUB-15 Up | ✗ | DECLARED_ONLY | HUB-15.md line 89 |
+   484→| 37 | HUB-15 | CORE-10 | COMPILE | REQUIRED | HUB-15 Up | ✗ | DECLARED_ONLY | HUB-15.md line 89 |
+   485→| 38 | HUB-15 | CORE-19 | UNKNOWN | OPTIONAL | HUB-15 Up | ✗ | DECLARED_ONLY | HUB-15.md line 89 |
+   486→| 39 | HUB-16 | CORE-01 | UNKNOWN | UNKNOWN | HUB-16 Up | ✗ | DECLARED_ONLY | HUB-16.md line 95 |
+   487→| 40 | HUB-17 | CORE-03 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | ✗ | DECLARED_ONLY | HUB-17.md line 102 |
+   488→| 41 | HUB-17 | CORE-04 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | ✗ | DECLARED_ONLY | HUB-17.md line 102 |
+   489→| 42 | HUB-17 | CORE-06 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | ✗ | DECLARED_ONLY | HUB-17.md line 102 |
+   490→| 43 | HUB-17 | CORE-19 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | ✗ | DECLARED_ONLY | HUB-17.md line 102 |
+   491→| 44 | HUB-18 | CORE-14 | UNKNOWN | UNKNOWN | HUB-18 Transitive Core | ✗ | DECLARED_ONLY | HUB-18.md line 108 |
+   492→| 45 | HUB-18 | CORE-15 | UNKNOWN | UNKNOWN | HUB-18 Transitive Core | ✗ | DECLARED_ONLY | HUB-18.md line 108 |
+   493→| 46 | HUB-18 | CORE-19 | UNKNOWN | UNKNOWN | HUB-18 Transitive Core | ✗ | DECLARED_ONLY | HUB-18.md line 108 |
+   494→| 47 | HUB-19 | CORE-09 | UNKNOWN | OPTIONAL | HUB-19 Up | ✗ | DECLARED_ONLY | HUB-19.md line 112 |
+   495→| 48 | HUB-19 | CORE-19 | COMPILE | REQUIRED | HUB-19 Up *(compile-time)* | ✗ | DECLARED_ONLY | HUB-19.md line 112 |
+   496→| 49 | HUB-20 | CORE-02 | UNKNOWN | REQUIRED | HUB-20 Up *(hard)* | ✗ | DECLARED_ONLY | HUB-20.md line 118 |
+   497→| 50 | HUB-20 | CORE-16 | UNKNOWN | REQUIRED | HUB-20 Up *(hard)* | ✗ | DECLARED_ONLY | HUB-20.md line 118 |
+   498→| 51 | HUB-20 | CORE-19 | UNKNOWN | REQUIRED | HUB-20 Up *(hard)* | ✗ | DECLARED_ONLY | HUB-20.md line 118 |
+   499→| 52 | HUB-21 | CORE-02 | UNKNOWN | UNKNOWN | HUB-21 Transitive Core | ✗ | DECLARED_ONLY | HUB-21.md line 125 |
+   500→| 53 | HUB-21 | CORE-10 | UNKNOWN | UNKNOWN | HUB-21 Transitive Core | ✗ | DECLARED_ONLY | HUB-21.md line 125 |
+   501→| 54 | HUB-21 | CORE-19 | UNKNOWN | UNKNOWN | HUB-21 Transitive Core | ✗ | DECLARED_ONLY | HUB-21.md line 125 |
+   502→| 55 | HUB-22 | CORE-03 | UNKNOWN | UNKNOWN | HUB-22 Transitive Core | ✗ | DECLARED_ONLY | HUB-22.md line 132 |
+   503→| 56 | HUB-22 | CORE-19 | UNKNOWN | UNKNOWN | HUB-22 Transitive Core | ✗ | DECLARED_ONLY | HUB-22.md line 132 |
+   504→| 57 | HUB-23 | CORE-14 | UNKNOWN | UNKNOWN | HUB-23 Transitive Core | ✗ | DECLARED_ONLY | HUB-23.md line 139 |
+   505→| 58 | HUB-23 | CORE-19 | UNKNOWN | UNKNOWN | HUB-23 Transitive Core | ✗ | DECLARED_ONLY | HUB-23.md line 139 |
+   506→| 59 | HUB-24 | CORE-02 | UNKNOWN | UNKNOWN | HUB-24 Transitive Core | ✗ | DECLARED_ONLY | HUB-24.md line 144 |
+   507→| 60 | HUB-24 | CORE-04 | UNKNOWN | UNKNOWN | HUB-24 Transitive Core | ✗ | DECLARED_ONLY | HUB-24.md line 144 |
+   508→| 61 | HUB-24 | CORE-06 | UNKNOWN | UNKNOWN | HUB-24 Transitive Core | ✗ | DECLARED_ONLY | HUB-24.md line 144 |
+   509→| 62 | HUB-26 | CORE-11 | UNKNOWN | UNKNOWN | HUB-26 Transitive Core | ✗ | DECLARED_ONLY | HUB-26.md line 149 |
+   510→| 63 | HUB-26 | CORE-12 | UNKNOWN | UNKNOWN | HUB-26 Transitive Core | ✗ | DECLARED_ONLY | HUB-26.md line 149 |
+   511→| 64 | HUB-27 | CORE-04 | UNKNOWN | UNKNOWN | HUB-27 Transitive Core | ✗ | DECLARED_ONLY | HUB-27.md line 155 |
+   512→| 65 | HUB-27 | CORE-05 | UNKNOWN | UNKNOWN | HUB-27 Transitive Core | ✗ | DECLARED_ONLY | HUB-27.md line 155 |
+   513→| 66 | HUB-28 | CORE-06 | UNKNOWN | UNKNOWN | HUB-28 Transitive Core | ✗ | DECLARED_ONLY | HUB-28.md line 160 |
+   514→| 67 | HUB-28 | CORE-18 | UNKNOWN | UNKNOWN | HUB-28 Transitive Core | ✗ | DECLARED_ONLY | HUB-28.md line 160 |
+   515→| 68 | HUB-29 | CORE-08 | UNKNOWN | UNKNOWN | HUB-29 Transitive Core | ✗ | DECLARED_ONLY | HUB-29.md line 165 |
+   516→| 69 | HUB-29 | CORE-20 | UNKNOWN | UNKNOWN | HUB-29 Transitive Core | ✗ | DECLARED_ONLY | HUB-29.md line 165 |
+   517→| 70 | HUB-30 | CORE-13 | UNKNOWN | UNKNOWN | HUB-30 Transitive Core | ✗ | DECLARED_ONLY | HUB-30.md line 170 |
+   518→| 71 | HUB-30 | CORE-20 | UNKNOWN | UNKNOWN | HUB-30 Transitive Core | ✗ | DECLARED_ONLY | HUB-30.md line 170 |
+   519→| 72 | HUB-31 | CORE-02 | UNKNOWN | UNKNOWN | HUB-31 Transitive Core | ✗ | DECLARED_ONLY | HUB-31.md line 178 |
+   520→| 73 | HUB-31 | CORE-18 | UNKNOWN | UNKNOWN | HUB-31 Transitive Core | ✗ | DECLARED_ONLY | HUB-31.md line 178 |
+   521→| 74 | HUB-31 | CORE-19 | UNKNOWN | UNKNOWN | HUB-31 Transitive Core | ✗ | DECLARED_ONLY | HUB-31.md line 178 |
+   522→
+   523→**Decomposition of Hub→Core edges:**
+   524→- 71 declared in some Upward/Transitive Core list
+   525→- 3 verified but UNDECLARED (HUB-04 → CORE-03, CORE-04, CORE-18 — see §7 Gap 7)
+   526→- 7 declared AND verified (VERIFIED) — 2 from HUB-01 (CORE-02, CORE-10), 5 from HUB-04 (CORE-02, CORE-09, CORE-10, CORE-16, CORE-19)
+   527→- 64 declared but NOT verified (DECLARED_ONLY) — the 27 unimplemented Hub packages plus 2 unverified-declared edges from HUB-01 (CORE-09, CORE-19)
+   528→
+   529→---
+   530→
+   531→## §6. Step 6 — Summary counts
+   532→
+   533→```
+   534→Active Hub blueprints: 29
+   535→Implemented Hub packages: 2 (HUB-01 config + HUB-04 identity) — 6.9% implementation depth
+   536→
+   537→Total declared edges: 158
+   538→  - Hub→Hub declared: 87
+   539→  - Hub→Core declared: 71
+   540→
+   541→Total verified edges: 10
+   542→  - Hub→Hub verified: 0
+   543→  - Hub→Core verified: 10 (8 from HUB-04 identity + 2 from HUB-01 config)
+   544→
+   545→VERIFIED (declared + verified): 7
+   546→  - All Hub→Core: 2 from HUB-01 (CORE-02, CORE-10) + 5 from HUB-04 (CORE-02, CORE-09, CORE-10, CORE-16, CORE-19)
+   547→
+   548→DECLARED_ONLY (declared, not verified): 151
+   549→  - Hub→Hub: 87 (all DECLARED_ONLY)
+   550→  - Hub→Core: 64 (27 unimplemented Hubs' 64 edges + 2 from HUB-01: CORE-09, CORE-19)
+   551→  - Of which 11 have superseded targets (Hub→HUB-10 or Hub→HUB-25)
+   552→
+   553→UNDECLARED_VERIFIED (verified, not declared): 3
+   554→  - All Hub→Core: HUB-04 → CORE-03 (composer.json core-event-dispatcher)
+   555→  - HUB-04 → CORE-04 (composer.json core-http-message)
+   556→  - HUB-04 → CORE-18 (composer.json core-kernel + source import of RequestContext)
+   557→
+   558→INVALID: 0
+   559→  - (No edges declared to active targets that don't exist in active inventory)
+   560→  - (11 edges declared to superseded targets are DECLARED_ONLY, not INVALID, because they are not verified in code)
+   561→
+   562→Total unique edges in inventory: 161
+   563→  - VERIFIED (7) + DECLARED_ONLY (151) + UNDECLARED_VERIFIED (3) + INVALID (0) = 161 ✓
+   564→```
+   565→
+   566→---
+   567→
+   568→## §7. Step 7 — Honest gaps
+   569→
+   570→### Gap 1 — HUB-06 → HUB-11 labelled "Queue" — internal blueprint contradiction
+   571→
+   572→`Architecture/Hub/HUB-06.md` line 40 declares in Upward: "`HUB-11` (Queue) — optional async write path for non-critical events (see Integration Strategy)."
+   573→
+   574→Per `INDEX.md` §2.2 (canonical Hub map), **HUB-11 = Sovereign Cloud Storage** (NOT Queue). **HUB-10 = Sovereign Queue**.
+   575→
+   576→The label "Queue" attached to HUB-11 is internally contradictory — either:
+   577→- (a) the target should be HUB-10 (Queue) — but HUB-10 was superseded (relocated to Runtime as RUNTIME-03 per ADR-021 §12), so the declared edge would point to a now-superseded Hub
+   578→- (b) the descriptor "Queue" is wrong and the target HUB-11 (Cloud Storage) is the actual intent — but this is semantically odd for "optional async write path for non-critical events" (which is a queue pattern, not cloud-storage)
+   579→
+   580→**Recorded as:** Row 16 in §5.1 — `HUB-06 → HUB-11`, DECLARED_ONLY, evidence `HUB-06.md line 40`, with note about the label-vs-INDEX contradiction.
+   581→
+   582→**Phase 2 recommendation:** Determine whether the actual intent was HUB-10 (Queue, now RUNTIME-03) or HUB-11 (Cloud Storage). If the former, the edge should be re-expressed as `HUB-06 → RUNTIME-03` (Hub → Runtime tier, INTEGRATION edge type) and removed from the Hub DAG. If the latter, the descriptor "Queue" should be corrected to "Cloud Storage" in the blueprint.
+   583→
+   584→### Gap 2 — 11 declared edges point to superseded HUB-10 (8) and HUB-25 (3)
+   585→
+   586→Across 8 blueprints, 11 edges are declared with HUB-10 or HUB-25 as targets (now relocated to Runtime per ADR-021 §12):
+   587→- **To HUB-10 (now RUNTIME-03):** HUB-09, HUB-12, HUB-14, HUB-17, HUB-18, HUB-23, HUB-30, HUB-31 (8 edges, see §5.1 rows 26, 31, 33, 45, 48, 65, 81, 85)
+   588→- **To HUB-25 (now RUNTIME-04):** HUB-20, HUB-23, HUB-31 (3 edges, see §5.1 rows 55, 68, 87)
+   589→
+   590→**Recorded as:** DECLARED_ONLY with target-superseded flag in the Status column.
+   591→
+   592→**Phase 2 recommendation:** These should be reinterpreted as Hub → Runtime tier INTEGRATION edges (`HUB-XX → RUNTIME-03` or `RUNTIME-04`), and removed from the Hub-tier DAG. Per ADR-021 §11, the Hub DAG only contains Hub-internal + Hub→Core edges. These are inter-tier edges and belong in either (a) the Runtime-tier DAG as incoming edges, or (b) a separate cross-tier integration inventory. ADR-021 doesn't explicitly resolve which DAG owns these — that's a Phase 2 governance decision.
+   593→
+   594→### Gap 3 — HUB-15's "reverse Downward" list — semantic-direction inconsistency
+   595→
+   596→`Architecture/Hub/HUB-15.md` line 90 contains within its **Downward** section:
+   597→
+   598→> "Every Hub service (HUB-01, HUB-02, HUB-04, HUB-06, HUB-08, HUB-19, HUB-20) — owns its own `/health` endpoint per the contract in this blueprint; **HUB-15 polls it**."
+   599→
+   600→The literal text says HUB-15 polls the other Hub services — this is a semantically **Upward** relationship (HUB-15 consumes them), but it is placed in the **Downward** section (which by INDEX §5.1 convention means "consumes this component"). This is an internal placement inconsistency in HUB-15's blueprint.
+   601→
+   602→**Recorded as:** Six reverse-downward edges in §5.1 rows 34, 36, 37, 38, 39, 40 (`HUB-15 → HUB-01/HUB-04/HUB-06/HUB-08/HUB-19/HUB-20`), with evidence tagged as `HUB-15 reverse-Down`.
+   603→
+   604→**Phase 2 recommendation:** Move these 6 entries from HUB-15's Downward section to its Upward section in the blueprint. Until then, treat them as DECLARED_ONLY with the placement inconsistency flagged.
+   605→
+   606→### Gap 4 — Bidirectional cycle HUB-08 ↔ HUB-15 — ADR-004 acyclic rule violation
+   607→
+   608→Two separate edges form a cycle:
+   609→- `HUB-08 → HUB-15` (§5.1 row 23) — declared in HUB-15 Downward: "HUB-08 (Gateway — future dynamic `ServiceRegistry` consults HUB-15 state, replacing the static config-loaded registry)"
+   610→- `HUB-15 → HUB-08` (§5.1 row 38) — declared in HUB-15 reverse-Downward: "Every Hub service ... HUB-08 ... HUB-15 polls it"
+   611→
+   612→Together they violate ADR-004's acyclic-tier rule. Both directions are semantically meaningful (HUB-08 consults HUB-15's state at runtime; HUB-15 polls HUB-08's HTTP `/health` endpoint). They are different operations on different code paths.
+   613→
+   614→**Phase 2 recommendation:** Per ADR-021 Amendment 2 §8.5 (Multigraph Semantics), resolve the cycle by giving each direction a different `edge_type`:
+   615→- `HUB-08 → HUB-15` as RUNTIME (Gateway's ServiceRegistry consults Health service at runtime — not a compile dep, just runtime data lookup)
+   616→- `HUB-15 → HUB-08` as RUNTIME (Health polls Gateway's `/health` HTTP endpoint — also runtime data flow)
+   617→
+   618→Both being RUNTIME means neither is a COMPILE dep, so the build-order DAG remains acyclic. The runtime-call DAG may still have the cycle, but that's a documented property of the tier's operational behavior, not a build-order violation.
+   619→
+   620→### Gap 5 — HUB-16 Downward is generic ("every other Hub component") — not enumerable
+   621→
+   622→`Architecture/Hub/HUB-16.md` line 96 declares in Downward: "every other Hub component — this is the 'Merge Gate' for the tier per the original design intent."
+   623→
+   624→This is too generic to enumerate as concrete edges. The blueprint doesn't specify which Hubs consume HUB-16.
+   625→
+   626→**Recorded as:** Skipped from inventory — no concrete downward edges extracted from HUB-16.
+   627→
+   628→**Phase 2 recommendation:** Author HUB-16's Downward section to enumerate the specific Hub consumers (likely all 28 other active Hubs, since HUB-16 is the "Merge Gate" — but this should be explicit in the blueprint, not inferred).
+   629→
+   630→### Gap 6 — Bidirectional cycle HUB-21 ↔ HUB-01 — second ADR-004 acyclic rule violation
+   631→
+   632→Two edges form a cycle:
+   633→- `HUB-21 → HUB-01` (§5.1 row 56) — declared in HUB-21 Direct Hub (Upward): "HUB-01" listed as a Direct Hub dependency. The Downward list of HUB-21 (line 126) also says "HUB-01" — meaning HUB-21 itself declares both directions.
+   634→- `HUB-01 → HUB-21` (§5.1 row 3) — declared in HUB-21 Downward: "HUB-01 (tenant config overrides reference this tenant-ID format)"
+   635→
+   636→This cycle is more concerning than Gap 4 because both directions appear in the SAME blueprint (HUB-21), and both are placed in the formal Direct Hub / Downward lists (not in body prose).
+   637→
+   638→**Phase 2 recommendation:** Resolve direction. The likely intent is: HUB-21 (Tenancy) consumes HUB-01 (Config) for tenant-ID format lookup — i.e., `HUB-21 → HUB-01` is the real edge, and `HUB-01 → HUB-21` (tenant config overrides referencing tenant-ID format) is actually an INVERTED relationship (HUB-01's tenant-overrides reference the tenant-ID format that HUB-21 defines — that's HUB-01 depending on HUB-21, but only at the data-schema level, not at the composer/call level). Per ADR-021 Amendment 2, classify `HUB-01 → HUB-21` as RUNTIME (data-schema reference, not compile dep) and `HUB-21 → HUB-01` as COMPILE (HUB-21's composer would require sovereign-stack/hub-config).
+   639→
+   640→### Gap 7 — HUB-04 → CORE-03/CORE-04/CORE-18 — 3 UNDECLARED_VERIFIED edges
+   641→
+   642→`packages/hub/identity/composer.json` requires 8 sovereign-stack/core-* packages. The blueprint's formal Upward list (`Architecture/Hub/HUB-04.md` line 28) declares only 5 of those 8:
+   643→- Declared (and verified): CORE-02, CORE-09, CORE-10, CORE-16, CORE-19 (5 edges VERIFIED)
+   644→- Declared (not verified): HUB-02, HUB-07, HUB-21 (3 edges DECLARED_ONLY — target packages don't exist yet)
+   645→
+   646→Three additional Core packages appear in `composer.json require` but NOT in the formal Upward list:
+   647→- `sovereign-stack/core-event-dispatcher` → CORE-03 (UNDECLARED_VERIFIED; mentioned in HUB-04 body Runtime line 30 as the dispatch mechanism for events, but not in Upward list)
+   648→- `sovereign-stack/core-http-message` → CORE-04 (UNDECLARED_VERIFIED; HUB-04 uses PSR-7 interfaces that CORE-04 provides)
+   649→- `sovereign-stack/core-kernel` → CORE-18 (UNDECLARED_VERIFIED; HUB-04's `Http/AuthMiddleware.php` imports `SovereignStack\Core\Kernel\RequestContext`)
+   650→
+   651→**Recorded as:** Rows 10, 11, 15 in §5.2 with status `UNDECLARED_VERIFIED`.
+   652→
+   653→**Phase 2 recommendation:** Three options for each edge:
+   654→- (a) Add the missing target to HUB-04's formal Upward list in the blueprint (declaration reconciliation)
+   655→- (b) Remove the `sovereign-stack/core-*` entry from `composer.json require` (code reconciliation — but this would break compilation since source imports reference these packages)
+   656→- (c) Re-classify as RUNTIME edges (CORE-04 provides PSR-7 implementations HUB-04 uses at runtime; CORE-18 provides `RequestContext` HUB-04 uses at runtime; CORE-03 provides event-dispatch HUB-04 uses at runtime) — but this is questionable because composer `require` is a COMPILE-time artifact
+   657→
+   658→Most likely (a) is correct: HUB-04's blueprint Upward list is incomplete and should be updated to include CORE-03, CORE-04, CORE-18.
+   659→
+   660→### Gap 8 — 26 asymmetric downward-only declarations (blueprint drift)
+   661→
+   662→26 of 87 Hub→Hub edges (30%) are declared in a producer's Downward list but NOT acknowledged in the consumer's Upward list. This is "blueprint drift" — producers claim consumers that consumers don't formally acknowledge.
+   663→
+   664→Affected source Hubs (consumers whose Upward is incomplete):
+   665→- HUB-01 (missing 4 edges: → HUB-04, HUB-06, HUB-08, HUB-15 — all declared by HUB-01's own Downward as consumers of HUB-01... wait that's reversed)
+   666→
+   667→Let me restate: 26 edges are where producer P declares "consumer C depends on me" but C doesn't list P in its Upward. The 26 are listed in §5.1 with `↓-only` in Evidence:
+   668→- Rows 2, 3, 4, 6, 9, 10, 14, 17, 19, 22, 23, 24, 27, 28, 30, 34, 36, 38, 39, 40, 46, 51, 54, 60, 61 — but several of these have multiple sources (e.g., row 34 HUB-15 → HUB-01 has both HUB-15 reverse-Down + HUB-01 Down, neither of which is HUB-15's Upward, so it's downward-only).
+   669→
+   670→In particular, the 6 reverse-Down edges from HUB-15 (rows 34, 36, 37, 38, 39, 40) are downward-only because HUB-15's Upward list doesn't formally declare HUB-01/HUB-04/HUB-06/HUB-08/HUB-19/HUB-20 as dependencies (Gap 3).
+   671→
+   672→**Phase 2 recommendation:** Reconcile each downward-only edge by either:
+   673→- (a) Adding the missing target to the consumer's Upward list (declaration reconciliation — most likely correct for the 6 HUB-15 reverse-Down edges and the 6 HUB-19 Downward edges for Hub-controllers)
+   674→- (b) Removing the producer's Downward claim (downward reconciliation — if the producer is incorrect about who consumes it)
+   675→- (c) Reclassifying the relationship as RUNTIME/CAPABILITY (if it's not a build-time COMPILE dep)
+   676→
+   677→### Gap 9 — Edge type (COMPILE/RUNTIME/INTEGRATION) is underspecified in 25 of 29 blueprints
+   678→
+   679→Only 4 blueprints explicitly use compile-time/optional/hard/soft labels in their formal Upward/Transitive Core lists:
+   680→- HUB-02: "Required at compile time: ... Optional: ..."
+   681→- HUB-15: "Required at compile time: ... Optional: ..."
+   682→- HUB-19: "Compile-time: ... Optional: ..."
+   683→- HUB-20: "hard" / "soft" labels
+   684→
+   685→The other 25 blueprints just list IDs without classification. For Phase 2, edge_type must be assigned. The default heuristic should be:
+   686→- COMPILE for Hub→Core edges where the Hub's composer.json would require the Core package (the conventional case)
+   687→- COMPILE for Hub→Hub edges where the Hub's composer.json would require the Hub package
+   688→- RUNTIME for cases where only an interface is consumed via PSR contract (no direct composer require)
+   689→- INTEGRATION for external systems (MySQL, Redis, S3, SMTP — these are in Runtime lines of blueprints, not Upward lists, so out of scope for this inventory)
+   690→
+   691→For this inventory I've recorded edge_type as UNKNOWN for most declared edges, and as COMPILE for verified edges (where composer.json confirms the compile-time dependency).
+   692→
+   693→### Gap 10 — 2 of 29 active Hub blueprints implemented (6.9% implementation depth)
+   694→
+   695→This is the dominant fact about the Hub tier: 27 of 29 active Hub blueprints have ZERO code on disk. Consequences:
+   696→- 87 of 87 Hub→Hub edges (100%) are DECLARED_ONLY
+   697→- 64 of 71 Hub→Core edges (90.1%) are DECLARED_ONLY
+   698→- 0 of 87 Hub→Hub edges (0%) are verified
+   699→- The VERIFIED DAG would be nearly empty: only HUB-01 and HUB-04 nodes with edges into Core
+   700→- A topological build order derived from VERIFIED edges alone would have very low wave depth (most Hubs unimplemented, so no verified ordering constraints among them)
+   701→
+   702→### Gap 11 — Zero Hub→Hub verified edges — the Hub tier is currently contract-coupled independent packages
+   703→
+   704→No Hub package's `composer.json require` lists another `sovereign-stack/hub-*` package. No Hub package's source code imports any `SovereignStack\Hub\<OtherPackage>\*` class. All `SovereignStack\Hub\*` imports found in source are intra-package (`SovereignStack\Hub\Identity\*` inside identity package, `SovereignStack\Hub\Config\*` inside config package).
+   705→
+   706→This means the Hub tier today is a set of independent packages with no compile-time or source-level coupling. Every cross-Hub dependency is purely architectural intent in blueprint prose. Once the 27 unimplemented Hubs are built, the verified Hub→Hub edge count will grow — but as of today, the VERIFIED Hub DAG has 0 Hub-internal edges.
+   707→
+   708→**Phase 2 implication:** The VERIFIED Hub DAG cannot be used for build-order decisions among Hub packages — there's nothing to order. The DECLARED Hub DAG (87 edges) IS the only available build-order input, and it has cycles (Gap 4, Gap 6) plus 11 edges to superseded targets (Gap 2) plus 26 asymmetric drift edges (Gap 8) — it requires substantial reconciliation before being usable for Kahn's algorithm.
+   709→
+   710→---
+   711→
+   712→## §8. Cross-checks performed
+   713→
+   714→### §8.1 Active Hub count
+   715→- INDEX.md §2.2 lists HUB-01..31 (31 entries) ✓
+   716→- ADR-021 §12 relocates HUB-10 + HUB-25 → 29 active ✓
+   717→- Filesystem: 31 files in `Architecture/Hub/` (HUB-01 through HUB-31) ✓
+   718→- HUB-32 file does NOT exist (consistent with "ratified pending canonical publication") ✓
+   719→
+   720→### §8.2 Implemented Hub package count
+   721→- `ls packages/hub/` → 2 directories (config, identity) ✓
+   722→- composer.json `description` fields explicitly map to HUB-01 and HUB-04 ✓
+   723→- No Hub implementations found in orchestrator/, packages/spoke/, or packages/bridge/ ✓
+   724→
+   725→### §8.3 Verified edge count
+   726→- `rg "sovereign-stack/hub-" packages/hub/*/composer.json` → 0 require entries (only `name` matches) ✓
+   727→- `rg "^use SovereignStack\\\\Core" packages/hub/{identity,config}/src/` → 4 source imports (CORE-10, CORE-16, CORE-18, CORE-19) ✓
+   728→- `rg "^use SovereignStack\\\\Hub\\\\" packages/hub/{identity,config}/src/` → all intra-package imports ✓
+   729→- Verified Hub→Hub edges = 0 ✓
+   730→- Verified Hub→Core edges = 10 (2 from HUB-01 + 8 from HUB-04) ✓
+   731→
+   732→### §8.4 Declared edge count
+   733→- 87 Hub→Hub unique edges (61 Upward-declared + 26 Downward-only) ✓
+   734→- 71 Hub→Core declared edges (sum of all Upward/Transitive Core lists) ✓
+   735→- 3 UNDECLARED_VERIFIED Hub→Core edges (HUB-04 → CORE-03/CORE-04/CORE-18) ✓
+   736→- Math: 7 VERIFIED + 151 DECLARED_ONLY + 3 UNDECLARED_VERIFIED = 161 unique ✓
+   737→- Math: 87 + 74 = 161 unique ✓
+   738→- Math: 158 declared + 3 undeclared-verified − 7 (overlap) = 154? No — 158 declared total − 7 (verified subset) = 151 declared-only; 10 verified − 7 (also declared) = 3 undeclared-verified; 7 + 151 + 3 + 0 = 161 ✓
+   739→
+   740→---
+   741→
+   742→## §9. Deliverable handoff to Phase 2
+   743→
+   744→This inventory is the **evidence base** for the Phase 2 deliverables `Architecture/Hub/HUB-VERIFIED-DAG.md` and `Architecture/Hub/HUB-DECLARED-DAG.md` (analogous to the Core DAG files committed in PR #283 + Amendment PR #288).
+   745→
+   746→**Recommended Phase 2 inputs from this inventory:**
+   747→1. **DECLARED DAG** input: all 158 declared edges (87 Hub→Hub + 71 Hub→Core) — but Phase 2 must first resolve Gap 2 (11 edges to superseded targets — reclassify as INTEGRATION edges to Runtime tier or drop), Gap 4 (HUB-08 ↔ HUB-15 cycle — split into RUNTIME edges), Gap 6 (HUB-21 ↔ HUB-01 cycle — split into RUNTIME/COMPILE edges), Gap 8 (26 asymmetric drift edges — reconcile direction).
+   748→2. **VERIFIED DAG** input: the 10 verified edges from HUB-01 + HUB-04 (all Hub→Core; 0 Hub→Hub). This DAG will be tiny — only 2 Hub nodes with edges into Core.
+   749→3. **Cross-DAG reconciliation table**: VERIFIED (7 edges) vs DECLARED_ONLY (151) vs UNDECLARED_VERIFIED (3) — see §5 master table.
+   750→4. **Cycle resolution proposals** (Gaps 4, 6) for tech-lead decision before DAG derivation.
+   751→5. **Target-superseded proposal** (Gap 2) for tech-lead decision: relocate 11 edges to Runtime-tier DAG.
+   752→6. **Reverse-Downward placement fix** (Gap 3) for HUB-15 blueprint update — Phase 2 prerequisite.
+   753→7. **HUB-04 Upward list completion** (Gap 7) — add CORE-03, CORE-04, CORE-18 to the formal Upward list in HUB-04.md.
+   754→
+   755→**No DAG files were created by this task.** Phase 2 starts after tech-lead review of this inventory.
+   756→
+   757→
