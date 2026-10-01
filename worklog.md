@@ -1376,3 +1376,52 @@ Stage Summary:
 - INDEX now fully reconciled with ADR-021 on main
 - CI workflow healthy: 4th consecutive clean merge via gate job (#287, #288, #289, #290 — though #289 was empty)
 - Next in dependency order: Hub DAG generation/reconciliation (HUB-DECLARED-DAG + HUB-VERIFIED-DAG)
+
+---
+Task ID: 75-Phase1 (Hub DAG Evidence Reconciliation — COMPLETED)
+Task ID: 74.5 (INDEX §2.2/§4 contradiction fix — COMPLETED)
+Agent: main
+
+Work Log:
+- SAAI flagged three issues with Task 74: (1) INDEX still had contradictory canonical-count data in §2.2/§4; (2) old §5 DAG still present (supersession banner added but content not collapsed); (3) don't assume 13 verified Hub edges — derive independently.
+- Fixed INDEX §2.2/§4 contradictions (PR #291, merged as 40bf400):
+  - §2.2: HUB-10/HUB-25 entries now have strikethrough + SUPERSEDED markers
+  - §4: Hub count updated to "31 declared (29 active + 2 superseded)"
+- Launched Hub DAG Evidence Reconciliation subagent (Task 75 Phase 1):
+  - Enumerated 29 active Hub blueprints (31 files − HUB-10/HUB-25 superseded − HUB-32 pending)
+  - Extracted 158 declared edges (87 Hub→Hub + 71 Hub→Core) from blueprint Upward/Downward sections
+  - Enumerated 2 implemented Hub packages (HUB-01 config + HUB-04 identity — 6.9% implementation depth)
+  - Extracted 10 verified edges (0 Hub→Hub + 10 Hub→Core) from composer.json + source imports
+  - Produced comprehensive edge inventory: 161 unique edges
+  - Status breakdown: 7 VERIFIED + 151 DECLARED_ONLY + 3 UNDECLARED_VERIFIED + 0 INVALID
+  - Analysis saved to /home/z/my-project/download/HUB-EDGE-INVENTORY.md (756 lines)
+
+Three blockers identified for Hub Phase 2 (DAG derivation):
+1. Two ADR-004 acyclic rule violations (bidirectional cycles):
+   - HUB-08 ↔ HUB-15 (Gateway ↔ Health)
+   - HUB-21 ↔ HUB-01 (Tenancy ↔ Config)
+   Must be split via ADR-021 Amendment 2 §8.5 multigraph semantics into separate COMPILE/RUNTIME edges.
+2. 11 declared edges point to superseded HUB-10 (8) and HUB-25 (3):
+   Need governance decision: relocate to Runtime-tier DAG as INTEGRATION edges, or drop from Hub DAG.
+3. HUB-04 has 3 UNDECLARED_VERIFIED edges:
+   packages/hub/identity/composer.json requires CORE-03 (event-dispatcher), CORE-04 (http-message), CORE-18 (kernel) but HUB-04's formal blueprint Upward list doesn't declare them. Phase 2 prerequisite: update HUB-04's Upward section.
+
+Additional findings:
+- 26 of 87 Hub→Hub edges (30%) are asymmetric downward-only declarations (blueprint drift)
+- HUB-15 has "reverse Downward" placement inconsistency (6 edges in Downward section that are actually Upward)
+- Hub tier is 6.9% implemented — the VERIFIED Hub DAG is tiny (10 edges, 2 nodes, all Hub→Core, ZERO Hub-internal verified edges)
+
+Stage Summary:
+- PR #291 merged (INDEX §2.2/§4 fix): https://github.com/DGCodeIdeas/DGLab/pull/291
+- Hub evidence inventory complete: /home/z/my-project/download/HUB-EDGE-INVENTORY.md (756 lines)
+- Hub tier is NOT ready for Phase 2 DAG derivation — 3 blockers must be resolved first
+- Current architecture state:
+  ✅ ADR-021 two-DAG model
+  ✅ ADR-021 edge semantics (amendment 2)
+  ✅ INDEX authority boundary
+  ✅ INDEX tier reconciliation (§1/§2.2/§4/§5)
+  ✅ Hub evidence inventory (Phase 1)
+  ⏳ Hub DAG derivation (Phase 2 — blocked by 3 issues)
+  ⏳ Hub build order (Phase 3)
+  ⏳ DAG generators
+  ⏳ SDLC-AGRD v4
