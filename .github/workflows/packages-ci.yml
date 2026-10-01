@@ -1,22 +1,71 @@
 name: Packages CI
 
+# =============================================================================
+# Path Gate pattern — satisfies the "Packages CI" required status check
+# for docs-only PRs without running the full test matrix.
+#
+# The `gate` job always runs on pull_request (no paths filter). It detects
+# whether package/orchestrator/anvil files changed:
+#   - If NO  → gate succeeds, test jobs are skipped, suite reports success
+#   - If YES → gate succeeds, test jobs run, suite reports success only if
+#              all matrix entries pass
+#
+# This allows docs-only PRs (Architecture/, docs/, README, etc.) to merge
+# without waiting for a Packages CI run that would never trigger.
+# =============================================================================
+
 on:
   push:
+    branches: [main]
     paths:
       - 'packages/**'
       - 'orchestrator/**'
       - 'anvil/**'
       - '.github/workflows/packages-ci.yml'
-  pull_request:
-    paths:
-      - 'packages/**'
-      - 'orchestrator/**'
-      - 'anvil/**'
-      - '.github/workflows/packages-ci.yml'
+  pull_request: {}  # always trigger on PRs — gate job handles path detection
   workflow_dispatch: {}
 
 jobs:
+  gate:
+    name: Path Gate
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for diff
+
+      - name: Check if package files changed
+        id: check
+        run: |
+          set -x
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+            echo "Base: $BASE"
+            echo "Head: $HEAD"
+            CHANGED=$(git diff --name-only "$BASE" "$HEAD" \
+              | grep -E '^(packages/|orchestrator/|anvil/|\.github/workflows/packages-ci\.yml)' \
+              || true)
+            if [ -n "$CHANGED" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "::notice::Package files changed — full CI matrix will run"
+              echo "$CHANGED" | head -20
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "::notice::No package files changed — skipping CI matrix"
+            fi
+          else
+            # push or workflow_dispatch — always run full CI
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "::notice::Non-PR event — full CI matrix will run"
+          fi
+
   test:
+    needs: gate
+    if: needs.gate.outputs.changed == 'true'
     name: PHPUnit + PHPStan (${{ matrix.package }})
     runs-on: ubuntu-latest
     strategy:
