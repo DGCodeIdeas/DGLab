@@ -1,7 +1,7 @@
 # ADR-021: Tier-Stratified Build Order with Two-DAG Governance Model
 
-**Status:** Accepted (amended 2026-10-01 — original ADR ratified single-DAG model; this amendment establishes the two-DAG governance model per SAAI + Z.ai convergence)
-**Date:** 2026-09-30 (original); 2026-10-01 (amendment)
+**Status:** Accepted (amended 2026-10-01 — two amendments: (1) original ADR ratified single-DAG model → two-DAG governance model; (2) edge dimension refinement — separated edge_type from requiredness, gate→gates list, multigraph semantics)
+**Date:** 2026-09-30 (original); 2026-10-01 (amendment 1: two-DAG model); 2026-10-01 (amendment 2: edge dimensions)
 **Author:** DGCI (architecture lead)
 **Supersedes:** `Architecture/INDEX.md §5.3` (11-step global build sequence — superseded by per-tier derived build orders) and `Architecture/INDEX.md §5.2` (monolithic Mermaid — superseded by per-tier declared + verified DAGs)
 **Companion:**
@@ -46,15 +46,27 @@ This amendment establishes the **two-DAG governance model** that fixes these def
 | **Applications** | ESPOKE-01..19 + ISPOKE-01..27 + BRIDGE-01 | 19 ESPOKEs (incl. **ESPOKE-19 Eloq** ratified below) + 27 ISPOKEs + 1 Bridge | Per-application DAGs (each ESPOKE owns its own manifest). Bridge routes through Integration DAG, not tier-DAG family. |
 | **Deploy + Tooling** | DEPLOY-00..04 + CORE-13 + CORE-20 | 7 packages | Already close to tier-local DAG per SAAI audit. |
 
-### 2. The Five Edge Types
+### 2. Four Edge Types + Requiredness Dimension
+
+**Edge types** describe HOW the dependency works (mechanics + delivery semantics). **Requiredness** describes WHETHER it's mandatory (gating decision). These are orthogonal dimensions — an edge can be COMPILE+REQUIRED, COMPILE+OPTIONAL, RUNTIME+REQUIRED, etc.
+
+**Edge types** (exactly one per edge):
 
 | Edge type | Meaning | Example |
 |---|---|---|
-| **COMPILE** | Must exist at build time (composer require) | `C10 → C09` (Logger requires Config) |
-| **RUNTIME** | Must exist at runtime (worker, request loop, scheduler) | `C18 → RUNTIME-01` (Kernel needs FrankenPHP worker) |
-| **INTEGRATION** | Must exist for external service calls | `C19 → MySQL`, `C14 → S3` |
-| **CAPABILITY** | Must exist for capability delivery (delivery pressure, not composer pressure) | `C19 → HUB-04` (DBAL enables Identity) |
-| **OPTIONAL** | Nice to have; doesn't gate admission | (declared-but-unverified edges) |
+| **COMPILE** | Consumer requires target for construction/compilation/package assembly | `C10 → C09` (Logger requires Config via composer) |
+| **RUNTIME** | Consumer requires target while executing its runtime behavior | `C18 → RUNTIME-01` (Kernel needs FrankenPHP worker) |
+| **INTEGRATION** | Consumer depends on an external/system boundary being available and correctly wired | `C19 → MySQL`, `C14 → S3` |
+| **CAPABILITY** | Consumer requires a capability supplied by the target, without necessarily having a direct implementation dependency | `C19 → HUB-04` (DBAL enables Identity) |
+
+**Requiredness** (independent of edge_type):
+
+| Value | Meaning |
+|---|---|
+| **REQUIRED** | Missing target prevents the consumer from satisfying the relevant architectural gate |
+| **OPTIONAL** | Consumer remains valid without the target; target provides an optional enhancement/path |
+
+**This separation is critical.** `DECLARED_ONLY` (verification status) is NOT the same as `OPTIONAL` (requiredness). The edge `C18 → C17` is DECLARED_ONLY (C17 not yet implemented) but REQUIRED (production gate requires C17). Conflating these would cause a future generator to infer `verified=false → OPTIONAL → doesn't gate` — missing the C17 production gate requirement entirely.
 
 ### 3. Two-DAG Governance Model (LOCKED)
 
@@ -103,20 +115,31 @@ Each edge's status is determined by comparing the declared and verified DAGs:
 
 ### 5. Machine-Readable Edge Metadata Schema (LOCKED)
 
-Each edge is a structured record with 9 fields:
+Each edge is a structured record with 8 fields across 4 dimensions:
 
 ```yaml
 source: CORE-18          # consuming component
 target: CORE-17          # consumed component
-tier: Core               # Core/Hub/Bridge/Spoke/Deploy/Runtime
-kind: RUNTIME            # COMPILE/RUNTIME/INTEGRATION/CAPABILITY/OPTIONAL
-declared: true           # architecture explicitly declares it
-verified: false          # repository evidence confirms it
-status: DECLARED_ONLY   # VERIFIED/DECLARED_ONLY/UNDECLARED_VERIFIED/INVALID
-evidence:                # proof sources
+edge_type: RUNTIME       # COMPILE | RUNTIME | INTEGRATION | CAPABILITY (exactly one)
+requiredness: REQUIRED    # REQUIRED | OPTIONAL (independent of edge_type)
+declared: true            # bool — architecture declares this edge
+verified: false           # bool — repository evidence confirms this edge
+status: DECLARED_ONLY    # DERIVED from (declared, verified): VERIFIED | DECLARED_ONLY | UNDECLARED_VERIFIED | INVALID
+gates:                   # LIST — one or more gate values this edge affects
+  - RUNTIME
+  - PRODUCTION
+evidence:                # evidence supporting the edge's current state (declaration evidence if verified=false, verification evidence if verified=true)
   - packages/core/kernel/src/Stub/ProviderRegistryInterface.php
-gate: production         # which gate this edge affects (build/runtime/integration/production)
 ```
+
+**Four dimensions:**
+- `edge_type` — HOW the dependency works (mechanics)
+- `requiredness` — WHETHER it's mandatory (gating decision)
+- `declared` + `verified` → `status` (derived) — evidence state
+- `gates` — WHAT readiness gates it affects (consequences; list, not scalar — one edge can affect multiple gates)
+- `evidence` — WHY (proof sources supporting the current state)
+
+**Evidence definition:** `evidence` is **evidence supporting the edge's current state**, not necessarily verification evidence. For `DECLARED_ONLY` edges, evidence is the architectural declaration (blueprint file path). For `VERIFIED` edges, evidence is the code proof (composer.json, use statement, test). For `UNDECLARED_VERIFIED`, evidence proves the repository relationship that architecture hasn't declared.
 
 This makes the DAG **machine-generated and machine-verified** — not hand-maintained. Drift between declared and verified becomes automatically detectable. Future tooling (`scripts/generate-verified-dag.py`, `scripts/generate-declared-dag.py`, `scripts/compare-dags.py`) will produce and compare these records automatically.
 
@@ -141,27 +164,42 @@ This applies beyond Core — Hub and Spoke packages will have the same pattern (
 
 ```
 Eligible(X) =
-    dependency closure satisfied
-        (all COMPILE/RUNTIME/INTEGRATION-typed edges into X have targets at depth ≥2)
-    AND capability prerequisites satisfied
-        (all CAPABILITY-typed edges into X have targets delivered)
+    every REQUIRED incoming edge has its required gates satisfied
+        (REQUIRED edges gate admission; OPTIONAL edges do not)
+    AND required CAPABILITY dependencies are delivered
+        (REQUIRED CAPABILITY edges into X have targets delivered)
     AND architecture gate passed
         (interfaces frozen + fitness functions pass + lifecycle/resource guarantees)
     AND SDLC admission granted
         (capacity, findings, throughput calibration, cooldown status)
 ```
 
+**Key principle:** `edge_type` tells us HOW to evaluate the dependency. `requiredness` determines WHETHER it gates. `gates` tells us WHAT's affected. These are cleanly separated — `edge_type` never itself determines whether an edge gates admission; `requiredness` does.
+
 ### 8. Six-Criteria Capability Gate
 
 A tier is "at gate" when ALL of:
-1. Required dependency closure exists (typed edges satisfied)
-2. Required capability closure exists (CAPABILITY edges satisfied)
+1. Required dependency closure exists (REQUIRED edges satisfied)
+2. Required capability closure exists (REQUIRED CAPABILITY edges delivered)
 3. Interfaces frozen (export-allow-list enforced)
 4. Architecture fitness passes (ring-boundary, contamination, freeze tests)
 5. Lifecycle/resource guarantees pass (worker recycling, signal handling — for runtime-touching tiers)
 6. Required application path is executable (for Application tier: `anvilctl verify all` against staging)
 
-**Not "all N complete."** A tier can be at-gate with 12 of 20 Core blueprints at depth 2 if those 12 satisfy the application path requirement.
+**Tier population ≠ Required production closure.** The "required closure" is a SUBSET of the tier — the packages on the path to a production-deployable application — not the entire tier population. A tier is "at gate" when the required production closure satisfies the six criteria, not when ALL packages in the tier are complete. A tier can be at-gate with 12 of 20 Core blueprints at depth 2 if those 12 constitute the required production closure for the application path being deployed.
+
+### 8.5. Multigraph Semantics (LOCKED)
+
+The DAG is a **multigraph**: the same source/target pair may have multiple edges with different `edge_type` values. For example:
+
+```
+CORE-10 ──COMPILE──────► CORE-09   (Logger's composer.json requires Config)
+CORE-10 ──CAPABILITY───► CORE-09   (Logger needs Config's values to function)
+```
+
+Each edge independently carries `requiredness`, `evidence` state, and `gates` impact. This is preferable to creating an overloaded edge whose semantics become difficult for generators to reason about.
+
+**Generator edge identity:** `source + target + edge_type`. The generator's edge identity is NOT `source + target` — otherwise it could overwrite the COMPILE edge when it discovers a CAPABILITY edge between the same components.
 
 ### 9. Core DAGs (Two Views, Both Authoritative)
 
@@ -294,6 +332,8 @@ Per `CORE-DAG-RECONCILIATION-8`:
 | **Per-tier depth scales** | Subsumed by the three-axis status model + Capability DAG. |
 | **45-edge declared DAG as sole authority** | Not honest about current state — would ignore the fact that most edges are not yet verified in code. |
 | **13-edge verified DAG as sole authority** | Loses architectural intent — would miss `C18 → C17` (declared but not yet implemented) and other future-looking edges. |
+| **Single-enum edge_type (original ADR-021 §2)** | Conflated three orthogonal dimensions: dependency mechanics (COMPILE/RUNTIME/INTEGRATION), delivery semantics (CAPABILITY), and requiredness (OPTIONAL). A DECLARED_ONLY edge would be implicitly treated as OPTIONAL, missing REQUIRED production gate dependencies like C17. |
+| **Scalar `gate` field** | Forces choosing one gate when an edge can affect multiple gates (e.g., C18→C17 affects both RUNTIME and PRODUCTION). List `gates` captures the full gate impact set. |
 
 ## Relationship to Other Documents
 
@@ -317,6 +357,10 @@ Per `CORE-DAG-RECONCILIATION-8`:
 
 ## Provenance
 
-Original ADR-021 ratified 2026-09-30 (PR #283). This amendment (2026-10-01) establishes the two-DAG governance model per SAAI + Z.ai convergence analysis: both Declared and Verified DAGs are authoritative for different purposes; neither overrides the other. The four edge status categories, machine-readable edge metadata schema, three-axis status model, INDEX authority evolution, tier-local DAG contract, and namespace root lint rule are new ratifications. The five tiers, five edge types, Eligible(X) formula, HUB-32/ESPOKE-19 ratification, HUB-10/HUB-25 relocation, and ISPOKE contract lint rule are carried forward from the original ADR.
+**Amendment 1** (2026-10-01, PR #287): Established the two-DAG governance model per SAAI + Z.ai convergence analysis: both Declared and Verified DAGs are authoritative for different purposes; neither overrides the other. The four edge status categories, machine-readable edge metadata schema, three-axis status model, INDEX authority evolution, tier-local DAG contract, and namespace root lint rule are new ratifications.
+
+**Amendment 2** (2026-10-01, this PR): Edge dimension refinement per SAAI precision review (7 findings). Separated `edge_type` (HOW — 4 values: COMPILE/RUNTIME/INTEGRATION/CAPABILITY) from `requiredness` (WHETHER — REQUIRED/OPTIONAL) from `gates` (WHAT — list of gate values). Renamed `kind` → `edge_type`. Changed `gate` (scalar) → `gates` (list). Updated Eligible(X) formula to reference requiredness, not edge_type. Formalized "Tier population ≠ Required production closure." Added explicit multigraph semantics (edge identity = source + target + edge_type). Refined `evidence` definition: "evidence supporting the edge's current state" (declaration evidence for DECLARED_ONLY, verification evidence for VERIFIED).
+
+The five tiers, HUB-32/ESPOKE-19 ratification, HUB-10/HUB-25 relocation, and ISPOKE contract lint rule are carried forward from the original ADR.
 
 Baseline evidence from `Task 70` (commit `84d68da`): 20 implemented packages, 200 PHP source files, 88 test files, 21 ADRs, 102 blueprints, PHP ^8.4 confirmed across all packages.
