@@ -1,3 +1,9 @@
+> **⚠️ SUPERSEDED by ADR-021 §12 (2026-09-30).** HUB-25 (Chronos TaskRunner) has been **relocated to the Runtime tier** as **RUNTIME-04 (Scheduler)**. This blueprint is retained for historical reference; new work should reference the Runtime tier per ADR-021. The Hub ring active count is reduced by this relocation.
+>
+> **Reason:** HUB-25's primary purpose is to BE the scheduled-job substrate (system cron / systemd timer running `s-cli schedule:run` every minute), not to consume Hub capabilities — it is a runtime-tier package masquerading as Hub-tier. Notably, HUB-25 needs a *different* substrate than FrankenPHP (which covers HTTP but not scheduled jobs). See ADR-021 §12 for full rationale.
+
+---
+
 # PHASE HUB-25: Background Scheduler & Cron Management
 
 ## Tier
