@@ -1,5 +1,11 @@
 # 00 — Critical Assessment of Existing DGLab Blueprints
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This document may contain **unverified assumptions, unstated dependencies, or edge cases not covered**. Its claims should be actively questioned and tested. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Independent re-verification date:** 2026-08-04
 **Repo state:** `DGCodeIdeas/DGLab` @ `main` (commit pushed 2026-07-17T18:28:48Z)
 **Method:** Full recursive tree fetch (1,221 entries) + read of 77 key files (all 20 CORE blueprints, 10 HUB blueprints, BRIDGE-01, DEPLOY-01, 7 evaluation docs, 7 hub-taxonomy docs, internal-spoke placeholders, orchestrator source, event-dispatcher source, container stub, render.yaml, Dockerfile, docker-compose.yml).

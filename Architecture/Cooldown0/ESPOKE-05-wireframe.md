@@ -1,5 +1,11 @@
 # ESPOKE-05 Wireframe — Sovereign Growth (Marketing Landing Page Engine)
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This document may contain **unverified assumptions, unstated dependencies, or edge cases not covered**. Its claims should be actively questioned and tested. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Frozen under Cooldown 0 ADR-gate (SDLC-AGRD v3.4 §3). Changes require a new ADR.**
 
 **Source blueprint:** `Architecture/Spoke/External/ESPOKE-05.md` (Bloom Status: 🔴 Blocked; Build Status of this contract: CONTRACT-FROZEN, not implemented).

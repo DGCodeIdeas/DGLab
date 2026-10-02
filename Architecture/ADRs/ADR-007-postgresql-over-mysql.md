@@ -1,5 +1,11 @@
 # ADR-007: PostgreSQL as the Primary Relational Datastore
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This ADR's claims are **ratified, not verified**. Ratification establishes a contract; it does not guarantee correctness. The architectural assumptions, edge cases, and interaction scenarios in this ADR should be actively questioned and tested against runtime behavior. A different auditor with a different lens may find issues this ADR's authors missed. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 > ⚠️ **Superseded.** This ADR is superseded by **ADR-013 (MySQL/InnoDB primary; PostgreSQL relegated
 > behind the CORE-19 driver, disabled by default)** as of 2026-08-05. Retained for historical context
 > only. Do not implement PostgreSQL as the primary datastore; MySQL/InnoDB is now primary per ADR-013.

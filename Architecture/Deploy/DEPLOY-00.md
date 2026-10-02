@@ -1,5 +1,11 @@
 # DEPLOY-00: Documentation Site
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This Deploy blueprint may contain **stale infrastructure assumptions** (e.g., PHP-FPM vs FrankenPHP per ADR-017, Nginx vs Caddy, Supervisor vs systemd). The deployment configuration should be verified against actual infrastructure. Runtime substrate claims (Anvil v3, worker recycling, signal handling) should be tested against real deployments. **Documentation drift is especially dangerous in deployment blueprints — always verify against the actual runtime.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 > **Renamed from `DEPLOY-01: Free Tier Render Docker Deployment`** per `INDEX.md` §6 and
 > `Verification/INCONSISTENCIES.md` #12. This blueprint only ever deployed the Markdown documentation
 > (Finding 9 in `Critiques/00_CRITIQUE.md`); it is correct on its own terms but was mislabelled as the

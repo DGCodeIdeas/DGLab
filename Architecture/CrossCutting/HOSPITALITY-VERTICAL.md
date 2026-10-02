@@ -1,5 +1,11 @@
 # HOSPITALITY-VERTICAL.md — The Hospitality Vertical
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** **Promoted to canonical 2026-08-12.** The five blueprints (`ISPOKE-26`, `ISPOKE-27`,
 `ESPOKE-16`, `ESPOKE-17`, `ESPOKE-18`) and `ADR-015` are now committed to `Architecture/` (Spoke/Internal/,
 Spoke/External/, ADRs/ respectively). The live repo's canonical count is **101** (was 96 before promotion).

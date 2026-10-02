@@ -1,5 +1,11 @@
 # CORE-VERIFIED-DAG — Verified Implementation DAG
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This DAG is a **candidate inventory, not a complete graph**. Edges may be missing; edge classifications (edge_type, requiredness, gates) may be incorrect or UNKNOWN. The declared and verified views should be actively compared for drift. The four edge status categories (VERIFIED / DECLARED_ONLY / UNDECLARED_VERIFIED / INVALID) are derived from current evidence — new evidence may change them. **The number of edges found is not the number of edges that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Authority:** Repository implementation reality ("is proven").
 **Source of truth:** 20 blueprint files at `/home/z/my-project/Architecture/Core/CORE-01.md` … `CORE-20.md`
 **Implementation truth:** code at `/home/z/my-project/packages/core/` + `/home/z/my-project/orchestrator/`

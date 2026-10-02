@@ -1,5 +1,11 @@
 # HUB-26 Theme Token Contract — Sovereign UI (Elements)
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This document may contain **unverified assumptions, unstated dependencies, or edge cases not covered**. Its claims should be actively questioned and tested. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Frozen under Cooldown 0 ADR-gate (SDLC-AGRD v3.4 §3). Changes require a new ADR.**
 
 **Source blueprint:** `Architecture/Hub/HUB-26.md` (Build Status: 🔴 Blocked on HUB-03, HUB-13; this is the token *contract*, not an implementation).

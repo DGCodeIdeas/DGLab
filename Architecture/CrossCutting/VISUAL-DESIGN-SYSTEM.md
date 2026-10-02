@@ -1,5 +1,11 @@
 # VISUAL-DESIGN-SYSTEM.md — The "Imagine" Design System
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Canonical visual language for DGLab diagrams, SVG artifacts, and UI badges. Source of truth is the
 design-system notes in `Design_Models_Misc/Notes-9-8-2026(1).txt` (section "Imagine"). This file is the
 consolidated, portable reference.

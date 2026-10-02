@@ -1,5 +1,11 @@
 # STRUCTURE-01: Application Structure — The Sovereign Wheel
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Canonical (v0.4 — consolidation merge).
 **Supersedes:** `Structure_01_Wheel_Architecture.md` (v0.1), `Structure_01_v0.2_Wheel_Architecture.md`
 (v0.2), `STRUCTURE-01.md` (interim), `STRUCTURE-01-v0.3.md` (v0.3) — all four now archived under

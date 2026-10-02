@@ -1,5 +1,11 @@
 # ADR-021: Tier-Stratified Build Order with Two-DAG Governance Model
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This ADR's claims are **ratified, not verified**. Ratification establishes a contract; it does not guarantee correctness. The architectural assumptions, edge cases, and interaction scenarios in this ADR should be actively questioned and tested against runtime behavior. A different auditor with a different lens may find issues this ADR's authors missed. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Accepted (amended 2026-10-01 — two amendments: (1) original ADR ratified single-DAG model → two-DAG governance model; (2) edge dimension refinement — separated edge_type from requiredness, gate→gates list, multigraph semantics)
 **Date:** 2026-09-30 (original); 2026-10-01 (amendment 1: two-DAG model); 2026-10-01 (amendment 2: edge dimensions)
 **Author:** DGCI (architecture lead)

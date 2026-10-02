@@ -1,5 +1,11 @@
 # REPO-STATE-AUDIT.md — Live Repo Ground Truth (verified 2026-08-10)
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Verified snapshot of the actual `Architecture/` tree, taken 2026-08-10. This is the authority for
 all "how many", "what exists", and "what the linter does" claims across the consolidated docs. Where a source
 draft (in `Design_Models_Misc/`) claims something this audit contradicts, **this audit wins** and the

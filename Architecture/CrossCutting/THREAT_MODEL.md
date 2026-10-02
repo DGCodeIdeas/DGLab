@@ -1,5 +1,11 @@
 # 03 — STRIDE Threat Model for the DGLab Sovereign Stack
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Canonical
 **Scope:** DGLab Sovereign Stack as defined in `01_MASTER_INDEX.md` §2.
 **Method:** STRIDE-per-trust-boundary (Microsoft methodology) with deep-dives on tenant isolation, JWT lifecycle, BRIDGE-01 bypass, secret management, rate-limit evasion, audit-log tampering, and OWASP ASVS L2 coverage.

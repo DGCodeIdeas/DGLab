@@ -1,5 +1,11 @@
 # CORE-11: SuperPHP Parser
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This Core blueprint may contain **unverified assumptions, unstated dependencies, or edge cases not covered**. The contract declared here is a candidate, not a certainty. The implementation may diverge from the blueprint (implementation drift). Dependencies declared in the Upward/Downward sections may be incomplete or incorrect. The verified DAG may not match the declared DAG. **An audit of this blueprint is a starting point, not a complete inventory.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 ## Tier
 Core (Template Engine — Stage 2 of 3)
 

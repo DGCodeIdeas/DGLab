@@ -1,6 +1,12 @@
 # DGLab Wheel Architecture
 ## Structure 05: Data Flow & Persistence Architecture
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 > **Reconciled to ADR-013 / ADR-009** (`Verification/INCONSISTENCIES.md` #1 and #6). Per the 2026-08-05
 > decision shift, **MySQL 8.0+ (InnoDB) is the primary relational datastore** (ADR-013). The predecessor
 > of this file shipped PostgreSQL 16 DDL; that is now **relegated behind the CORE-19 driver** — the

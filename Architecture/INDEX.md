@@ -1,5 +1,11 @@
 # INDEX — Governance & Numbering Authority
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This INDEX registry's **counts, statuses, and cross-references may have drift**. Per ADR-021 §11, INDEX owns identity/governance only — derived facts (Composer dependencies, namespace imports, implementation status, topological ordering, test state) should be generated, not hand-maintained. The freshness stamp may be stale. Blueprint files may exist without INDEX entries, or INDEX entries may reference blueprints that don't exist. **The registry is a starting point — verify against the actual repository.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Canonical.
 **Scope:** the polyrepo, tier-isolated Sovereign Stack (Core → Hub → Bridge → Spokes → Deploy).
 **Last verified against `main`:** 2026-10-01 (ADR-021 reconciliation: HUB-10/HUB-25 relocated to Runtime tier; HUB-32 + ESPOKE-19 ratified pending canonical publication; §5.2/§5.3 superseded by per-tier DAGs per ADR-021).

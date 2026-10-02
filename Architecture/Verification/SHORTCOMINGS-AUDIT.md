@@ -1,5 +1,11 @@
 # SHORTCOMINGS-AUDIT — Comprehensive Repository Shortcomings Report
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This verification/audit document is a **starting point, not a complete inventory**. The number of findings found is not the number of findings that exist. The audit was conducted by a single auditor with systematic blind spots (runtime-only issues, cross-tier drift, architectural assumptions, missing tests, auditor biases, unknown unknowns). **No audit is declared complete.** Findings are closed only when their verification condition passes — not when code changes. See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Task ID:** SHORTCOMINGS-AUDIT-76
 **Date:** 2026-10-02
 **Auditor:** General-purpose subagent (per tech-lead halt order)

@@ -1,5 +1,11 @@
 # CORE-CAPABILITY-DAG — Authoritative Core-tier Capability DAG
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This DAG is a **candidate inventory, not a complete graph**. Edges may be missing; edge classifications (edge_type, requiredness, gates) may be incorrect or UNKNOWN. The declared and verified views should be actively compared for drift. The four edge status categories (VERIFIED / DECLARED_ONLY / UNDECLARED_VERIFIED / INVALID) are derived from current evidence — new evidence may change them. **The number of edges found is not the number of edges that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Task ID:** CORE-DAG-RECONCILIATION-8
 **Source of truth:** 20 Core blueprint `Dependency Status` sections (Downward listings) + 31 Hub blueprints at `/home/z/my-project/Architecture/Hub/HUB-01.md` … `HUB-31.md` + HUB-32 (ratified today per worklog `ELQ-DECISIONS-RATIFY-6.5`, no blueprint file yet).
 **Status:** DRAFT — saved to `/home/z/my-project/download/` for tech-lead review before commit to `Architecture/Core/`.
