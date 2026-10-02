@@ -2,11 +2,11 @@
 
 **Authority:** Repository implementation state at a point in time.
 **Not authoritative for:** Architectural intent, SDLC admission policy, capability requirements.
-**Generated:** 2026-10-01T04:14:19Z
-**Commit:** `84d68da06a85804e0c8da6f005411ad0f62bd924`
-**Short SHA:** `84d68da`
+**Generated:** 2026-10-02T08:30:59Z
+**Commit:** `ce2738886e2b0d980870315a763dae0ebde296aa`
+**Short SHA:** `ce27388`
 **Branch:** `main`
-**Commit date:** 2026-10-01T05:13:38+01:00
+**Commit date:** 2026-10-01T09:17:18+01:00
 **Reproducible by:** `python3 scripts/generate-architecture-baseline-v2.py` at the commit above.
 
 > **This is an evidence snapshot, not an architectural authority.**
@@ -127,7 +127,7 @@
 | `ADR-018-centralized-per-tier-releases.md` | ADR-018: Centralized per-tier release model | Accepted (extended by ADR-019) | 2026-09-08 |
 | `ADR-019-pre-muwv-version-scheme.md` | ADR-019: Pre-MUWV version scheme (v0.X.Y.Z) | Accepted — **MUWV FLIPPED (2026-09-18) — see §8 Flip Log | 2026-09-11 |
 | `ADR-020-stable-and-bleeding-edge-release-channels.md` | ADR-020: Stable and Bleeding Edge release channels | Accepted | 2026-09-17 |
-| `ADR-021-tier-stratified-build-order.md` | ADR-021: Tier-Stratified Build Order with Typed-Edge DAGs | Accepted | 2026-09-30 |
+| `ADR-021-tier-stratified-build-order.md` | ADR-021: Tier-Stratified Build Order with Two-DAG Governance Model | Accepted (amended 2026-10-01 — two amendments: (1) original ADR ratified single-DAG model → two-DAG governance model; (2) edge dimension refinement — separated edge_type from requiredness, gate→gates list, multigraph semantics) | 2026-09-30 (original); 2026-10-01 (amendment 1: two-DAG model); 2026-10-01 (amendment 2: edge dimensions) |
 
 ## 6. Blueprint Inventory (declared, not implemented)
 
@@ -144,9 +144,10 @@
 
 ### Core DAG/Build-Order files (derived, not blueprints):
 
-- `Architecture/Core/CORE-DEPENDENCY-DAG.md`
-- `Architecture/Core/CORE-CAPABILITY-DAG.md`
 - `Architecture/Core/CORE-BUILD-ORDER.md`
+- `Architecture/Core/CORE-DECLARED-DAG.md`
+- `Architecture/Core/CORE-CAPABILITY-DAG.md`
+- `Architecture/Core/CORE-VERIFIED-DAG.md`
 
 ## 7. Implemented vs Declared
 
@@ -160,7 +161,6 @@
 
 ### INDEX.md discrepancies:
 
-- INDEX.md freshness stamp says 2026-08-12 but §9 changelog records edits through 2026-09-24
 - INDEX.md has contradictory CORE-02 status: 'stub only (.gitkeep)' (§1) vs 'Implemented + tested, v1.0.0' (§2.1)
 - INDEX.md §5.3 still uses 'parallelizable' labels despite ADR-014 retiring them
 - INDEX.md §5.3 Step 8 says '30 blueprints' but should be 31 (HUB-31 accepted 2026-08-13)

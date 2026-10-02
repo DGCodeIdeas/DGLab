@@ -1,0 +1,685 @@
+     1→<?php
+     2→
+     3→declare(strict_types=1);
+     4→
+     5→namespace SovereignStack\Core\Kernel;
+     6→
+     7→use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
+     8→use Psr\Http\Message\ResponseInterface;
+     9→use Psr\Http\Message\ServerRequestInterface;
+    10→use SovereignStack\Core\Config\ConfigInterface;
+    11→use SovereignStack\Core\Container\ContainerInterface;
+    12→use SovereignStack\Core\ErrorHandler\ErrorHandlerInterface;
+    13→use SovereignStack\Core\EventDispatcher\EventDispatcherInterface;
+    14→use SovereignStack\Core\Http\MiddlewarePipelineInterface;
+    15→use SovereignStack\Core\Http\MiddlewareResolverInterface;
+    16→use SovereignStack\Core\Kernel\Event\BootEvent;
+    17→use SovereignStack\Core\Kernel\Event\RequestReceivedEvent;
+    18→use SovereignStack\Core\Kernel\Event\ResponseReadyEvent;
+    19→use SovereignStack\Core\Kernel\Event\TerminateEvent;
+    20→use SovereignStack\Core\Kernel\Stub\ProviderRegistryInterface;
+    21→use SovereignStack\Core\Logger\LoggerInterface as DgLoggerInterface;
+    22→use SovereignStack\Core\Router\RouterInterface;
+    23→
+    24→/**
+    25→ * The reference Kernel implementation.
+    26→ *
+    27→ * Worker-scoped per ADR-017: a single instance is built at worker boot
+    28→ * and reused across all Pulses (requests) in that worker. The handle()
+    29→ * method is designed for re-entrancy across requests but not within a
+    30→ * single request — recursive handle() calls throw.
+    31→ *
+    32→ * Dependencies are injected as factory closures so that:
+    33→ *   1. Heavy resources (container, logger, error handler) are only
+    34→ *      initialized when boot() is called, not at construction time.
+    35→ *   2. Tests can inject mock factories without booting a real worker.
+    36→ *   3. The kernel can be constructed cheaply and discarded if boot()
+    37→ *      is never called (e.g. in a CLI command that doesn't need HTTP).
+    38→ */
+    39→final class Kernel implements KernelInterface
+    40→{
+    41→    /**
+    42→     * Per doctrine §4.5.3: hard ceiling for the per-bootstrapper wall-clock
+    43→     * budget. Frozen — changing this is a SemVer-major break because callers
+    44→     * (worker supervisors, deployment scripts) depend on the documented
+    45→     * 5s ceiling for their own process-level watchdogs
+    46→     * (e.g., systemd TimeoutStartSec=30s for the aggregate boot budget).
+    47→     */
+    48→    public const BOOTSTRAPPER_TIMEOUT_SECONDS = 5.0;
+    49→
+    50→    /**
+    51→     * Per doctrine §4.5.5: hard ceiling for bootstrapper count per Kernel
+    52→     * construction. Frozen — changing this is a SemVer-major break because
+    53→     * callers depend on the documented 32-bootstrapper limit for their own
+    54→     * wiring (e.g., diagnostic dashboards that display bootstrapper count).
+    55→     */
+    56→    public const BOOTSTRAPPER_COUNT_CEILING = 32;
+    57→
+    58→    /**
+    59→     * Per doctrine §4.5.5: aggregate boot() wall-clock budget (30s outer
+    60→     * watchdog on top of §4.5.3's per-bootstrapper 5s budget). Frozen.
+    61→     */
+    62→    public const BOOT_AGGREGATE_TIMEOUT_SECONDS = 30.0;
+    63→
+    64→    /**
+    65→     * Per doctrine §4.5.5: handle() wall-clock budget (30s for the full
+    66→     * request lifecycle). Frozen.
+    67→     */
+    68→    public const REQUEST_TIMEOUT_SECONDS = 30.0;
+    69→
+    70→    /**
+    71→     * Per doctrine §4.5.5: terminate() wall-clock budget (5s for the
+    72→     * terminate event + handler unreg). Frozen.
+    73→     */
+    74→    public const TERMINATE_TIMEOUT_SECONDS = 5.0;
+    75→
+    76→    /**
+    77→     * Per-bootstrapper wall-clock budget. Defaults to
+    78→     * BOOTSTRAPPER_TIMEOUT_SECONDS (the hard ceiling). Tests override via
+    79→     * reflection to a small value (0.001s) and use a sleeping bootstrapper
+    80→     * to trigger the timeout without actually waiting 5+ seconds in the
+    81→     * test suite. Production code MUST NOT modify this property — only
+    82→     * the doctrine's hard ceiling (the constant) is part of the public
+    83→     * contract.
+    84→     */
+    85→    protected float $bootstrapperTimeoutSeconds = self::BOOTSTRAPPER_TIMEOUT_SECONDS;
+    86→
+    87→    /**
+    88→     * Aggregate boot() wall-clock budget. Defaults to
+    89→     * BOOT_AGGREGATE_TIMEOUT_SECONDS. Tests override via reflection.
+    90→     */
+    91→    protected float $bootAggregateTimeoutSeconds = self::BOOT_AGGREGATE_TIMEOUT_SECONDS;
+    92→
+    93→    /**
+    94→     * handle() wall-clock budget. Defaults to REQUEST_TIMEOUT_SECONDS.
+    95→     * Tests override via reflection.
+    96→     */
+    97→    protected float $requestTimeoutSeconds = self::REQUEST_TIMEOUT_SECONDS;
+    98→
+    99→    /**
+   100→     * terminate() wall-clock budget. Defaults to TERMINATE_TIMEOUT_SECONDS.
+   101→     * Tests override via reflection.
+   102→     */
+   103→    protected float $terminateTimeoutSeconds = self::TERMINATE_TIMEOUT_SECONDS;
+   104→
+   105→    /**
+   106→     * Lifecycle audit records per doctrine §4.5.6.
+   107→     * @var list<KernelLifecycleRecord>
+   108→     */
+   109→    private array $lifecycleRecords = [];
+   110→
+   111→    private KernelState $state = KernelState::Unbooted;
+   112→
+   113→    /** @var list<BootstrapperInterface> */
+   114→    private readonly array $bootstrappers;
+   115→
+   116→    /** @var callable(): ContainerInterface */
+   117→    private $containerFactory;
+   118→
+   119→    /** @var callable(): ConfigInterface */
+   120→    private $configFactory;
+   121→
+   122→    /** @var callable(): ErrorHandlerInterface */
+   123→    private $errorHandlerFactory;
+   124→
+   125→    /** @var callable(): ProviderRegistryInterface */
+   126→    private $providerRegistryFactory;
+   127→
+   128→    /** @var callable(): EventDispatcherInterface */
+   129→    private $eventDispatcherFactory;
+   130→
+   131→    /** @var callable(): DgLoggerInterface */
+   132→    private $loggerFactory;
+   133→
+   134→    /** @var callable(): RouterInterface */
+   135→    private $routerFactory;
+   136→
+   137→    // Initialized during boot():
+   138→    private ?ContainerInterface $container = null;
+   139→    private ?ConfigInterface $config = null;
+   140→    private ?ErrorHandlerInterface $errorHandler = null;
+   141→    private ?EventDispatcherInterface $eventDispatcher = null;
+   142→    private ?DgLoggerInterface $logger = null;
+   143→    private ?RouterInterface $router = null;
+   144→    private ?MiddlewarePipelineInterface $pipeline = null;
+   145→
+   146→    /**
+   147→     * @param callable(): ContainerInterface $containerFactory
+   148→     * @param callable(): ConfigInterface $configFactory
+   149→     * @param callable(): ErrorHandlerInterface $errorHandlerFactory
+   150→     * @param callable(): ProviderRegistryInterface $providerRegistryFactory
+   151→     * @param callable(): EventDispatcherInterface $eventDispatcherFactory
+   152→     * @param callable(): DgLoggerInterface $loggerFactory
+   153→     * @param callable(): RouterInterface $routerFactory
+   154→     * @param list<BootstrapperInterface> $bootstrappers
+   155→     */
+   156→    public function __construct(
+   157→        callable $containerFactory,
+   158→        callable $configFactory,
+   159→        callable $errorHandlerFactory,
+   160→        callable $providerRegistryFactory,
+   161→        callable $eventDispatcherFactory,
+   162→        callable $loggerFactory,
+   163→        callable $routerFactory,
+   164→        array $bootstrappers = [],
+   165→    ) {
+   166→        $this->containerFactory = $containerFactory;
+   167→        $this->configFactory = $configFactory;
+   168→        $this->errorHandlerFactory = $errorHandlerFactory;
+   169→        $this->providerRegistryFactory = $providerRegistryFactory;
+   170→        $this->eventDispatcherFactory = $eventDispatcherFactory;
+   171→        $this->loggerFactory = $loggerFactory;
+   172→        $this->routerFactory = $routerFactory;
+   173→        $this->bootstrappers = $bootstrappers;
+   174→
+   175→        // Per doctrine §4.5.5: bootstrapper count hard ceiling (32). Check
+   176→        // at construction time, before any boot attempt. Exceeding throws
+   177→        // BootstrapperCountExceeded (Permanent-Local — the caller passed
+   178→        // too many bootstrappers; the system is fine).
+   179→        $count = \count($bootstrappers);
+   180→        if ($count > self::BOOTSTRAPPER_COUNT_CEILING) {
+   181→            throw KernelException::bootstrapperCountExceeded($count, self::BOOTSTRAPPER_COUNT_CEILING);
+   182→        }
+   183→    }
+   184→
+   185→    public function boot(): void
+   186→    {
+   187→        match ($this->state) {
+   188→            KernelState::Unbooted => null,
+   189→            KernelState::Booting => throw KernelException::bootDuringBoot(),
+   190→            KernelState::Booted => null, // Idempotent — boot() on an already-booted kernel is a no-op.
+   191→            KernelState::Terminating => throw KernelException::terminateDuringBoot(),
+   192→            KernelState::Terminated => throw KernelException::bootAfterTerminate(),
+   193→            KernelState::Handling => throw KernelException::handleDuringBoot(),
+   194→        };
+   195→
+   196→        if ($this->state === KernelState::Booted) {
+   197→            return;
+   198→        }
+   199→
+   200→        $this->state = KernelState::Booting;
+   201→        $bootStart = \microtime(true);
+   202→        $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   203→            event: 'bootStarted',
+   204→            timestamp: $bootStart,
+   205→            state: KernelState::Booting->value,
+   206→            bootstrapperCount: \count($this->bootstrappers),
+   207→        );
+   208→
+   209→        try {
+   210→            // Initialize core dependencies via factories. Each factory returns a
+   211→            // non-null instance; we assign to local variables first so PHPStan
+   212→            // can narrow the types before storing on the nullable properties.
+   213→            //
+   214→            // Per doctrine §4.5.4 (throw-point #2): if a factory returns null
+   215→            // despite its non-null contract (e.g., via reflection-mangled
+   216→            // factory or a buggy implementation), throw PanicException.
+   217→            // Factory contracts are non-null per Kernel::__construct docblock;
+   218→            // a null return is an invariant violation — the system is broken,
+   219→            // not the caller. Worker MUST exit non-zero per §6.2.
+   220→            $container = ($this->containerFactory)();
+   221→            /** @phpstan-ignore-next-line factory contract is non-null at the type level, but runtime violation (e.g. reflection-mangled factory) is the panic case the doctrine §4.5.4 throw-point #2 guards. */
+   222→            if ($container === null) {
+   223→                throw PanicException::forNullFactoryResult('containerFactory');
+   224→            }
+   225→            $config = ($this->configFactory)();
+   226→            /** @phpstan-ignore-next-line see containerFactory note above. */
+   227→            if ($config === null) {
+   228→                throw PanicException::forNullFactoryResult('configFactory');
+   229→            }
+   230→            $logger = ($this->loggerFactory)();
+   231→            /** @phpstan-ignore-next-line see containerFactory note above. */
+   232→            if ($logger === null) {
+   233→                throw PanicException::forNullFactoryResult('loggerFactory');
+   234→            }
+   235→            $errorHandler = ($this->errorHandlerFactory)();
+   236→            /** @phpstan-ignore-next-line see containerFactory note above. */
+   237→            if ($errorHandler === null) {
+   238→                throw PanicException::forNullFactoryResult('errorHandlerFactory');
+   239→            }
+   240→            $providerRegistry = ($this->providerRegistryFactory)();
+   241→            /** @phpstan-ignore-next-line see containerFactory note above. */
+   242→            if ($providerRegistry === null) {
+   243→                throw PanicException::forNullFactoryResult('providerRegistryFactory');
+   244→            }
+   245→            $eventDispatcher = ($this->eventDispatcherFactory)();
+   246→            /** @phpstan-ignore-next-line see containerFactory note above. */
+   247→            if ($eventDispatcher === null) {
+   248→                throw PanicException::forNullFactoryResult('eventDispatcherFactory');
+   249→            }
+   250→            $router = ($this->routerFactory)();
+   251→            /** @phpstan-ignore-next-line see containerFactory note above. */
+   252→            if ($router === null) {
+   253→                throw PanicException::forNullFactoryResult('routerFactory');
+   254→            }
+   255→
+   256→            $this->container = $container;
+   257→            $this->config = $config;
+   258→            $this->logger = $logger;
+   259→            $this->errorHandler = $errorHandler;
+   260→            $this->eventDispatcher = $eventDispatcher;
+   261→            $this->router = $router;
+   262→
+   263→            // Register the error handler (forces display_errors=Off per CORE-08).
+   264→            $errorHandler->register();
+   265→
+   266→            // Register service providers into the container.
+   267→            $providerRegistry->registerAll($container);
+   268→
+   269→            // Run bootstrappers (they wire the pipeline, router, final handler, etc.).
+   270→            // Per doctrine §4.5.3: each bootstrap() call is wrapped in a
+   271→            // per-bootstrapper wall-clock budget. Exceeding the budget throws
+   272→            // BootstrapperTimeoutExceeded (KernelException) which the catch
+   273→            // block below transitions to Terminated + releaseReferences + rethrow.
+   274→            // The bootstrapper chain is not retryable (P4) — the worker supervisor
+   275→            // MUST restart the process on boot failure, not retry boot() on the
+   276→            // same Kernel instance.
+   277→            //
+   278→            // Note: microtime() before/after only catches bootstrappers that
+   279→            // COMPLETE in > $bootstrapperTimeoutSeconds seconds (slow but not
+   280→            // infinite). Infinite loops or forever-hanging I/O are NOT caught
+   281→            // by this mechanism — production deployments need a process-level
+   282→            // watchdog (e.g., systemd TimeoutStartSec) for those. The doctrine
+   283→            // §4.5.7 chaos scenario 3 (sleep 6s) is what this guard catches.
+   284→            foreach ($this->bootstrappers as $bootstrapper) {
+   285→                $start = \microtime(true);
+   286→                $bootstrapper->bootstrap($this);
+   287→                $elapsed = \microtime(true) - $start;
+   288→                if ($elapsed > $this->bootstrapperTimeoutSeconds) {
+   289→                    throw KernelException::bootstrapperTimeoutExceeded(
+   290→                        $bootstrapper::class,
+   291→                        $elapsed,
+   292→                        $this->bootstrapperTimeoutSeconds,
+   293→                    );
+   294→                }
+   295→            }
+   296→
+   297→            // Boot service providers (post-bootstrapper initialization).
+   298→            $providerRegistry->bootAll($container);
+   299→
+   300→            // Per doctrine §4.5.5: boot aggregate wall-clock budget (30s outer
+   301→            // watchdog). Check BEFORE state = Booted so the catch block below
+   302→            // handles the transition to Terminated + releaseReferences + rethrow.
+   303→            // This catches the case where no individual bootstrapper exceeded
+   304→            // 5s but the aggregate exceeds 30s (e.g., 7 bootstrappers × 4.9s).
+   305→            $bootElapsed = \microtime(true) - $bootStart;
+   306→            if ($bootElapsed > $this->bootAggregateTimeoutSeconds) {
+   307→                throw KernelException::bootAggregateTimeoutExceeded(
+   308→                    $bootElapsed,
+   309→                    $this->bootAggregateTimeoutSeconds,
+   310→                );
+   311→            }
+   312→
+   313→            $this->state = KernelState::Booted;
+   314→            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   315→                event: 'bootCompleted',
+   316→                timestamp: \microtime(true),
+   317→                state: KernelState::Booted->value,
+   318→                elapsedMs: (\microtime(true) - $bootStart) * 1000,
+   319→                bootstrapperCount: \count($this->bootstrappers),
+   320→            );
+   321→
+   322→            // Dispatch BootEvent.
+   323→            $eventDispatcher->dispatch(new BootEvent($this));
+   324→        } catch (\Throwable $e) {
+   325→            // Boot failure: transition to Terminated so the Kernel is unusable
+   326→            // and can be safely discarded. Without this, the Kernel would be
+   327→            // stuck in Booting forever — no handle(), no terminate(), no recovery.
+   328→            //
+   329→            // Per doctrine §4.5.4: if the caught exception is itself a
+   330→            // PanicException (invariant violation — system is broken), skip
+   331→            // releaseReferences() and rethrow immediately. releaseReferences()
+   332→            // could itself throw a secondary PanicException (if a property is
+   333→            // unexpectedly already null), which would mask the original panic
+   334→            // and confuse the operator. The state transition is still done
+   335→            // because it's a simple assignment that can't throw.
+   336→            $this->state = KernelState::Terminated;
+   337→            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   338→                event: 'bootFailed',
+   339→                timestamp: \microtime(true),
+   340→                state: KernelState::Terminated->value,
+   341→                elapsedMs: (\microtime(true) - $bootStart) * 1000,
+   342→                throwableClass: $e::class,
+   343→                throwableMessage: $e->getMessage(),
+   344→            );
+   345→            if (!$e instanceof PanicException) {
+   346→                $this->releaseReferences();
+   347→            }
+   348→            throw $e;
+   349→        }
+   350→    }
+   351→
+   352→    public function handle(ServerRequestInterface $request): ResponseInterface
+   353→    {
+   354→        match ($this->state) {
+   355→            KernelState::Booted => null,
+   356→            KernelState::Unbooted => throw KernelException::handleBeforeBoot(),
+   357→            KernelState::Booting => throw KernelException::handleDuringBoot(),
+   358→            KernelState::Handling => throw KernelException::handleDuringHandling(),
+   359→            KernelState::Terminating => throw KernelException::terminateDuringBoot(),
+   360→            KernelState::Terminated => throw KernelException::handleAfterTerminate(),
+   361→        };
+   362→
+   363→        // Resolve services BEFORE transitioning state — if either is null,
+   364→        // throw before $this->state = Handling (P2: state-recovery gap fix).
+   365→        $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
+   366→        // Per doctrine §4.5.4 (throw-point #3): if $this->pipeline is null
+   367→        // despite assertBooted() passing, that's an invariant violation —
+   368→        // HttpBootstrapper (or equivalent) failed to call setPipeline()
+   369→        // during boot. Throw PanicException (class Panic per §2) — the
+   370→        // system is broken, not the caller. Previously threw \LogicException
+   371→        // which the catch block in boot() would treat as Permanent-Local
+   372→        // (caller error) — wrong classification.
+   373→        $pipeline = $this->pipeline ?? throw PanicException::forNullPipelineInHandlingState();
+   374→
+   375→        $this->state = KernelState::Handling;
+   376→        $handleStart = \microtime(true);
+   377→        $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   378→            event: 'handleStarted',
+   379→            timestamp: $handleStart,
+   380→            state: KernelState::Handling->value,
+   381→            requestMethod: $request->getMethod(),
+   382→            requestUriHash: \hash('sha256', (string) $request->getUri()),
+   383→        );
+   384→
+   385→        try {
+   386→            // Dispatch RequestReceivedEvent (listeners may enrich the request).
+   387→            $requestEvent = new RequestReceivedEvent($this, $request);
+   388→            $eventDispatcher->dispatch($requestEvent);
+   389→            $request = $requestEvent->request;
+   390→
+   391→            // Run the middleware pipeline.
+   392→            $response = $pipeline->handle($request);
+   393→
+   394→            // Dispatch ResponseReadyEvent (listeners may transform the response).
+   395→            $responseEvent = new ResponseReadyEvent($this, $request, $response);
+   396→            $eventDispatcher->dispatch($responseEvent);
+   397→            $response = $responseEvent->response;
+   398→
+   399→            return $response;
+   400→        } finally {
+   401→            // Per doctrine §4.5.4 (throw-point #4): state-recovery gap. If
+   402→            // $this->state was mangled during the request (e.g., a parallel
+   403→            // Fiber called terminate() and transitioned to Terminating),
+   404→            // unconditionally setting it back to Booted would HIDE the
+   405→            // invariant violation. Detect it: if state isn't Handling when
+   406→            // we get here, throw PanicException instead of silently
+   407→            // overwriting it.
+   408→            /** @phpstan-ignore-next-line PHPStan infers $this->state is Handling (set above), but runtime mutation by a parallel Fiber is exactly the panic case the doctrine §4.5.4 throw-point #4 guards. */
+   409→            if ($this->state !== KernelState::Handling) {
+   410→                throw PanicException::forStateRecoveryGap(
+   411→                    KernelState::Handling->value,
+   412→                    $this->state->value,
+   413→                );
+   414→            }
+   415→            $this->state = KernelState::Booted;
+   416→            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   417→                event: 'handleCompleted',
+   418→                timestamp: \microtime(true),
+   419→                state: KernelState::Booted->value,
+   420→                elapsedMs: (\microtime(true) - $handleStart) * 1000,
+   421→            );
+   422→
+   423→            // Per doctrine §4.5.5: handle() wall-clock budget (30s). Check
+   424→            // AFTER state = Booted so the kernel is in a usable state when
+   425→            // the throw propagates. The caller (worker loop) catches this
+   426→            // and returns 503 to the client.
+   427→            $handleElapsed = \microtime(true) - $handleStart;
+   428→            if ($handleElapsed > $this->requestTimeoutSeconds) {
+   429→                throw KernelException::requestTimeoutExceeded(
+   430→                    $handleElapsed,
+   431→                    $this->requestTimeoutSeconds,
+   432→                );
+   433→            }
+   434→        }
+   435→    }
+   436→
+   437→    public function terminate(): void
+   438→    {
+   439→        match ($this->state) {
+   440→            KernelState::Booted => null,
+   441→            KernelState::Unbooted => throw KernelException::terminateBeforeBoot(),
+   442→            KernelState::Booting => throw KernelException::terminateDuringBoot(),
+   443→            KernelState::Handling => throw KernelException::terminateDuringHandling(),
+   444→            KernelState::Terminating => throw KernelException::doubleTerminate(),
+   445→            KernelState::Terminated => throw KernelException::doubleTerminate(),
+   446→        };
+   447→
+   448→        $this->state = KernelState::Terminating;
+   449→        $terminateStart = \microtime(true);
+   450→        $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   451→            event: 'terminateStarted',
+   452→            timestamp: $terminateStart,
+   453→            state: KernelState::Terminating->value,
+   454→        );
+   455→
+   456→        try {
+   457→            $eventDispatcher = $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
+   458→            $errorHandler = $this->errorHandler ?? throw $this->notInitialized('error handler');
+   459→
+   460→            // Dispatch TerminateEvent (listeners flush logs, close connections, etc.).
+   461→            $eventDispatcher->dispatch(new TerminateEvent($this));
+   462→
+   463→            // Unregister the error handler.
+   464→            $errorHandler->unregister();
+   465→        } finally {
+   466→            // Release all service references so PHP's GC can reclaim the entire
+   467→            // boot graph. This is critical for long-lived workers that re-boot
+   468→            // the Kernel (e.g., during a deploy). Without this, the old Kernel's
+   469→            // container, router, pipeline, logger, etc. leak until process exit.
+   470→            //
+   471→            // Order: releaseReferences() runs FIRST (while state is still
+   472→            // Terminating) so the invariant check in releaseReferences()
+   473→            // can detect reflection-mangled properties per doctrine §4.5.4
+   474→            // throw-point #1. State transitions to Terminated AFTER — this
+   475→            // distinguishes terminate()'s release path from boot()'s catch
+   476→            // path (where state is already Terminated when releaseReferences
+   477→            // runs, so the check doesn't fire — boot failure can legitimately
+   478→            // leave some properties null).
+   479→            $this->releaseReferences();
+   480→            $this->state = KernelState::Terminated;
+   481→            $this->lifecycleRecords[] = new KernelLifecycleRecord(
+   482→                event: 'terminateCompleted',
+   483→                timestamp: \microtime(true),
+   484→                state: KernelState::Terminated->value,
+   485→                elapsedMs: (\microtime(true) - $terminateStart) * 1000,
+   486→            );
+   487→
+   488→            // Per doctrine §4.5.5: terminate() wall-clock budget (5s). Check
+   489→            // AFTER releaseReferences + state = Terminated so cleanup runs
+   490→            // regardless. If exceeded, throw TerminateTimeoutExceeded
+   491→            // (Permanent-Local) — the kernel is already Terminated, the
+   492→            // throw propagates to the caller.
+   493→            $terminateElapsed = \microtime(true) - $terminateStart;
+   494→            if ($terminateElapsed > $this->terminateTimeoutSeconds) {
+   495→                throw KernelException::terminateTimeoutExceeded(
+   496→                    $terminateElapsed,
+   497→                    $this->terminateTimeoutSeconds,
+   498→                );
+   499→            }
+   500→        }
+   501→    }
+   502→
+   503→    public function getState(): KernelState
+   504→    {
+   505→        return $this->state;
+   506→    }
+   507→
+   508→    /**
+   509→     * Returns all lifecycle audit records (doctrine §4.5.6).
+   510→     * @return list<KernelLifecycleRecord>
+   511→     */
+   512→    public function getLifecycleRecords(): array
+   513→    {
+   514→        return $this->lifecycleRecords;
+   515→    }
+   516→
+   517→    public function getContainer(): ContainerInterface
+   518→    {
+   519→        $this->assertBooted();
+   520→        return $this->container ?? throw $this->notInitialized('container');
+   521→    }
+   522→
+   523→    public function getRouter(): RouterInterface
+   524→    {
+   525→        $this->assertBooted();
+   526→        return $this->router ?? throw $this->notInitialized('router');
+   527→    }
+   528→
+   529→    public function getConfig(): ConfigInterface
+   530→    {
+   531→        $this->assertBooted();
+   532→        return $this->config ?? throw $this->notInitialized('config');
+   533→    }
+   534→
+   535→    public function getLogger(): DgLoggerInterface
+   536→    {
+   537→        $this->assertBooted();
+   538→        return $this->logger ?? throw $this->notInitialized('logger');
+   539→    }
+   540→
+   541→    public function getErrorHandler(): ErrorHandlerInterface
+   542→    {
+   543→        $this->assertBooted();
+   544→        return $this->errorHandler ?? throw $this->notInitialized('error handler');
+   545→    }
+   546→
+   547→    /**
+   548→     * The middleware pipeline (available after boot()).
+   549→     *
+   550→     * Exposed for bootstrappers that need to pipe() middleware during boot.
+   551→     *
+   552→     * @throws KernelException If called before boot().
+   553→     */
+   554→    public function getPipeline(): MiddlewarePipelineInterface
+   555→    {
+   556→        $this->assertBooted();
+   557→        return $this->pipeline ?? throw new \LogicException(
+   558→            'Middleware pipeline is not configured. Register the HttpBootstrapper '
+   559→            . '(or an equivalent bootstrapper that calls setPipeline()) during kernel construction.',
+   560→        );
+   561→    }
+   562→
+   563→    /**
+   564→     * Set the middleware pipeline. Called by HttpBootstrapper (or equivalent)
+   565→     * during boot() to wire the pipeline with the container + router.
+   566→     *
+   567→     * Internal method — NOT part of KernelInterface. Only callable during
+   568→     * the Booting state (inside a bootstrapper).
+   569→     *
+   570→     * @internal
+   571→     */
+   572→    public function setPipeline(MiddlewarePipelineInterface $pipeline): void
+   573→    {
+   574→        if ($this->state !== KernelState::Booting) {
+   575→            throw new KernelException(
+   576→                'setPipeline() can only be called during boot() (inside a bootstrapper). '
+   577→                . 'Current state: ' . $this->state->value,
+   578→            );
+   579→        }
+   580→        $this->pipeline = $pipeline;
+   581→    }
+   582→
+   583→    /**
+   584→     * The event dispatcher (available after boot()).
+   585→     *
+   586→     * Exposed for bootstrappers that need to register listeners during boot.
+   587→     *
+   588→     * @throws KernelException If called before boot().
+   589→     */
+   590→    public function getEventDispatcher(): EventDispatcherInterface
+   591→    {
+   592→        $this->assertBooted();
+   593→        return $this->eventDispatcher ?? throw $this->notInitialized('event dispatcher');
+   594→    }
+   595→
+   596→    private function assertBooted(): void
+   597→    {
+   598→        // Allow access during Booting (bootstrappers need it) and Booted/Handling.
+   599→        // Reject Unbooted (nothing initialized yet), Terminating (in teardown),
+   600→        // and Terminated (torn down).
+   601→        if ($this->state === KernelState::Unbooted) {
+   602→            // Use a service-access-specific message rather than the misleading
+   603→            // "Cannot handle() before boot()" — the caller never called handle()
+   604→            // here, they called getContainer()/getRouter()/getLogger()/etc.
+   605→            throw KernelException::accessBeforeBoot();
+   606→        }
+   607→        if ($this->state === KernelState::Terminating) {
+   608→            throw new KernelException(
+   609→                'Cannot access kernel services during terminate(). '
+   610→                . 'Listeners should not resolve services from the kernel.'
+   611→            );
+   612→        }
+   613→        if ($this->state === KernelState::Terminated) {
+   614→            throw KernelException::handleAfterTerminate();
+   615→        }
+   616→    }
+   617→
+   618→    /**
+   619→     * Helper for accessor methods — thrown when a nullable property is accessed
+   620→     * before it's been initialized. This should never happen in practice
+   621→     * (assertBooted() guards the entry), but PHPStan needs proof that the
+   622→     * property is non-null.
+   623→     */
+   624→    private function notInitialized(string $property): \LogicException
+   625→    {
+   626→        return new \LogicException(
+   627→            "Kernel {$property} is not initialized. This should not happen — "
+   628→            . 'assertBooted() should have prevented this call.',
+   629→        );
+   630→    }
+   631→
+   632→    /**
+   633→     * Release all service references so PHP's GC can reclaim the entire
+   634→     * boot graph (container, router, pipeline, logger, etc.).
+   635→     *
+   636→     * Called from terminate() and from boot()'s catch block. The factory
+   637→     * closures are NOT nulled — they're cheap and needed if the Kernel is
+   638→     * re-booted (though that's currently prevented by the state machine).
+   639→     */
+   640→    private function releaseReferences(): void
+   641→    {
+   642→        // Per doctrine §4.5.4 (throw-point #1): if a property is unexpectedly
+   643→        // already null when releaseReferences() tries to nullify it, that's
+   644→        // an invariant violation — the property should be set in Booted/
+   645→        // Handling/Terminating states (releaseReferences is called from
+   646→        // boot()'s catch block and from terminate()). A null property in
+   647→        // those states means external code mangled the kernel's properties
+   648→        // via reflection, OR releaseReferences was called twice (which the
+   649→        // state machine prevents). Either way: panic.
+   650→        //
+   651→        // Skip the check for $this->pipeline — it's set conditionally
+   652→        // (only by HttpBootstrapper) so it may legitimately be null if
+   653→        // boot failed before the bootstrapper ran.
+   654→        // Per doctrine §4.5.4 (throw-point #1): if a property is unexpectedly
+   655→        // already null when releaseReferences() tries to nullify it, that's
+   656→        // an invariant violation. Check fires for Booted/Handling/Terminating
+   657→        // states (where properties should be set). Terminated is excluded
+   658→        // because releaseReferences() has already nulled them on the first
+   659→        // call (terminate()'s finally calls releaseReferences() BEFORE
+   660→        // transitioning state to Terminated, so state is Terminating when
+   661→        // the check runs). boot()'s catch block sets state to Terminated
+   662→        // BEFORE calling releaseReferences() — so the check doesn't fire
+   663→        // for boot-failure paths (where some properties might legitimately
+   664→        // be null because boot failed mid-way).
+   665→        if ($this->state === KernelState::Booted
+   666→            || $this->state === KernelState::Handling
+   667→            || $this->state === KernelState::Terminating
+   668→        ) {
+   669→            foreach (['container', 'config', 'logger', 'errorHandler', 'eventDispatcher', 'router'] as $prop) {
+   670→                if ($this->$prop === null) {
+   671→                    throw PanicException::forUnexpectedNullProperty($prop, $this->state->value);
+   672→                }
+   673→            }
+   674→        }
+   675→
+   676→        $this->container = null;
+   677→        $this->config = null;
+   678→        $this->logger = null;
+   679→        $this->errorHandler = null;
+   680→        $this->eventDispatcher = null;
+   681→        $this->router = null;
+   682→        $this->pipeline = null;
+   683→    }
+   684→}
+   685→
