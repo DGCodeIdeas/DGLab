@@ -136,19 +136,115 @@ interface ContainerInterface extends PsrContainerInterface
     public function singleton(string $id, mixed $concrete = null): void;
 
     /**
-     * Register a Pulse-scoped binding — one instance per Fiber (per Pulse).
+     * Bind a concrete value to the current Fiber's Pulse scope (Shape C).
      *
-     * When a Pulse resolves this service, it receives a fresh instance that is
-     * cached for the duration of that Pulse only. A different Pulse (even in the
-     * same worker, even concurrently) receives its own independent instance.
+     * **Semantic contract (ratified per ADR-021 Amendment 2 + tech-lead decision 2026-10-01):**
      *
-     * This is the correct scope for tenant-scoped services (repositories, unit-
-     * of-work, request context) under the Fiber-based cooperative runtime (OD-07).
+     * `pulse($abstract, $value)` is a **request-time, Fiber-local value-binding operation**.
+     * It is NOT a boot-time factory registration. The `$value` IS the instance —
+     * `make($abstract)` returns this value directly for the current Fiber.
+     *
+     * The binding and its resulting instance are scoped to the current Pulse/Fiber
+     * and must NEVER become visible to another Fiber.
+     *
+     * **State-transition table:**
+     *
+     * | Operation       | Current Fiber pulse state | Cached pulse instance | Resolution result |
+     * |-----------------|---------------------------|-----------------------|-------------------|
+     * | `pulse(A, x)`   | A → x (set)               | (none or invalidated) | —                 |
+     * | `make(A)`       | A → x                     | x (cached)            | x                 |
+     * | `pulse(A, y)`   | A → y (overwrite)         | (invalidated)         | —                 |
+     * | `make(A)`       | A → y                     | y (cached)            | y                 |
+     *
+     * A new `pulse()` call for an already-resolved ID **invalidates the cached
+     * pulse instance for that ID in the CURRENT Fiber only** (not other Fibers).
+     * The next `make()` returns the new value.
+     *
+     * **make() precedence (Shape C):**
+     *
+     * 1. Current Fiber's pulse definitions → if defined, the pulse value IS the instance
+     * 2. Current Fiber's pulse instances cache → if already resolved, return cached
+     * 3. Worker-scoped instances cache → singletons (shared across Fibers)
+     * 4. Global definitions → resolve and cache (per-Fiber for transient, global for singleton)
+     * 5. Not found → throw NotFoundException
+     *
+     * Pulse-scoped bindings take PRECEDENCE over singletons for the current Fiber.
+     * A `pulse(A, value)` shadows a `singleton(A, factory)` for the current Fiber.
+     *
+     * **Edge cases (12 — all explicitly defined):**
+     *
+     * 1. **pulse() outside a Fiber:** Throws `ContainerException`. `pulse()` requires
+     *    a current Fiber context. If called outside a Fiber (e.g., during boot), there
+     *    is no Pulse scope to bind to. Use `bind()` or `singleton()` for boot-time
+     *    registration.
+     *
+     * 2. **make() before pulse():** If A is not in the current Fiber's pulse scope,
+     *    `make(A)` falls through to steps 2-5 (pulse cache → singleton → definition →
+     *    NotFoundException). A pulse-scoped binding is NOT required to exist for `make()`
+     *    to succeed — it only takes precedence when it exists.
+     *
+     * 3. **Repeated pulse() calls:** `pulse(A, x)` then `pulse(A, y)` → the second call
+     *    overwrites the first. The pulse scope has A → y. If a cached instance exists,
+     *    it is invalidated (current Fiber only).
+     *
+     * 4. **pulse() after resolution/caching:** `pulse(A, y)` after `make(A)` returned $x →
+     *    invalidates $x in the current Fiber. Next `make(A)` returns $y. This is because
+     *    `pulse()` is the authoritative source of truth for the current Fiber's value.
+     *
+     * 5. **singleton() interaction:** `singleton(A, factory)` is worker-scoped (global).
+     *    `pulse(A, value)` is Fiber-scoped. `make(A)` checks pulse scope FIRST — so a
+     *    pulse-scoped binding shadows a singleton for the current Fiber. This is useful
+     *    for testing (mock a singleton per-request) and for request-scoped overrides
+     *    (e.g., RequestContext per-Pulse).
+     *
+     * 6. **Nested Fibers:** A child Fiber inherits the global container state (singletons,
+     *    frozen bindings, compiler passes, container configuration) but has its OWN pulse
+     *    scope. The parent's pulse bindings are NOT visible to the child. Clean isolation.
+     *
+     * 7. **Fiber termination and GC:** When a Fiber terminates, its entries in the
+     *    `WeakMap<Fiber, ...>` are eligible for GC. The pulse scope and cached instances
+     *    are automatically evicted. No manual cleanup needed. This is the structural
+     *    guarantee of Fiber isolation.
+     *
+     * 8. **Fiber reuse:** If a Fiber is reused (started again after termination), it gets
+     *    a fresh pulse scope. Previous pulse bindings are gone (GC'd). The Fiber must
+     *    `pulse()` again to establish new bindings.
+     *
+     * 9. **Child Fiber inheritance/isolation:** Child Fiber inherits: global singletons,
+     *    frozen bindings, compiler passes, container configuration. Child Fiber does NOT
+     *    inherit: parent's pulse bindings, parent's pulse instances, parent's resolution
+     *    stack. Clean isolation invariant: **No pulse-local value may cross a Fiber
+     *    boundary unless explicitly passed through an application-level mechanism.**
+     *
+     * 10. **make() precedence:** See the 5-step precedence above. Pulse definitions (step 1)
+     *     take precedence over everything else for the current Fiber.
+     *
+     * 11. **New pulse invalidates cached instance:** YES. `pulse(A, y)` after `make(A)`
+     *     returned $x → invalidates $x in the CURRENT Fiber only. Next `make(A)` returns $y.
+     *     This is because `pulse()` is the authoritative source of truth for the current
+     *     Fiber's value.
+     *
+     * 12. **Pulse-scoped object resolving a singleton:** A pulse-scoped object CAN resolve
+     *     singletons. For example, `pulse(Repository::class, $repo)` where `$repo` was
+     *     constructed with `make(DBAL::class)` — the DBAL is a singleton (worker-scoped),
+     *     and the pulse-scoped Repository can use it. Singletons are global; pulse-scoped
+     *     objects can reference them. The reverse is NOT safe: a singleton should NOT
+     *     reference a pulse-scoped object (the singleton outlives the Pulse).
+     *
+     * **Implementation note (S-003/S-004 remediation direction):**
+     *
+     * The current implementation writes `pulse()` to global `$definitions[$id]` instead
+     * of a per-Fiber `WeakMap $pulseDefinitions`. The fix: add `private \WeakMap
+     * $pulseDefinitions` and redirect `pulse()`/`make()` to consult it per-Fiber. The
+     * existing `$pulseInstances` WeakMap (for cached instances) is already correct —
+     * only the definitions table is missing the per-Fiber scoping.
      *
      * @param string $id       The service identifier.
-     * @param mixed  $concrete The concrete resolver (same types as {\@see bind()}).
+     * @param mixed  $concrete The concrete VALUE to bind to the current Fiber's Pulse scope.
+     *                          This IS the instance returned by `make($id)` — not a factory.
      *
      * @throws \LogicException If the container has already been compiled.
+     * @throws \SovereignStack\Core\Container\ContainerException If called outside a Fiber context.
      */
     public function pulse(string $id, mixed $concrete = null): void;
 
