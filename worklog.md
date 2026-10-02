@@ -1425,3 +1425,65 @@ Stage Summary:
   ⏳ Hub build order (Phase 3)
   ⏳ DAG generators
   ⏳ SDLC-AGRD v4
+
+---
+Task ID: SHORTCOMINGS-AUDIT-76
+Agent: General-purpose (comprehensive shortcomings audit)
+Task: Per tech-lead halt order: "before we move to the next MUWV, Lap... we must analyze and erase all shortcomings, because an incomplete framework with no shortcomings is better than a production ready framework with fatal shortcomings." Audit repo at main (ce27388) and identify EVERY shortcoming, categorized by severity. Do NOT fix — just identify.
+
+Work Log:
+- Read worklog.md (1427 lines) for context — focused on recent ADR-021, INDEX reconciliation, Hub DAGs, and the 7 governance decisions entries.
+- Static analysis only (PHP not installed in sandbox — kernel failure mode inferred from code reading).
+- Inspected 41 files across Architecture/, packages/, scripts/, .github/workflows/, anvil/app/php/.
+- Wrote comprehensive report to /home/z/my-project/download/SHORTCOMINGS-AUDIT.md (813 lines, 47 shortcomings).
+
+Findings summary:
+- **Total: 47 shortcomings** — FATAL=4, HIGH=25, MEDIUM=14, LOW=4
+- **Categories:** CI=4, Doc-Drift=19, Latent-Defect=3, Governance=7, Coherence=14
+
+FATAL (4 — must fix before anything else):
+1. S-001: architecture-lint fails on HUB-32 references (5 files: ADR-021, INDEX.md, HUB-DECLARED-DAG.md, CORE-CAPABILITY-DAG.md, CORE-BUILD-ORDER.md) — HUB-32 not in lint validIds range(1,30)+HUB-31.
+2. S-002: architecture-lint fails on ESPOKE-19 references (3 files: ADR-021, INDEX.md, CORE-CAPABILITY-DAG.md) — ESPOKE-19 not in lint validIds range(1,18).
+3. S-003: kernel PHPUnit WorkerContaminationTest::testConcurrentFibersObserveIndependentPulseState fails — root cause: Container::pulse() mutates global $definitions, not per-Fiber state. Fiber B's pulse() wipes Fiber A's cached pulse-scoped instance via invalidatePulseInstances(). When Fiber A resumes and calls make(), it gets Fiber B's instance.
+4. S-004: kernel PHPUnit WorkerContaminationTest::testCompletedFiberStateIsNotVisibleToNewFiber fails — same root cause: Fiber A's pulse() sets global definition to $contextA; after unset($fiberA), the definition persists; Fiber B's make() returns $contextA (not null).
+
+HIGH (25 — should fix before next lap):
+- README.md drift (5): PHP 8.3→8.4, "8 packages"→12, "20 ADRs"→21, missing ADR-021/two-DAG/HUB-32/ESPOKE-19, PHPUnit 10.5→11.0
+- DEPLOY-01.md drift (2): PHP-FPM+Nginx+Supervisor should be FrankenPHP per ADR-017; no mention of Anvil v3 runtime substrate
+- preload.php broken (2): references 9 nonexistent classes (Fiber\Pulse, Fiber\Scheduler, Http\Kernel, Contracts\PulseInterface, etc.); path resolution broken (won't load even existing Request/Response classes)
+- INDEX.md drift (6): §1 line 45 Hub count contradiction (29+1pending=30 should be 29 active); §1 line 60 says CORE-02 is stub (contradicts §2.1 which says "Implemented + tested"); §1 missing 5 ADR entries (ADR-016..020); §5.2 old Mermaid not collapsed; §5.3 11-step not collapsed; §4 vs §5.2 criticality inconsistency (different 10-Hub subsets)
+- Latent defects (3): C04↔C05 PSR-4 namespace collision still present in both composer.json; C17 forward-declaration stub still exists; ADR-021 §21 line 296 documents "H05/H07 Rate Limiter duplication" but HUB-05 is RBAC (no rate limiter)
+- Governance (7): All 7 Hub DAG governance decisions still unresolved (Gaps 1, 2, 3, 5, 7, 8, 9 + HUB-32 pending publication)
+
+MEDIUM (14 — should fix soon):
+- README (3): stale build order table, wrong ext list, wrong "8 of 8" Milestone 0 claim
+- Old baseline script (1): generate-architecture-baseline.py v1 (broken per SDLC-AUDIT-1) + .php legacy version still exist
+- Coherence (10): HUB-VERIFIED/DECLARED-DAG reference nonexistent CORE-DEPENDENCY-DAG.md (renamed to CORE-VERIFIED-DAG.md per PR #287); CORE-VERIFIED-DAG.md footer says "End of CORE-DEPENDENCY-DAG.md"; CORE-CAPABILITY-DAG references old filename (3 occurrences); CORE-BUILD-ORDER references old filename (3 occurrences); Core DAGs use pre-Amendment-2 edge model (OPTIONAL as edge_type, not requiredness); Core DAGs have 11-field per-blueprint master table vs Hub DAGs per-edge columns (structural asymmetry); Hub missing CAPABILITY-DAG + BUILD-ORDER; CORE-CAPABILITY-DAG "Status: DRAFT" banner stale (file is committed); HUB-DECLARED-DAG lists Hub nodes with RUNTIME-03/04 cross-tier edges; lint script PREFIXES list excludes RUNTIME
+
+LOW (4 — cleanup backlog):
+- ADR-021 line 344 historical mention echoes old filename; INDEX.md §1 line 50 ambiguous "10 Accepted"; INDEX.md §1 line 56 "1 Proposed" but actually 3 Proposed; INCONSISTENCIES.md #8 still flagged critical though CORE-02 is implemented
+
+Top critical finding:
+The 4 FATAL CI blockers are pure mechanical violations:
+- (S-001, S-002) The lint script's validIds was never extended for HUB-32 and ESPOKE-19 when ADR-021 ratified them. Fix = extend validIds + author the missing blueprint files.
+- (S-003, S-004) Container::pulse() is architecturally wrong — it stores pulse-scoped definitions globally, not per-Fiber. The 2 failing WorkerContaminationTests correctly identify this as a real ADR-017 violation. Fix = make pulse() per-Fiber (WeakMap<Fiber, array<string, ServiceDefinition>>).
+
+Recommended remediation order:
+1. Author HUB-32.md + ESPOKE-19.md + extend lint validIds (resolves S-001, S-002, S-033)
+2. Fix Container::pulse() to be per-Fiber (resolves S-003, S-004)
+3. Update README.md (PHP version, package count, ADR count, ADR-021 mention) — single PR
+4. Reconcile INDEX.md (Hub count, CORE-02 status, missing ADR rows, collapse §5.2/§5.3, reconcile §4 vs §5.2) — single PR
+5. Rewrite DEPLOY-01.md for FrankenPHP + Anvil v3 — single PR
+6. Fix preload.php — single PR
+7. Resolve 7 governance decisions — multi-PR effort (each Gap needs tech-lead decision)
+8. Latent defects: C04↔C05 → future ADR; C17 stub → wait for CORE-17 implementation; ADR-021 §21 stale claim → single-line edit; old baseline scripts → cleanup PR
+9. Coherence: find-replace CORE-DEPENDENCY-DAG.md → CORE-VERIFIED-DAG.md (single PR); update Core DAGs to Amendment 2 model (single PR); align Core/Hub DAG schemas (single PR); author Hub CAPABILITY+BUILD-ORDER (after #7); add RUNTIME to lint PREFIXES (single PR)
+10. LOW items — opportunistic cleanup
+
+Stage Summary:
+- Comprehensive shortcomings audit complete: 47 shortcomings identified across 5 categories (CI/Doc-Drift/Latent-Defect/Governance/Coherence) and 4 severity levels (FATAL/HIGH/MEDIUM/LOW).
+- Full report saved to /home/z/my-project/download/SHORTCOMINGS-AUDIT.md (813 lines).
+- Tech lead has a complete triage list to drive the "erase all shortcomings" mandate.
+- Top 4 FATAL items block CI and block next-lap work. They should be fixed first as 4 focused PRs (1 PR per FATAL, per established PR pattern #287-#292).
+- The remaining 43 items can be batched by category into ~10-15 focused PRs.
+- No code was modified during this audit (per task constraint: "Do NOT fix anything — just identify and categorize by severity").
