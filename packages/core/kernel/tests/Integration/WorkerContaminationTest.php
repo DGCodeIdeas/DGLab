@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use SovereignStack\Core\Container\Container;
 use SovereignStack\Core\Kernel\RequestContext;
 use Fiber;
+use stdClass;
 use Throwable;
 
 /**
@@ -364,36 +365,342 @@ final class WorkerContaminationTest extends TestCase
     }
 
     /**
-     * Helper: create a Container wired with a pulse-scoped RequestContext binding.
+     * Test 6: Fiber termination MUST clear that Fiber's pulse scope — a
+     * subsequent Fiber's make() MUST NOT observe the terminated Fiber's value,
+     * EVEN IF the terminated Fiber object has not been garbage-collected yet.
      *
-     * Per SPEC §42: "The existing container model already provides the mechanism:
-     *   WeakMap<Fiber, ...> → pulse() → request/Fiber-scoped instances"
+     * Per CORE-02 edge case #7: "Fiber termination and GC: When a Fiber
+     * terminates, its entries in the WeakMap<Fiber, ...> are eligible for GC."
+     * Per CORE-02 edge case #9: child Fiber does NOT inherit parent's pulse
+     * bindings — isolation goes both directions.
      *
-     * The pulse() binding here is a stub that lets the Container return whatever
-     * was last registered via pulse() on the current Fiber. In production, this
-     * would be wired by the ApplicationFactory (per SPEC §44) — but for testing,
-     * a direct pulse() call is sufficient to verify the isolation invariant.
+     * The structural guarantee is the WeakMap<Fiber, ...> keying: a new Fiber
+     * has a distinct key, so it queries a DIFFERENT bucket from the terminated
+     * Fiber's. The new Fiber's bucket is empty (it never called pulse()), so
+     * make() falls through to autowire which throws NotFoundException for
+     * RequestContext's required constructor params.
+     *
+     * This test is stronger than testCompletedFiberStateIsNotVisibleToNewFiber
+     * (Test 4): it does NOT call unset($fiberA) before checking. The isolation
+     * guarantee does NOT depend on PHP's GC — it depends on the WeakMap keying.
      */
-    private function createContainerWithPulseRequestContext(): Container
+    public function testFiberTerminationClearsPulseScope(): void
+    {
+        $container = $this->createContainerWithPulseRequestContext();
+
+        // Fiber A: pulses a value, then completes normally. NOTE: $fiberA is
+        // NOT released here (no unset) — its WeakMap entry is technically
+        // still alive. The point of this test is that isolation does NOT
+        // depend on GC timing.
+        $fiberA = new Fiber(function () use ($container): void {
+            $contextA = new RequestContext(
+                requestId: self::REQUEST_ID_A,
+                traceId: self::TRACE_ID_A,
+                tenantId: self::TENANT_A,
+                startedAt: new DateTimeImmutable(),
+            );
+            $container->pulse(RequestContext::class, $contextA);
+            // Fiber A completes — control returns to caller.
+        });
+        $fiberA->start();
+
+        // New Fiber B: must NOT see A's pulse-scoped value (B has its own
+        // WeakMap bucket, which is empty — make() falls through to autowire
+        // which throws NotFoundException for RequestContext's required params).
+        $contextFromRequestB = null;
+        $fiberB = new Fiber(function () use ($container, &$contextFromRequestB): void {
+            try {
+                $contextFromRequestB = $container->make(RequestContext::class);
+            } catch (\SovereignStack\Core\Container\NotFoundException $e) {
+                $contextFromRequestB = null;
+            }
+        });
+        $fiberB->start();
+
+        self::assertNull($contextFromRequestB,
+            'Fiber B MUST NOT observe Fiber A\'s pulse-scoped value, even ' .
+            'before A is garbage-collected (per-Fiber WeakMap bucketing is ' .
+            'the structural guarantee of pulse isolation)');
+    }
+
+    /**
+     * Test 7: A new Fiber (created after an old Fiber set pulse state) MUST
+     * NOT see the old Fiber's pulse state — explicit version with separate
+     * Fiber objects and explicit assertions about identity.
+     *
+     * Per SPEC §43: "Mutable request state does not survive request completion"
+     * Per CORE-02 edge case #8: "Fiber reuse: If a Fiber is reused (started
+     * again after termination), it gets a fresh pulse scope."
+     *
+     * Distinct from Test 6: this test first verifies the OLD Fiber's
+     * own-observation contract works (sanity), THEN verifies the NEW Fiber
+     * does not see the old state.
+     */
+    public function testNewFiberDoesNotSeeOldFiberPulseState(): void
+    {
+        $container = $this->createContainerWithPulseRequestContext();
+
+        // Fiber A: pulses a value, observes its own value, completes.
+        $contextFromA = null;
+        $fiberA = new Fiber(function () use ($container, &$contextFromA): void {
+            $contextA = new RequestContext(
+                requestId: self::REQUEST_ID_A,
+                traceId: self::TRACE_ID_A,
+                tenantId: self::TENANT_A,
+                startedAt: new DateTimeImmutable(),
+            );
+            $container->pulse(RequestContext::class, $contextA);
+            $contextFromA = $container->make(RequestContext::class);
+        });
+        $fiberA->start();
+
+        // Sanity check: the OLD Fiber's own observation MUST be correct
+        // (otherwise the test is meaningless — we'd be testing isolation
+        // against a broken baseline).
+        self::assertNotNull($contextFromA, 'Fiber A must have observed its own context');
+        self::assertSame(self::REQUEST_ID_A, $contextFromA->requestId,
+            'Fiber A MUST see its own request_id (sanity check before isolation)');
+
+        // New Fiber B: tries to read A's pulse-scoped value. B has its own
+        // WeakMap bucket, which is empty, so make() falls through to autowire
+        // which throws NotFoundException.
+        $contextFromB = null;
+        $fiberB = new Fiber(function () use ($container, &$contextFromB): void {
+            try {
+                $contextFromB = $container->make(RequestContext::class);
+            } catch (\SovereignStack\Core\Container\NotFoundException $e) {
+                $contextFromB = null;
+            }
+        });
+        $fiberB->start();
+
+        self::assertNull($contextFromB,
+            'New Fiber B MUST NOT see old Fiber A\'s pulse-scoped state — ' .
+            'WeakMap<Fiber, ...> bucketing ensures per-Pulse isolation by ' .
+            'construction, not by convention');
+    }
+
+    /**
+     * Test 8: Nested Fibers MUST inherit global singleton bindings.
+     *
+     * Per CORE-02 edge case #9: "Child Fiber inherits: global singletons,
+     * frozen bindings, compiler passes, container configuration."
+     *
+     * singleton() is worker-scoped (Shape A) — its instances are shared
+     * across all Fibers, including child Fibers. This is correct behavior:
+     * singletons are immutable boot-time configuration, NOT per-Pulse state.
+     */
+    public function testNestedFiberInheritsGlobalSingletons(): void
     {
         $container = new Container();
 
-        // Register RequestContext as a pulse-scoped service.
-        // Per Container.php (line 134): pulse() accepts (id, concrete=null).
-        // When concrete is null, the binding registers the lifetime; the
-        // actual value is provided at request time via pulse($id, $instance).
-        // We register a factory that reads the pulse-scoped value.
-        $container->pulse(RequestContext::class, function () use ($container): RequestContext {
-            // This closure is invoked by make(); it reads the pulse-scoped
-            // value the current Fiber registered. The Container's make()
-            // method already handles this via $pulseInstances[$fiber][$id]
-            // lookup at line 181-182.
-            throw new \SovereignStack\Core\Container\NotFoundException(
-                'RequestContext has not been pulse-scoped on the current Fiber. ' .
-                'Call $container->pulse(RequestContext::class, $context) first.'
+        // Register a singleton at boot time (outside any Fiber — OK for
+        // singleton(), which is worker-scoped and not subject to the
+        // Fiber-context requirement that pulse() has).
+        $container->singleton(stdClass::class, new stdClass());
+
+        $singletonFromParent = null;
+        $singletonFromChild = null;
+
+        $fiber = new Fiber(function () use (
+            $container, &$singletonFromParent, &$singletonFromChild
+        ): void {
+            // Parent Fiber reads the singleton from the worker-scoped cache.
+            $singletonFromParent = $container->make(stdClass::class);
+
+            // A nested (child) Fiber MUST also see the SAME singleton — it is
+            // worker-scoped, not per-Fiber. The child inherits the container's
+            // global state (frozen bindings, singletons, compiler passes).
+            $child = new Fiber(function () use ($container, &$singletonFromChild): void {
+                $singletonFromChild = $container->make(stdClass::class);
+            });
+            $child->start();
+        });
+        $fiber->start();
+
+        self::assertNotNull($singletonFromParent, 'Parent must resolve the singleton');
+        self::assertNotNull($singletonFromChild, 'Child Fiber must also resolve the singleton');
+        self::assertSame($singletonFromParent, $singletonFromChild,
+            'Child Fiber MUST inherit the parent\'s singleton (worker-scoped, ' .
+            'Shape A) — singletons are immutable boot-time configuration, ' .
+            'NOT per-Pulse state. This is correct behavior.');
+    }
+
+    /**
+     * Test 9: A nested child Fiber's pulse() MUST NOT affect the parent
+     * Fiber's pulse scope — isolation is bidirectional.
+     *
+     * Per CORE-02 edge case #9: "Child Fiber does NOT inherit: parent's
+     * pulse bindings, parent's pulse instances, parent's resolution stack."
+     *
+     * Symmetrically, the parent does NOT inherit the child's pulse bindings
+     * either — pulse scope is strictly per-Fiber. A child's pulse() MUST NOT
+     * bleed into the parent's scope (or vice versa).
+     */
+    public function testNestedFiberHasIndependentPulseScope(): void
+    {
+        $container = $this->createContainerWithPulseRequestContext();
+
+        $contextFromParentBefore = null;
+        $contextFromChild = null;
+        $contextFromParentAfter = null;
+
+        $fiber = new Fiber(function () use (
+            $container,
+            &$contextFromParentBefore,
+            &$contextFromChild,
+            &$contextFromParentAfter
+        ): void {
+            // Parent pulses its own context.
+            $parentContext = new RequestContext(
+                requestId: self::REQUEST_ID_A,
+                traceId: self::TRACE_ID_A,
+                tenantId: self::TENANT_A,
+                startedAt: new DateTimeImmutable(),
             );
+            $container->pulse(RequestContext::class, $parentContext);
+            $contextFromParentBefore = $container->make(RequestContext::class);
+
+            // Child Fiber pulses a DIFFERENT context — this MUST NOT bleed
+            // into the parent's pulse scope.
+            $child = new Fiber(function () use ($container, &$contextFromChild): void {
+                $childContext = new RequestContext(
+                    requestId: self::REQUEST_ID_B,
+                    traceId: self::TRACE_ID_B,
+                    tenantId: self::TENANT_B,
+                    startedAt: new DateTimeImmutable(),
+                );
+                $container->pulse(RequestContext::class, $childContext);
+                $contextFromChild = $container->make(RequestContext::class);
+            });
+            $child->start();
+
+            // After the child returned: parent's pulse scope MUST still hold
+            // the parent's context, not the child's. Isolation is bidirectional.
+            $contextFromParentAfter = $container->make(RequestContext::class);
+        });
+        $fiber->start();
+
+        self::assertSame(self::REQUEST_ID_A, $contextFromParentBefore->requestId,
+            'Parent MUST see its own context before the child runs');
+        self::assertSame(self::REQUEST_ID_B, $contextFromChild->requestId,
+            'Child MUST see its own context, not the parent\'s (child does ' .
+            'NOT inherit parent\'s pulse bindings)');
+        self::assertSame(self::REQUEST_ID_A, $contextFromParentAfter->requestId,
+            'Parent MUST STILL see its own context after the child returned — ' .
+            'child\'s pulse() MUST NOT bleed into parent\'s scope (bidirectional ' .
+            'isolation: parent does NOT inherit child\'s pulse bindings either)');
+    }
+
+    /**
+     * Test 10: Worker-scoped singletons (singleton()) MUST be shared across
+     * Fibers — the SAME object identity MUST be returned from any Fiber in
+     * the worker.
+     *
+     * Per CORE-02 Shape A: singletons are worker-scoped (crosses Fiber
+     * boundary — OK, by design). Per CORE-02 edge case #5: singleton() is
+     * worker-scoped (global).
+     *
+     * This is the CORRECT behavior for singletons, contrasted with
+     * pulse-scoped state which MUST NOT be shared (see
+     * {@see testPulseScopedInstancesAreNotSharedAcrossFibers}).
+     */
+    public function testGlobalSingletonsAreSharedAcrossFibers(): void
+    {
+        $container = new Container();
+        $container->singleton(stdClass::class, new stdClass());
+
+        $singletonFromA = null;
+        $singletonFromB = null;
+
+        $fiberA = new Fiber(function () use ($container, &$singletonFromA): void {
+            $singletonFromA = $container->make(stdClass::class);
+        });
+        $fiberB = new Fiber(function () use ($container, &$singletonFromB): void {
+            $singletonFromB = $container->make(stdClass::class);
         });
 
-        return $container;
+        $fiberA->start();
+        $fiberB->start();
+
+        self::assertSame($singletonFromA, $singletonFromB,
+            'Singletons MUST be shared across Fibers (worker-scoped, Shape A) — ' .
+            'same object identity from any Fiber in the worker. This is the ' .
+            'correct behavior for singletons; contrast with pulse() which ' .
+            'MUST NOT be shared (see testPulseScopedInstancesAreNotSharedAcrossFibers)');
+    }
+
+    /**
+     * Test 11: Pulse-scoped instances (pulse()) MUST NOT be shared across
+     * Fibers — each Fiber MUST receive its own independent instance.
+     *
+     * Per CORE-02 Shape C: pulse-scoped bindings are Fiber-local — never
+     * cross a Fiber boundary.
+     * Per SPEC §13: "Pulse/Fiber — MUST never cross Fibers"
+     *
+     * This is THE load-bearing isolation invariant: per-Pulse state must
+     * never leak across Fiber boundaries, even on a long-running FrankenPHP
+     * worker that has served many sequential or concurrent Pulses.
+     */
+    public function testPulseScopedInstancesAreNotSharedAcrossFibers(): void
+    {
+        $container = new Container();
+
+        $instanceFromA = null;
+        $instanceFromB = null;
+        $valueA = new stdClass();
+        $valueB = new stdClass();
+
+        $fiberA = new Fiber(function () use ($container, &$instanceFromA, $valueA): void {
+            // Pulse-bind a fresh stdClass to Fiber A's scope only.
+            $container->pulse(stdClass::class, $valueA);
+            $instanceFromA = $container->make(stdClass::class);
+        });
+
+        $fiberB = new Fiber(function () use ($container, &$instanceFromB, $valueB): void {
+            // Pulse-bind a DIFFERENT fresh stdClass to Fiber B's scope only.
+            $container->pulse(stdClass::class, $valueB);
+            $instanceFromB = $container->make(stdClass::class);
+        });
+
+        $fiberA->start();
+        $fiberB->start();
+
+        self::assertNotNull($instanceFromA, 'Fiber A must have observed its own pulse instance');
+        self::assertNotNull($instanceFromB, 'Fiber B must have observed its own pulse instance');
+
+        self::assertSame($valueA, $instanceFromA,
+            'Fiber A MUST receive its own pulse-scoped value, not B\'s');
+        self::assertSame($valueB, $instanceFromB,
+            'Fiber B MUST receive its own pulse-scoped value, not A\'s');
+
+        self::assertNotSame($instanceFromA, $instanceFromB,
+            'Pulse-scoped instances MUST NOT be shared across Fibers — each ' .
+            'Fiber receives its own independent instance (Shape C, SPEC §13). ' .
+            'A shared instance here would be a Fiber-boundary violation — ' .
+            'an architecture defect, not a failed business test');
+    }
+
+    /**
+     * Helper: create a Container for use by per-test Fibers.
+     *
+     * Per SPEC §42: "The existing container model already provides the mechanism:
+     *   WeakMap<Fiber, ...> -> pulse() -> request/Fiber-scoped instances"
+     *
+     * Per CORE-02 Shape C: pulse() is a request-time, Fiber-local value-binding
+     * operation. It REQUIRES a current Fiber context; calling it from the main
+     * (non-Fiber) context throws \SovereignStack\Core\Container\ContainerException.
+     * Therefore the helper returns a bare Container — every test that uses it
+     * MUST call pulse() from INSIDE a Fiber to establish the per-Pulse binding.
+     *
+     * Fibers that call make() WITHOUT first calling pulse() for that Fiber
+     * fall through to normal resolution (worker-scoped instances, then global
+     * definitions, then class-string autowire). For RequestContext, that means
+     * autowire() throws NotFoundException because the required constructor
+     * parameters (requestId, traceId, tenantId, startedAt) have no defaults.
+     */
+    private function createContainerWithPulseRequestContext(): Container
+    {
+        return new Container();
     }
 }

@@ -11,6 +11,12 @@ namespace SovereignStack\Core\Container;
  *   - $definitions       : id -> ServiceDefinition (the binding table)
  *   - $instances         : id -> resolved object (shared-instance cache)
  *   - $pulseInstances    : WeakMap<Fiber, array<string, mixed>> (auto-evicts on Fiber GC)
+ *                          Resolved pulse-scoped object cache (per-Fiber).
+ *   - $pulseDefinitions  : WeakMap<Fiber, array<string, ServiceDefinition>> (auto-evicts on
+ *                          Fiber GC) — per-Fiber pulse() binding table (Shape C).
+ *                          Replaces the previous (broken) practice of writing pulse()
+ *                          bindings into the global $definitions array, which leaked
+ *                          per-Pulse state across Fiber boundaries (S-003/S-004).
  *   - $fiberResolving    : WeakMap<Fiber, {resolving, chain}> — per-Fiber cycle
  *                          detection state (auto-evicts on Fiber GC)
  *   - $mainResolving     : concrete-key -> true — cycle detection set for the
@@ -65,6 +71,30 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     private \WeakMap $pulseInstances;
 
     /**
+     * Pulse-scoped definition table (Shape C), keyed on the Fiber object itself.
+     *
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, ServiceDefinition>>
+     *
+     * Holds the per-Fiber pulse() bindings. Each pulse($id, $value) call writes
+     * a ServiceDefinition into the CURRENT Fiber's bucket only — never into the
+     * global $definitions array. make() consults this table FIRST (before the
+     * worker-scoped $instances cache) so per-Pulse value bindings shadow
+     * worker-scoped singletons for the current Fiber.
+     *
+     * WeakMap<Fiber, ...> — when a Fiber is garbage-collected (Pulse completes),
+     * PHP automatically evicts that Fiber's entire pulse binding table. This is
+     * the structural guarantee that per-Pulse state never leaks to a subsequent
+     * Pulse on the same worker (S-003/S-004 remediation).
+     *
+     * pulse() requires a current Fiber: calling it from the main (non-Fiber)
+     * context throws {@see ContainerException} — there is no Pulse to bind to.
+     */
+    /**
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, ServiceDefinition>>
+     */
+    private \WeakMap $pulseDefinitions;
+
+    /**
      * Per-Fiber cycle-detection state, keyed on the Fiber object itself.
      *
      * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
@@ -105,6 +135,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     public function __construct()
     {
         $this->pulseInstances = new \WeakMap();
+        $this->pulseDefinitions = new \WeakMap();
         $this->fiberResolving = new \WeakMap();
     }
 
@@ -135,9 +166,33 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
     {
         $this->assertNotCompiled();
 
+        // Shape C: pulse() is a request-time, Fiber-local value-binding
+        // operation. It requires a current Fiber — there is no Pulse scope
+        // to bind to from the main (non-Fiber) context. Per CORE-02 edge
+        // case #1, this throws ContainerException (NOT LogicException, which
+        // is reserved for the compiled-container guard above).
+        /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
+        $fiber = \Fiber::getCurrent();
+        if ($fiber === null) {
+            throw new ContainerException(
+                'pulse() requires a current Fiber context — it binds a value to '
+                . 'the current Pulse scope. Called from the main (non-Fiber) context. '
+                . 'Use bind() or singleton() for boot-time registration.'
+            );
+        }
+
         $concrete ??= $id;
 
-        $this->definitions[$id] = new ServiceDefinition(
+        // Write the definition into the CURRENT Fiber's pulse binding table,
+        // NOT the global $definitions array. Per-Pulse state must never leak
+        // across Fiber boundaries (S-003/S-004 remediation, CORE-02 Shape C).
+        // Initialize the inner array on first write to this Fiber — avoids
+        // "cannot assign offset to null" and the mixed-type inference
+        // ambiguity on chained WeakMap[$fiber][$id] = $def.
+        if (!isset($this->pulseDefinitions[$fiber])) {
+            $this->pulseDefinitions[$fiber] = [];
+        }
+        $this->pulseDefinitions[$fiber][$id] = new ServiceDefinition(
             abstract: $id,
             concrete: $concrete,
             shared: false,
@@ -145,9 +200,11 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             tags: [],
         );
 
-        // Invalidate cached instance — re-binding must not return stale.
-        unset($this->instances[$id]);
-        $this->invalidatePulseInstances($id);
+        // Invalidate the cached pulse instance for THIS ID in the CURRENT
+        // Fiber only — re-binding must not return the stale cached object.
+        // Per CORE-02 edge case #11: invalidation is Fiber-local; other
+        // Fibers' cached pulse instances (if any) are untouched.
+        $this->invalidateCurrentFiberPulseInstance($fiber, $id);
     }
 
     public function instance(string $id, object $instance): void
@@ -166,6 +223,47 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
 
     public function make(string $id, array $parameters = []): mixed
     {
+        // 0. Pulse-scoped definitions for the CURRENT Fiber (Shape C).
+        //    Per CORE-02 make() precedence step 1: the current Fiber's pulse
+        //    bindings shadow EVERYTHING ELSE (singletons, global definitions).
+        //    The pulse definition's concrete value IS the instance for non-
+        //    Closure values; Closures are invoked with ($container, $parameters);
+        //    class-strings fall through to normal resolution (steps 2+).
+        /** @var \Fiber<mixed, mixed, mixed, mixed>|null $pulseFiber */
+        $pulseFiber = \Fiber::getCurrent();
+        if ($pulseFiber !== null && isset($this->pulseDefinitions[$pulseFiber][$id])) {
+            // Cached resolved pulse instance for this Fiber — short-circuit.
+            if (isset($this->pulseInstances[$pulseFiber][$id])) {
+                return $this->pulseInstances[$pulseFiber][$id];
+            }
+
+            $pulseConcrete = $this->pulseDefinitions[$pulseFiber][$id]->concrete;
+
+            // Non-Closure object — the value IS the instance. Cache and return.
+            if (is_object($pulseConcrete) && !($pulseConcrete instanceof \Closure)) {
+                if (!isset($this->pulseInstances[$pulseFiber])) {
+                    $this->pulseInstances[$pulseFiber] = [];
+                }
+                $this->pulseInstances[$pulseFiber][$id] = $pulseConcrete;
+                return $pulseConcrete;
+            }
+
+            // Closure — invoke with ($container, $parameters), cache, return.
+            if ($pulseConcrete instanceof \Closure) {
+                $object = $pulseConcrete($this, $parameters);
+                if (!isset($this->pulseInstances[$pulseFiber])) {
+                    $this->pulseInstances[$pulseFiber] = [];
+                }
+                $this->pulseInstances[$pulseFiber][$id] = $object;
+                return $object;
+            }
+
+            // Class-string — fall through to normal resolution below.
+            // (step 1b / step 2+ will resolve it via autowire and the step-8b
+            // pulseScoped cache will store it in $pulseInstances[$pulseFiber].)
+            // No action here.
+        }
+
         // 1. Resolved-instance cache (worker-scoped).
         if (array_key_exists($id, $this->instances)) {
             return $this->instances[$id];
@@ -396,6 +494,40 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
                 unset($cached[$id]);
                 $this->pulseInstances[$fiber] = $cached;
             }
+        }
+    }
+
+    /**
+     * Purge the cached pulse instance for $id in the CURRENT Fiber only.
+     *
+     * Called by {@see pulse()} when a new value is bound for the current
+     * Pulse — the previously-cached object (if any) is stale and must not
+     * be returned by the next make() in this Fiber.
+     *
+     * Per CORE-02 edge case #11: invalidation is Fiber-local. Other Fibers'
+     * cached pulse instances (if any) are NOT touched — they hold their OWN
+     * pulse values, which are independent by the Fiber-isolation invariant.
+     *
+     * WeakMap does not support a direct nested unset() —
+     * `unset($this->pulseInstances[$fiber][$id])` silently no-ops (PHP raises
+     * "Indirect modification of overloaded element of WeakMap has no effect"
+     * and leaves the entry in place) — so the inner array must be read out,
+     * modified, and written back. Mirrors invalidatePulseInstances() but
+     * scoped to a single Fiber.
+     */
+    /**
+     * @param \Fiber<mixed, mixed, mixed, mixed> $fiber
+     */
+    private function invalidateCurrentFiberPulseInstance(\Fiber $fiber, string $id): void
+    {
+        if (!isset($this->pulseInstances[$fiber])) {
+            return;
+        }
+
+        $cached = $this->pulseInstances[$fiber];
+        if (array_key_exists($id, $cached)) {
+            unset($cached[$id]);
+            $this->pulseInstances[$fiber] = $cached;
         }
     }
 
