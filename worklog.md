@@ -1585,3 +1585,39 @@ Stage Summary:
 - Phase A2 (S-003/S-004 fix) becomes unblocked once A1 ships — the spec is in place, the implementation is a one-field data-structure change (introduce $pulseDefinitions WeakMap, redirect pulse() and make() to consult it per-Fiber, Fiber-scope or remove invalidatePulseInstances()). Resolves the remaining 2 FATAL findings.
 - After A1 + A2 ship, the roadmap can resume HIGH-batch work (29 findings). The full register must close before Phase A3 re-audit gives the roadmap permission to advance past the current lap.
 - No code was modified during this task (register construction only).
+
+---
+Task ID: A1 (Canonical HUB-32 + ESPOKE-19 + Lint Fix — COMPLETED)
+Agent: main
+
+Work Log:
+- Tech lead decision: HUB-32 and ESPOKE-19 become canonical at depth 1 (implementation deferred)
+- Per SAAI: "Canonical identity ≠ implementation. Blueprint exists ≠ implemented."
+- Created HUB-32.md (87 lines) — AI Inference Hub, depth 1, hierarchical failover, neutral parity
+- Created ESPOKE-19.md (90 lines) — Eloq, depth 1, 14 ISPOKEs + HUB-32/HUB-04, neutral parity
+- Extended lint validIds: HUB range 1-32 (was 1-30+special HUB-31), ESPOKE range 1-19 (was 1-18)
+- Updated INDEX.md: Hub row HUB-01..32 (canonical, was "pending"), ESPOKE row ESPOKE-01..19 (canonical, was "pending")
+- Fixed HUB-33 reference in ADR-021: "not a new HUB-33" → "not a new 33rd Hub" (lint regex was matching HUB-33 as undefined reference)
+- Discovered lint failure root cause via CI log download: "ADRs/ADR-021-tier-stratified-build-order.md: undefined reference HUB-33"
+- PR #294 opened, force-pushed with HUB-33 fix (commit 2b600f1)
+- CI results after fix:
+  - architecture-lint: ✅ success (FIRST TIME PASSING since ADR-021 was merged!)
+  - pr-title-lint: ✅ success
+  - Path Gate: ✅ success
+  - PHPUnit + PHPStan: skipped (docs-only)
+- PR #294 MERGED (squash merge)
+- All 4 FATAL findings now have 2 resolved (S-001, S-002):
+  - S-001 (HUB-32 lint): verification condition = architecture-lint passes → ✅ PASSED
+  - S-002 (ESPOKE-19 lint): verification condition = architecture-lint passes → ✅ PASSED
+  - S-003 (Container::pulse() Fiber isolation): still open (A2 blocked on Shape C contract)
+  - S-004 (same root cause): still open (A2 blocked on Shape C contract)
+- Per closure rule: S-001/S-002 are Fixed (not Closed) — closed only when A3 re-audit confirms
+
+Stage Summary:
+- PR #294 merged: https://github.com/DGCodeIdeas/DGLab/pull/294
+- architecture-lint now PASSES on main (was failing since ADR-021 merge)
+- S-001 and S-002 verification conditions met (architecture-lint passes)
+- 2 of 4 FATALs resolved; 2 remaining (S-003/S-004 — Container::pulse() Fiber isolation)
+- Shape C is LOCKED (pulse() = request-time, Fiber-local value binding)
+- A2 (Fiber fix) requires: CORE-02 contract update with Shape C semantics + 9 edge cases before implementation
+- Next: A2-prep (CORE-02 contract update) → A2 (Fiber implementation) → A3 (full re-audit)
