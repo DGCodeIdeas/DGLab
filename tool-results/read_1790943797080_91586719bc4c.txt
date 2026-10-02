@@ -1,0 +1,451 @@
+     1→     1→# Container Fiber Isolation State Model (Phase A0)
+     2→     2→
+     3→     3→**Status:** Specification (pre-implementation)
+     4→     4→**Task:** A0-FIBER-STATE-MODEL-76
+     5→     5→**Date:** 2026-10-01
+     6→     6→**Related:** ADR-017 (Fiber-based cooperative runtime), CORE-02 (Container blueprint), DGLAB-AS-OS-RUNTIME §8.0, S-003/S-004 (FATAL findings from SHORTCOMINGS-AUDIT-76)
+     7→     7→
+     8→     8→---
+     9→     9→
+    10→    10→## 1. The Core Question
+    11→    11→
+    12→    12→> What exact state is allowed to cross a Fiber boundary, and what exact state must never cross it?
+    13→    13→
+    14→    14→**Answer (one sentence).** A Fiber boundary may be crossed by **immutable configuration** (the frozen binding table, pre-built shared singletons, compiler passes — all of which are write-once at boot and read-only afterward); it must **never** be crossed by **mutable per-Pulse state** — i.e. pulse-scoped definitions, pulse-scoped cached instances, and per-Fiber cycle-detection stacks — because those are the load-bearing isolation primitives that make a FrankenPHP worker safe for concurrent multi-tenant Pulses under ADR-017.
+    15→    15→
+    16→    16→The failure mode documented by S-003/S-004 is that the current `Container::pulse()` writes its `ServiceDefinition` into the global `$definitions` array, so the most recent `pulse()` call wins globally and every Fiber subsequently sees that Fiber's value. That is a Fiber-boundary violation: per-Pulse state has been allowed to leak across the boundary. The fix is architectural, not cosmetic — the data structure that holds pulse-scoped bindings must itself be a `WeakMap<Fiber, …>`, not a global array.
+    17→    17→
+    18→    18→---
+    19→    19→
+    20→    20→## 2. State Classification
+    21→    21→
+    22→    22→The Container has eight declared state fields. They classify cleanly into three categories.
+    23→    23→
+    24→    24→### 2.1 Global Immutable State (crosses Fiber boundary — OK, by design)
+    25→    25→
+    26→    26→These fields are written **once** at boot (before `compile()`), and read-only afterward. They are shared across all Fibers in the worker process. This is correct and intended.
+    27→    27→
+    28→    28→| Field | Type | Purpose | Why global is OK |
+    29→    29→|---|---|---|---|
+    30→    30→| `$definitions` (the **non-pulseScoped** subset) | `array<string, ServiceDefinition>` | The frozen binding table for `bind()` / `singleton()` / `instance()` registrations. | These describe **how** to build a service, not **what was built for which Pulse**. Read-only after `compile()`. |
+    31→    31→| `$instances` | `array<string, mixed>` | Worker-scoped shared-instance cache (singletons + pre-built instances). | These ARE the shared singletons — by definition they are shared across the worker. That is the documented `singleton()` contract (CORE-02 §"Fiber runtime note (OD-07)"). |
+    32→    32→| `$compilerPasses` | `list<CompilerPassInterface>` | Passes to run during `compile()`. | Empty / unused after `compile()`. |
+    33→    33→| `$compiled` | `bool` | Freeze flag. | Monotonically `false → true`, never reset. |
+    34→    34→
+    35→    35→### 2.2 Process/Shared State (crosses Fiber boundary — OK, with caveats)
+    36→    36→
+    37→    37→These fields are mutable at runtime but conceptually belong to the worker process as a whole, not to any single Fiber. They must remain correct under cooperative scheduling, but they are not "Fiber-local" state.
+    38→    38→
+    39→    39→| Field | Type | Purpose | Synchronization note |
+    40→    40→|---|---|---|---|
+    41→    41→| `$mainResolving` | `array<string, true>` | Cycle-detection set for the main (non-Fiber) context. | Mutated only when `make()` is called from outside any Fiber. Under ADR-017 the main context is the kernel boot path, which is single-threaded by construction. |
+    42→    42→| `$mainResolvingChain` | `list<array{0: string, 1: mixed}>` | Diagnostic chain for the main context. | Same as above. |
+    43→    43→
+    44→    44→These are correctly modelled as worker-scoped because "the main context" is a single entity per worker. They are NOT shared with Fiber contexts (Fiber cycle state lives in `$fiberResolving`).
+    45→    45→
+    46→    46→### 2.3 Fiber-Local State (MUST NOT cross Fiber boundary)
+    47→    47→
+    48→    48→These fields are **per-Fiber by construction**. Any cross-Fiber visibility here is an isolation defect.
+    49→    49→
+    50→    50→| Field | Type | Purpose | Boundary enforced by |
+    51→    51→|---|---|---|---|
+    52→    52→| `$pulseInstances` | `WeakMap<Fiber, array<string, mixed>>` | Pulse-scoped resolved-instance cache. One bucket per Fiber. | `WeakMap` keyed on the Fiber object. Auto-evicted on Fiber GC. |
+    53→    53→| `$fiberResolving` | `WeakMap<Fiber, {resolving, chain}>` | Per-Fiber cycle-detection stack. | `WeakMap` keyed on the Fiber object. Auto-evicted on Fiber GC. (P2 fix; previously a plain `array<int, …>` keyed on `spl_object_id($fiber)` that never evicted stale entries.) |
+    54→    54→| **(MISSING)** `pulseDefinitions` *(proposed)* | `WeakMap<Fiber, array<string, ServiceDefinition>>` | **Per-Fiber pulse-scoped binding table.** This is the structural fix for S-003/S-004. Currently does not exist — `pulse()` writes to global `$definitions` instead. | Must be a `WeakMap<Fiber, …>` to inherit the same auto-eviction guarantee as `$pulseInstances` and `$fiberResolving`. |
+    55→    55→
+    56→    56→The crucial observation: **two of the three per-Fiber fields already exist** (post-P2 cycle-detection fix). The third — per-Fiber **pulse-scoped definitions** — was missed when the original `pulse()` machinery was built (commits `2c812e72` and `76a02274`, per ADR-017 Provenance). That is the gap.
+    57→    57→
+    58→    58→---
+    59→    59→
+    60→    60→## 3. Lifecycle
+    61→    61→
+    62→    62→### 3.1 Pulse Registration
+    63→    63→
+    64→    64→**What `pulse()` should do.**
+    65→    65→
+    66→    66→`pulse($id, $concrete)` registers a **Pulse-scoped binding**. The contract is: when a Pulse (Fiber) resolves `$id`, it receives an instance scoped to that Pulse only. A different Pulse (even in the same worker, even concurrently) receives its own independent instance.
+    67→    67→
+    68→    68→Two API shapes satisfy this contract. Both are architecturally valid; the choice is a tech-lead decision (see §7 + OPEN QUESTION Q1):
+    69→    69→
+    70→    70→- **Shape A — registration-only (factory pattern).** `pulse($id, $concrete)` registers a `ServiceDefinition(pulseScoped: true)` with a Closure or class-string concrete. The definition lives in the **global** `$definitions` (immutable after `compile()`), and the per-Fiber **instance** is materialised lazily on the first `make($id)` call from inside a Fiber, cached in `$pulseInstances[$fiber][$id]`. Calling `pulse()` again at runtime (post-compile) is forbidden by `assertNotCompiled()`. The Fiber never supplies the value; it supplies a factory.
+    71→    71→- **Shape C — per-Fiber definition table (audit's recommendation).** `pulse($id, $concrete)` writes a `ServiceDefinition` into a per-Fiber `WeakMap<Fiber, array<string, ServiceDefinition>>` (call it `$pulseDefinitions`). Each Fiber has its own pulse binding table. Re-calling `pulse()` inside a different Fiber does not stomp on another Fiber's entry. Auto-evicted on Fiber GC.
+    72→    72→
+    73→    73→The current code attempts **both shapes simultaneously** and gets neither right: it writes to the **global** `$definitions` (Shape A's home) but is invoked from inside Fibers with a per-Fiber value (Shape C's use case). The result is the S-003/S-004 leak.
+    74→    74→
+    75→    75→**What `pulse()` must NOT do (the rules, derived from ADR-017 + CORE-02):**
+    76→    76→
+    77→    77→1. Must NOT mutate any state that is observable across Fibers. Specifically, must NOT write to `$definitions[$id]` (which is shared across all Fibers).
+    78→    78→2. Must NOT invalidate other Fibers' pulse caches. Specifically, must NOT call `invalidatePulseInstances($id)` with global reach (see §5).
+    79→    79→3. Must be idempotent in registration — registering the same pulse binding twice (for the same Fiber) replaces the value for **that Fiber only**, not for any other Fiber.
+    80→    80→4. Must enforce `assertNotCompiled()` **only** if it mutates global state; under Shape C the call mutates per-Fiber state, so `assertNotCompiled()` may or may not apply depending on whether pulse registration is intended as a boot-time or request-time operation (see Q1).
+    81→    81→
+    82→    82→### 3.2 Cached Instance Ownership
+    83→    83→
+    84→    84→**Who owns cached instances.**
+    85→    85→
+    86→    86→A pulse-scoped cached instance is owned by exactly one entity: **the Fiber that requested it** (i.e. the Fiber that was running when `make()` materialised the object). Ownership is enforced structurally by keying the cache on the Fiber object: `$pulseInstances[$fiber][$id] = $object`.
+    87→    87→
+    88→    88→Consequences:
+    89→    89→- No other Fiber can read or write that entry without explicit cross-Fiber access (which the WeakMap does not provide — keys are object identity).
+    90→    90→- When the owning Fiber is GC'd, the entry is auto-evicted. The instance becomes collectable if no other strong reference exists.
+    91→    91→- A Fiber cannot "donate" its cached instance to another Fiber via the Container API. Cross-Fiber sharing of a pulse-scoped instance is not a supported operation; if it is required, the binding should be `singleton()` (worker-scoped), not `pulse()`.
+    92→    92→
+    93→    93→This is the correct ownership model and the existing `$pulseInstances` WeakMap already implements it faithfully. The bug is **not** in instance ownership — it is in **definition ownership** (§3.1, missing `$pulseDefinitions`).
+    94→    94→
+    95→    95→### 3.3 Fiber Termination
+    96→    96→
+    97→    97→**What happens when a Fiber ends.**
+    98→    98→
+    99→    99→PHP's contract: a Fiber is terminated when its callable returns or throws, after which it cannot be resumed. The Fiber object itself becomes collectable once no strong references remain.
+   100→   100→
+   101→   101→The Container's contract (per ADR-017 + DGLAB-AS-OS-RUNTIME §8.0.2):
+   102→   102→
+   103→   103→1. **`$pulseInstances[$fiber]` is auto-evicted by the WeakMap.** PHP's WeakMap removes the entry when the key object (the Fiber) is GC'd. No manual cleanup. **This already works correctly.**
+   104→   104→2. **`$fiberResolving[$fiber]` is auto-evicted.** Same mechanism. (P2 fix.) **This already works correctly.**
+   105→   105→3. **`$pulseDefinitions[$fiber]` (proposed) is auto-evicted.** Same mechanism. **This is the fix for S-004** — currently the pulse definition is in `$definitions` (global) and survives the Fiber.
+   106→   106→
+   107→   107→After termination, no state owned by the dead Fiber remains visible to any other Fiber or to a subsequently-created Fiber. This is the property the test `testCompletedFiberStateIsNotVisibleToNewFiber` asserts, and the property the current implementation violates because of (3).
+   108→   108→
+   109→   109→### 3.4 Fiber Reuse
+   110→   110→
+   111→   111→**What happens when a Fiber is reused.**
+   112→   112→
+   113→   113→PHP's contract: a Fiber cannot be "reused" — once terminated it cannot be restarted. The relevant scenario for ADR-017 is therefore **a new Fiber handling a subsequent Pulse on the same long-lived FrankenPHP worker** (i.e. worker reuse, not Fiber reuse).
+   114→   114→
+   115→   115→For a new Fiber:
+   116→   116→- `$pulseInstances[$newFiber]` does not exist — fresh bucket.
+   117→   117→- `$fiberResolving[$newFiber]` does not exist — fresh bucket.
+   118→   118→- `$pulseDefinitions[$newFiber]` (proposed) does not exist — fresh bucket. The new Fiber MUST NOT see any prior Fiber's pulse-scoped state. **This is the test for S-004.**
+   119→   119→- Global `$definitions` and `$instances` ARE visible — they are worker-scoped by design. The new Fiber sees the same singletons as every prior Fiber. **This is correct.**
+   120→   120→
+   121→   121→A degenerate case: the PHP `Fiber` API permits a Fiber to be `start()`ed once. The WorkerContaminationTest pattern `pulse() → suspend() → resume()` exercises the suspend/resume mid-Pulse case, which is a single Fiber resuming, not reuse. The lifecycle rules above apply during that Fiber's lifetime; on its termination, the WeakMap evicts.
+   122→   122→
+   123→   123→### 3.5 Nested/Child Fibers
+   124→   124→
+   125→   125→**What happens for nested Fibers.**
+   126→   126→
+   127→   127→PHP Fibers can be created and started from inside another running Fiber. Each Fiber object has a distinct identity, so the WeakMap keys are distinct.
+   128→   128→
+   129→   129→The intended model:
+   130→   130→- A child Fiber's `$pulseInstances[$child]` is a **separate bucket** from the parent's `$pulseInstances[$parent]`. The child does **not** inherit the parent's pulse-scoped cached instances.
+   131→   131→- A child Fiber's `$pulseDefinitions[$child]` (proposed) is a **separate bucket** from the parent's. The child does not inherit the parent's pulse-scoped bindings.
+   132→   132→- A child Fiber DOES inherit: global `$definitions` (non-pulseScoped), global `$instances` (singletons), the Container object identity itself. A `singleton()` registered in the parent is visible to the child because it lives in the worker-scoped `$instances` array.
+   133→   133→- A child Fiber's cycle-detection stack is independent (already correct via `$fiberResolving`).
+   134→   134→
+   135→   135→Implications:
+   136→   136→- A child Fiber that wants its parent's RequestContext must explicitly register it via its own `pulse()` call. There is no implicit parent→child propagation of pulse state. (ADR-017 §Consequences.Negative.2 explicitly disclaims memory-level isolation — logical isolation is by Fiber identity, not by call-stack relationship.)
+   137→   137→- A child Fiber that calls `pulse($id, $value)` MUST NOT affect the parent's pulse cache for `$id`. Under the current implementation it would (because it writes to global `$definitions`), which is a transitive S-003-class defect.
+   138→   138→
+   139→   139→This is also a question for the tech lead (Q2): is parent→child propagation of pulse state desired? The current spec says **no** — isolation is by Fiber identity, not by call-stack depth.
+   140→   140→
+   141→   141→---
+   142→   142→
+   143→   143→## 4. Current Implementation vs Intended Model
+   144→   144→
+   145→   145→### 4.1 Current State Model (from code inspection)
+   146→   146→
+   147→   147→Source of truth: `/home/z/my-project/packages/core/container/src/Container.php` (the implemented file — note that `Architecture/Core/CORE-02.md`'s embedded reference implementation is OLDER than the live source; the live source has the P2 cycle-detection WeakMap fix and the `invalidatePulseInstances()` helper that the blueprint does not show).
+   148→   148→
+   149→   149→State fields (live `Container.php`):
+   150→   150→
+   151→   151→```
+   152→   152→private array $definitions = [];                  // global — bind/singleton/pulse/instance all write here
+   153→   153→private array $instances = [];                   // global worker-scoped singleton cache
+   154→   154→private \WeakMap $pulseInstances;               // per-Fiber (WeakMap) — pulse-scoped instance cache
+   155→   155→private \WeakMap $fiberResolving;               // per-Fiber (WeakMap) — cycle-detection stack (P2 fix)
+   156→   156→private array $mainResolving = [];              // global main-context cycle-detection stack
+   157→   157→private array $mainResolvingChain = [];         // global main-context diagnostic chain
+   158→   158→private array $compilerPasses = [];             // global — registered passes
+   159→   159→private bool $compiled = false;                 // global — freeze flag
+   160→   160→```
+   161→   161→
+   162→   162→What `pulse()` does (lines 134–151):
+   163→   163→
+   164→   164→```php
+   165→   165→public function pulse(string $id, mixed $concrete = null): void
+   166→   166→{
+   167→   167→    $this->assertNotCompiled();
+   168→   168→    $concrete ??= $id;
+   169→   169→    $this->definitions[$id] = new ServiceDefinition(
+   170→   170→        abstract: $id, concrete: $concrete,
+   171→   171→        shared: false, pulseScoped: true, tags: [],
+   172→   172→    );
+   173→   173→    unset($this->instances[$id]);
+   174→   174→    $this->invalidatePulseInstances($id);   // <-- WIPES EVERY FIBER'S CACHE FOR $id
+   175→   175→}
+   176→   176→```
+   177→   177→
+   178→   178→Three defects in this method:
+   179→   179→1. **Writes to global `$definitions[$id]`** — every Fiber's `pulse()` call overwrites the same slot. Last writer wins.
+   180→   180→2. **Calls `invalidatePulseInstances($id)` globally** — iterates every Fiber's pulse cache and removes `$id` from each. Direct cross-Fiber contamination.
+   181→   181→3. **No `WeakMap<Fiber, ServiceDefinition>` indirection** — the binding is not per-Fiber.
+   182→   182→
+   183→   183→What `make()` does for pulse-scoped bindings (lines 167–289, summarised):
+   184→   184→
+   185→   185→1. Check `$instances[$id]` (worker cache) — return if hit. (Pulse-scoped bindings are never in `$instances`, so this misses.)
+   186→   186→2. If `$definition->pulseScoped`, check `$pulseInstances[$fiber][$id]` — return if hit. (Correct per-Fiber read.)
+   187→   187→3. Compute `$concrete = $definition->concrete`. (Here is the leak: `$definition` is the **global** pulse definition, which is whatever the most recent `pulse()` call across all Fibers wrote.)
+   188→   188→4. Cycle-detect, build via `build($concrete)`. (For an object concrete, `build()` returns it as-is.)
+   189→   189→5. Cache in `$pulseInstances[$fiber][$id] = $object`. (Correct per-Fiber write — but the object being cached is **the wrong object** because of step 3.)
+   190→   190→
+   191→   191→So the per-Fiber **instance cache** is correct in structure but wrong in content: it caches whatever the latest global `pulse()` call wrote, not what the current Fiber's own `pulse()` call wrote.
+   192→   192→
+   193→   193→What `invalidatePulseInstances()` does (lines 391–400):
+   194→   194→
+   195→   195→```php
+   196→   196→private function invalidatePulseInstances(string $id): void
+   197→   197→{
+   198→   198→    foreach ($this->pulseInstances as $fiber => $cached) {
+   199→   199→        if (array_key_exists($id, $cached)) {
+   200→   200→            unset($cached[$id]);
+   201→   201→            $this->pulseInstances[$fiber] = $cached;
+   202→   202→        }
+   203→   203→    }
+   204→   204→}
+   205→   205→```
+   206→   206→
+   207→   207→This is a **global invalidation** — it touches every Fiber's pulse cache. It exists to support `bind()` re-registration (re-binding an id must not return a stale pulse-cached instance). The structural problem: invalidating across Fibers is the wrong scope. The correct scope is "invalidate for the current Fiber only" (because re-binding is a per-Fiber event under Shape C) or "invalidate for no Fibers" (because under Shape A, re-binding is a boot-time global event and there should be no pulse cache to invalidate at boot).
+   208→   208→
+   209→   209→What happens when a Fiber terminates:
+   210→   210→
+   211→   211→- `$pulseInstances[$fiber]` and `$fiberResolving[$fiber]` are auto-evicted by PHP's WeakMap. **Correct.**
+   212→   212→- `$definitions[$id]` is **NOT** evicted. If `pulse($id, $instance)` was called from inside the Fiber, the `$instance` survives in `$definitions[$id]->concrete`. **This is the S-004 leak.**
+   213→   213→- `$instances[$id]` is not touched (pulse-scoped bindings never write to `$instances`).
+   214→   214→
+   215→   215→What happens when a Fiber is reused (i.e. a new Fiber is created after the prior one was GC'd):
+   216→   216→
+   217→   217→- New Fiber has no WeakMap entries. Clean slate.
+   218→   218→- BUT — global `$definitions` still contains whatever the prior Fiber's `pulse()` call wrote. So a `make($id)` from the new Fiber returns the dead Fiber's value. **S-004.**
+   219→   219→
+   220→   220→### 4.2 Intended State Model (per ADR-017 + CORE-02 + DGLAB-AS-OS-RUNTIME §8.0)
+   221→   221→
+   222→   222→The architecture (ADR-017 §Decision: "The Kernel is a cooperative scheduler. PHP Fibers are the process abstraction.") plus CORE-02 §"Fiber runtime note (OD-07)" plus DGLAB-AS-OS-RUNTIME §8.0.2 together specify:
+   223→   223→
+   224→   224→1. `singleton()` and `instance()` are **worker-scoped** — one instance per worker process, shared across all concurrent Fibers. Used for genuinely shared things (config, connection pools, event dispatcher, the container itself).
+   225→   225→2. `bind()` (without `$singleton = true`) is **transient** — fresh instance per `make()` call. No caching.
+   226→   226→3. `pulse()` is **Pulse-scoped** — one instance per Fiber. Cached in `WeakMap<Fiber, …>`. Auto-evicted on Fiber GC. Outside a Fiber, pulse-scoped bindings are transient.
+   227→   227→4. The WeakMap-keyed cache is the structural mechanism for Fiber isolation. Both cached instances **and** pulse-scoped definitions must be keyed on the Fiber (the audit's recommendation: `WeakMap<Fiber, array<string, ServiceDefinition>>`).
+   228→   228→5. `singleton()` calls are made at boot (before `compile()`); `pulse()` calls are made at request time (inside a Fiber) — this is the natural use of the API, and is what the tests exercise.
+   229→   229→
+   230→   230→Lifetime of a pulse binding: from the moment `pulse($id, …)` is called inside a Fiber until that Fiber is GC'd. The lifetime is bounded by the Fiber, not by the request, not by the worker.
+   231→   231→
+   232→   232→Lifetime of a singleton binding: from `singleton()` (boot) until the worker terminates.
+   233→   233→
+   234→   234→Lifetime of a pulse cached instance: from the first `make($id)` that materialises it inside a Fiber, until either (a) the Fiber is GC'd, or (b) the same Fiber calls `pulse($id, $newValue)` which replaces the cached instance (and the new value is materialised on the next `make()`).
+   235→   235→
+   236→   236→Container operations required to be Fiber-isolated (per ADR-017):
+   237→   237→- `pulse($id, $concrete)` — writes must be Fiber-local.
+   238→   238→- `make($id)` — reads of pulse-scoped state must consult the current Fiber's bucket.
+   239→   239→- Any invalidation of pulse-scoped state must be scoped to the current Fiber.
+   240→   240→
+   241→   241→Container operations explicitly NOT Fiber-isolated (worker-scoped by design):
+   242→   242→- `bind()`, `singleton()`, `instance()` — mutate the global binding table. These are boot-time operations; calling them at runtime (post-compile) throws `\LogicException`.
+   243→   243→- `make($id)` for a `singleton()`-bound id — returns the worker-scoped cached instance, shared across all Fibers.
+   244→   244→- `get($id)`, `has($id)` — operate against the global binding table.
+   245→   245→
+   246→   246→What `WeakMap<Fiber, …>` owns (intended):
+   247→   247→- `$pulseInstances[Fiber] = array<string, mixed>` — the per-Fiber pulse-scoped **resolved-instance** cache.
+   248→   248→- `$fiberResolving[Fiber] = {resolving, chain}` — the per-Fiber **cycle-detection** stack.
+   249→   249→- `$pulseDefinitions[Fiber] = array<string, ServiceDefinition>` (proposed) — the per-Fiber **pulse-scoped binding** table.
+   250→   250→
+   251→   251→What `WeakMap<Fiber, …>` does NOT own:
+   252→   252→- The frozen global `$definitions` table (worker-scoped, shared).
+   253→   253→- The `$instances` worker-scoped cache (worker-scoped, shared).
+   254→   254→- The main-context cycle-detection state (`$mainResolving`, `$mainResolvingChain` — these are "no Fiber" fallbacks, not per-Fiber).
+   255→   255→
+   256→   256→### 4.3 The Gap
+   257→   257→
+   258→   258→The gap is a single missing data structure and its cascade of consequences:
+   259→   259→
+   260→   260→| Location | Current (live code) | Intended (architecture) |
+   261→   261→|---|---|---|
+   262→   262→| `Container::$definitions` holds pulse-scoped bindings | YES — `pulse()` writes here | NO — pulse-scoped bindings must live in a per-Fiber `WeakMap<Fiber, array<string, ServiceDefinition>>` |
+   263→   263→| `Container::pulse()` mutates global state | YES — `$this->definitions[$id] = …` | NO — must mutate per-Fiber state only |
+   264→   264→| `Container::pulse()` invalidates other Fibers' caches | YES — `invalidatePulseInstances($id)` iterates every Fiber | NO — invalidation must be scoped to the current Fiber (or omitted entirely if the binding table is per-Fiber, since there is no other Fiber to invalidate) |
+   265→   265→| `Container::make()` for pulse-scoped reads global definition | YES — `$definition = $this->definitions[$id]` (line 177) | NO — must read from the current Fiber's pulse-definitions WeakMap bucket first, falling back to the global definition table only if no per-Fiber binding exists (Shape C) |
+   266→   266→| `invalidatePulseInstances()` is global | YES — iterates the entire WeakMap | NO — must accept a Fiber argument (or be removed entirely under Shape C where invalidation is unnecessary because each Fiber's binding table is its own) |
+   267→   267→| Fiber GC auto-evicts pulse-scoped definitions | NO — definitions live in `$definitions` (global) and survive the Fiber | YES — must auto-evict via `WeakMap` |
+   268→   268→
+   269→   269→Specific lines in `Container.php` where current ≠ intended:
+   270→   270→
+   271→   271→- **Line 140** (`$this->definitions[$id] = new ServiceDefinition(...)` inside `pulse()`) — writes to global state. Must instead write to `$this->pulseDefinitions[\Fiber::getCurrent()][$id]`.
+   272→   272→- **Line 150** (`$this->invalidatePulseInstances($id)` inside `pulse()`) — global invalidation. Must be removed or scoped to the current Fiber.
+   273→   273→- **Line 177** (`$definition = $this->definitions[$id] ?? null` inside `make()`) — reads global state. For pulse-scoped ids, must first check the current Fiber's `$pulseDefinitions[$fiber][$id]`, falling back to the global definition.
+   274→   274→- **Lines 391–400** (the entire `invalidatePulseInstances()` method) — global iteration. Under Shape C, this method is unnecessary (each Fiber's binding table is its own; there is no cross-Fiber invalidation to perform). Under Shape A, this method should be removed entirely (pulse-scoped bindings are registered at boot and never re-bound; `bind()` re-registration invalidates `$instances[$id]` but there is no pulse cache to invalidate at boot).
+   275→   275→
+   276→   276→---
+   277→   277→
+   278→   278→## 5. Invalidation Semantics
+   279→   279→
+   280→   280→**What `invalidatePulseInstances()` should do.**
+   281→   281→
+   282→   282→Under the intended model (Shape C — per-Fiber pulse definitions):
+   283→   283→
+   284→   284→The method is **not needed at all**. Here is why:
+   285→   285→
+   286→   286→- `bind()` / `singleton()` / `instance()` mutate the global `$definitions`. They are boot-time operations; the container is not yet compiled, and no Fiber has yet run. There are no `$pulseInstances` entries to invalidate. The existing `unset($this->instances[$id])` is sufficient.
+   287→   287→- `pulse()` mutates the per-Fiber `$pulseDefinitions[$fiber]`. It is a request-time operation, called from inside a Fiber. It affects only the current Fiber's binding table; other Fibers' binding tables are untouched by construction. There is nothing to invalidate.
+   288→   288→
+   289→   289→If the team prefers to keep the method for defensive purposes (e.g. a "clear all pulse state for the current Fiber" escape hatch), the contract must be:
+   290→   290→
+   291→   291→- Accept the Fiber as a parameter (or read `\Fiber::getCurrent()` internally).
+   292→   292→- Invalidate ONLY that Fiber's entries, not iterate the WeakMap.
+   293→   293→- Be a no-op when called from outside any Fiber.
+   294→   294→
+   295→   295→Under the alternative model (Shape A — registration-only pulse):
+   296→   296→
+   297→   297→The method is also **not needed**. `pulse()` is a boot-time registration; the global `$definitions[$id]` is set once and frozen by `compile()`. There are no Fiber-specific definitions to invalidate. Re-binding at runtime is forbidden by `assertNotCompiled()`. The existing `unset($this->instances[$id])` handles the singleton-cache invalidation case.
+   298→   298→
+   299→   299→**Summary:** the current `invalidatePulseInstances()` is structurally wrong under either intended model. It must either be removed or scoped to the current Fiber. The fact that it iterates the entire WeakMap is the proximate cause of S-003's "B wipes A's cache" behaviour.
+   300→   300→
+   301→   301→---
+   302→   302→
+   303→   303→## 6. Regression Test Cases
+   304→   304→
+   305→   305→Derived from the **intended** state model (not from the current implementation). All eight must pass after the remediation. The two existing tests (S-003, S-004) are reproduced verbatim from `packages/core/kernel/tests/Integration/WorkerContaminationTest.php`; the remaining six are new, derived from §2 and §3 of this spec.
+   306→   306→
+   307→   307→### TC-1 (existing, currently FAILING — S-003): `testConcurrentFibersObserveIndependentPulseState`
+   308→   308→
+   309→   309→File: `packages/core/kernel/tests/Integration/WorkerContaminationTest.php` lines 60–142.
+   310→   310→
+   311→   311→Asserts: two Fibers (A, B) interleaved by `Fiber::suspend()` each register their own `RequestContext` via `pulse(RequestContext::class, $contextX)` and, after resumption, `make(RequestContext::class)` returns **their own** context (matched by `requestId`, `traceId`, `tenantId`).
+   312→   312→
+   313→   313→Fails because: when Fiber B's `pulse()` runs, it overwrites the global `$definitions[RequestContext::class]` (S-003 root cause #1) and calls `invalidatePulseInstances(RequestContext::class)` which wipes Fiber A's pulse cache (S-003 root cause #2). When A resumes, `make()` falls through to the global definition, which now holds B's value.
+   314→   314→
+   315→   315→Passes after fix: pulse-scoped definitions are per-Fiber; B's `pulse()` writes to B's bucket only; A's bucket is untouched; A's `make()` reads from A's bucket and returns A's value.
+   316→   316→
+   317→   317→### TC-2 (existing, currently FAILING — S-004): `testCompletedFiberStateIsNotVisibleToNewFiber`
+   318→   318→
+   319→   319→File: same file, lines 281–314.
+   320→   320→
+   321→   321→Asserts: Fiber A registers `RequestContext::class` via `pulse()` and completes; `unset($fiberA)` releases the Fiber; a new Fiber B calls `make(RequestContext::class)` **without** calling `pulse()` first; the result must be either `null` (caught `NotFoundException`) or a value B registered — never A's value.
+   322→   322→
+   323→   323→Fails because: `unset($fiberA)` evicts A's WeakMap entries for `$pulseInstances` and `$fiberResolving`, but **not** the global `$definitions[RequestContext::class]`, which still holds A's instance as `concrete`. Fiber B's `make()` reads the global definition, builds via `build($contextA, [])` (returns the object as-is), and returns A's value.
+   324→   324→
+   325→   325→Passes after fix: pulse-scoped definitions live in `$pulseDefinitions[$fiber]`; `unset($fiberA)` evicts A's bucket; B's `make()` finds no binding, throws `NotFoundException`.
+   326→   326→
+   327→   327→### TC-3 (new): `testFiberTerminationClearsPulseScope`
+   328→   328→
+   329→   329→Asserts: after a Fiber that registered a pulse-scoped binding is GC'd, a *strong-reference check* confirms the binding is no longer reachable via the Container. (Implementation: hold a weak reference to the Fiber object, unset the strong reference, force GC via `gc_collect_cycles()`, then create a new Fiber and attempt `make($id)` — must throw `NotFoundException`.) This is a stronger form of TC-2 that explicitly exercises the WeakMap eviction contract.
+   330→   330→
+   331→   331→### TC-4 (new): `testFiberReuseReregistersPulse`
+   332→   332→
+   333→   333→Asserts: if a Fiber is reused in the sense of "the same Fiber object is re-started" — which PHP does not permit — the test instead exercises the sequential-requests-on-one-worker case (which is what `testSequentialRequestsOnOneWorkerDoNotInheritPriorState` already covers) **plus** a variant where the same Container is used across two distinct Fibers and the second Fiber must be able to `pulse($id, $newValue)` and observe its own value, even though the first Fiber's value is still resolvable to the first Fiber (if it is still alive). The invariant: a Fiber's `pulse()` call must not require any coordination with other Fibers' state.
+   334→   334→
+   335→   335→### TC-5 (new): `testNestedFiberInheritsGlobalState`
+   336→   336→
+   337→   337→Asserts: parent Fiber registers a `singleton()` binding for `LoggerInterface::class`; parent creates and starts a child Fiber; child Fiber calls `make(LoggerInterface::class)` and receives the **same** instance as the parent (because singletons are worker-scoped). This is the positive case for global state crossing the boundary — it is **correct** that singletons cross.
+   338→   338→
+   339→   339→### TC-6 (new): `testNestedFiberHasIndependentPulseScope`
+   340→   340→
+   341→   341→Asserts: parent Fiber calls `pulse(RequestContext::class, $parentContext)`; parent creates and starts a child Fiber; child Fiber calls `make(RequestContext::class)` and does **not** receive the parent's `$parentContext` — it must either throw `NotFoundException` (no pulse binding on the child) or return whatever the child itself registered via its own `pulse()` call. The invariant: parent pulse state does not propagate to children.
+   342→   342→
+   343→   343→### TC-7 (new): `testGlobalSingletonsAreSharedAcrossFibers`
+   344→   344→
+   345→   345→Asserts: `singleton(SomeSharedService::class)` is registered at boot; two concurrent Fibers each call `make(SomeSharedService::class)`; both receive the **same** object instance (`assertSame`). This is the positive case for singletons being shared — it is **correct** that singletons are shared across Fibers, and any "fix" that breaks this is wrong. This test guards against over-correction: the S-003/S-004 fix must not inadvertently make singletons Fiber-local.
+   346→   346→
+   347→   347→### TC-8 (new): `testPulseScopedInstancesAreNotSharedAcrossFibers`
+   348→   348→
+   349→   349→Asserts: `pulse(SomeService::class)` is registered (with a factory concrete that builds a fresh object); two concurrent Fibers each call `make(SomeService::class)`; each receives a **distinct** object instance (`assertNotSame`). This is the negative case for pulse-scoped instances — they must NOT be shared. This test guards against the inverse over-correction: the fix must not inadvertently make pulse-scoped bindings behave like singletons.
+   350→   350→
+   351→   351→(Existing `testSequentialRequestsOnOneWorkerDoNotInheritPriorState` at line 155 and `testExceptionDuringRequestDoesNotLeakToSubsequentRequest` at line 215 are additional regression tests that exercise the same invariants from different angles. They are not failing today but they are part of the executable contract for SPEC §43/§52 and must remain green after the fix.)
+   352→   352→
+   353→   353→---
+   354→   354→
+   355→   355→## 7. Remediation Direction
+   356→   356→
+   357→   357→The minimum correct fix has three components, in order of structural depth:
+   358→   358→
+   359→   359→1. **Introduce a per-Fiber pulse-definitions WeakMap.** Add a field `private \WeakMap $pulseDefinitions;` initialised in the constructor alongside `$pulseInstances` and `$fiberResolving`. This WeakMap is `WeakMap<Fiber, array<string, ServiceDefinition>>` and inherits the auto-eviction contract.
+   360→   360→
+   361→   361→2. **Redirect `pulse()` to write per-Fiber.** Replace the body of `pulse()` so it writes `$this->pulseDefinitions[\Fiber::getCurrent()][$id] = new ServiceDefinition(...)` instead of `$this->definitions[$id] = …`. Remove the `invalidatePulseInstances($id)` call (it is no longer needed — see §5). Decide whether `assertNotCompiled()` still applies (see OPEN QUESTION Q1 below). Decide what happens when `pulse()` is called from outside any Fiber — the spec says pulse-scoped behaviour outside a Fiber is "transient", so calling `pulse()` from main context is either a no-op (registration-only) or a `\LogicException` (per-Fiber registration requires a Fiber).
+   362→   362→
+   363→   363→3. **Make `make()` consult the per-Fiber pulse definitions first.** In `make()`, before reading from the global `$definitions`, check `$this->pulseDefinitions[\Fiber::getCurrent()][$id]` if a Fiber is running. If a per-Fiber binding exists, use it; otherwise fall back to the global definition (so boot-time `pulse()` registrations — Shape A — continue to work). The instance-cache logic (`$pulseInstances[$fiber][$id]`) is unchanged; it is already correct.
+   364→   364→
+   365→   365→This is **not** the implementation — it is the direction. The implementer (Phase A1 or later) will need to resolve the OPEN QUESTIONS below before writing code.
+   366→   366→
+   367→   367→---
+   368→   368→
+   369→   369→## Open Questions for the Tech Lead
+   370→   370→
+   371→   371→These are decisions that the architecture does not unambiguously dictate. The current code does something the ADRs do not mention; flagging per the task constraints.
+   372→   372→
+   373→   373→**Q1 — Is `pulse()` a boot-time registration API or a request-time value-setting API?**
+   374→   374→
+   375→   375→The CORE-02 blueprint docblock says: *"Register a Pulse-scoped binding — one instance per Fiber (per Pulse). When a Pulse resolves this service, it receives a fresh instance that is cached for the duration of that Pulse only."* This reads as **Shape A** (boot-time registration with a factory; per-Fiber caching happens at make-time).
+   376→   376→
+   377→   377→But the WorkerContaminationTest calls `pulse(RequestContext::class, $contextA)` from **inside** a Fiber, treating it as **Shape C** (per-Fiber value-setter). The test's helper even registers a stub Closure that throws `NotFoundException`, indicating the test expects `pulse()` to be re-invoked per-Fiber to override the stub.
+   378→   378→
+   379→   379→These are two different APIs. Either:
+   380→   380→- (A) The blueprint is right and the tests are wrong (tests should register a factory via `pulse($id, fn() => …)` and call `make($id)` inside each Fiber, never calling `pulse()` at runtime).
+   381→   381→- (C) The tests are right and the blueprint needs amendment (pulse() is a per-Fiber value-setter; boot-time registration is unnecessary because the per-Fiber call provides both the lifetime marker and the value).
+   382→   382→
+   383→   383→The audit's recommended fix (`WeakMap<Fiber, array<string, ServiceDefinition>>`) is consistent with (C). The tech lead should confirm.
+   384→   384→
+   385→   385→**Q2 — Should parent Fibers' pulse-scoped state propagate to child Fibers?**
+   386→   386→
+   387→   387→ADR-017 §Consequences.Negative.2 says "No memory isolation" but does not address parent→child propagation specifically. The PULSE-MODEL `spawnChild()` pattern (STRUCTURE-02 §2) propagates `traceId` and `tenantId` to children — suggesting pulse context **should** propagate.
+   388→   388→
+   389→   389→But Container-level isolation by Fiber identity (this spec's default in §3.5) says it should **not** propagate. These are reconcilable if the propagation happens at the PulseContext layer (the child Fiber's `pulse(RequestContext::class, $parentContext->spawnChild(...))` is an explicit application-level call, not implicit Container-level inheritance).
+   390→   390→
+   391→   391→The tech lead should confirm: is Container-level pulse-state inheritance from parent to child Fibers a desired feature, or is the explicit `pulse()` call in the child the only sanctioned propagation path?
+   392→   392→
+   393→   393→**Q3 — Should `assertNotCompiled()` still guard `pulse()` under Shape C?**
+   394→   394→
+   395→   395→Under Shape C, `pulse()` is a per-Fiber runtime operation. The global `$compiled` flag has no bearing on per-Fiber state mutation. If `pulse()` is moved to a per-Fiber WeakMap, the `assertNotCompiled()` check becomes semantically meaningless (the global table is not being mutated).
+   396→   396→
+   397→   397→Options:
+   398→   398→- Keep `assertNotCompiled()` for symmetry with the other mutation methods. (Defensive, but slightly misleading.)
+   399→   399→- Drop `assertNotCompiled()` for `pulse()` only, with a docblock note that pulse registration is a runtime operation not gated by compile state.
+   400→   400→
+   401→   401→The tech lead should decide; the answer affects the API contract documentation in `ContainerInterface::pulse()`.
+   402→   402→
+   403→   403→**Q4 — Is `invalidatePulseInstances()` part of the public contract?**
+   404→   404→
+   405→   405→It is a `private` method today, so not part of the public contract. But its existence signals an intent (global invalidation) that contradicts the architecture. Under Shape C the method is unnecessary. Should it be deleted, or kept as a `clearCurrentFiberPulseCache()` defensive escape hatch scoped to the current Fiber only?
+   406→   406→
+   407→   407→---
+   408→   408→
+   409→   409→## Appendix A — File Inventory Read
+   410→   410→
+   411→   411→Files read in full for this specification:
+   412→   412→
+   413→   413→- `/home/z/my-project/worklog.md` (worklog; SHORTCOMINGS-AUDIT-76 at line 1430)
+   414→   414→- `/home/z/my-project/packages/core/container/src/Container.php` (504 lines — the live implementation)
+   415→   415→- `/home/z/my-project/packages/core/container/src/ContainerInterface.php` (125 lines)
+   416→   416→- `/home/z/my-project/packages/core/container/src/ContainerBuilderInterface.php` (75 lines)
+   417→   417→- `/home/z/my-project/packages/core/container/src/ServiceDefinition.php` (38 lines)
+   418→   418→- `/home/z/my-project/packages/core/container/src/CompilerPassInterface.php` (29 lines)
+   419→   419→- `/home/z/my-project/packages/core/container/src/NotFoundException.php` (14 lines)
+   420→   420→- `/home/z/my-project/packages/core/container/src/CircularDependencyException.php` (56 lines)
+   421→   421→- `/home/z/my-project/packages/core/container/tests/Unit/ContainerTest.php` (336 lines)
+   422→   422→- `/home/z/my-project/packages/core/container/tests/Unit/AutowiringTest.php` (101 lines)
+   423→   423→- `/home/z/my-project/packages/core/container/tests/Unit/CircularDependencyTest.php` (65 lines)
+   424→   424→- `/home/z/my-project/packages/core/container/tests/Unit/CompileTest.php` (45 lines)
+   425→   425→- `/home/z/my-project/packages/core/container/tests/Performance/ResolutionBenchTest.php` (partial — sufficient)
+   426→   426→- `/home/z/my-project/packages/core/container/tests/Psr11Conformance/Psr11ConformanceTest.php` (partial — sufficient)
+   427→   427→- `/home/z/my-project/packages/core/container/README.md` (43 lines)
+   428→   428→- `/home/z/my-project/packages/core/kernel/tests/Integration/WorkerContaminationTest.php` (399 lines — the source of the two failing tests)
+   429→   429→- `/home/z/my-project/packages/core/kernel/tests/Unit/RequestContextTest.php` (261 lines)
+   430→   430→- `/home/z/my-project/packages/core/kernel/src/RequestContext.php` (partial — sufficient)
+   431→   431→- `/home/z/my-project/Architecture/ADRs/ADR-017-fiber-based-cooperative-runtime.md` (68 lines — the ratifying ADR)
+   432→   432→- `/home/z/my-project/Architecture/Core/CORE-02.md` (916 lines — the Container blueprint, including the embedded reference implementation)
+   433→   433→- `/home/z/my-project/Architecture/CrossCutting/DGLAB-AS-OS-RUNTIME.md` (§8.0 — the singleton semantics analysis that introduced `pulse()`)
+   434→   434→- `/home/z/my-project/Architecture/CrossCutting/PULSE-MODEL.md` (139 lines — the Pulse 6-tuple canonical reference)
+   435→   435→- `/home/z/my-project/Architecture/CrossCutting/STRUCTURE-02-Pulse.md` (565 lines — the Pulse lifecycle, including `PulseContext::spawnChild()`)
+   436→   436→
+   437→   437→## Appendix B — Why the live source differs from the CORE-02 blueprint
+   438→   438→
+   439→   439→`Architecture/Core/CORE-02.md` ships an embedded reference implementation (lines 400–744) that predates two P2-batch fixes:
+   440→   440→
+   441→   441→1. **Cycle detection** — the blueprint uses a single `$resolving` array; the live source uses `WeakMap<Fiber, {resolving, chain}>` plus `$mainResolving` / `$mainResolvingChain` for the non-Fiber case.
+   442→   442→2. **`invalidatePulseInstances()`** — the blueprint does not show this method; the live source added it to handle `bind()` re-registration invalidating pulse-cached instances.
+   443→   443→
+   444→   444→Both fixes are correct in intent but the second introduced the S-003 cross-Fiber contamination vector. The blueprint's reference impl is also architecturally wrong (it writes `pulse()` to `$definitions[$id]`) — the same bug, just without the additional invalidation defect.
+   445→   445→
+   446→   446→This means the architecture documentation (CORE-02) needs amendment alongside the code fix. Phase A1 or later should update CORE-02's embedded reference implementation and the State block (§"Reference implementation" lines 405–433) to reflect the per-Fiber pulse-definitions WeakMap.
+   447→   447→
+   448→   448→---
+   449→   449→
+   450→   450→## End of specification.
+   451→   451→
