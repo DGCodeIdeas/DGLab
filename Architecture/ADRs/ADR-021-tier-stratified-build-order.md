@@ -1,7 +1,10 @@
 # ADR-021: Tier-Stratified Build Order with Two-DAG Governance Model
 
 
+
+> **This project is developed by both humans and AI systems. Both are capable of producing confident, coherent, technically sophisticated work while still being unaware of important shortcomings in their own reasoning.**
 <!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+
 > **⚠️ Blind-Spot Awareness:** This ADR's claims are **ratified, not verified**. Ratification establishes a contract; it does not guarantee correctness. The architectural assumptions, edge cases, and interaction scenarios in this ADR should be actively questioned and tested against runtime behavior. A different auditor with a different lens may find issues this ADR's authors missed. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
 
 <!-- End Blind-Spot Awareness -->

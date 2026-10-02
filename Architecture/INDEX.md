@@ -1,7 +1,10 @@
 # INDEX — Governance & Numbering Authority
 
 
+
+> **This project is developed by both humans and AI systems. Both are capable of producing confident, coherent, technically sophisticated work while still being unaware of important shortcomings in their own reasoning.**
 <!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+
 > **⚠️ Blind-Spot Awareness:** This INDEX registry's **counts, statuses, and cross-references may have drift**. Per ADR-021 §11, INDEX owns identity/governance only — derived facts (Composer dependencies, namespace imports, implementation status, topological ordering, test state) should be generated, not hand-maintained. The freshness stamp may be stale. Blueprint files may exist without INDEX entries, or INDEX entries may reference blueprints that don't exist. **The registry is a starting point — verify against the actual repository.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
 
 <!-- End Blind-Spot Awareness -->

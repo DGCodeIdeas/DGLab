@@ -1,6 +1,9 @@
 # DGLab — Sovereign Stack
 
+
+> **This project is developed by both humans and AI systems. Both are capable of producing confident, coherent, technically sophisticated work while still being unaware of important shortcomings in their own reasoning.**
 <!-- Blind-Spot Awareness (per Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md) -->
+
 > **⚠️ Blind-Spot Awareness:** This repository's architecture has undergone an integrity audit (47 findings), but the audit is a **starting point, not a complete inventory**. The number of findings found is not the number of findings that exist. Every architectural document in this repo carries a blind-spot awareness note. Before relying on any architectural claim, verify it against the actual implementation. See [`Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md`](Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md) for the governance framework.
 
 <!-- End Blind-Spot Awareness -->
