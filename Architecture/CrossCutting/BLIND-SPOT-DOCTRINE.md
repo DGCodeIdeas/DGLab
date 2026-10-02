@@ -1,6 +1,9 @@
 # Blind-Spot Doctrine
 
+
+> **This project is developed by both humans and AI systems. Both are capable of producing confident, coherent, technically sophisticated work while still being unaware of important shortcomings in their own reasoning.**
 **Status:** Binding governance doctrine (per tech-lead directive 2026-10-02)
+
 **Scope:** All architecture integrity work — audits, reviews, remediation, and verification
 **Audience:** All stakeholders — humans (tech lead, future engineers, contractors) and AIs (SAAI, Z.ai, Grok, any future AI reviewer)
 
