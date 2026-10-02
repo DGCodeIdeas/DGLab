@@ -42,9 +42,9 @@ cross-reference, **this index is correct and the other document is stale** (Gove
 | Path | Contents |
 |---|---|
 | `Architecture/Core/CORE-01..20` | 20 Core-tier blueprints |
-| `Architecture/Hub/HUB-01..31` | 31 Hub-tier blueprints (**HUB-10 and HUB-25 SUPERSEDED** — relocated to Runtime tier as RUNTIME-03/RUNTIME-04 per ADR-021 §12; **HUB-32 AI Inference Hub ratified pending canonical publication** per ADR-021 §13 — blueprint file not yet created; active Hub count = 31 − 2 relocated = 29 + 1 pending = 30) |
+| `Architecture/Hub/HUB-01..32` | 32 Hub-tier blueprints (**HUB-10 and HUB-25 SUPERSEDED** — relocated to Runtime tier as RUNTIME-03/RUNTIME-04 per ADR-021 §12; **HUB-32 AI Inference Hub** canonical at depth 1 per ADR-021 §13 — implementation deferred; active Hub count = 32 − 2 superseded = 30) |
 | `Architecture/Spoke/Internal/ISPOKE-01..27` | 27 Internal Spoke blueprints (ISPOKE-16–25 promoted from placeholders on 2026-08-05; ISPOKE-26/27 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015) |
-| `Architecture/Spoke/External/ESPOKE-01..18` | 18 External Spoke blueprints (ESPOKE-16/17/18 promoted from the hospitality-vertical design on 2026-08-12 per ADR-015; **ESPOKE-19 Eloq ratified pending canonical publication** per ADR-021 §14 — blueprint file not yet created) |
+| `Architecture/Spoke/External/ESPOKE-01..19` | 19 External Spoke blueprints (ESPOKE-16/17/18 hospitality-vertical per ADR-015; **ESPOKE-19 Eloq** canonical at depth 1 per ADR-021 §14 — implementation deferred) |
 | `Architecture/Spoke/Bridge/BRIDGE-01` | 1 Bridge blueprint |
 | `Architecture/Deploy/DEPLOY-00..04` | 5 Deploy blueprints (all documented; 00 renamed, 02/03/04 promoted from stubs on 2026-08-05) |
 | `Architecture/ADRs/ADR-001..010` | 10 Accepted Architecture Decision Records |

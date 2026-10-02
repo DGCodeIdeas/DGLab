@@ -57,9 +57,9 @@ final class ArchitectureLint
     {
         $ranges = [
             'CORE'    => range(1, 20),
-            'HUB'     => range(1, 30),   // 31 is proposed; allow it explicitly below
+            'HUB'     => range(1, 32),   // HUB-31 accepted per ADR-011; HUB-32 canonical per ADR-021 §13
             'ISPOKE'  => range(1, 27),   // 26/27 promoted from hospitality-vertical design 2026-08-12 (ADR-015)
-            'ESPOKE'  => range(1, 18),   // 16/17/18 promoted from hospitality-vertical design 2026-08-12 (ADR-015)
+            'ESPOKE'  => range(1, 19),   // 16/17/18 hospitality-vertical (ADR-015); 19 Eloq canonical per ADR-021 §14
             'BRIDGE'  => [1],
             'DEPLOY'  => range(0, 4),
         ];

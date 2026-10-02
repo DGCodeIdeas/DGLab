@@ -275,7 +275,7 @@ This catches the C04↔C05 collision (`SovereignStack\Core\Http\` shared root) a
 
 ### 18. ISPOKE-E15 Theme Manager (HUB-26 Absorption Target)
 
-**ISPOKE-E15 is ratified as a HUB-26 absorption target**, not a new HUB-33. Per `ESPOKE-CONSUMER-MAP-7`: E15 crosses the 50% Hub-promotion threshold (61.1% YES, 11 of 18 ESPOKEs). Absorb into HUB-26 UI Elements when HUB-26 ships.
+**ISPOKE-E15 is ratified as a HUB-26 absorption target**, not a new 33rd Hub. Per `ESPOKE-CONSUMER-MAP-7`: E15 crosses the 50% Hub-promotion threshold (61.1% YES, 11 of 18 ESPOKEs). Absorb into HUB-26 UI Elements when HUB-26 ships.
 
 ### 19. Hub-Promotion Reassessments
 
