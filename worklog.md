@@ -1487,3 +1487,101 @@ Stage Summary:
 - Top 4 FATAL items block CI and block next-lap work. They should be fixed first as 4 focused PRs (1 PR per FATAL, per established PR pattern #287-#292).
 - The remaining 43 items can be batched by category into ~10-15 focused PRs.
 - No code was modified during this audit (per task constraint: "Do NOT fix anything — just identify and categorize by severity").
+
+---
+Task ID: A0-FIBER-STATE-MODEL-76
+Agent: General-purpose (Phase A0 runtime isolation spec — Container Fiber state model)
+Task: Per tech-lead directive ("Don't let the implementation dictate the architecture"), produce the pre-implementation state model specification for the Container's Fiber isolation. Resolve S-003/S-004 (FATAL findings from SHORTCOMINGS-AUDIT-76) by answering the tech lead's question: "What exact state is allowed to cross a Fiber boundary, and what exact state must never cross it?"
+
+Work Log:
+- Read worklog.md (1489 lines) for SHORTCOMINGS-AUDIT-76 context — confirmed S-003/S-004 root cause analysis (Container::pulse() mutates global $definitions instead of per-Fiber state).
+- Read in full: all 7 PHP source files in packages/core/container/src/ (Container, ContainerInterface, ContainerBuilderInterface, ServiceDefinition, CompilerPassInterface, NotFoundException, CircularDependencyException). Noted that the LIVE source has the P2-batch WeakMap cycle-detection fix and the invalidatePulseInstances() helper that the CORE-02 blueprint's embedded reference implementation does NOT show (blueprint is older).
+- Read in full: all 5 container test files (ContainerTest, AutowiringTest, CircularDependencyTest, CompileTest, Psr11ConformanceTest, ResolutionBenchTest) — no Fiber-isolation tests exist at the container-package level; all isolation testing lives in the kernel package.
+- Read in full: packages/core/kernel/tests/Integration/WorkerContaminationTest.php (399 lines) — located the 2 failing tests (testConcurrentFibersObserveIndependentPulseState at line 60, testCompletedFiberStateIsNotVisibleToNewFiber at line 281) plus 3 passing siblings (testSequentialRequestsOnOneWorkerDoNotInheritPriorState, testExceptionDuringRequestDoesNotLeakToSubsequentRequest, testRepeatedWorkerReuseMaintainsIsolationAcrossFiveRequests).
+- Read in full: ADR-017 (Fiber-based cooperative runtime — 68 lines, ratified 2026-08-24), CORE-02 (Container blueprint — 916 lines including the embedded reference implementation), DGLAB-AS-OS-RUNTIME §8.0 (singleton semantics under cooperative scheduling — the analysis that introduced pulse()), PULSE-MODEL.md (Pulse 6-tuple canonical reference), STRUCTURE-02-Pulse.md (Pulse lifecycle including PulseContext::spawnChild).
+- Confirmed root cause for S-003 by tracing the code path:
+  * Fiber A: pulse(RC, $contextA) writes $definitions[RC] = ServiceDefinition(concrete=$contextA, pulseScoped=true). A's first make(RC) caches $contextA into $pulseInstances[$fiberA][RC].
+  * Fiber B (after A suspends): pulse(RC, $contextB) overwrites $definitions[RC] (now concrete=$contextB) AND calls invalidatePulseInstances(RC) which iterates the WeakMap and UNSETS RC from $fiberA's pulse cache.
+  * Fiber A resumes: make(RC) — step 1b misses (B wiped it); step 2 $concrete = $definitions[RC]->concrete = $contextB; build($contextB) returns $contextB as-is. A sees B's value. LEAK.
+- Confirmed root cause for S-004 by tracing the code path:
+  * Fiber A: pulse(RC, $contextA) sets $definitions[RC]->concrete = $contextA. A completes.
+  * unset($fiberA) — WeakMap GC evicts $pulseInstances[$fiberA] and $fiberResolving[$fiberA]. But $definitions[RC] is GLOBAL and survives.
+  * Fiber B starts (no pulse() call): make(RC) — step 1b misses (no entry for $fiberB); step 2 $concrete = $definitions[RC]->concrete = $contextA (the dead Fiber's value!); build($contextA) returns $contextA. B sees A's value. LEAK.
+- Wrote the specification to /home/z/my-project/download/CONTAINER-FIBER-STATE-MODEL.md (450 lines).
+
+Findings summary:
+- **The Core Question answered.** A Fiber boundary may be crossed by immutable configuration (frozen binding table, pre-built shared singletons, compiler passes — all write-once at boot, read-only afterward); it must NEVER be crossed by mutable per-Pulse state (pulse-scoped definitions, pulse-scoped cached instances, per-Fiber cycle-detection stacks).
+- **State classification (3 categories).** (1) Global immutable: $definitions (non-pulseScoped subset), $instances (singletons), $compilerPasses, $compiled. (2) Process/shared: $mainResolving, $mainResolvingChain. (3) Fiber-local: $pulseInstances, $fiberResolving, AND (MISSING) $pulseDefinitions — the per-Fiber pulse-scoped binding table that the audit recommended but the code does not have.
+- **Two of three per-Fiber fields already exist** ($pulseInstances, $fiberResolving — both WeakMap<Fiber, …> with auto-eviction). The third ($pulseDefinitions) is the missing piece — that is S-003/S-004 in one sentence.
+- **Root cause is structural, not cosmetic.** Container::pulse() at line 140 writes to $this->definitions[$id] (global array). It must instead write to $this->pulseDefinitions[\Fiber::getCurrent()][$id] (WeakMap<Fiber, …>). Container::make() at line 177 reads $definitions[$id] for the definition lookup; for pulseScoped ids it must first consult the current Fiber's $pulseDefinitions bucket. invalidatePulseInstances() at lines 391-400 is structurally wrong under either intended model (per-Fiber definitions make it unnecessary; boot-time registration makes it unnecessary) — it must be removed or scoped to the current Fiber only.
+- **API ambiguity flagged for tech lead (Q1).** The CORE-02 blueprint docblock for pulse() reads as a boot-time registration API (Shape A: register a factory, materialise per-Fiber at make-time). The WorkerContaminationTest exercises it as a request-time per-Fiber value-setter (Shape C: each Fiber calls pulse() inside itself with the actual instance). The audit's recommended fix (WeakMap<Fiber, array<string, ServiceDefinition>>) is consistent with Shape C. The tech lead must confirm which shape is canonical — the implementation, the blueprint, and the test docs all need to align on one answer.
+- **Six regression tests derived from the intended model** (beyond the 2 existing failing tests): testFiberTerminationClearsPulseScope, testFiberReuseReregistersPulse, testNestedFiberInheritsGlobalState, testNestedFiberHasIndependentPulseScope, testGlobalSingletonsAreSharedAcrossFibers, testPulseScopedInstancesAreNotSharedAcrossFibers. The last two are guards against over-correction: the fix must not make singletons Fiber-local (TC-7) and must not make pulse-scoped bindings behave like singletons (TC-8).
+- **Blueprint drift identified.** CORE-02's embedded reference implementation (lines 400-744) is older than the live source — it lacks the P2 WeakMap cycle-detection fix and the invalidatePulseInstances() helper. Both the blueprint and the live code share the same architectural defect (pulse() writes to global $definitions). Phase A1+ must update CORE-02's reference implementation alongside the code fix.
+
+Top critical finding:
+The S-003/S-004 fix is a one-field data-structure change: introduce `private \WeakMap $pulseDefinitions;` (WeakMap<Fiber, array<string, ServiceDefinition>>) and redirect pulse() to write there instead of to global $definitions. Two of the three per-Fiber state fields already use this exact pattern ($pulseInstances, $fiberResolving) — both added in the P2 batch with the same rationale (auto-eviction on Fiber GC, no manual cleanup, no memory leak over a long-running FrankenPHP worker). The third field ($pulseDefinitions) was missed when the pulse() machinery was originally built (commits 2c812e72 and 76a02274, per ADR-017 Provenance). The fix is mechanically small but architecturally load-bearing: it is the difference between a Container that is Fiber-safe by construction and one that is Fiber-safe only as long as no two Pulses ever touch the same id.
+
+Recommended remediation order (direction only — implementation deferred to Phase A1+):
+1. Resolve OPEN QUESTION Q1 with the tech lead (Shape A boot-time registration vs Shape C per-Fiber value-setter). The audit's recommendation (Shape C) is consistent with the existing tests; the blueprint (Shape A) is not.
+2. Phase A1: implement the $pulseDefinitions WeakMap, redirect pulse() and make() to consult it per-Fiber, remove (or Fiber-scope) invalidatePulseInstances(). All 8 regression tests from §6 of the spec must pass.
+3. Phase A2: update CORE-02's embedded reference implementation to match the live source (including the $pulseDefinitions WeakMap); update the ContainerInterface::pulse() docblock to reflect whichever shape (A or C) the tech lead ratifies; record an ADR amendment to ADR-017 (or a new ADR) ratifying the chosen shape.
+4. Phase A3: enumerate all existing singleton() calls across providers (per DGLAB-AS-OS-RUNTIME §8.0.3 audit requirement) and classify each as worker-scoped (keep) or pulse-scoped (migrate).
+
+Stage Summary:
+- Phase A0 specification complete: the Container's Fiber isolation state model is documented at /home/z/my-project/download/CONTAINER-FIBER-STATE-MODEL.md (450 lines).
+- The tech lead's question ("what crosses a Fiber boundary, what doesn't") is answered unambiguously: immutable boot-time configuration crosses; mutable per-Pulse state must not cross. The boundary is enforced structurally by WeakMap<Fiber, …> — for two of the three per-Fiber fields this is already done; the third ($pulseDefinitions) is the S-003/S-004 fix.
+- 4 open questions surfaced for the tech lead (Q1: pulse() shape, Q2: parent→child pulse propagation, Q3: assertNotCompiled() applicability under Shape C, Q4: invalidatePulseInstances() disposition).
+- 8 regression test cases derived from the intended model (2 existing failing + 6 new).
+- No code was modified (per task constraint: specification only).
+- Blueprint drift identified (CORE-02 reference impl is older than live source) — Phase A2 task created.
+
+---
+Task ID: SHORTCOMINGS-REGISTER-76.1
+Agent: General-purpose (shortcomings register construction)
+Task: Convert the 47-item SHORTCOMINGS-AUDIT-76 into a canonical SHORTCOMINGS-REGISTER with the full field set required by the integrity gate. Apply the tech-lead's ratification decisions: HUB-32 and ESPOKE-19 become canonical at depth 1 (implementation deferred); S-003/S-004 get A0 spec → A2 fix; closure requires verification-condition-pass, not code-change. State the paradigm shift ("we're no longer optimizing for making the roadmap move; we're optimizing for making every architectural claim true before allowing the roadmap to move").
+
+Work Log:
+- Read worklog.md tail (lines 1425-1490, SHORTCOMINGS-AUDIT-76 entry) to absorb the audit summary and recommended remediation order.
+- Read /home/z/my-project/download/SHORTCOMINGS-AUDIT.md in full (813 lines, 47 findings across 5 categories).
+- Read /home/z/my-project/download/CONTAINER-FIBER-STATE-MODEL.md context from the worklog tail (Phase A0 spec already landed — S-003/S-004 fix can now proceed to A2 implementation).
+- Applied 4 tech-lead decisions to the register:
+  (1) HUB-32 and ESPOKE-19 canonical at depth 1 — S-001, S-002, S-033 remediation updated to "publish minimal canonical blueprints + extend lint validIds + update INDEX to reflect canonical status (not pending)"; target phase A1.
+  (2) S-003/S-004 → A0 spec → A2 fix — A0 already complete per CONTAINER-FIBER-STATE-MODEL-76.0; the spec lands before the implementation.
+  (3) Closure rule: a finding is closed only after its stated verification condition passes — code change ≠ closed, CI green ≠ closed. Every finding's "Closure evidence" field starts empty; the field is filled only when the verification test passes against HEAD at that time.
+  (4) Paradigm shift stated at the top of the register (under "Paradigm Shift (Tech-Lead Directive)"): the roadmap does not advance while any FATAL finding remains Open; the roadmap does not advance past the current lap while any HIGH finding in the current phase's scope remains Open.
+- Wrote register to /home/z/my-project/download/SHORTCOMINGS-REGISTER.md (949 lines, 47 findings with full field set per finding).
+
+Field set per finding (all 47 have all required fields):
+- ID (S-001..S-047), Severity (FATAL/HIGH/MEDIUM/LOW), Category (CI/Doc-Drift/Latent-Defect/Governance/Coherence), Title, Description, Evidence (file path + line numbers), Affected artifact, Contract violated (ADR/SPEC/governance rule), Root cause (underlying cause, not the symptom), Remediation (one-line fix description), Verification test (what check would prove the fix is correct), Disposition (all Open), Owner (tech lead / main agent / subagent), Target phase (A0/A1/A2/A3/HIGH-batch/MEDIUM-batch/LOW-backlog), Closure evidence (empty).
+
+Phase assignments (per tech-lead directive):
+- A0 — S-003, S-004 — Runtime isolation spec (ALREADY COMPLETE per CONTAINER-FIBER-STATE-MODEL-76.0)
+- A1 — S-001, S-002, S-033 — Canonical HUB-32 / ESPOKE-19 publication (depth 1, implementation deferred) + lint extension + INDEX update
+- A2 — S-003, S-004 — Fiber isolation remediation (implement the spec; introduce $pulseDefinitions WeakMap)
+- A3 — all — Full re-audit (every finding re-verified against HEAD)
+- HIGH-batch — S-005..S-033 (29 findings) — Documentation drift + latent defects + governance
+- MEDIUM-batch — S-034..S-043 (10 findings) — Coherence fixes (CORE-DEPENDENCY-DAG → CORE-VERIFIED-DAG find-replace, Amendment 2 edge model, Hub CAPABILITY+BUILD-ORDER authoring, RUNTIME prefix in lint)
+- LOW-backlog — S-044..S-047 (4 findings) — Cleanup
+
+Cross-references table included to make dependency chains explicit:
+- S-001 depends on S-033 (HUB-32 blueprint must exist before lint can be extended).
+- S-014 depends on S-001 + S-033 (post-canonical-publication count update).
+- S-019 auto-resolves when S-017 closes (§5.2 collapse).
+- S-033 blocks S-001 + S-014.
+- S-040 depends on S-027..S-032 (governance decisions must close before HUB-BUILD-ORDER can be derived).
+- S-042 depends on S-032 (Runtime-tier DAG absorbs the 11 relocated edges).
+
+Closure rule stated three ways:
+1. Paradigm shift directive at top of register.
+2. "Closure Rule" section explaining the three things required in Closure evidence (commit/PR ref + verification artifact ref + date).
+3. "Re-Audit Trigger (Phase A3)" section explaining that findings move to Closed only when the re-audit subagent confirms the verification test passes against HEAD at that time.
+
+Stage Summary:
+- 47-item shortcomings audit converted to canonical register at /home/z/my-project/download/SHORTCOMINGS-REGISTER.md (949 lines).
+- All 47 findings have the full field set required by the integrity gate (ID / Severity / Category / Title / Description / Evidence / Affected artifact / Contract violated / Root cause / Remediation / Verification test / Disposition / Owner / Target phase / Closure evidence).
+- All 47 dispositions = Open (0 Closed). Closure requires verification-condition-pass, not code-change.
+- Phase A0 (S-003/S-004 spec) is already complete per the prior CONTAINER-FIBER-STATE-MODEL-76.0 task — the spec is ready for A2 implementation.
+- Phase A1 (S-001/S-002/S-033) is the next unblocking step: publish depth-1 canonical HUB-32 + ESPOKE-19 blueprints, extend lint validIds, update INDEX to reflect canonical status. Resolves 3 of the 4 FATAL findings (S-001, S-002) + 1 HIGH (S-033) at once.
+- Phase A2 (S-003/S-004 fix) becomes unblocked once A1 ships — the spec is in place, the implementation is a one-field data-structure change (introduce $pulseDefinitions WeakMap, redirect pulse() and make() to consult it per-Fiber, Fiber-scope or remove invalidatePulseInstances()). Resolves the remaining 2 FATAL findings.
+- After A1 + A2 ship, the roadmap can resume HIGH-batch work (29 findings). The full register must close before Phase A3 re-audit gives the roadmap permission to advance past the current lap.
+- No code was modified during this task (register construction only).
