@@ -43,7 +43,7 @@ This applies to:
 | **Cross-tier drift** | Auditing each tier separately misses inconsistencies BETWEEN tiers | Hub DAG declares edges to Core — are those Core packages actually at the depth Hub expects? |
 | **Architectural assumptions** | Things we assume are correct because "everyone knows" them | The SDLC depth scale, the Pulse model, the Ring direction — these are axioms, not verified claims |
 | **Missing tests** | Checking if existing tests pass ≠ checking if tests that SHOULD exist DO exist | What Fiber lifecycle scenario has nobody thought to test? |
-| **Auditor biases** | An AI (or human) trained on certain patterns will systematically miss things outside those patterns | The audit didn't flag the HUB-33 lint issue until the lint actually ran and failed |
+| **Auditor biases** | An AI (or human) trained on certain patterns will systematically miss things outside those patterns | The audit didn't flag the a 33rd Hub reference lint issue until the lint actually ran and failed |
 | **Unknown unknowns** | Questions nobody has asked yet | What if the ADR-017 Fiber model itself has a flaw that only manifests under specific concurrency patterns? |
 | **Interaction blind spots** | Each subsystem may be correct in isolation, but their interaction may be wrong | Container is correct + Kernel is correct + Fiber scheduling is correct → but their COMBINATION may produce contamination |
 | **Temporal blind spots** | Issues that only manifest after time, load, or specific sequencing | A memory leak that only appears after 10,000 requests; a race that only triggers under specific Fiber interleaving |
