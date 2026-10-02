@@ -1,6 +1,12 @@
 # DGLab Wheel Architecture
 ## Structure 03: Security & Trust Architecture
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 > **Reconciled to ADR-003** (`Verification/INCONSISTENCIES.md` #4): JWT signing is **ES256**,
 > owned by `HUB-04`'s `JwtService`. The predecessor of this file said `CORE-16 (Ed25519)`, which
 > contradicted ADR-003 on both algorithm and ownership. The tenant claim is `tenant_id`, matching

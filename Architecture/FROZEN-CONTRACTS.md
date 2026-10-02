@@ -1,5 +1,11 @@
 # Frozen Contracts Registry
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 > Canonical list of all interfaces and enums that are **frozen per SDLC-AGRD §2.1**.
 >
 > An interface is frozen the first time it is implemented at any depth. After

@@ -1,5 +1,11 @@
 # Hub Edge Inventory — HUB-DAG-EVIDENCE-75 (Phase 1)
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This verification/audit document is a **starting point, not a complete inventory**. The number of findings found is not the number of findings that exist. The audit was conducted by a single auditor with systematic blind spots (runtime-only issues, cross-tier drift, architectural assumptions, missing tests, auditor biases, unknown unknowns). **No audit is declared complete.** Findings are closed only when their verification condition passes — not when code changes. See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Task ID:** HUB-DAG-EVIDENCE-75
 **Agent:** General-purpose (Hub DAG evidence reconciliation)
 **Date:** 2026-10-01

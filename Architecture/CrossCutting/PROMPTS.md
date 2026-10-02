@@ -1,5 +1,11 @@
 # PROMPTS — Operating Instructions for AI Agents (SDLC-AGRD Companion Module)
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Canonical companion to `SDLC-AGRD.md`. This module was split out of `SDLC-AGRD-v3.4(2).md` §11 so
 the methodology body stays focused and the agent-operating instructions stay in one place. Every agent the
 solo tech lead drives — regardless of product name — reads this plus `MEMORY.md` before any task.

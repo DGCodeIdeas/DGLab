@@ -1,5 +1,11 @@
 # SDLC-AGRD: Spiral Deepening for a Solo Tech Lead
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** Canonical. Supersedes `AGRD_v1_0.md` (Kimi, 3-engineer parallel model),
 `AGRD-v2.md` (Z.ai, 3-engineer sequential-with-parallel-tail model), `SDLC-AGRD-v3`
 (fixed a self-inconsistent blueprint count, added the depth scale and a one-shot Phase structure),

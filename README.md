@@ -1,5 +1,11 @@
 # DGLab — Sovereign Stack
 
+<!-- Blind-Spot Awareness (per Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This repository's architecture has undergone an integrity audit (47 findings), but the audit is a **starting point, not a complete inventory**. The number of findings found is not the number of findings that exist. Every architectural document in this repo carries a blind-spot awareness note. Before relying on any architectural claim, verify it against the actual implementation. See [`Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md`](Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md) for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
+
 A from-scratch PHP 8.3 application framework and monorepo, built for full control over every layer of the stack — from the DI container to the HTTP pipeline to the template engine to the deployment infrastructure.
 
 ## What is this?

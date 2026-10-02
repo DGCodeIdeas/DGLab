@@ -1,5 +1,11 @@
 # Blueprint Authoring Guide — DGLab v2
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This CrossCutting document's **assumptions should be actively questioned**. Governance rules, structural models, and doctrines established here are candidates, not certainties. The document may reference other documents that have drifted. Cross-cutting concerns (security, observability, persistence, events) interact in ways that may not be captured by any single document. **A governance rule is only as good as its enforcement — verify that the rule is actually checked.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Read this entire file before writing any blueprint.** Every blueprint in this bundle must meet the fidelity bar defined here. Subagents that produce prose-only or thin blueprints will be rejected.
 
 > **Nuclear-grade doctrine (Core tier).** If you are authoring or amending a blueprint for any Core-tier package — currently CORE-19 (DBAL), CORE-15 (Cache), CORE-14 (Filesystem), CORE-16 (Encryption) per doctrine §4.1–§4.4, plus CORE-18 (Kernel) per doctrine §4.5 (pilot for the broader Core-tier scope) — the blueprint MUST end with a section titled `## Nuclear-Grade Engineering Doctrine (binding)` that cross-references [`CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](./CrossCutting/NUCLEAR-GRADE-DOCTRINE.md) and enumerates the doctrine's per-package binding items (resource ceilings, breaker thresholds, audit record fields, chaos scenarios, §9 merge gate). Where the blueprint and the doctrine conflict, **the doctrine wins**; the blueprint is amended at the same PR that lands the implementation. Remaining Core packages (CORE-01/02/03/04/05/06/07/08/09/10/17/20) are bound in principle under doctrine §1–§3 and §5–§11 immediately; their per-package application sections (§4.6 onward) land incrementally per doctrine §11's amendment protocol.

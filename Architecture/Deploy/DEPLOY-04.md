@@ -1,5 +1,11 @@
 # DEPLOY-04: Multi-Environment & Promotion Pipeline
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This Deploy blueprint may contain **stale infrastructure assumptions** (e.g., PHP-FPM vs FrankenPHP per ADR-017, Nginx vs Caddy, Supervisor vs systemd). The deployment configuration should be verified against actual infrastructure. Runtime substrate claims (Anvil v3, worker recycling, signal handling) should be tested against real deployments. **Documentation drift is especially dangerous in deployment blueprints — always verify against the actual runtime.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 ## Tier
 Deploy
 

@@ -1,5 +1,11 @@
 # ADR-016: Library/Application Boundary — Split `packages/` from `app/`
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This ADR's claims are **ratified, not verified**. Ratification establishes a contract; it does not guarantee correctness. The architectural assumptions, edge cases, and interaction scenarios in this ADR should be actively questioned and tested against runtime behavior. A different auditor with a different lens may find issues this ADR's authors missed. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** **Proposed** — not yet Accepted. Ratification as Accepted is deferred until
 the first Spoke (ISPOKE-01) ships against the new layout and empirically validates that
 the boundary sharpens (not blurs) the tier model. Until then, this ADR records the

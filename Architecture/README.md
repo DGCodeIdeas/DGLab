@@ -1,5 +1,11 @@
 # DGLab — Sovereign Stack Architecture
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This INDEX registry's **counts, statuses, and cross-references may have drift**. Per ADR-021 §11, INDEX owns identity/governance only — derived facts (Composer dependencies, namespace imports, implementation status, topological ordering, test state) should be generated, not hand-maintained. The freshness stamp may be stale. Blueprint files may exist without INDEX entries, or INDEX entries may reference blueprints that don't exist. **The registry is a starting point — verify against the actual repository.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 This repository is the home of the **Sovereign Stack**: a polyrepo, tier-isolated PHP architecture for
 the DGLab platform (CMS + Studio + admin).
 

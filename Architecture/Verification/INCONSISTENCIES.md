@@ -1,5 +1,11 @@
 # INCONSISTENCIES — Scan Report
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This verification/audit document is a **starting point, not a complete inventory**. The number of findings found is not the number of findings that exist. The audit was conducted by a single auditor with systematic blind spots (runtime-only issues, cross-tier drift, architectural assumptions, missing tests, auditor biases, unknown unknowns). **No audit is declared complete.** Findings are closed only when their verification condition passes — not when code changes. See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Purpose.** Human-readable mirror of `Verification/lint/run.php`. This report records every
 contradiction found in the DGLab architecture corpus, how it was reconciled, and where the authoritative
 statement now lives. It is generated from the consolidation pass of 2026-08-05 and is kept in sync with

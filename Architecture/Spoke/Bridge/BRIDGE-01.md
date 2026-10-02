@@ -1,5 +1,11 @@
 # BRIDGE-01: The Vanguard (Architectural Enforcement Layer)
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This Bridge blueprint may contain **unverified assumptions about the adapter boundary, unstated integration dependencies, or edge cases not covered**. The Bridge routes through the Integration DAG, not the tier-DAG family — its dependencies may cross tiers in ways not captured in any single tier's DAG. **The adapter contract should be verified against actual external infrastructure behavior.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 ## Tier
 Bridge
 

@@ -1,5 +1,11 @@
 # CORE-DECLARED-DAG — Declared Architecture DAG
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This DAG is a **candidate inventory, not a complete graph**. Edges may be missing; edge classifications (edge_type, requiredness, gates) may be incorrect or UNKNOWN. The declared and verified views should be actively compared for drift. The four edge status categories (VERIFIED / DECLARED_ONLY / UNDECLARED_VERIFIED / INVALID) are derived from current evidence — new evidence may change them. **The number of edges found is not the number of edges that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Authority:** Architectural intent ("should be").
 **Source:** Blueprint `Upward`/`Downward` sections + ADRs + SPECs + capability contracts.
 **Not authoritative for:** Implementation reality (use `CORE-VERIFIED-DAG.md` for that).

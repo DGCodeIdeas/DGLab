@@ -1,5 +1,11 @@
 # ADR-015: Promote the Hospitality Vertical from Design to Canonical
 
+
+<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+> **⚠️ Blind-Spot Awareness:** This ADR's claims are **ratified, not verified**. Ratification establishes a contract; it does not guarantee correctness. The architectural assumptions, edge cases, and interaction scenarios in this ADR should be actively questioned and tested against runtime behavior. A different auditor with a different lens may find issues this ADR's authors missed. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+
+<!-- End Blind-Spot Awareness -->
+
 **Status:** **Proposed** — not yet Accepted. Ratification as Accepted is deferred until lap 1
 completes and the hospitality vertical's V1 track (wk 17–29 per `HOSPITALITY-VERTICAL.md` §3) is
 empirically validated against actual integration with the Hub services it depends on (Bet 3 Hub
