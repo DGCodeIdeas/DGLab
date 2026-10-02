@@ -516,7 +516,7 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * scoped to a single Fiber.
      */
     /**
-     * @param Fiber<mixed, mixed, mixed, mixed> $fiber
+     * @param \Fiber<mixed, mixed, mixed, mixed> $fiber
      */
     private function invalidateCurrentFiberPulseInstance(\Fiber $fiber, string $id): void
     {
