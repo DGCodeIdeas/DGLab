@@ -89,6 +89,9 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * pulse() requires a current Fiber: calling it from the main (non-Fiber)
      * context throws {@see ContainerException} — there is no Pulse to bind to.
      */
+    /**
+     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, ServiceDefinition>>
+     */
     private \WeakMap $pulseDefinitions;
 
     /**
@@ -511,6 +514,9 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
      * and leaves the entry in place) — so the inner array must be read out,
      * modified, and written back. Mirrors invalidatePulseInstances() but
      * scoped to a single Fiber.
+     */
+    /**
+     * @param Fiber<mixed, mixed, mixed, mixed> $fiber
      */
     private function invalidateCurrentFiberPulseInstance(\Fiber $fiber, string $id): void
     {
