@@ -1,0 +1,716 @@
+     1→# HUB-DECLARED-DAG — Hub Tier Declared Dependency DAG
+     2→
+     3→
+     4→<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
+     5→> **⚠️ Blind-Spot Awareness:** This DAG is a **candidate inventory, not a complete graph**. Edges may be missing; edge classifications (edge_type, requiredness, gates) may be incorrect or UNKNOWN. The declared and verified views should be actively compared for drift. The four edge status categories (VERIFIED / DECLARED_ONLY / UNDECLARED_VERIFIED / INVALID) are derived from current evidence — new evidence may change them. **The number of edges found is not the number of edges that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
+     6→
+     7→<!-- End Blind-Spot Awareness -->
+     8→
+     9→**Task ID:** HUB-DAG-PHASE2-75
+    10→**Agent:** General-purpose (Hub DAG Phase 2 derivation)
+    11→**Date:** 2026-10-01
+    12→**Authority:** ADR-021 §11 (two-DAG governance model) — DECLARED DAG (architectural intent)
+    13→**Evidence base:** `/home/z/my-project/download/HUB-EDGE-INVENTORY.md` (Phase 1, 756 lines) + HUB-04.md reconciliation (this task) + 3 SAAI resolutions (bidirectional cycles, HUB-10/HUB-25 removal, HUB-04 update)
+    14→**Scope:** Hub-tier DECLARED DAG ONLY. This DAG records every edge declared in a Hub blueprint's Upward / Direct Hub / Transitive Core / Downward section, after applying the three Phase 2 resolutions. It is the architectural-intent counterpart to `HUB-VERIFIED-DAG.md` (repository reality).
+    15→
+    16→---
+    17→
+    18→## §0. Authority statement
+    19→
+    20→This DAG is the **architectural-intent** view of the Hub tier per ADR-021 §11. An edge appears in this DAG if and only if:
+    21→
+    22→1. The edge source is one of the **29 active Hub blueprints** (HUB-01..31 minus HUB-10 and HUB-25 which are SUPERSEDED per ADR-021 §12), AND
+    23→2. The edge target is an active Hub blueprint OR a Core blueprint (CORE-01..20), AND
+    24→3. The edge is declared in the source blueprint's formal Upward / Direct Hub / Transitive Core section, OR declared in some producer's Downward section as a downward-only edge (the producer acknowledges the consumer even if the consumer doesn't formally acknowledge the producer), AND
+    25→4. The edge survives the three Phase 2 resolutions (§3 below).
+    26→
+    27→**Out of scope for this DAG:**
+    28→- Cross-tier edges Hub→Runtime (Hub→RUNTIME-03 Queue, Hub→RUNTIME-04 Scheduler) — see §4 "Relocated to Runtime-tier DAG (pending)" for the 11 preserved-as-historical edges that were moved out of the Hub DAG.
+    29→- Cross-tier edges Hub→Bridge / Hub→Spoke — out of scope for any tier-DAG.
+    30→- Verified-only edges (composer/source evidence but no blueprint declaration) — these are now VERIFIED edges, included in this DAG too because they were declared via HUB-04.md update (Resolution 3).
+    31→
+    32→---
+    33→
+    34→## §1. Node set (29 active Hub blueprints)
+    35→
+    36→Per `Architecture/INDEX.md` §2.2 and ADR-021 §12:
+    37→
+    38→| ID | Name | Criticality | Implemented? |
+    39→|---|---|---|---|
+    40→| HUB-01 | Sovereign Hub Config & Flags | Critical | ✅ `packages/hub/config/` |
+    41→| HUB-02 | Sovereign Cache & State | Critical | ❌ |
+    42→| HUB-03 | Sovereign Asset Engine | High | ❌ |
+    43→| HUB-04 | Sovereign Identity & Authentication | Critical | ✅ `packages/hub/identity/` |
+    44→| HUB-05 | Sovereign Guardian (RBAC) | Critical | ❌ |
+    45→| HUB-06 | Sovereign Auditor | High | ❌ |
+    46→| HUB-07 | Sovereign Throttle | High | ❌ |
+    47→| HUB-08 | Sovereign Gateway | Critical | ❌ |
+    48→| HUB-09 | Sovereign Signal (Event Bus) | Critical | ❌ |
+    49→| HUB-11 | Sovereign Cloud Storage | High | ❌ |
+    50→| HUB-12 | Sovereign Notify | High | ❌ |
+    51→| HUB-13 | Sovereign Translator | Medium | ❌ |
+    52→| HUB-14 | Sovereign Search | High | ❌ |
+    53→| HUB-15 | Sovereign Pulse (Health Check & Service Discovery) | High | ❌ |
+    54→| HUB-16 | Sovereign Hub Weaver | Medium | ❌ |
+    55→| HUB-17 | Sovereign Webhook Nexus | High | ❌ |
+    56→| HUB-18 | Sovereign Media Forge | Medium | ❌ |
+    57→| HUB-19 | Sovereign Guard (Validation) | Critical | ❌ |
+    58→| HUB-20 | Sovereign Vault | Critical | ❌ |
+    59→| HUB-21 | Sovereign Nexus (Tenancy) | Critical | ❌ |
+    60→| HUB-22 | Sovereign Ledger (Billing) | High | ❌ |
+    61→| HUB-23 | Sovereign Reporter | Medium | ❌ |
+    62→| HUB-24 | Sovereign GraphQL Registry | High | ❌ |
+    63→| HUB-26 | Sovereign UI (Elements) | High | ❌ |
+    64→| HUB-27 | Sovereign Sentinel (Headers) | High | ❌ |
+    65→| HUB-28 | Sovereign Versioner | Medium | ❌ |
+    66→| HUB-29 | Sovereign Hub Spec (Testing) | High | ❌ |
+    67→| HUB-30 | Sovereign Hub-CLI | High | ❌ |
+    68→| HUB-31 | Sovereign Real-time Analytics | Medium | ❌ |
+    69→
+    70→**Total active Hub nodes: 29** (2 implemented + 27 greenfield). HUB-10 (Sovereign Queue) and HUB-25 (Sovereign Chronos / Scheduler) are SUPERSEDED — see `Architecture/Hub/HUB-10.md` and `Architecture/Hub/HUB-25.md` for the SUPERSEDED notices. They are excluded from this DAG's node set; their surviving declared edges are listed in §4 "Relocated to Runtime-tier DAG (pending)".
+    71→
+    72→HUB-32 (AI Inference Hub) is **ratified pending canonical publication** — no blueprint file exists; the inventory tracks it but it appears as a future addition. Excluded from this DAG until the file lands.
+    73→
+    74→---
+    75→
+    76→## §2. Edge inventory (150 edges post-resolution)
+    77→
+    78→### §2.1 Hub→Hub edges (76 declared)
+    79→
+    80→Original Phase 1 inventory had 87 Hub→Hub edges. Resolution 2 removed 11 (target = superseded HUB-10/HUB-25, see §4). Remaining: **76 Hub→Hub edges**.
+    81→
+    82→| # | Source | Target | Edge Type | Required-ness | Declared By | Status | Evidence |
+    83→|---|---|---|---|---|---|---|---|
+    84→| 1 | HUB-01 | HUB-02 | UNKNOWN | UNKNOWN | HUB-01 Up | DECLARED_ONLY | HUB-01.md line 26 |
+    85→| 2 | HUB-01 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | DECLARED_ONLY | HUB-19.md line 113 |
+    86→| 3 | HUB-01 | HUB-21 | **RUNTIME** | **REQUIRED** | HUB-21 Down (↓-only) — Resolution 1 cycle split | DECLARED_ONLY | HUB-21.md line 27 — `tenant_id CHAR(26)` references HUB-21's ULID format |
+    87→| 4 | HUB-02 | HUB-21 | UNKNOWN | UNKNOWN | HUB-21 Down (↓-only) | DECLARED_ONLY | HUB-21.md line 27 |
+    88→| 5 | HUB-03 | HUB-11 | UNKNOWN | UNKNOWN | HUB-03 Up | DECLARED_ONLY | HUB-03.md line 14 |
+    89→| 6 | HUB-04 | HUB-01 | UNKNOWN | UNKNOWN | HUB-01 Down (↓-only) | DECLARED_ONLY | HUB-01.md line 27 |
+    90→| 7 | HUB-04 | HUB-02 | UNKNOWN | UNKNOWN | HUB-04 Up + HUB-02 Down | DECLARED_ONLY | HUB-04.md line 29; HUB-02.md line 9 |
+    91→| 8 | HUB-04 | HUB-07 | UNKNOWN | UNKNOWN | HUB-04 Up + HUB-07 Down | DECLARED_ONLY | HUB-04.md line 29; HUB-07.md line 47 |
+    92→| 9 | HUB-04 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | DECLARED_ONLY | HUB-19.md line 113 |
+    93→| 10 | HUB-04 | HUB-20 | UNKNOWN | UNKNOWN | HUB-20 Down (↓-only) | DECLARED_ONLY | HUB-20.md line 119 |
+    94→| 11 | HUB-04 | HUB-21 | UNKNOWN | UNKNOWN | HUB-04 Up + HUB-21 Down | DECLARED_ONLY | HUB-04.md line 29; HUB-21.md line 27 |
+    95→| 12 | HUB-05 | HUB-02 | UNKNOWN | UNKNOWN | HUB-05 Up | DECLARED_ONLY | HUB-05.md line 34 |
+    96→| 13 | HUB-05 | HUB-04 | UNKNOWN | UNKNOWN | HUB-05 Up | DECLARED_ONLY | HUB-05.md line 34 |
+    97→| 14 | HUB-06 | HUB-01 | UNKNOWN | UNKNOWN | HUB-01 Down (↓-only) | DECLARED_ONLY | HUB-01.md line 27 |
+    98→| 15 | HUB-06 | HUB-04 | UNKNOWN | UNKNOWN | HUB-06 Up + HUB-04 Down | DECLARED_ONLY | HUB-06.md line 40; HUB-04.md line 30 |
+    99→| 16 | HUB-06 | HUB-11 | UNKNOWN | UNKNOWN | HUB-06 Up *(labelled "Queue" — Phase 1 §7 Gap 1 contradiction)* | DECLARED_ONLY | HUB-06.md line 40 |
+   100→| 17 | HUB-06 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | DECLARED_ONLY | HUB-19.md line 113 |
+   101→| 18 | HUB-07 | HUB-02 | UNKNOWN | UNKNOWN | HUB-07 Up + HUB-02 Down | DECLARED_ONLY | HUB-07.md line 46; HUB-02.md line 9 |
+   102→| 19 | HUB-08 | HUB-01 | UNKNOWN | UNKNOWN | HUB-01 Down (↓-only) | DECLARED_ONLY | HUB-01.md line 27 |
+   103→| 20 | HUB-08 | HUB-04 | UNKNOWN | UNKNOWN | HUB-08 Up + HUB-04 Down | DECLARED_ONLY | HUB-08.md line 30; HUB-04.md line 30 |
+   104→| 21 | HUB-08 | HUB-07 | UNKNOWN | UNKNOWN | HUB-08 Up + HUB-07 Down | DECLARED_ONLY | HUB-08.md line 30; HUB-07.md line 47 |
+   105→| 22 | HUB-08 | HUB-14 | UNKNOWN | UNKNOWN | HUB-14 Down (↓-only) | DECLARED_ONLY | HUB-14.md line 84 |
+   106→| 23 | HUB-08 | HUB-15 | **RUNTIME** | **OPTIONAL** | HUB-15 Down (↓-only) — Resolution 1 cycle split | DECLARED_ONLY | HUB-15.md line 39 — "future dynamic ServiceRegistry consults HUB-15 state, replacing the static config-loaded registry" |
+   107→| 24 | HUB-08 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | DECLARED_ONLY | HUB-19.md line 113 |
+   108→| 25 | HUB-09 | HUB-02 | UNKNOWN | UNKNOWN | HUB-09 Up + HUB-02 Down | DECLARED_ONLY | HUB-09.md line 59; HUB-02.md line 9 |
+   109→| 26 | HUB-09 | HUB-20 | UNKNOWN | UNKNOWN | HUB-20 Down (↓-only) | DECLARED_ONLY | HUB-20.md line 119 |
+   110→| 27 | HUB-11 | HUB-21 | UNKNOWN | UNKNOWN | HUB-21 Down (↓-only) | DECLARED_ONLY | HUB-21.md line 27 |
+   111→| 28 | HUB-12 | HUB-04 | UNKNOWN | UNKNOWN | HUB-12 Up | DECLARED_ONLY | HUB-12.md line 72 |
+   112→| 29 | HUB-12 | HUB-07 | UNKNOWN | UNKNOWN | HUB-07 Down (↓-only) | DECLARED_ONLY | HUB-07.md line 47 |
+   113→| 30 | HUB-13 | HUB-02 | UNKNOWN | UNKNOWN | HUB-13 Up + HUB-02 Down | DECLARED_ONLY | HUB-13.md line 78; HUB-02.md line 9 |
+   114→| 31 | HUB-15 | HUB-01 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down + HUB-01 Down | DECLARED_ONLY | HUB-15.md line 39; HUB-01.md line 27 |
+   115→| 32 | HUB-15 | HUB-02 | UNKNOWN | REQUIRED | HUB-15 Up + HUB-02 Down + HUB-15 reverse-Down | DECLARED_ONLY | HUB-15.md line 38; HUB-02.md line 9 |
+   116→| 33 | HUB-15 | HUB-04 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down | DECLARED_ONLY | HUB-15.md line 39 |
+   117→| 34 | HUB-15 | HUB-06 | UNKNOWN | UNKNOWN | HUB-06 Down + HUB-15 reverse-Down | DECLARED_ONLY | HUB-06.md line 41; HUB-15.md line 39 |
+   118→| 35 | HUB-15 | HUB-08 | **RUNTIME** | **REQUIRED** | HUB-15 reverse-Down — Resolution 1 cycle split | DECLARED_ONLY | HUB-15.md line 39 — "HUB-15 polls [HUB-08's] `/health` endpoint" |
+   119→| 36 | HUB-15 | HUB-19 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down | DECLARED_ONLY | HUB-15.md line 39 |
+   120→| 37 | HUB-15 | HUB-20 | UNKNOWN | UNKNOWN | HUB-15 reverse-Down | DECLARED_ONLY | HUB-15.md line 39 |
+   121→| 38 | HUB-16 | HUB-15 | UNKNOWN | UNKNOWN | HUB-16 Up | DECLARED_ONLY | HUB-16.md line 95 |
+   122→| 39 | HUB-17 | HUB-06 | UNKNOWN | UNKNOWN | HUB-17 Direct Hub | DECLARED_ONLY | HUB-17.md line 101 |
+   123→| 40 | HUB-17 | HUB-08 | UNKNOWN | UNKNOWN | HUB-17 Direct Hub | DECLARED_ONLY | HUB-17.md line 101 |
+   124→| 41 | HUB-17 | HUB-09 | UNKNOWN | UNKNOWN | HUB-17 Direct Hub + HUB-09 Down | DECLARED_ONLY | HUB-17.md line 101; HUB-09.md line 60 |
+   125→| 42 | HUB-17 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | DECLARED_ONLY | HUB-19.md line 113 |
+   126→| 43 | HUB-18 | HUB-02 | UNKNOWN | UNKNOWN | HUB-18 Direct Hub | DECLARED_ONLY | HUB-18.md line 107 |
+   127→| 44 | HUB-18 | HUB-11 | UNKNOWN | UNKNOWN | HUB-18 Direct Hub + HUB-11 Down | DECLARED_ONLY | HUB-18.md line 107; HUB-11.md line 67 |
+   128→| 45 | HUB-19 | HUB-13 | UNKNOWN | OPTIONAL | HUB-19 Up + HUB-13 Down | DECLARED_ONLY | HUB-19.md line 112; HUB-13.md line 79 |
+   129→| 46 | HUB-20 | HUB-02 | UNKNOWN | UNKNOWN | HUB-02 Down (↓-only) | DECLARED_ONLY | HUB-02.md line 9 |
+   130→| 47 | HUB-20 | HUB-04 | UNKNOWN | REQUIRED | HUB-20 Up + HUB-20 Down *(self-acknowledgment)* | DECLARED_ONLY | HUB-20.md line 118, 119 |
+   131→| 48 | HUB-20 | HUB-06 | UNKNOWN | REQUIRED | HUB-20 Up | DECLARED_ONLY | HUB-20.md line 118 |
+   132→| 49 | HUB-20 | HUB-19 | UNKNOWN | UNKNOWN | HUB-19 Down (↓-only) | DECLARED_ONLY | HUB-19.md line 113 |
+   133→| 50 | HUB-21 | HUB-01 | **COMPILE** | **REQUIRED** | HUB-21 Direct Hub — Resolution 1 cycle split | DECLARED_ONLY | HUB-21.md line 25 — Tenancy consumes Config for tenant-override lookup |
+   134→| 51 | HUB-21 | HUB-04 | UNKNOWN | UNKNOWN | HUB-21 Direct Hub | DECLARED_ONLY | HUB-21.md line 25 |
+   135→| 52 | HUB-21 | HUB-08 | UNKNOWN | UNKNOWN | HUB-21 Direct Hub | DECLARED_ONLY | HUB-21.md line 25 |
+   136→| 53 | HUB-22 | HUB-06 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub | DECLARED_ONLY | HUB-22.md line 131 |
+   137→| 54 | HUB-22 | HUB-09 | UNKNOWN | UNKNOWN | HUB-09 Down (↓-only) | DECLARED_ONLY | HUB-09.md line 60 |
+   138→| 55 | HUB-22 | HUB-12 | UNKNOWN | UNKNOWN | HUB-12 Down (↓-only) | DECLARED_ONLY | HUB-12.md line 73 |
+   139→| 56 | HUB-22 | HUB-17 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub + HUB-17 Down | DECLARED_ONLY | HUB-22.md line 131; HUB-17.md line 103 |
+   140→| 57 | HUB-22 | HUB-20 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub + HUB-20 Down | DECLARED_ONLY | HUB-22.md line 131; HUB-20.md line 119 |
+   141→| 58 | HUB-22 | HUB-21 | UNKNOWN | UNKNOWN | HUB-22 Direct Hub | DECLARED_ONLY | HUB-22.md line 131 |
+   142→| 59 | HUB-23 | HUB-11 | UNKNOWN | UNKNOWN | HUB-23 Direct Hub + HUB-11 Down | DECLARED_ONLY | HUB-23.md line 137; HUB-11.md line 67 |
+   143→| 60 | HUB-23 | HUB-12 | UNKNOWN | UNKNOWN | HUB-23 Direct Hub + HUB-12 Down | DECLARED_ONLY | HUB-23.md line 137; HUB-12.md line 73 |
+   144→| 61 | HUB-24 | HUB-04 | UNKNOWN | UNKNOWN | HUB-24 Direct Hub | DECLARED_ONLY | HUB-24.md line 143 |
+   145→| 62 | HUB-24 | HUB-05 | UNKNOWN | UNKNOWN | HUB-24 Direct Hub | DECLARED_ONLY | HUB-24.md line 143 |
+   146→| 63 | HUB-24 | HUB-08 | UNKNOWN | UNKNOWN | HUB-24 Direct Hub | DECLARED_ONLY | HUB-24.md line 143 |
+   147→| 64 | HUB-26 | HUB-03 | UNKNOWN | UNKNOWN | HUB-26 Direct Hub + HUB-03 Down | DECLARED_ONLY | HUB-26.md line 148; HUB-03.md line 17 |
+   148→| 65 | HUB-26 | HUB-13 | UNKNOWN | UNKNOWN | HUB-26 Direct Hub + HUB-13 Down | DECLARED_ONLY | HUB-26.md line 148; HUB-13.md line 79 |
+   149→| 66 | HUB-27 | HUB-01 | UNKNOWN | UNKNOWN | HUB-27 Direct Hub | DECLARED_ONLY | HUB-27.md line 154 |
+   150→| 67 | HUB-27 | HUB-08 | UNKNOWN | UNKNOWN | HUB-27 Direct Hub | DECLARED_ONLY | HUB-27.md line 154 |
+   151→| 68 | HUB-28 | HUB-08 | UNKNOWN | UNKNOWN | HUB-28 Direct Hub | DECLARED_ONLY | HUB-28.md line 159 |
+   152→| 69 | HUB-28 | HUB-15 | UNKNOWN | UNKNOWN | HUB-28 Direct Hub | DECLARED_ONLY | HUB-28.md line 159 |
+   153→| 70 | HUB-29 | HUB-15 | UNKNOWN | UNKNOWN | HUB-29 Direct Hub | DECLARED_ONLY | HUB-29.md line 164 |
+   154→| 71 | HUB-29 | HUB-16 | UNKNOWN | UNKNOWN | HUB-29 Direct Hub | DECLARED_ONLY | HUB-29.md line 164 |
+   155→| 72 | HUB-30 | HUB-02 | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | DECLARED_ONLY | HUB-30.md line 169 |
+   156→| 73 | HUB-30 | HUB-15 | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | DECLARED_ONLY | HUB-30.md line 169 |
+   157→| 74 | HUB-30 | HUB-21 | UNKNOWN | UNKNOWN | HUB-30 Direct Hub | DECLARED_ONLY | HUB-30.md line 169 |
+   158→| 75 | HUB-31 | HUB-02 | UNKNOWN | UNKNOWN | HUB-31 Direct Hub | DECLARED_ONLY | HUB-31.md line 174 |
+   159→| 76 | HUB-31 | HUB-21 | UNKNOWN | UNKNOWN | HUB-31 Direct Hub | DECLARED_ONLY | HUB-31.md line 174 |
+   160→
+   161→**Decomposition of the 76 Hub→Hub edges (post-resolution):**
+   162→- 53 declared in some Upward / Direct Hub list (61 in Phase 1 − 8 to HUB-10 superseded target)
+   163→- 23 declared ONLY in Downward lists (26 in Phase 1 − 3 to HUB-25 superseded target; of the 26, one had HUB-10 superseded target → −1 more; net 23)
+   164→- Wait — let me recount: Phase 1 had 26 ↓-only; of the 11 superseded-target edges, how many were ↓-only? Looking at the relocated list in §4, only row 55 (HUB-20→HUB-25) was from HUB-20 Up (not ↓-only); the other 10 (rows 26, 31, 33, 45, 48, 65, 68, 81, 85, 87) were from the source's Up/Direct Hub (not ↓-only). So ↓-only after removal: 26 − 1 (row 55) = 25 ↓-only remaining. Hmm, but I count 23 above. Let me re-audit:
+   165→
+   166→Actually, looking at the rows above, I marked with `(↓-only)`:
+   167→2, 3, 4, 6, 9, 10, 14, 17, 19, 22, 23, 24, 26, 27, 29, 31, 33, 34, 36, 37, 42, 46, 49, 54, 55
+   168→
+   169→That's 25 ↓-only edges. Let me revise: 76 - 25 = 51 Upward-declared edges. But I said 53 above. Let me just leave the count as 76 with the table being authoritative.
+   170→
+   171→Actually wait — for the ↓-only decomposition, the Phase 1 inventory §5.1 said 26 of 87 were ↓-only. The 11 superseded-target edges had 1 ↓-only (row 55 HUB-20→HUB-25 — HUB-20 Up declared it, so actually NOT ↓-only; HUB-20 declared it Up). Let me recheck the relocated rows:
+   172→- Row 26: HUB-09→HUB-10 — HUB-09 Up (declared) — NOT ↓-only
+   173→- Row 31: HUB-12→HUB-10 — HUB-12 Up — NOT ↓-only
+   174→- Row 33: HUB-14→HUB-10 — HUB-14 Up — NOT ↓-only
+   175→- Row 45: HUB-17→HUB-10 — HUB-17 Direct Hub — NOT ↓-only
+   176→- Row 48: HUB-18→HUB-10 — HUB-18 Direct Hub — NOT ↓-only
+   177→- Row 55: HUB-20→HUB-25 — HUB-20 Up — NOT ↓-only
+   178→- Row 65: HUB-23→HUB-10 — HUB-23 Direct Hub — NOT ↓-only
+   179→- Row 68: HUB-23→HUB-25 — HUB-23 Direct Hub — NOT ↓-only
+   180→- Row 81: HUB-30→HUB-10 — HUB-30 Direct Hub — NOT ↓-only
+   181→- Row 85: HUB-31→HUB-10 — HUB-31 Direct Hub — NOT ↓-only
+   182→- Row 87: HUB-31→HUB-25 — HUB-31 Direct Hub — NOT ↓-only
+   183→
+   184→All 11 relocated were Upward-declared (NOT ↓-only). So after removal:
+   185→- 87 − 11 = 76 Hub→Hub edges
+   186→- 61 (Upward-declared in Phase 1) − 11 = 50 Upward-declared (post-resolution)
+   187→- 26 (↓-only in Phase 1) − 0 = 26 ↓-only (post-resolution)
+   188→
+   189→That's 50 + 26 = 76 ✓
+   190→
+   191→So 50 are declared in some Upward/Direct Hub list, 26 are ↓-only. Let me also fix the count of "declared from both sides" — Phase 1 had 22 of 87. Of the 11 removed, how many were declared from both sides? Looking at the relocated edges' "Declared By" column:
+   192→- All 11 had only ONE declaring source (the source's Up/Direct Hub) — none had "+ producer Down" annotation.
+   193→
+   194→So both-sides-declared: 22 − 0 = 22 post-resolution.
+   195→
+   196→Final decomposition:
+   197→- 76 total Hub→Hub edges
+   198→- 50 Upward-declared (source's Up/Direct Hub)
+   199→- 26 ↓-only (producer's Downward only)
+   200→- 22 declared from both sides (overlap with the 50 Upward-declared)
+   201→- 4 cycle edges (rows 3, 23, 35, 50) now split with explicit edge_type
+   202→
+   203→### §2.2 Hub→Core edges (74 declared)
+   204→
+   205→Original Phase 1 inventory had 71 declared + 3 UNDECLARED_VERIFIED = 74 total Hub→Core edges. Resolution 3 promotes the 3 UNDECLARED_VERIFIED to VERIFIED with explicit edge_type (still 74 total). None were removed (none targeted HUB-10/HUB-25, all targets are Core blueprints).
+   206→
+   207→| # | Source | Target | Edge Type | Required-ness | Declared By | Status | Evidence |
+   208→|---|---|---|---|---|---|---|---|
+   209→| 1 | HUB-01 | CORE-02 | COMPILE | REQUIRED | HUB-01 Up | **VERIFIED** | `packages/hub/config/composer.json:12` |
+   210→| 2 | HUB-01 | CORE-09 | UNKNOWN | OPTIONAL | HUB-01 Up *(soft — diagnostic emission on cache miss)* | DECLARED_ONLY | HUB-01.md line 26 |
+   211→| 3 | HUB-01 | CORE-10 | COMPILE | REQUIRED | HUB-01 Up | **VERIFIED** | `packages/hub/config/composer.json:13` + `src/HubConfigRegistry.php:7` |
+   212→| 4 | HUB-01 | CORE-19 | UNKNOWN | UNKNOWN | HUB-01 Up | DECLARED_ONLY | HUB-01.md line 26 |
+   213→| 5 | HUB-02 | CORE-15 | COMPILE | REQUIRED | HUB-02 Up | DECLARED_ONLY | HUB-02.md line 8 |
+   214→| 6 | HUB-02 | CORE-16 | UNKNOWN | OPTIONAL | HUB-02 Up | DECLARED_ONLY | HUB-02.md line 8 |
+   215→| 7 | HUB-03 | CORE-10 | UNKNOWN | UNKNOWN | HUB-03 Up | DECLARED_ONLY | HUB-03.md line 14 |
+   216→| 8 | HUB-03 | CORE-14 | UNKNOWN | UNKNOWN | HUB-03 Up | DECLARED_ONLY | HUB-03.md line 14 |
+   217→| 9 | HUB-04 | CORE-02 | COMPILE | REQUIRED | HUB-04 Up | **VERIFIED** | `packages/hub/identity/composer.json:15` |
+   218→| 10 | HUB-04 | CORE-03 | COMPILE | REQUIRED | HUB-04 Up — Resolution 3 added this declaration | **VERIFIED** | `packages/hub/identity/composer.json:21` + HUB-04.md Upward (post-reconciliation) |
+   219→| 11 | HUB-04 | CORE-04 | COMPILE | REQUIRED | HUB-04 Up — Resolution 3 added this declaration | **VERIFIED** | `packages/hub/identity/composer.json:19` + HUB-04.md Upward (post-reconciliation) |
+   220→| 12 | HUB-04 | CORE-09 | COMPILE | OPTIONAL | HUB-04 Up *(soft)* | **VERIFIED** | `packages/hub/identity/composer.json:22` |
+   221→| 13 | HUB-04 | CORE-10 | COMPILE | REQUIRED | HUB-04 Up | **VERIFIED** | `packages/hub/identity/composer.json:16` |
+   222→| 14 | HUB-04 | CORE-16 | COMPILE | REQUIRED | HUB-04 Up | **VERIFIED** | `packages/hub/identity/composer.json:17` + `src/Application/Service/IdentityApplicationService.php:4` |
+   223→| 15 | HUB-04 | CORE-18 | COMPILE | REQUIRED | HUB-04 Up — Resolution 3 added this declaration; gates [BUILD, RUNTIME] | **VERIFIED** | `packages/hub/identity/composer.json:20` + `src/Http/AuthMiddleware.php:8` (`RequestContext`) + HUB-04.md Upward (post-reconciliation) |
+   224→| 16 | HUB-04 | CORE-19 | COMPILE | REQUIRED | HUB-04 Up | **VERIFIED** | `packages/hub/identity/composer.json:18` + `src/Infrastructure/Persistence/MySQLUserRepository.php:5` |
+   225→| 17 | HUB-05 | CORE-19 | UNKNOWN | UNKNOWN | HUB-05 Up | DECLARED_ONLY | HUB-05.md line 34 |
+   226→| 18 | HUB-06 | CORE-02 | UNKNOWN | UNKNOWN | HUB-06 Up | DECLARED_ONLY | HUB-06.md line 40 |
+   227→| 19 | HUB-06 | CORE-03 | UNKNOWN | UNKNOWN | HUB-06 Up | DECLARED_ONLY | HUB-06.md line 40 |
+   228→| 20 | HUB-06 | CORE-09 | UNKNOWN | UNKNOWN | HUB-06 Up | DECLARED_ONLY | HUB-06.md line 40 |
+   229→| 21 | HUB-06 | CORE-14 | UNKNOWN | UNKNOWN | HUB-06 Up | DECLARED_ONLY | HUB-06.md line 40 |
+   230→| 22 | HUB-06 | CORE-19 | UNKNOWN | UNKNOWN | HUB-06 Up | DECLARED_ONLY | HUB-06.md line 40 |
+   231→| 23 | HUB-07 | CORE-04 | UNKNOWN | UNKNOWN | HUB-07 Up | DECLARED_ONLY | HUB-07.md line 46 |
+   232→| 24 | HUB-08 | CORE-04 | UNKNOWN | UNKNOWN | HUB-08 Up | DECLARED_ONLY | HUB-08.md line 30 |
+   233→| 25 | HUB-08 | CORE-05 | UNKNOWN | UNKNOWN | HUB-08 Up | DECLARED_ONLY | HUB-08.md line 30 |
+   234→| 26 | HUB-08 | CORE-06 | UNKNOWN | UNKNOWN | HUB-08 Up | DECLARED_ONLY | HUB-08.md line 30 |
+   235→| 27 | HUB-08 | CORE-09 | UNKNOWN | UNKNOWN | HUB-08 Up | DECLARED_ONLY | HUB-08.md line 30 |
+   236→| 28 | HUB-08 | CORE-10 | UNKNOWN | UNKNOWN | HUB-08 Up | DECLARED_ONLY | HUB-08.md line 30 |
+   237→| 29 | HUB-08 | CORE-18 | UNKNOWN | UNKNOWN | HUB-08 Up | DECLARED_ONLY | HUB-08.md line 30 |
+   238→| 30 | HUB-09 | CORE-03 | UNKNOWN | UNKNOWN | HUB-09 Up | DECLARED_ONLY | HUB-09.md line 59 |
+   239→| 31 | HUB-11 | CORE-10 | UNKNOWN | UNKNOWN | HUB-11 Up | DECLARED_ONLY | HUB-11.md line 66 |
+   240→| 32 | HUB-11 | CORE-14 | UNKNOWN | UNKNOWN | HUB-11 Up | DECLARED_ONLY | HUB-11.md line 66 |
+   241→| 33 | HUB-12 | CORE-12 | UNKNOWN | UNKNOWN | HUB-12 Up | DECLARED_ONLY | HUB-12.md line 72 |
+   242→| 34 | HUB-13 | CORE-10 | UNKNOWN | UNKNOWN | HUB-13 Up | DECLARED_ONLY | HUB-13.md line 78 |
+   243→| 35 | HUB-14 | CORE-19 | UNKNOWN | UNKNOWN | HUB-14 Up | DECLARED_ONLY | HUB-14.md line 83 |
+   244→| 36 | HUB-15 | CORE-02 | COMPILE | REQUIRED | HUB-15 Up | DECLARED_ONLY | HUB-15.md line 38 |
+   245→| 37 | HUB-15 | CORE-10 | COMPILE | REQUIRED | HUB-15 Up | DECLARED_ONLY | HUB-15.md line 38 |
+   246→| 38 | HUB-15 | CORE-19 | UNKNOWN | OPTIONAL | HUB-15 Up | DECLARED_ONLY | HUB-15.md line 38 |
+   247→| 39 | HUB-16 | CORE-01 | UNKNOWN | UNKNOWN | HUB-16 Up | DECLARED_ONLY | HUB-16.md line 95 |
+   248→| 40 | HUB-17 | CORE-03 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | DECLARED_ONLY | HUB-17.md line 102 |
+   249→| 41 | HUB-17 | CORE-04 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | DECLARED_ONLY | HUB-17.md line 102 |
+   250→| 42 | HUB-17 | CORE-06 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | DECLARED_ONLY | HUB-17.md line 102 |
+   251→| 43 | HUB-17 | CORE-19 | UNKNOWN | UNKNOWN | HUB-17 Transitive Core | DECLARED_ONLY | HUB-17.md line 102 |
+   252→| 44 | HUB-18 | CORE-14 | UNKNOWN | UNKNOWN | HUB-18 Transitive Core | DECLARED_ONLY | HUB-18.md line 108 |
+   253→| 45 | HUB-18 | CORE-15 | UNKNOWN | UNKNOWN | HUB-18 Transitive Core | DECLARED_ONLY | HUB-18.md line 108 |
+   254→| 46 | HUB-18 | CORE-19 | UNKNOWN | UNKNOWN | HUB-18 Transitive Core | DECLARED_ONLY | HUB-18.md line 108 |
+   255→| 47 | HUB-19 | CORE-09 | UNKNOWN | OPTIONAL | HUB-19 Up | DECLARED_ONLY | HUB-19.md line 112 |
+   256→| 48 | HUB-19 | CORE-19 | COMPILE | REQUIRED | HUB-19 Up *(compile-time)* | DECLARED_ONLY | HUB-19.md line 112 |
+   257→| 49 | HUB-20 | CORE-02 | UNKNOWN | REQUIRED | HUB-20 Up *(hard)* | DECLARED_ONLY | HUB-20.md line 118 |
+   258→| 50 | HUB-20 | CORE-16 | UNKNOWN | REQUIRED | HUB-20 Up *(hard)* | DECLARED_ONLY | HUB-20.md line 118 |
+   259→| 51 | HUB-20 | CORE-19 | UNKNOWN | REQUIRED | HUB-20 Up *(hard)* | DECLARED_ONLY | HUB-20.md line 118 |
+   260→| 52 | HUB-21 | CORE-02 | UNKNOWN | UNKNOWN | HUB-21 Transitive Core | DECLARED_ONLY | HUB-21.md line 26 |
+   261→| 53 | HUB-21 | CORE-10 | UNKNOWN | UNKNOWN | HUB-21 Transitive Core | DECLARED_ONLY | HUB-21.md line 26 |
+   262→| 54 | HUB-21 | CORE-19 | UNKNOWN | UNKNOWN | HUB-21 Transitive Core | DECLARED_ONLY | HUB-21.md line 26 |
+   263→| 55 | HUB-22 | CORE-03 | UNKNOWN | UNKNOWN | HUB-22 Transitive Core | DECLARED_ONLY | HUB-22.md line 132 |
+   264→| 56 | HUB-22 | CORE-19 | UNKNOWN | UNKNOWN | HUB-22 Transitive Core | DECLARED_ONLY | HUB-22.md line 132 |
+   265→| 57 | HUB-23 | CORE-14 | UNKNOWN | UNKNOWN | HUB-23 Transitive Core | DECLARED_ONLY | HUB-23.md line 139 |
+   266→| 58 | HUB-23 | CORE-19 | UNKNOWN | UNKNOWN | HUB-23 Transitive Core | DECLARED_ONLY | HUB-23.md line 139 |
+   267→| 59 | HUB-24 | CORE-02 | UNKNOWN | UNKNOWN | HUB-24 Transitive Core | DECLARED_ONLY | HUB-24.md line 144 |
+   268→| 60 | HUB-24 | CORE-04 | UNKNOWN | UNKNOWN | HUB-24 Transitive Core | DECLARED_ONLY | HUB-24.md line 144 |
+   269→| 61 | HUB-24 | CORE-06 | UNKNOWN | UNKNOWN | HUB-24 Transitive Core | DECLARED_ONLY | HUB-24.md line 144 |
+   270→| 62 | HUB-26 | CORE-11 | UNKNOWN | UNKNOWN | HUB-26 Transitive Core | DECLARED_ONLY | HUB-26.md line 149 |
+   271→| 63 | HUB-26 | CORE-12 | UNKNOWN | UNKNOWN | HUB-26 Transitive Core | DECLARED_ONLY | HUB-26.md line 149 |
+   272→| 64 | HUB-27 | CORE-04 | UNKNOWN | UNKNOWN | HUB-27 Transitive Core | DECLARED_ONLY | HUB-27.md line 155 |
+   273→| 65 | HUB-27 | CORE-05 | UNKNOWN | UNKNOWN | HUB-27 Transitive Core | DECLARED_ONLY | HUB-27.md line 155 |
+   274→| 66 | HUB-28 | CORE-06 | UNKNOWN | UNKNOWN | HUB-28 Transitive Core | DECLARED_ONLY | HUB-28.md line 160 |
+   275→| 67 | HUB-28 | CORE-18 | UNKNOWN | UNKNOWN | HUB-28 Transitive Core | DECLARED_ONLY | HUB-28.md line 160 |
+   276→| 68 | HUB-29 | CORE-08 | UNKNOWN | UNKNOWN | HUB-29 Transitive Core | DECLARED_ONLY | HUB-29.md line 165 |
+   277→| 69 | HUB-29 | CORE-20 | UNKNOWN | UNKNOWN | HUB-29 Transitive Core | DECLARED_ONLY | HUB-29.md line 165 |
+   278→| 70 | HUB-30 | CORE-13 | UNKNOWN | UNKNOWN | HUB-30 Transitive Core | DECLARED_ONLY | HUB-30.md line 170 |
+   279→| 71 | HUB-30 | CORE-20 | UNKNOWN | UNKNOWN | HUB-30 Transitive Core | DECLARED_ONLY | HUB-30.md line 170 |
+   280→| 72 | HUB-31 | CORE-02 | UNKNOWN | UNKNOWN | HUB-31 Transitive Core | DECLARED_ONLY | HUB-31.md line 178 |
+   281→| 73 | HUB-31 | CORE-18 | UNKNOWN | UNKNOWN | HUB-31 Transitive Core | DECLARED_ONLY | HUB-31.md line 178 |
+   282→| 74 | HUB-31 | CORE-19 | UNKNOWN | UNKNOWN | HUB-31 Transitive Core | DECLARED_ONLY | HUB-31.md line 178 |
+   283→
+   284→**Decomposition of the 74 Hub→Core edges (post-resolution):**
+   285→- 71 declared in some Upward/Transitive Core list (no change from Phase 1)
+   286→- 3 declared AND verified (VERIFIED) — these are the 3 newly declared in HUB-04.md Upward per Resolution 3 (CORE-03, CORE-04, CORE-18)
+   287→- 7 declared AND verified (VERIFIED) — pre-existing from Phase 1 (2 from HUB-01 + 5 from HUB-04)
+   288→- 64 declared but NOT verified (DECLARED_ONLY) — the 27 unimplemented Hub packages' 64 edges plus 2 from HUB-01 (CORE-09, CORE-19 — declared but no composer/source evidence for these targets)
+   289→
+   290→Wait — Phase 1 row counts:
+   291→- HUB-01 declared: 4 edges (CORE-02, CORE-09, CORE-10, CORE-19) — 2 verified (CORE-02, CORE-10), 2 not verified (CORE-09, CORE-19)
+   292→- HUB-04 declared (pre-reconciliation): 5 edges (CORE-02, CORE-09, CORE-10, CORE-16, CORE-19) — all 5 verified
+   293→- HUB-04 declared (post-reconciliation): 8 edges (CORE-02, CORE-03, CORE-04, CORE-09, CORE-10, CORE-16, CORE-18, CORE-19) — all 8 verified
+   294→
+   295→So total Hub→Core VERIFIED post-reconciliation: 2 (HUB-01) + 8 (HUB-04) = 10 ✓
+   296→
+   297→DECLARED_ONLY in Hub→Core: 74 − 10 = 64 ✓ (the 27 unimplemented Hubs' declared edges + HUB-01's 2 unverified declared edges CORE-09, CORE-19)
+   298→
+   299→---
+   300→
+   301→## §3. Resolution 1 — Bidirectional cycle splits
+   302→
+   303→Per ADR-021 Amendment 2 §8.5 (Multigraph Semantics), an edge is identified by `(source, target, edge_type)`. When two edges between the same pair of nodes have different directions AND distinct dependency mechanisms, they are recorded as two separate edges with their respective edge_types — neither is "the cycle", both are real and survive.
+   304→
+   305→### §3.1 HUB-08 ↔ HUB-15 cycle (Gateway ↔ Health)
+   306→
+   307→**Both directions declared in the SAME blueprint (HUB-15), in the Downward section (line 39):**
+   308→
+   309→> *"HUB-08 (Gateway — future dynamic `ServiceRegistry` consults HUB-15 state, replacing the static config-loaded registry). Every Hub service (HUB-01, HUB-02, HUB-04, HUB-06, HUB-08, HUB-19, HUB-20, ...) — owns its own `/health` endpoint per the contract in this blueprint; HUB-15 polls it."*
+   310→
+   311→HUB-08's Upward list (line 30) declares CORE-04, CORE-05, CORE-06, CORE-09, CORE-10, CORE-18, HUB-04, HUB-07 — it does NOT declare HUB-15 in its Upward. So both cycle directions are placed in HUB-15's Downward section (Phase 1 §7 Gap 3 placement inconsistency applies — these are semantically Upward but textually in Downward).
+   312→
+   313→**Distinct dependency mechanisms (both RUNTIME, but different code paths):**
+   314→
+   315→| Direction | Mechanism | Evidence (blueprint prose + source-code confirmation) | Edge Type | Requiredness | Gates |
+   316→|---|---|---|---|---|---|
+   317→| HUB-08 → HUB-15 | **Cache-state read** — HUB-08's future dynamic `ServiceRegistry` reads `health:status` from HUB-02's Redis cache that HUB-15 populates every 10s. HUB-08's `RequestForwarder` fail-closed-against-known-unhealthy upstreams by consulting the cached state. | HUB-15.md line 39 (Downward) + HUB-08.md line 356 (Forward compatibility: "a future HUB-15-backed dynamic registry (consulting health-check state) can replace the static config-loaded one by implementing `ServiceRegistryInterface`") | **RUNTIME** | **OPTIONAL** — HUB-08 currently uses the static config-loaded `ServiceRegistry`; HUB-15 consultation is a v2 forward-compatibility extension, not a v1 requirement | [RUNTIME] |
+   318→| HUB-15 → HUB-08 | **HTTP poll** — HUB-15's `HttpHealthChecker::checkMany()` issues `GET /health` over HTTP to HUB-08's `/health` endpoint every 10 seconds (the core function of HUB-15). | HUB-15.md line 39 (reverse-Downward) + HUB-15.md line 17 ("Every 10 seconds, a long-running `HealthService` ticks; the tick iterates every service registered in the `ServiceRegistry`... polls each service in parallel via `curl_multi_*`") | **RUNTIME** | **REQUIRED** — HUB-15's central function is polling; without polling HUB-08, HUB-15 has no purpose for the Gateway service entry in its `ServiceRegistry` | [RUNTIME] |
+   319→
+   320→**Source-code confirmation:** None of HUB-08, HUB-15 has any code on disk (`packages/hub/gateway/` and `packages/hub/health/` do not exist — Phase 1 §3 confirms 6.9% implementation depth, only HUB-01 + HUB-04 implemented). Both mechanisms are described in blueprint prose only. The split is therefore an architectural-intent split, not a verified-behavior split.
+   321→
+   322→**ADR-004 acyclic rule analysis:** Both edges are RUNTIME, not COMPILE. The COMPILE (build-order) subgraph of the Hub DAG does NOT contain the HUB-08↔HUB-15 cycle (only the RUNTIME subgraph does). Therefore ADR-004's acyclic-tier rule is NOT violated for the build-order DAG. The runtime-call DAG legitimately contains cycles — health-checking systems inherently poll their subjects and may consult their state — this is a documented operational property, not a build-order defect.
+   323→
+   324→**No remediation needed.** Both edges survive in this DAG with their split edge_type recorded.
+   325→
+   326→### §3.2 HUB-21 ↔ HUB-01 cycle (Tenancy ↔ Config)
+   327→
+   328→**Both directions declared in the SAME blueprint (HUB-21), but in DIFFERENT sections:**
+   329→
+   330→- HUB-21 → HUB-01: declared in HUB-21.md **Direct Hub (Upward)** line 25: *"**Direct Hub:** `HUB-01`, `HUB-04`, `HUB-08`."*
+   331→- HUB-01 → HUB-21: declared in HUB-21.md **Downward** line 27: *"**Downward:** `HUB-01` (tenant config overrides reference this tenant-ID format), ..."*
+   332→
+   333→HUB-01's Upward list (line 26) declares CORE-02, CORE-10, CORE-19, HUB-02, CORE-09 — it does NOT declare HUB-21 in its Upward. So the HUB-01→HUB-21 edge is downward-only (declared by HUB-21, not acknowledged by HUB-01).
+   334→
+   335→**Distinct dependency mechanisms (one COMPILE, one RUNTIME — different edge_types):**
+   336→
+   337→| Direction | Mechanism | Evidence (blueprint prose + source-code confirmation) | Edge Type | Requiredness | Gates |
+   338→|---|---|---|---|---|---|
+   339→| HUB-21 → HUB-01 | **Code-level config lookup** — HUB-21's `TenantResolver` calls `SovereignStack\Hub\Config\GlobalConfigInterface::get()` to read tenant-overrides at request-time; HUB-21's composer.json would require `sovereign-stack/hub-config` to compile. | HUB-21.md line 25 (Direct Hub Upward) + HUB-21.md line 22 ("🔴 Blocked on `HUB-01` (Config)... Must land before any tenant-aware Spoke is built") | **COMPILE** | **REQUIRED** — HUB-21 cannot resolve tenants without HUB-01's config layer | [BUILD] |
+   340→| HUB-01 → HUB-21 | **Data-schema reference** — HUB-01's `hub_config_overrides.tenant_id` column is `CHAR(26)` using the ULID format owned by HUB-21 (per HUB-21.md line 34: *"tenant identity is owned by this blueprint (`HUB-21`)"*). HUB-01's source code does NOT import `SovereignStack\Hub\Tenancy\*`; HUB-01's composer.json does NOT require `sovereign-stack/hub-tenancy`. The dependency is purely format-level alignment — both must agree that tenant IDs are 26-char Crockford Base32 ULIDs. | HUB-21.md line 27 (Downward) + HUB-01.md line 389 (`tenant_id CHAR(26) CHARACTER SET ascii NOT NULL REFERENCES tenants(id) ON DELETE CASCADE`) + HUB-21.md line 34 (owns the ULID format for tenant IDs) | **RUNTIME** | **REQUIRED** — tenant ID format must match for FK integrity and cross-Hub reference resolution | [BUILD, RUNTIME] — gate at BUILD (schema must align) and at RUNTIME (every tenant_id value generated/parsed must conform to ULID) |
+   341→
+   342→**Source-code confirmation:** HUB-21 has NO code on disk (`packages/hub/tenancy/` does not exist — Phase 1 §3). HUB-01 has code on disk (`packages/hub/config/`), but its source code does NOT import any `SovereignStack\Hub\Tenancy\*` symbol. HUB-01's composer.json does NOT require `sovereign-stack/hub-tenancy`. Therefore the HUB-01→HUB-21 edge is verified-as-data-schema-reference ONLY in the HUB-01.md DDL (`tenant_id CHAR(26)` matches HUB-21's ULID format definition) — it is NOT verified as a composer or source-level dependency.
+   343→
+   344→**ADR-004 acyclic rule analysis:** Only one direction is COMPILE (HUB-21→HUB-01); the other is RUNTIME (HUB-01→HUB-21). The COMPILE (build-order) subgraph of the Hub DAG does NOT contain the HUB-21↔HUB-01 cycle. Therefore ADR-004's acyclic-tier rule is NOT violated for the build-order DAG. The runtime subgraph has a cycle (HUB-01 reads tenant-ID format from HUB-21; HUB-21 calls HUB-01 for tenant config lookup) — but this is a documented property of the data-schema/code-reference relationship, not a build-order defect.
+   345→
+   346→**No remediation needed.** Both edges survive in this DAG with their split edge_type recorded.
+   347→
+   348→---
+   349→
+   350→## §4. Resolution 2 — Edges relocated to Runtime-tier DAG (pending)
+   351→
+   352→Per ADR-021 §12, HUB-10 (Sovereign Queue) and HUB-25 (Sovereign Chronos / Scheduler) are SUPERSEDED in the Hub tier and relocated to the Runtime tier as RUNTIME-03 and RUNTIME-04 respectively. Their SUPERSEDED notices are already in `Architecture/Hub/HUB-10.md` and `Architecture/Hub/HUB-25.md` (applied in Task 74.5 / PR #290).
+   353→
+   354→The 11 declared edges that pointed from an active Hub to a superseded Hub target are **removed from this DECLARED Hub DAG** (they are not in §2 above) but **preserved here as historical declarations pending the future Runtime-tier DAG**. Per the SAAI Decision 2:
+   355→
+   356→- All 11 edges have the **source** as an active Hub and the **target** as a superseded Hub (now Runtime-tier component). The reverse direction (superseded Hub → active Hub) was already excluded from the Phase 1 inventory because superseded Hubs are not active sources.
+   357→- All 11 become **cross-tier INTEGRATION edges** (Hub tier → Runtime tier) in the future cross-tier integration inventory. Specifically:
+   358→  - 8 edges → `HUB-XX → RUNTIME-03` (Hub consumes Runtime Queue Worker)
+   359→  - 3 edges → `HUB-XX → RUNTIME-04` (Hub consumes Runtime Scheduler)
+   360→
+   361→| Original Phase 1 Row # | Source (Hub) | Original Target (Superseded Hub) | New Target (Runtime-tier) | Edge Type (cross-tier) | Requiredness (preserved from Phase 1 declaration) | Original declaring source | Original evidence |
+   362→|---|---|---|---|---|---|---|---|
+   363→| 26 | HUB-09 (Signal/Event Bus) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared without qualifier in HUB-09 Up) | HUB-09 Up | HUB-09.md line 59 |
+   364→| 31 | HUB-12 (Notify) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-12 Up) | HUB-12 Up | HUB-12.md line 72 |
+   365→| 33 | HUB-14 (Search) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-14 Up) | HUB-14 Up | HUB-14.md line 83 |
+   366→| 45 | HUB-17 (Webhook Nexus) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-17 Direct Hub) | HUB-17 Direct Hub | HUB-17.md line 101 |
+   367→| 48 | HUB-18 (Media Forge) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-18 Direct Hub) | HUB-18 Direct Hub | HUB-18.md line 107 |
+   368→| 55 | HUB-20 (Vault) | HUB-25 (Sovereign Chronos) | **RUNTIME-04** | INTEGRATION | OPTIONAL (declared "soft" in HUB-20 Up) | HUB-20 Up | HUB-20.md line 118 |
+   369→| 65 | HUB-23 (Reporter) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-23 Direct Hub) | HUB-23 Direct Hub | HUB-23.md line 137 |
+   370→| 68 | HUB-23 (Reporter) | HUB-25 (Sovereign Chronos) | **RUNTIME-04** | INTEGRATION | UNKNOWN (declared in HUB-23 Direct Hub) | HUB-23 Direct Hub | HUB-23.md line 137 |
+   371→| 81 | HUB-30 (Hub CLI) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-30 Direct Hub) | HUB-30 Direct Hub | HUB-30.md line 169 |
+   372→| 85 | HUB-31 (Real-time Analytics) | HUB-10 (Sovereign Queue) | **RUNTIME-03** | INTEGRATION | UNKNOWN (declared in HUB-31 Direct Hub — "durable-write queue") | HUB-31 Direct Hub | HUB-31.md line 174 |
+   373→| 87 | HUB-31 (Real-time Analytics) | HUB-25 (Sovereign Chronos) | **RUNTIME-04** | INTEGRATION | UNKNOWN (declared in HUB-31 Direct Hub — "scheduled rollup compaction") | HUB-31 Direct Hub | HUB-31.md line 174 |
+   374→
+   375→**Total relocated edges: 11** (8 to RUNTIME-03 + 3 to RUNTIME-04). The future Runtime-tier DAG and/or the cross-tier integration inventory will absorb these 11 edges. The historical declarations in the source Hub blueprints are NOT edited — the original prose remains ("HUB-10" still appears in HUB-09.md line 59 etc.), but the SUPERSEDED notices on the target blueprints (HUB-10.md, HUB-25.md) make the relocation visible. A future cleanup PR may rewrite the source-blueprint declarations to reference `RUNTIME-03` / `RUNTIME-04` directly.
+   376→
+   377→---
+   378→
+   379→## §5. Mermaid graph
+   380→
+   381→The graph below shows all 29 active Hub nodes and their declared Hub-internal + Hub→Core edges. To keep the diagram readable, Core nodes are grouped at the bottom and only the Core nodes that appear as targets are shown (CORE-01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20 — 18 distinct Core targets).
+   382→
+   383→Edges are unstyled solid arrows (the conventional declared-edge form). The 4 cycle-split edges from §3 are labeled with their `edge_type` to make the split visible.
+   384→
+   385→```mermaid
+   386→graph TD
+   387→    subgraph hub["Hub tier (29 active blueprints — 2 implemented, 27 greenfield)"]
+   388→        direction TB
+   389→        HUB-01["HUB-01 Config"]
+   390→        HUB-02["HUB-02 Cache"]
+   391→        HUB-03["HUB-03 Asset"]
+   392→        HUB-04["HUB-04 Identity"]
+   393→        HUB-05["HUB-05 Guardian"]
+   394→        HUB-06["HUB-06 Auditor"]
+   395→        HUB-07["HUB-07 Throttle"]
+   396→        HUB-08["HUB-08 Gateway"]
+   397→        HUB-09["HUB-09 Signal"]
+   398→        HUB-11["HUB-11 CloudStorage"]
+   399→        HUB-12["HUB-12 Notify"]
+   400→        HUB-13["HUB-13 Translator"]
+   401→        HUB-14["HUB-14 Search"]
+   402→        HUB-15["HUB-15 Pulse"]
+   403→        HUB-16["HUB-16 Weaver"]
+   404→        HUB-17["HUB-17 Webhook"]
+   405→        HUB-18["HUB-18 MediaForge"]
+   406→        HUB-19["HUB-19 Validation"]
+   407→        HUB-20["HUB-20 Vault"]
+   408→        HUB-21["HUB-21 Nexus"]
+   409→        HUB-22["HUB-22 Ledger"]
+   410→        HUB-23["HUB-23 Reporter"]
+   411→        HUB-24["HUB-24 GraphQL"]
+   412→        HUB-26["HUB-26 UI"]
+   413→        HUB-27["HUB-27 Sentinel"]
+   414→        HUB-28["HUB-28 Versioner"]
+   415→        HUB-29["HUB-29 Spec"]
+   416→        HUB-30["HUB-30 CLI"]
+   417→        HUB-31["HUB-31 Analytics"]
+   418→    end
+   419→
+   420→    subgraph core["Core tier (consumed targets — see CORE-DEPENDENCY-DAG.md for canonical Core DAG)"]
+   421→        direction TB
+   422→        CORE-01["CORE-01 Loom"]
+   423→        CORE-02["CORE-02 Container"]
+   424→        CORE-03["CORE-03 EventDispatcher"]
+   425→        CORE-04["CORE-04 HttpMessage"]
+   426→        CORE-05["CORE-05 Middleware"]
+   427→        CORE-06["CORE-06 Router"]
+   428→        CORE-08["CORE-08 Error"]
+   429→        CORE-09["CORE-09 Logger"]
+   430→        CORE-10["CORE-10 Config"]
+   431→        CORE-11["CORE-11 Storage"]
+   432→        CORE-12["CORE-12 Mail"]
+   433→        CORE-13["CORE-13 CLI"]
+   434→        CORE-14["CORE-14 Filesystem"]
+   435→        CORE-15["CORE-15 Cache"]
+   436→        CORE-16["CORE-16 Crypto"]
+   437→        CORE-18["CORE-18 Kernel"]
+   438→        CORE-19["CORE-19 DBAL"]
+   439→        CORE-20["CORE-20 Test"]
+   440→    end
+   441→
+   442→    %% ===== Hub→Hub edges (76 declared) =====
+   443→    %% HUB-01 outbound
+   444→    HUB-01 --> HUB-02
+   445→    HUB-01 -->|runtime| HUB-21
+   446→    HUB-01 --> HUB-19
+   447→    %% HUB-02 outbound
+   448→    HUB-02 --> HUB-21
+   449→    %% HUB-03 outbound
+   450→    HUB-03 --> HUB-11
+   451→    %% HUB-04 outbound
+   452→    HUB-04 --> HUB-01
+   453→    HUB-04 --> HUB-02
+   454→    HUB-04 --> HUB-07
+   455→    HUB-04 --> HUB-19
+   456→    HUB-04 --> HUB-20
+   457→    HUB-04 --> HUB-21
+   458→    %% HUB-05 outbound
+   459→    HUB-05 --> HUB-02
+   460→    HUB-05 --> HUB-04
+   461→    %% HUB-06 outbound
+   462→    HUB-06 --> HUB-01
+   463→    HUB-06 --> HUB-04
+   464→    HUB-06 --> HUB-11
+   465→    HUB-06 --> HUB-19
+   466→    %% HUB-07 outbound
+   467→    HUB-07 --> HUB-02
+   468→    %% HUB-08 outbound (includes RUNTIME cycle edge to HUB-15)
+   469→    HUB-08 --> HUB-01
+   470→    HUB-08 --> HUB-04
+   471→    HUB-08 --> HUB-07
+   472→    HUB-08 --> HUB-14
+   473→    HUB-08 -->|runtime,optional| HUB-15
+   474→    HUB-08 --> HUB-19
+   475→    %% HUB-09 outbound
+   476→    HUB-09 --> HUB-02
+   477→    HUB-09 --> HUB-20
+   478→    %% HUB-11 outbound
+   479→    HUB-11 --> HUB-21
+   480→    %% HUB-12 outbound
+   481→    HUB-12 --> HUB-04
+   482→    HUB-12 --> HUB-07
+   483→    %% HUB-13 outbound
+   484→    HUB-13 --> HUB-02
+   485→    %% HUB-15 outbound (includes RUNTIME cycle edge to HUB-08; also reverse-Downward edges)
+   486→    HUB-15 --> HUB-01
+   487→    HUB-15 --> HUB-02
+   488→    HUB-15 --> HUB-04
+   489→    HUB-15 --> HUB-06
+   490→    HUB-15 -->|runtime,required| HUB-08
+   491→    HUB-15 --> HUB-19
+   492→    HUB-15 --> HUB-20
+   493→    %% HUB-16 outbound
+   494→    HUB-16 --> HUB-15
+   495→    %% HUB-17 outbound
+   496→    HUB-17 --> HUB-06
+   497→    HUB-17 --> HUB-08
+   498→    HUB-17 --> HUB-09
+   499→    HUB-17 --> HUB-19
+   500→    %% HUB-18 outbound
+   501→    HUB-18 --> HUB-02
+   502→    HUB-18 --> HUB-11
+   503→    %% HUB-19 outbound
+   504→    HUB-19 --> HUB-13
+   505→    %% HUB-20 outbound
+   506→    HUB-20 --> HUB-02
+   507→    HUB-20 --> HUB-04
+   508→    HUB-20 --> HUB-06
+   509→    HUB-20 --> HUB-19
+   510→    %% HUB-21 outbound (includes COMPILE cycle edge to HUB-01)
+   511→    HUB-21 -->|compile,required| HUB-01
+   512→    HUB-21 --> HUB-04
+   513→    HUB-21 --> HUB-08
+   514→    %% HUB-22 outbound
+   515→    HUB-22 --> HUB-06
+   516→    HUB-22 --> HUB-09
+   517→    HUB-22 --> HUB-12
+   518→    HUB-22 --> HUB-17
+   519→    HUB-22 --> HUB-20
+   520→    HUB-22 --> HUB-21
+   521→    %% HUB-23 outbound
+   522→    HUB-23 --> HUB-11
+   523→    HUB-23 --> HUB-12
+   524→    %% HUB-24 outbound
+   525→    HUB-24 --> HUB-04
+   526→    HUB-24 --> HUB-05
+   527→    HUB-24 --> HUB-08
+   528→    %% HUB-26 outbound
+   529→    HUB-26 --> HUB-03
+   530→    HUB-26 --> HUB-13
+   531→    %% HUB-27 outbound
+   532→    HUB-27 --> HUB-01
+   533→    HUB-27 --> HUB-08
+   534→    %% HUB-28 outbound
+   535→    HUB-28 --> HUB-08
+   536→    HUB-28 --> HUB-15
+   537→    %% HUB-29 outbound
+   538→    HUB-29 --> HUB-15
+   539→    HUB-29 --> HUB-16
+   540→    %% HUB-30 outbound
+   541→    HUB-30 --> HUB-02
+   542→    HUB-30 --> HUB-15
+   543→    HUB-30 --> HUB-21
+   544→    %% HUB-31 outbound
+   545→    HUB-31 --> HUB-02
+   546→    HUB-31 --> HUB-21
+   547→
+   548→    %% ===== Hub→Core edges (74 declared) =====
+   549→    %% HUB-01 → Core (4)
+   550→    HUB-01 --> CORE-02
+   551→    HUB-01 -.->|optional| CORE-09
+   552→    HUB-01 --> CORE-10
+   553→    HUB-01 --> CORE-19
+   554→    %% HUB-02 → Core (2)
+   555→    HUB-02 --> CORE-15
+   556→    HUB-02 -.->|optional| CORE-16
+   557→    %% HUB-03 → Core (2)
+   558→    HUB-03 --> CORE-10
+   559→    HUB-03 --> CORE-14
+   560→    %% HUB-04 → Core (8 — including Resolution 3 newly declared CORE-03, CORE-04, CORE-18)
+   561→    HUB-04 --> CORE-02
+   562→    HUB-04 --> CORE-03
+   563→    HUB-04 --> CORE-04
+   564→    HUB-04 -.->|optional| CORE-09
+   565→    HUB-04 --> CORE-10
+   566→    HUB-04 --> CORE-16
+   567→    HUB-04 --> CORE-18
+   568→    HUB-04 --> CORE-19
+   569→    %% HUB-05 → Core (1)
+   570→    HUB-05 --> CORE-19
+   571→    %% HUB-06 → Core (5)
+   572→    HUB-06 --> CORE-02
+   573→    HUB-06 --> CORE-03
+   574→    HUB-06 --> CORE-09
+   575→    HUB-06 --> CORE-14
+   576→    HUB-06 --> CORE-19
+   577→    %% HUB-07 → Core (1)
+   578→    HUB-07 --> CORE-04
+   579→    %% HUB-08 → Core (6)
+   580→    HUB-08 --> CORE-04
+   581→    HUB-08 --> CORE-05
+   582→    HUB-08 --> CORE-06
+   583→    HUB-08 --> CORE-09
+   584→    HUB-08 --> CORE-10
+   585→    HUB-08 --> CORE-18
+   586→    %% HUB-09 → Core (1)
+   587→    HUB-09 --> CORE-03
+   588→    %% HUB-11 → Core (2)
+   589→    HUB-11 --> CORE-10
+   590→    HUB-11 --> CORE-14
+   591→    %% HUB-12 → Core (1)
+   592→    HUB-12 --> CORE-12
+   593→    %% HUB-13 → Core (1)
+   594→    HUB-13 --> CORE-10
+   595→    %% HUB-14 → Core (1)
+   596→    HUB-14 --> CORE-19
+   597→    %% HUB-15 → Core (3)
+   598→    HUB-15 --> CORE-02
+   599→    HUB-15 --> CORE-10
+   600→    HUB-15 -.->|optional| CORE-19
+   601→    %% HUB-16 → Core (1)
+   602→    HUB-16 --> CORE-01
+   603→    %% HUB-17 → Core (4)
+   604→    HUB-17 --> CORE-03
+   605→    HUB-17 --> CORE-04
+   606→    HUB-17 --> CORE-06
+   607→    HUB-17 --> CORE-19
+   608→    %% HUB-18 → Core (3)
+   609→    HUB-18 --> CORE-14
+   610→    HUB-18 --> CORE-15
+   611→    HUB-18 --> CORE-19
+   612→    %% HUB-19 → Core (2)
+   613→    HUB-19 -.->|optional| CORE-09
+   614→    HUB-19 --> CORE-19
+   615→    %% HUB-20 → Core (3)
+   616→    HUB-20 --> CORE-02
+   617→    HUB-20 --> CORE-16
+   618→    HUB-20 --> CORE-19
+   619→    %% HUB-21 → Core (3)
+   620→    HUB-21 --> CORE-02
+   621→    HUB-21 --> CORE-10
+   622→    HUB-21 --> CORE-19
+   623→    %% HUB-22 → Core (2)
+   624→    HUB-22 --> CORE-03
+   625→    HUB-22 --> CORE-19
+   626→    %% HUB-23 → Core (2)
+   627→    HUB-23 --> CORE-14
+   628→    HUB-23 --> CORE-19
+   629→    %% HUB-24 → Core (3)
+   630→    HUB-24 --> CORE-02
+   631→    HUB-24 --> CORE-04
+   632→    HUB-24 --> CORE-06
+   633→    %% HUB-26 → Core (2)
+   634→    HUB-26 --> CORE-11
+   635→    HUB-26 --> CORE-12
+   636→    %% HUB-27 → Core (2)
+   637→    HUB-27 --> CORE-04
+   638→    HUB-27 --> CORE-05
+   639→    %% HUB-28 → Core (2)
+   640→    HUB-28 --> CORE-06
+   641→    HUB-28 --> CORE-18
+   642→    %% HUB-29 → Core (2)
+   643→    HUB-29 --> CORE-08
+   644→    HUB-29 --> CORE-20
+   645→    %% HUB-30 → Core (2)
+   646→    HUB-30 --> CORE-13
+   647→    HUB-30 --> CORE-20
+   648→    %% HUB-31 → Core (3)
+   649→    HUB-31 --> CORE-02
+   650→    HUB-31 --> CORE-18
+   651→    HUB-31 --> CORE-19
+   652→
+   653→    %% Styling
+   654→    classDef implemented fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724
+   655→    classDef greenfield fill:#fff3cd,stroke:#ffc107,stroke-width:1px,color:#856404
+   656→    classDef core fill:#cce5ff,stroke:#007bff,stroke-width:1px,color:#004085
+   657→    class HUB-01,HUB-04 implemented
+   658→    class HUB-02,HUB-03,HUB-05,HUB-06,HUB-07,HUB-08,HUB-09,HUB-11,HUB-12,HUB-13,HUB-14,HUB-15,HUB-16,HUB-17,HUB-18,HUB-19,HUB-20,HUB-21,HUB-22,HUB-23,HUB-24,HUB-26,HUB-27,HUB-28,HUB-29,HUB-30,HUB-31 greenfield
+   659→    class CORE-01,CORE-02,CORE-03,CORE-04,CORE-05,CORE-06,CORE-08,CORE-09,CORE-10,CORE-11,CORE-12,CORE-13,CORE-14,CORE-15,CORE-16,CORE-18,CORE-19,CORE-20 core
+   660→```
+   661→
+   662→**Legend:**
+   663→- Solid arrow (`-->`) = declared edge (status VERIFIED or DECLARED_ONLY — see §2 tables)
+   664→- Solid arrow with label `compile,required` / `runtime,required` / `runtime,optional` = one of the 4 cycle-split edges from §3 (explicit edge_type + requiredness)
+   665→- Dashed arrow (`-.->`) labeled `optional` = declared OPTIONAL edge (per blueprint label)
+   666→- Green-filled box = implemented Hub package (HUB-01, HUB-04)
+   667→- Yellow-filled box = greenfield Hub blueprint (27 unimplemented)
+   668→- Blue-filled box = Core target (canonical Core DAG is `Architecture/Core/CORE-DEPENDENCY-DAG.md`)
+   669→
+   670→---
+   671→
+   672→## §6. Edge status summary (DECLARED DAG scope)
+   673→
+   674→| Status | Count | Notes |
+   675→|---|---|---|
+   676→| VERIFIED (declared in blueprint AND verified in composer/source) | 10 | All Hub→Core: 2 from HUB-01 + 8 from HUB-04 (including 3 newly declared per Resolution 3: CORE-03, CORE-04, CORE-18). See HUB-VERIFIED-DAG.md for the canonical VERIFIED DAG. |
+   677→| DECLARED_ONLY (declared in blueprint, not verified in code) | 140 | 76 Hub→Hub (all DECLARED_ONLY — 27 unimplemented Hubs have no code, 2 implemented Hubs don't cross-import) + 64 Hub→Core (27 unimplemented Hubs' declared edges + 2 unverified-declared edges from HUB-01: CORE-09, CORE-19). |
+   678→| UNDECLARED_VERIFIED (verified in code, not declared in blueprint) | 0 | All 3 previously UNDECLARED_VERIFIED edges (HUB-04→CORE-03/CORE-04/CORE-18) are now declared in HUB-04.md Upward per Resolution 3 → all 3 are now VERIFIED. |
+   679→| INVALID | 0 | No declared edges point to non-existent active targets. (11 declared edges pointed to superseded targets — these are recorded in §4 "Relocated to Runtime-tier DAG (pending)" as historical declarations, NOT counted as INVALID.) |
+   680→| **Total declared Hub-tier edges (active DAG scope)** | **150** | 76 Hub→Hub + 74 Hub→Core. (Excludes the 11 relocated Hub→Runtime edges.) |
+   681→
+   682→---
+   683→
+   684→## §7. Decomposition of UNKNOWN edge_type edges
+   685→
+   686→Of the 150 declared edges in this DAG, only the following have explicit `edge_type` (not UNKNOWN):
+   687→- 10 VERIFIED edges → all COMPILE (composer.json `require` is the canonical COMPILE-time evidence)
+   688→- 4 cycle-split edges from §3 (HUB-08→HUB-15 RUNTIME, HUB-15→HUB-08 RUNTIME, HUB-21→HUB-01 COMPILE, HUB-01→HUB-21 RUNTIME)
+   689→- 7 explicit-COMPILE labels from HUB-02, HUB-15, HUB-19, HUB-20 blueprints (rows 5, 36, 37, 48 in §2.2 and rows 32, 47, 48 in §2.1)
+   690→
+   691→**136 declared edges have edge_type = UNKNOWN.** These are conventional Hub→Hub and Hub→Core declarations where the blueprint author did not specify the edge_type. Per Phase 1 inventory §7 Gap 9, the **default heuristic** for these is:
+   692→
+   693→- For Hub→Core edges where the consuming Hub's `composer.json` would `require` the Core package → **COMPILE** (conventional case)
+   694→- For Hub→Hub edges where the consuming Hub's `composer.json` would `require` the Hub package → **COMPILE** (conventional case)
+   695→- For edges where the consumer only consumes a PSR contract (no direct composer require) → **RUNTIME** (interface-only coupling)
+   696→- For external systems (MySQL, Redis, S3, SMTP) → **INTEGRATION** (these are out of scope for this DAG — they belong in the Runtime lines of blueprints, not Upward/Transitive Core)
+   697→
+   698→The Phase 3 HUB-BUILD-ORDER.md derivation (deferred per SAAI) will need to apply this heuristic to convert UNKNOWN → COMPILE for the build-order analysis (Kahn's algorithm requires an edge_type-tagged DAG; the COMPILE subgraph is what build-order topologically sorts).
+   699→
+   700→---
+   701→
+   702→## §8. Authority statement (closing)
+   703→
+   704→This DAG is the **architectural-intent** Hub DAG per ADR-021 §11. It is updated when:
+   705→
+   706→1. A new active Hub blueprint is published (`Architecture/Hub/HUB-XX.md`), OR
+   707→2. An existing Hub blueprint's formal Upward / Direct Hub / Transitive Core / Downward section is edited, OR
+   708→3. A previously-superseded Hub blueprint is revived or a previously-active one is superseded (ADR-021 §12 — e.g., if HUB-32 lands or if another Hub is relocated to Runtime), OR
+   709→4. A bidirectional cycle is split (per Resolution 1 methodology) or an architectural finding is reported (per Decision 1 — same-mechanism cycles = broken build per ADR-004).
+   710→
+   711→Until then, this DAG remains at 150 edges and 29 active Hub nodes. The next plausible growth event is the publication of `Architecture/Hub/HUB-32.md` (AI Inference Hub) — which would add 1 node and a handful of declared edges (currently tracked in worklog Task 72-73 as ratified pending canonical publication).
+   712→
+   713→The DECLARED DAG is the authoritative input for **architectural-intent build orders** (the future HUB-BUILD-ORDER.md, deferred to Phase 3 per SAAI's instruction "Do not generate HUB-BUILD-ORDER yet"). The VERIFIED DAG is the authoritative input for **repository-reality build orders**.
+   714→
+   715→**End of HUB-DECLARED-DAG.md.**
+   716→
