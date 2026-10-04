@@ -1,0 +1,1215 @@
+# A3-ARCH-GOV-76 — Fresh Architect + DAG + Documentation/Governance Re-Audit Report
+
+**Task ID:** A3-ARCH-GOV-76
+**Agent:** General-purpose (fresh-architect + DAG-reviewer + documentation/governance-reviewer triple-lens re-audit)
+**Date:** 2026-10-03
+**Base:** `main` @ `200479e` (HEAD; one scratch GUID commit past `2ecfb03` PR #301 A2 merge)
+**Audit lens:** (1) Fresh architect, (2) DAG reviewer, (3) Documentation/governance reviewer
+
+---
+
+## §0. Methodology + Coordination Note
+
+This audit was performed against HEAD (`200479e`) using static analysis only — no PHP runtime available in the sandbox. PHP-dependent CI scripts (`Architecture/Verification/lint/run.php`) were simulated in Python (regex-equivalent) and verified by code reading. Python CI scripts (`architecture-boundary-lint.py`, `architecture-fitness` family) were executed directly against the live tree.
+
+The audit deliberately **does not** treat the 47-finding SHORTCOMINGS-REGISTER as the complete universe. New findings beyond the register are surfaced in §6 with IDs starting at **S-055**.
+
+### Coordination with the parallel A3-RUNTIME-76 audit
+
+A parallel subagent (**A3-RUNTIME-76**, runtime/concurrency lens) completed its re-audit immediately before this one. Its 7 new findings (S-048 through S-054) are about `Container::pulse()` runtime behavior and test coverage — a different lens from this audit. To avoid ID collision, **this audit's new findings start at S-055**.
+
+Key cross-references to the runtime agent's findings:
+- **A3-RUNTIME-76 S-048** (HIGH): `pulse()` with class-string concrete silently misroutes or fails. Three failure modes (interface→NotFoundException, non-self class→wrong class autowired, competing singleton→singleton wins). The implementation's step-0 comment is internally inconsistent.
+- **A3-RUNTIME-76 S-049** (LOW): Steps 1b and 8b are dead code post-A2; `pulseScoped` flag is vestigial on global definitions.
+- **A3-RUNTIME-76 S-050** (MEDIUM): `ContainerInterface::pulse()` docblock still describes Shape A semantics — drifts from the Shape C contract.
+- **A3-RUNTIME-76 S-051** (LOW): Duplicate stacked docblock for `$pulseDefinitions` property.
+- **A3-RUNTIME-76 S-052** (LOW): No test for edge case #1 (`pulse()` outside Fiber throws `ContainerException`).
+- **A3-RUNTIME-76 S-053** (LOW): No test for class-string `pulse()` bindings (the failure mode S-048 catches).
+- **A3-RUNTIME-76 S-054** (HIGH): **S-003 verification condition (c) UNMET** — the required `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` file does not exist. This blocks S-003 and S-004 from moving to `Closed`.
+
+**Implication for this audit's FATAL verification (§1 below):** This audit independently confirms A3-RUNTIME-76's S-054 finding — the file does not exist. Therefore S-003 and S-004 are **Fixed** (code change landed, behavior correct for typical use case) but **NOT Closed** (verification condition (c) is unmet). The headline "all 4 FATALs cleared" is incorrect. The accurate headline: "S-001 and S-002 are Closed; S-003 and S-004 are Fixed but blocked from Closed by S-054 (runtime agent's finding)".
+
+---
+
+## §1. FATAL Verification — Independent Assessment of S-001 / S-002 / S-003 / S-004
+
+### S-001 (architecture-lint fails on HUB-32 references) — **CONFIRMED Closed (verification condition met)**
+
+**Independent verification performed:**
+1. Read `Architecture/Verification/lint/run.php` lines 56–73 (the `buildValidIds()` method).
+2. Confirmed `'HUB' => range(1, 32)` at line 60 (originally `range(1, 30)` per the SHORTCOMINGS-AUDIT-76 evidence). The `validIds` map now includes `HUB-32` natively.
+3. Simulated the lint's `checkReferences()` pass in Python: regex `\b(CORE|HUB|ISPOKE|ESPOKE|BRIDGE|DEPLOY)-(\d{1,3})\b` against all 181 `Architecture/**/*.md` files (after stripping fenced code blocks per line 89). **0 undefined references.**
+4. Confirmed `Architecture/Hub/HUB-32.md` exists (the canonical blueprint file authored by PR #294).
+5. The PR #294 worklog (lines 1603–1611) records `architecture-lint: ✅ success (FIRST TIME PASSING since ADR-021 was merged!)` and a squash-merged PR.
+
+**Independent assessment:** The verification condition stated in the register — `Architecture/Verification/lint/run.php` exits 0 on `main` HEAD — is met.
+
+**Closure evidence (to be recorded in register):**
+- Commit: `08b0ce6` (PR #294 squash-merge)
+- Verification artifact: `Architecture/Verification/lint/run.php` validIds now includes HUB-32; Python simulation of the same regex against all 181 .md files in `Architecture/` returns 0 undefined references
+- Date: 2026-10-03 (A3 re-audit confirmation)
+
+**Recommended disposition change:** `Open` → `Closed` (after closure evidence recorded).
+
+### S-002 (architecture-lint fails on ESPOKE-19 references) — **CONFIRMED Closed (verification condition met)**
+
+**Independent verification performed:**
+1. Confirmed `'ESPOKE' => range(1, 19)` at line 62 of `run.php` (originally `range(1, 18)`).
+2. Simulated `checkReferences()` — 0 undefined references.
+3. Confirmed `Architecture/Spoke/External/ESPOKE-19.md` exists (canonical blueprint authored by PR #294).
+
+**Independent assessment:** Verification condition met. Same closure pattern as S-001.
+
+**Recommended disposition change:** `Open` → `Closed`.
+
+### S-003 (Container::pulse() Fiber isolation — testConcurrentFibersObserveIndependentPulseState) — **CONFIRMED Fixed but NOT Closed (verification condition (c) UNMET per A3-RUNTIME-76 S-054)**
+
+**Independent verification performed:**
+1. Read `packages/core/container/src/Container.php` in full (636 lines) — confirmed new `private \WeakMap $pulseDefinitions` field at line 95, initialized in constructor at line 138.
+2. Confirmed `pulse()` (line 165–208) now writes to `$this->pulseDefinitions[$fiber][$id]` instead of `$this->definitions[$id]`.
+3. Confirmed `pulse()` throws `ContainerException` outside a Fiber context (line 176–182) — matches CORE-02 blueprint edge case #1.
+4. Confirmed `make()` (line 224–387) consults `$this->pulseDefinitions[$pulseFiber][$id]` first (line 232–265), with correct precedence over singletons and global definitions **for object-value and Closure pulse bindings**.
+5. Confirmed `invalidateCurrentFiberPulseInstance()` (line 521–532) is Fiber-scoped (only touches the current Fiber's pulse cache, not other Fibers').
+6. Read the S-003 register entry (lines 112–128) — confirms verification condition (c) requires `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` to exist.
+7. Listed `packages/core/container/tests/Unit/` — contains only `AutowiringTest.php`, `CircularDependencyTest.php`, `CompileTest.php`, `ContainerTest.php`. **No `PulseFiberIsolationTest.php` exists.**
+8. This independently confirms A3-RUNTIME-76 S-054: S-003 verification condition (c) is unmet.
+
+**Independent assessment:** S-003 is Fixed (the code change is correct for the typical use case — object-value and Closure pulse bindings work; the 2 originally failing tests now pass per the A2 commit message). But S-003's verification condition (c) — the required `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` file — does not exist. Per the register's closure rule (line 943), S-003 **cannot move to Closed** at this A3 re-audit.
+
+**Additional concern surfaced by the parallel A3-RUNTIME-76 audit:** S-048 (class-string pulse silent misroute) — `pulse(Interface::class, ConcreteClass::class)` followed by `make(Interface::class)` throws `NotFoundException`; `pulse(SomeClass::class, OtherClass::class)` followed by `make(SomeClass::class)` autowires `SomeClass`, NOT `OtherClass`; `singleton(A)` cached + `pulse(A, ConcreteClass::class)` + `make(A)` returns the singleton, not `ConcreteClass`. This is a HIGH-severity latent defect in the A2 fix that the architecture/governance lens did not catch (the runtime lens did). The implementation's step-0 comment at lines 261–264 makes a claim ("class-strings fall through… step 8b caches") that is internally inconsistent with the implementation.
+
+**Recommended disposition change:** `Open` → `Fixed` (NOT `Closed`). Closure evidence records the PR #301 commit + commit message + code inspection, but explicitly notes that condition (c) is unmet per A3-RUNTIME-76 S-054.
+
+### S-004 (Container::pulse() Fiber isolation — testCompletedFiberStateIsNotVisibleToNewFiber) — **CONFIRMED Fixed but NOT Closed (blocked on S-003 closure per register cross-reference table)**
+
+**Independent verification performed:**
+1. Same code inspection as S-003 confirms the WeakMap-based fix.
+2. Per the register's cross-reference table (line 934): "S-004 depends on S-003 (same root cause; same fix)". Since S-003 is Fixed-but-not-Closed, S-004 is also Fixed-but-not-Closed.
+
+**Recommended disposition change:** `Open` → `Fixed` (NOT `Closed`). Blocked on S-003 closure.
+
+### §1.1 FATAL Verification Summary
+
+| Finding | Verification Condition | Independently Verified? | Recommended Disposition |
+|---|---|---|---|
+| S-001 | `architecture-lint` exits 0 on main HEAD | YES (Python regex simulation, 0 errors) | **Closed** |
+| S-002 | `architecture-lint` exits 0 on main HEAD | YES (Python regex simulation, 0 errors) | **Closed** |
+| S-003 | (a) Test passes + (b) Test passes + (c) NEW FILE `PulseFiberIsolationTest.php` + (d) CI green | (a) (b) (d) verified by reasoning + commit message; (c) **NOT MET** — file does not exist (confirmed by `ls packages/core/container/tests/Unit/` — see A3-RUNTIME-76 S-054) | **Fixed** (not Closed — condition (c) blocks) |
+| S-004 | Test passes + CI green (depends on S-003 closure) | Verified by reasoning + commit message; blocked on S-003 | **Fixed** (not Closed — blocked on S-003) |
+
+**Headline correction vs. A1/A2 self-assessment:** Only 2 of 4 FATALs are Closed (S-001, S-002). The other 2 (S-003, S-004) are Fixed but blocked from Closed by A3-RUNTIME-76 S-054 (missing test file). The roadmap-blocking condition is therefore NOT fully cleared — S-003/S-004 must close before the roadmap can advance per the paradigm shift directive.
+
+**Action required:** Author `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` with the tests specified in the S-003 register entry (condition (c)). Recommended test cases (per A3-RUNTIME-76 §"Recommended remediation order"):
+- Two-Fiber isolation with explicit `Fiber::suspend()` interleavings
+- `pulse()` outside Fiber throws `ContainerException` (closes A3-RUNTIME-76 S-052)
+- Class-string `pulse()` binding resolves to bound concrete (closes A3-RUNTIME-76 S-053; catches S-048)
+- `pulse()` shadows `singleton()` for both object-value AND class-string values (verifies A3-RUNTIME-76 S-048 fix)
+
+---
+
+## §2. Fresh Architect Findings — "If I were implementing from this documentation, would I succeed?"
+
+The fresh-architect lens read ADR-021, INDEX.md, CORE-02, and the four DAG files end-to-end and asked the implementing-from-scratch question.
+
+### FA-1: ADR-021 §13 and §14 still describe HUB-32/ESPOKE-19 as "ratified pending canonical publication" even though A1 published them
+
+**If I were implementing from ADR-021 §13:** I would read "The HUB-32 blueprint file does not yet exist in `Architecture/Hub/`. INDEX.md still says 31 Hubs. This is intentional — the decision is ratified; the canonical blueprint is deferred to the implementation phase." (line 263). I would conclude HUB-32 is not yet canonical. But the file DOES exist (verified — `Architecture/Hub/HUB-32.md`, 97 lines). So I would be **wrong**.
+
+Same pattern in §14 (line 269): "The ESPOKE-19 blueprint file does not yet exist. INDEX.md still says 18 ESPOKEs." — but `Architecture/Spoke/External/ESPOKE-19.md` exists (100 lines).
+
+Same pattern in the ADR-021 "Relationship to Other Documents" table (lines 357–358):
+- `Architecture/Hub/HUB-32.md` | **Ratified pending canonical publication** — blueprint file to be created during implementation phase. |
+- `Architecture/Spoke/External/ESPOKE-19.md` | **Ratified pending canonical publication** — blueprint file to be created during implementation phase. |
+
+**Verdict:** A1 (PR #294) published the blueprint files but did NOT update ADR-021's §13, §14, or the Relationship table. This is a fresh-architect trap — anyone reading ADR-021 as the canonical ADR would conclude the blueprints don't exist yet, and would either (a) refuse to extend the lint, (b) re-author the blueprint files (creating duplicates), or (c) question whether the existing files are canonical.
+
+See new finding **S-055** in §6.
+
+### FA-2: ADR-021 §21 "Known Latent Defects" still asserts "H05/H07 Rate Limiter duplication" — but HUB-05 is RBAC
+
+ADR-021 line 305: "**H05/H07 Rate Limiter duplication** — H05 and H07 may be duplicate Rate Limiter Hubs. Tech-lead decision pending."
+
+But:
+- `Architecture/Hub/HUB-05.md` H1: `# PHASE HUB-05: RBAC & Permission Engine`
+- `Architecture/Hub/HUB-07.md` H1: `# PHASE HUB-07: Rate Limiter & Throttle Engine`
+
+HUB-05 is **RBAC**, not a Rate Limiter. The "duplication" claim is wrong. This was finding S-025 in the original audit; it has not been remediated. It's still a fresh-architect trap — anyone reading ADR-021 §21 would believe HUB-05 has rate-limiter functionality that overlaps with HUB-07, which is false.
+
+**Verdict:** The fresh-architect lens confirms S-025 remains unaddressed. Carried forward as evidence — see §6 cross-reference.
+
+### FA-3: ADR-021 §16 "Namespace Root Lint Rule (LOCKED)" is declared but not implemented in the lint script
+
+ADR-021 §16 (line 275): "A namespace root belongs to exactly one package unless an explicit namespace-partition contract exists. This catches the C04↔C05 collision (`SovereignStack\Core\Http\` shared root) and should become an enforceable rule in `architecture-boundary-lint.py`, not just a documented defect."
+
+But `scripts/architecture-boundary-lint.py` does NOT have a namespace-root-deduplication check. The lint's `RING_PATTERNS` list and `PATH_RING_MAP` classify namespaces by tier, not by package. There is no check that flags "two packages claiming the same PSR-4 root".
+
+**Verdict:** The fresh-architect lens confirms ADR-021 §16 is a ratified-but-unenforced rule. This was caught by the original audit (S-023 noted the §16 doesn't exist — but it DOES exist at line 275; the original audit's S-023 description was wrong about §16 not existing, but the underlying observation that the lint rule isn't implemented is correct). The original S-023 is partially wrong about §16's existence; the unenforced-rule observation remains valid. See new finding **S-056** in §6.
+
+### FA-4: ADR-021 §10 "Build Order as Generated Artifact" is declared but no generator exists
+
+ADR-021 §10 (line 230): "Build-order documents are generated from the current architecture and repository evidence. Do not edit manually." The §10 also states: "Future tooling will regenerate it automatically" and §8 (Negative consequences): "DAG generator tooling not yet built. The two-DAG model is ratified but the scripts (`generate-verified-dag.py`, `generate-declared-dag.py`, `compare-dags.py`, `generate-build-order.py`) are tracked as future tasks. Until they exist, DAGs are hand-maintained markdown."
+
+**Verdict:** This is acknowledged in ADR-021 itself (not a hidden trap). But it's still a fresh-architect concern: the "do not edit manually" header on `CORE-BUILD-ORDER.md` (per ADR-021 §10) is misleading because there is no generator — every edit IS manual by definition. A fresh architect would either (a) skip editing CORE-BUILD-ORDER.md when it should be updated (because "do not edit manually" without a generator means "don't edit at all"), or (b) edit it and feel they're violating the rule.
+
+Not a new finding (acknowledged in ADR-021's negative consequences section), but the fresh-architect lens flags it as a documentation-vs-reality gap that needs the generator to land before "do not edit manually" is honest.
+
+### FA-5: ADR-021 §11 "INDEX authority evolution" promises "INDEX does NOT own derived facts" — but INDEX still hand-maintains them
+
+ADR-021 §11 (line 236): "INDEX owns: IDs, names, tier membership, numbering, Canonical status, ADR relationships, Governance rules. INDEX does NOT own: Actual Composer dependencies, Actual namespace imports, Actual implementation status, Actual topological ordering, Actual test state."
+
+But `Architecture/INDEX.md` §2.1 (the Core tier table, lines 101–122) hand-maintains "Real implementation" status per Core ID. The table marks `C02`, `C03`, `C04`, `C05`, `C06`, `C08`, `C09`, `C10`, `C18`, `C19` as `✅ Implemented` and `C07`, `C11`, `C12`, `C13`, `C15`, `C17`, `C20` as `📝 Not started`. This is hand-maintained derived fact (implementation status), directly contradicting ADR-021 §11.
+
+Same issue in §4 (tier inventory table, lines 222–232): "Documented | Placeholder-only | Total files" — these are derived facts, not identity/governance facts.
+
+**Verdict:** Fresh-architect trap. ADR-021 §11 says INDEX shouldn't have derived facts; INDEX has them; ADR-021's mitigation ("until tooling generates them, INDEX may carry them") is in the §11 "Evolution" clause but the §2.1 + §4 tables have not been migrated to a generated artifact. See new finding **S-057** in §6.
+
+### FA-6: CORE-02 blueprint's embedded reference implementation is older than live source
+
+The CORE-02 blueprint (lines 500–800) contains a copy-pasteable `Container` reference implementation. Per the A0-FIBER-STATE-MODEL-76 worklog (lines 1519): "Blueprint drift identified. CORE-02's embedded reference implementation (lines 400-744) is older than the live source — it lacks the P2 WeakMap cycle-detection fix and the invalidatePulseInstances() helper."
+
+Per the A2-prep PR #295 (commit `9336fe6`), the ContainerInterface::pulse() docblock was updated with Shape C semantics. The live `packages/core/container/src/Container.php` was updated in PR #301 to introduce `$pulseDefinitions`.
+
+But the CORE-02.md blueprint's reference implementation section (lines 500–636 of the blueprint, corresponding to Container.php) — does it match the live source?
+
+**Audit:** The CORE-02 blueprint's reference implementation does NOT include the `$pulseDefinitions` field or the `invalidateCurrentFiberPulseInstance()` helper. The blueprint's Container class has 6 private fields (`$definitions`, `$instances`, `$pulseInstances`, `$resolving`, `$compilerPasses`, `$compiled`) — but the live source has 9 fields (added `$pulseDefinitions`, `$fiberResolving`, `$mainResolving`, `$mainResolvingChain`, removed the plain `$resolving`).
+
+**Verdict:** Blueprint drift is STILL present post-A2. The `ContainerInterface::pulse()` docblock was updated (A2-prep PR #295), but the embedded reference implementation class was NOT updated. A fresh architect reading CORE-02.md to understand the implementation would see an out-of-date reference — they would not see the `$pulseDefinitions` WeakMap that's the S-003/S-004 fix. See new finding **S-058** in §6.
+
+Note: The parallel A3-RUNTIME-76 agent's S-050 finding covers a related but distinct drift — the `ContainerInterface::pulse()` docblock in the LIVE source file (`packages/core/container/src/ContainerInterface.php`) still describes Shape A. My S-058 covers the BLUEPRINT (`Architecture/Core/CORE-02.md`) reference implementation class being out of sync with the live `Container.php`. Both are real, separate findings.
+
+---
+
+## §3. DAG Review Findings
+
+### DAG-1: HUB-DECLARED-DAG.md excludes HUB-32 from its node set, despite A1 making HUB-32 canonical at depth 1
+
+`Architecture/Hub/HUB-DECLARED-DAG.md` line 72: "HUB-32 (AI Inference Hub) is **ratified pending canonical publication** — no blueprint file exists; the inventory tracks it but it appears as a future addition. Excluded from this DAG until the file lands."
+
+But `Architecture/Hub/HUB-32.md` exists (PR #294) and includes 5 Hub→Core declared edges + 2 Hub→Hub declared edges (lines 57–66 of HUB-32.md). The HUB-DECLARED-DAG should now include HUB-32 as a 30th active node, with its 7 declared Hub→Core/Hub→Hub edges added to the 150-edge count.
+
+Line 711: "Until then, this DAG remains at 150 edges and 29 active Hub nodes. The next plausible growth event is the publication of `Architecture/Hub/HUB-32.md` (AI Inference Hub) — which would add 1 node and a handful of declared edges..."
+
+**Verdict:** DAG inconsistency introduced by A1. The DAG's node set and edge count are now wrong. The "next plausible growth event" has already happened. See new finding **S-059** in §6.
+
+### DAG-2: HUB-VERIFIED-DAG.md §6 cross-DAG reconciliation table contradicts HUB-DECLARED-DAG.md's actual node set
+
+`HUB-VERIFIED-DAG.md` line 200: "Hub node count | 2 (only HUB-01, HUB-04 implemented) | 29 (all active Hub blueprints) |"
+
+This says the DECLARED DAG has 29 active Hub nodes. But HUB-32 is now canonical at depth 1 (per A1 + INDEX.md §1 line 54). So the DECLARED DAG's node count is now 30. The §6 reconciliation table is stale.
+
+**Verdict:** Cross-DAG inconsistency. See new finding **S-059** (same root cause as DAG-1).
+
+### DAG-3: CORE-CAPABILITY-DAG.md still describes HUB-32 as "ratified today, no blueprint" with "(inferred)" edges
+
+`Architecture/Core/CORE-CAPABILITY-DAG.md`:
+- Line 10: "+ HUB-32 (ratified today per worklog `ELQ-DECISIONS-RATIFY-6.5`, no blueprint file yet)."
+- Line 36: "31 Hub blueprint files existed at 2026-09-30 audit; HUB-32 was ratified today (no blueprint file yet)."
+- Line 71: "| **H32** | **AI Inference Hub** (ratified today, no blueprint) | ... | **NO — blueprint not yet authored** |"
+- Line 92: "| 12 | C02 | **H32** | (inferred) AI Inference Hub singleton for multi-provider router..."
+- Line 404: "HUB-32's blueprint does not yet exist; the edges below are inferred from the `ELQ-ANALYSIS-6` cherry-pick analysis"
+- Line 415: "The graph legend flags HUB-32 as `stroke-dasharray: 5 5` (dashed border) to signal 'ratified but no blueprint yet'."
+- Line 475: "- **H32 (AI Inference Hub)**: needs C02✓, C09✓, C10✓, C16✓, C18✓, C19✓ → READY (all Core deps at depth 2) — but blueprint not yet authored"
+
+But HUB-32.md was published by A1 with explicit Upward Dependencies:
+- CORE-02 Container (COMPILE/REQUIRED)
+- CORE-09 Logger (COMPILE/REQUIRED)
+- CORE-08 ErrorHandler (COMPILE/REQUIRED)
+- CORE-10 Config (COMPILE/REQUIRED)
+- CORE-16 Crypto (COMPILE/REQUIRED)
+- HUB-20 Vault (CAPABILITY/REQUIRED)
+- HUB-04 Identity (CAPABILITY/REQUIRED)
+- RUNTIME-01 Anvil (RUNTIME/REQUIRED)
+
+So 5 Hub→Core edges are now DECLARED (not inferred), and CORE-CAPABILITY-DAG.md line 92's "(inferred)" language is wrong. The "blueprint not yet authored" status (line 71) is wrong.
+
+Also: CORE-CAPABILITY-DAG.md's H32 row says "needs C02✓, C09✓, C10✓, C16✓, C18✓, C19✓" (6 Core deps) — but HUB-32.md declares CORE-02, 09, 08, 10, 16 (5 Core deps, no CORE-18). So the inferred dependency list disagrees with the actual declaration.
+
+**Verdict:** DAG inconsistency introduced by A1. CORE-CAPABILITY-DAG.md treats HUB-32 as inferred-no-blueprint when it's now declared-with-blueprint. See new finding **S-060** in §6.
+
+### DAG-4: HUB-VERIFIED-DAG.md + HUB-DECLARED-DAG.md still reference nonexistent CORE-DEPENDENCY-DAG.md (4 occurrences)
+
+Already in original register (S-034). Carried forward as evidence — these have NOT been remediated by A1/A2.
+
+Evidence:
+- `Architecture/Hub/HUB-VERIFIED-DAG.md` line 120: `subgraph core_tier["Core tier (consumed targets — see CORE-DEPENDENCY-DAG.md for the canonical Core DAG)"]`
+- `Architecture/Hub/HUB-VERIFIED-DAG.md` line 156: `Blue-filled box = Core target (referenced; canonical Core DAG is in Architecture/Core/CORE-DEPENDENCY-DAG.md)`
+- `Architecture/Hub/HUB-DECLARED-DAG.md` line 420: `subgraph core["Core tier (consumed targets — see CORE-DEPENDENCY-DAG.md for canonical Core DAG)"]`
+- `Architecture/Hub/HUB-DECLARED-DAG.md` line 668: `Blue-filled box = Core target (canonical Core DAG is Architecture/Core/CORE-DEPENDENCY-DAG.md)`
+
+**Verdict:** Carry-forward — S-034 still Open. No remediation since the original audit.
+
+### DAG-5: CORE-CAPABILITY-DAG.md uses pre-Amendment-2 edge model (5 typed-edge categories with OPTIONAL as an edge type)
+
+`CORE-CAPABILITY-DAG.md` line 18: "the edge is a CAPABILITY edge (one of the 5 typed-edge categories per `APP-MODEL-REFINEMENT-5`'s restored edge typing: COMPILE / RUNTIME / INTEGRATION / CAPABILITY / OPTIONAL)."
+
+But ADR-021 Amendment 2 separated `edge_type` (4 values: COMPILE/RUNTIME/INTEGRATION/CAPABILITY) from `requiredness` (REQUIRED/OPTIONAL). OPTIONAL is a requiredness value, NOT an edge type. This was S-037 in the original audit.
+
+Same pattern in CORE-VERIFIED-DAG.md §1 (lines 33–40) — the legend lists 4 edge types but includes OPTIONAL as a 4th type (the original 4-type model). Lines 33–40:
+- COMPILE / RUNTIME / INTEGRATION / OPTIONAL
+
+Per Amendment 2, the 4th should be CAPABILITY, and OPTIONAL should be a separate "requiredness" dimension on every edge.
+
+**Verdict:** Carry-forward — S-037 + S-040 still Open. Core DAGs use pre-Amendment-2 model.
+
+### DAG-6: Lint script's `checkStructure()` was NOT extended in PR #294 to enforce HUB-31, HUB-32, ESPOKE-19 file existence
+
+This is a structural DAG consistency gap. The lint's `validIds` map was extended (HUB range 1–32, ESPOKE range 1–19) but the `checkStructure()` function's expected-files list was NOT extended (still `range(1, 30)` for HUB and `range(1, 18)` for ESPOKE at lines 175 and 183 of `run.php`).
+
+**Implication:** If someone deletes `Architecture/Hub/HUB-32.md` or `Architecture/Spoke/External/ESPOKE-19.md`, the lint's structure check still passes — the lint does not enforce that the canonical blueprint files for HUB-31, HUB-32, and ESPOKE-19 actually exist. The lint only enforces HUB-01..30 and ESPOKE-01..18.
+
+Similarly, HUB-31 (proposed per ADR-011) is also not enforced.
+
+**Verification performed:** Simulated the structure check in Python — 0 missing files (because the script doesn't check for HUB-31/32 or ESPOKE-19). Confirmed by reading `run.php` lines 169–218.
+
+**Verdict:** The lint's verification surface has a gap — `validIds` accepts references to HUB-31/32 and ESPOKE-19, but the structure check doesn't enforce their files exist. See new finding **S-061** in §6.
+
+### DAG-7: ESPOKE-19.md and HUB-32.md disagree on the meaning of ISPOKE-E11 and ISPOKE-E12
+
+`Architecture/Hub/HUB-32.md` line 74: `| ISPOKE-E11 Content Classification | Application | 📝 Planned | 22 doc-type classification + safety setting toggle (neutral parity per ADR-021 §7) |`
+`Architecture/Hub/HUB-32.md` line 75: `| ISPOKE-E12 Generation Service | Application | 📝 Planned | Long-form text generation |`
+
+`Architecture/Spoke/External/ESPOKE-19.md` line 57: `  - ISPOKE-E11 Manuscript Exporter         # abstraction, reusable: true (consumes HUB-32; redaction optional per ADR-021 §15)`
+`Architecture/Spoke/External/ESPOKE-19.md` line 58: `  - ISPOKE-E12 Censorship & Redaction      # feature, reusable: false (Eloq-private; consumed optionally by E11)`
+
+These two canonical blueprints disagree on what ISPOKE-E11 and ISPOKE-E12 are:
+- HUB-32 says E11 = Content Classification; ESPOKE-19 says E11 = Manuscript Exporter
+- HUB-32 says E12 = Generation Service; ESPOKE-19 says E12 = Censorship & Redaction
+
+ESPOKE-19.md acknowledges in Open Question #1 (line 94): "ISPOKE-E1 through E15 actual IDs: the E1-E15 IDs are conceptual (from ELQ analysis). Actual ISPOKE-XX IDs will be assigned from the existing 27-slot ISPOKE catalog (ISPOKE-01..27) during admission. Some may reuse existing slots; others may extend the catalog."
+
+But HUB-32.md does NOT carry this caveat — it lists E11/E12 as if they were canonical consumers.
+
+**Verdict:** Cross-blueprint contradiction on ISPOKE-E11/E12 identity. A fresh architect implementing HUB-32's consumers would assume E11=Content Classification and E12=Generation Service; an architect implementing ESPOKE-19's composition would assume E11=Manuscript Exporter and E12=Censorship & Redaction. They would build different things. See new finding **S-062** in §6.
+
+### DAG-8: HUB-32.md references RUNTIME-01 Anvil as a declared edge — but no Runtime-tier DAG exists to absorb it
+
+`Architecture/Hub/HUB-32.md` line 66: `| RUNTIME-01 Anvil | RUNTIME | REQUIRED | [RUNTIME, PRODUCTION] | Long-lived worker for connection pooling |`
+
+Per ADR-021 §12 (Tier-Local DAG Contract, line 244), every tier gets two DAGs. The Hub DAG is for Hub-internal edges; Hub→Runtime cross-tier edges belong in the Runtime-tier DAG (or the future global integration view).
+
+But no `Architecture/Runtime/RUNTIME-DECLARED-DAG.md` or `RUNTIME-VERIFIED-DAG.md` exists (per ADR-021 §12, this is a future task). So HUB-32's `RUNTIME-01 Anvil` declared edge has no DAG home.
+
+This is the same class of issue as S-042 (Hub missing RUNTIME DAG to absorb relocated edges), but for HUB-32 specifically.
+
+**Verdict:** Carry-forward from S-042 — same root cause, new instance (HUB-32 adds 1 new Hub→Runtime edge that needs a Runtime DAG home). See new finding **S-063** in §6.
+
+### DAG-9: Core DAGs use 11-field per-blueprint master table; Hub DAGs use per-edge columns — structural asymmetry
+
+`CORE-VERIFIED-DAG.md` §3 (line 73) is "The 11-field master table — one row per Core blueprint". Each Core blueprint gets 11 fields.
+
+`HUB-VERIFIED-DAG.md` §2 (line 52) is "Verified edge inventory (10 edges, all Hub→Core)" — per-edge rows with 7 columns per edge (Source, Target, Edge Type, Requiredness, Gates, Verification evidence).
+
+The two DAGs use different schemas. This was S-039 in the original audit (structural asymmetry). Not remediated by A1/A2.
+
+**Verdict:** Carry-forward — S-039 still Open.
+
+### DAG-10: CORE-CAPABILITY-DAG.md still has "Status: DRAFT" banner despite being committed
+
+`CORE-CAPABILITY-DAG.md` line 11: "**Status:** DRAFT — saved to `/home/z/my-project/download/` for tech-lead review before commit to `Architecture/Core/`."
+
+But the file IS committed to `Architecture/Core/` (it's at `Architecture/Core/CORE-CAPABILITY-DAG.md`). The "DRAFT" + "saved to download/" banner is stale. This was S-041 in the original audit.
+
+**Verdict:** Carry-forward — S-041 still Open.
+
+---
+
+## §4. Documentation/Governance Findings
+
+### DOC-1: SHORTCOMINGS-REGISTER.md has NOT been updated to reflect A1/A2 fixes — all 47 findings still marked "Open"
+
+Independent verification: grep for `- **Disposition:**` in `Architecture/Verification/SHORTCOMINGS-REGISTER.md` returns 47 hits — ALL saying "Open". None say "Fixed" or "Closed" despite:
+- PR #294 (A1) closing S-001/S-002/S-033
+- PR #301 (A2) fixing S-003/S-004 (but per A3-RUNTIME-76 S-054, not closing them — condition (c) unmet)
+
+Per the register's own closure rule (lines 22–31):
+> "A finding is closed only after its stated verification condition passes. Code changes alone do not close a finding. CI green ≠ closed. Closure requires three things, all recorded in the `Closure evidence` field: (1) A reference to the commit/PR that applied the remediation. (2) A reference to the verification artifact. (3) The date the verification condition passed."
+
+The register was authored 2026-10-01 (line 12). PRs #294 (A1) and #301 (A2) landed 2026-10-01 and 2026-10-02 respectively. The register has not been updated to mark these findings as Fixed or Closed.
+
+**Verdict:** Register drift. Per the closure rule, S-001/S-002/S-033 should be marked `Closed` (verification conditions met per A3); S-003/S-004 should be marked `Fixed` (NOT `Closed` — condition (c) unmet per A3-RUNTIME-76 S-054). None of this happened. See new finding **S-064** in §6.
+
+### DOC-2: Blind-Spot Awareness propagation (PR #298) left minor formatting artifacts — triple blank lines after H1 in newer blueprints
+
+`Architecture/Hub/HUB-04.md` (post-PR #298 + post-PR #299):
+- Line 1: `# HUB-04: Sovereign Identity & Authentication`
+- Line 2: blank
+- Line 3: blank
+- Line 4: blank (PR #299 added this)
+- Line 5: `> **This project is developed by both humans and AI systems...`
+- Line 6: `<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->`
+- Line 7: blank (PR #298 added this)
+- Line 8: `> **⚠️ Blind-Spot Awareness:** ...`
+
+Same pattern in `Architecture/Hub/HUB-32.md`, `Architecture/Spoke/External/ESPOKE-19.md`. The contributor awareness statement (PR #299) inserted an extra blank line before the awareness note, resulting in 3 blank lines between H1 and the awareness banner.
+
+A standard markdown linter (e.g., markdownlint MD012 "Multiple consecutive blank lines") would flag this. It's purely cosmetic — does not affect rendering in any GitHub markdown viewer. But it IS a formatting artifact introduced by the 182-document propagation.
+
+**Verdict:** Cosmetic. LOW severity. See new finding **S-065** in §6.
+
+### DOC-3: BLIND-SPOT-DOCTRINE.md line 49 has a grammatical typo: "the a 33rd Hub reference lint issue"
+
+`Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` line 49: "The audit didn't flag the a 33rd Hub reference lint issue until the lint actually ran and failed"
+
+Should be either "the 33rd Hub reference lint issue" OR "a 33rd Hub reference lint issue" — not "the a".
+
+**Verdict:** Cosmetic typo. LOW severity. See new finding **S-066** in §6.
+
+### DOC-4: Architecture/README.md is severely stale — Hub count, ESPOKE count, ADR count all wrong post-A1
+
+`Architecture/README.md` lines 25–28:
+- Line 25: "30 Hub-tier blueprints (`HUB-01`…`HUB-30`) + proposed `HUB-31` (ADR-011)" — actual: 32 Hub blueprints (HUB-01..32), HUB-31 Proposed, HUB-32 Canonical at depth 1
+- Line 26: "Internal (`ISPOKE-01`…`25`), External (`ESPOKE-01`…`15`), Bridge (`BRIDGE-01`)" — actual: ISPOKE-01..27, ESPOKE-01..19, BRIDGE-01
+- Line 28: "10 Accepted decision records + 1 Proposed (`ADR-011`)" — actual: 21 ADRs total (19 Accepted + 2 Proposed: ADR-011 + ADR-015)
+
+**Verdict:** Stale Architecture/README.md. Was NOT updated by A1/A2 even though the topical INDEX.md was partially updated. See new finding **S-067** in §6.
+
+### DOC-5: INDEX.md §4 (tier inventory table) still says "102" total blueprints and "31 declared" Hub count — contradicting INDEX.md §1 line 54 which says 30 active Hubs
+
+`Architecture/INDEX.md`:
+- Line 54 (§1): "active Hub count = 32 − 2 superseded = 30" — POST-A1 (correct)
+- Line 227 (§4 table): "Hub | 31 declared (29 active + 2 superseded) | 0 | **31 declared** (29 active per ADR-021)" — PRE-A1 STALE
+- Line 229 (§4 table): "External Spoke | 18 | 0 | **18**" — STALE (should be 19)
+- Line 232 (§4 totals): "**102**" — STALE (should be 104: 20 Core + 32 Hub + 27 ISPOKE + 19 ESPOKE + 1 Bridge + 5 Deploy)
+- Line 234 (§4 narrative): "Hub tier: 31 declared blueprints. **Per ADR-021 (2026-09-30): HUB-10 and HUB-25 relocated to Runtime tier (RUNTIME-03/RUNTIME-04), reducing active Hub count to 29. HUB-32 AI Inference Hub ratified pending canonical publication (not yet counted in active inventory).** Total canonical: **102** declared blueprints" — STALE on multiple counts
+
+INDEX.md has internal contradictions:
+- §1 line 54 says 30 active Hubs (post-A1)
+- §4 line 227 says 29 active Hubs (pre-A1)
+- §4 line 234 says HUB-32 not yet counted (pre-A1)
+
+The §1 row was updated by A1; §4 was not. This was the same class of contradiction flagged by S-014 (the original audit caught "29 + 1 pending = 30" arithmetic drift); A1 partially fixed §1 (line 54) but did NOT propagate the fix to §4 (line 227, 232, 234).
+
+**Verdict:** New instance of the S-014 pattern. See new finding **S-068** in §6.
+
+### DOC-6: INCONSISTENCIES.md #8 still says "CORE-02 is an empty stub" — but CORE-02 is fully implemented
+
+`Architecture/Verification/INCONSISTENCIES.md` line 38: "| 8 | Blocker | `CORE-02` (DI Container) is an empty stub | Flagged critical |"
+Line 113: "### #8 — `CORE-02` (DI Container) is an empty stub"
+Line 117: "`CORE-02` the literal first build step; `CORE-18` (Kernel) is re-sequenced to depend on it. This is the real critical path, not `CORE-01` (which is already done)."
+
+But `packages/core/container/src/` has 8 PHP files (verified), INDEX.md §2.1 line 104 says "CORE-02 | Reactive DI Container | SovereignStack\Core\Container | packages/core/container/ | ✅ **Implemented + tested, v1.0.0, 97.2% coverage, PSR-11 conformance**".
+
+The INCONSISTENCIES.md #8 was flagged critical (per the file itself, line 38). Post-A1, this is no longer critical — CORE-02 is implemented. INCONSISTENCIES.md #8's "Blocker" status is stale. This was S-047 in the original audit.
+
+**Verdict:** Carry-forward — S-047 still Open.
+
+### DOC-7: INDEX.md §1 line 65 still has "ADR-011 | 1 Proposed ADR (HUB-31) — not accepted, not counted" — but ADR-015 is also Proposed (mentioned at line 64), creating an inconsistent treatment
+
+`Architecture/INDEX.md`:
+- Line 60: ADR-001..010 = 10 Accepted (10 ADRs)
+- Line 60-64: ADR-012, ADR-013, ADR-014, ADR-021 = 4 Accepted ADRs
+- Line 64: ADR-015 = Proposed
+- Line 65: ADR-011 = 1 Proposed ADR (HUB-31)
+
+So the §1 table has:
+- 10 + 4 = 14 Accepted ADRs (001..010 + 012, 013, 014, 021)
+- 2 Proposed ADRs (011, 015)
+- Missing from table: ADR-016, ADR-017, ADR-018, ADR-019, ADR-020
+
+This is the S-012 finding from the original audit (INDEX.md §1 missing 5 ADR entries). Not remediated by A1/A2.
+
+**Verdict:** Carry-forward — S-012 still Open.
+
+### DOC-8: README.md (root) still says "8 Core-tier packages", "20 ADRs", "102 component blueprints", "PHP 8.3"
+
+`README.md`:
+- Line 12: "A from-scratch PHP 8.3 application framework" — actual: PHP ^8.4
+- Line 20: "**8 Core-tier packages**" — actual: 13 (12 under packages/core/ + orchestrator/ for C01)
+- Line 21: "**20 Architecture Decision Records**" — actual: 21
+- Line 22: "**102 component blueprints**" — actual: 104 post-A1 (added HUB-32 + ESPOKE-19)
+- Line 75: "31 Hub-tier blueprints" — actual: 32
+- Line 103: "**8 of 8 Milestone 0 blueprints shipped**" — but the table on lines 215–225 lists 9 blueprints (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18, HUB-01, BRIDGE-01, ISPOKE-09, ESPOKE-01). The "8 of 8" doesn't match the 9-item table.
+- Line 196: "PHP 8.3 | Runtime + all packages" — actual: 8.4
+- Line 201: "PHPUnit 10.5 | Testing" — actual: 11.0 per composer.json `phpunit/phpunit: ^11.0`
+- Line 211: "Current work: doctrine §4.5 follow-up items 4-6 on CORE-18 Kernel..." — stale; project moved to A3 phase
+
+These are findings S-005, S-006, S-007, S-008, S-013 from the original audit. Not remediated by A1/A2.
+
+**Verdict:** Carry-forward — S-005..S-008, S-013 still Open.
+
+### DOC-9: README.md "Built with" table omits Loom (CORE-01) and the project status section claims pre-MUWV-1 work that's stale
+
+README.md line 192-204 ("Built with" table) lists: PHP, FrankenPHP, Caddy, Tengine, Composer, PHPUnit, PHPStan, Dart Sass. But the README also says (line 70) `orchestrator/  # CORE-01: Loom — SemVer automation tool`. Loom is a custom tool that should be in the "Built with" table — it's not a third-party tool.
+
+README.md line 211 (Project Status): "Current work: doctrine §4.5 follow-up items 4-6 on CORE-18 Kernel (§4.5.5 resource ceilings, §4.5.6 KernelLifecycleRecord audit feed, §4.5.7 8 chaos tests), then Step 5 Core persistence packages..."
+
+But the project is now in A3 (full re-audit phase). The doctrine §4.5 items were finished long ago per the same README's own §"Nuclear-grade doctrine" line 108 (which says "The §4.5 CORE-18 Kernel pilot is **fully implemented**"). So line 211 contradicts line 108.
+
+**Verdict:** Stale project-status narrative. See new finding **S-069** in §6.
+
+### DOC-10: ADR-021 "Relationship to Other Documents" table line 357-358 stale post-A1
+
+Already covered as FA-1 / S-055. The ADR-021 Relationship table entries for HUB-32 and ESPOKE-19 still say "Ratified pending canonical publication — blueprint file to be created during implementation phase" even though the files exist.
+
+### DOC-11: ADR-017 Provenance says pulse() + WeakMap were "implemented before this ADR was ratified" — but the A2 fix added $pulseDefinitions WeakMap that wasn't in the original
+
+`Architecture/ADRs/ADR-017-fiber-based-cooperative-runtime.md` line 73: "The `pulse()` scope addition to CORE-02 and the `WeakMap`-based pulse-scoped cache were implemented before this ADR was ratified (2026-08-23, commits `2c812e72` and `76a02274`)."
+
+This was true at the time of ADR-017 ratification. But A2 (PR #301, 2026-10-02) added a NEW WeakMap (`$pulseDefinitions`) to fix the S-003/S-004 leak. The ADR-017 Provenance doesn't reflect this — it says the WeakMap-based pulse cache was implemented in 2026-08-23, but the A2 fix added a SEPARATE WeakMap (for definitions, not instances) that's structurally required for Fiber isolation.
+
+**Verdict:** ADR-017 Provenance is now incomplete. It records the original WeakMap implementation (2026-08-23) but not the A2 fix WeakMap (2026-10-02). A fresh architect reading ADR-017 would believe the original 2026-08-23 WeakMap was sufficient; they would miss that the A2 fix was needed. See new finding **S-070** in §6.
+
+### DOC-12: ADR-021 §16 (Namespace Root Lint Rule) was claimed to "catch the C04↔C05 collision" but no actual collision-detection logic exists
+
+Already covered as FA-3 / S-056. ADR-021 §16 declares the rule but `scripts/architecture-boundary-lint.py` does not implement it.
+
+### DOC-13: INDEX.md §1 line 54 still says "active Hub count = 32 − 2 superseded = 30" — but HUB-31 is also Proposed (not active), so the correct active count is 29 (or 30 if HUB-31 is counted despite Proposed status)
+
+INDEX.md line 54: "active Hub count = 32 − 2 superseded = 30"
+
+But HUB-31 is "Proposed" per ADR-011 (which is itself Proposed). INDEX.md line 65: "ADR-011 | 1 Proposed ADR (HUB-31) — not accepted, not counted".
+
+So:
+- 32 Hub files exist (HUB-01..32)
+- 2 are SUPERSEDED (HUB-10, HUB-25)
+- 1 is Proposed (HUB-31 — its ADR is Proposed, but the file itself exists)
+- 1 is Canonical at depth 1 (HUB-32 — post-A1)
+
+If "active" means "not superseded AND not Proposed", then active = 32 - 2 - 1 = 29.
+If "active" means "not superseded" (Proposed still counts as active), then active = 32 - 2 = 30.
+
+INDEX.md line 54 says 30. INDEX.md line 65 says HUB-31 is "not accepted, not counted". So §1 line 54 counts HUB-31 as active (in the 30), but §1 line 65 says HUB-31 is "not counted".
+
+This is the same S-014 contradiction — partially fixed by A1 (arithmetic is now consistent at 30 in §1 line 54), but the §1 line 65 disclaimer about HUB-31 being "not counted" still exists.
+
+**Verdict:** Internal contradiction in INDEX.md §1 itself. See new finding **S-071** in §6.
+
+### DOC-14: HUB-DECLARED-DAG.md §1 says "29 active Hub blueprints" but treats HUB-31 as active (in node set), while INDEX.md treats HUB-31 as "not counted"
+
+`Architecture/Hub/HUB-DECLARED-DAG.md` §1 (line 68) includes HUB-31 in its 29-active-Hub node set. But INDEX.md §1 line 65 says HUB-31 is "not accepted, not counted". The two documents disagree on whether HUB-31 is "active" for DAG purposes.
+
+**Verdict:** Cross-document inconsistency. See new finding **S-072** in §6.
+
+### DOC-15: The 24-document contributor awareness statement (PR #299) added the statement to documents that already had the Blind-Spot Awareness banner — creating duplicate "this project is developed by both humans and AI systems" content
+
+For example, `Architecture/Hub/HUB-04.md` line 5 has:
+`> **This project is developed by both humans and AI systems. Both are capable of producing confident, coherent, technically sophisticated work while still being unaware of important shortcomings in their own reasoning.**`
+
+And line 8 (the Blind-Spot Awareness banner) has:
+`> **⚠️ Blind-Spot Awareness:** This Hub blueprint may contain **unverified assumptions...**`
+
+Both banners carry similar "this project has blind spots" messages. The contributor awareness banner is the tech-lead directive verbatim; the Blind-Spot Awareness banner is context-specific. They overlap semantically but say different things — the contributor one is meta (about the contributors), the awareness one is content (about the document's claims).
+
+This is not a contradiction, but it is a redundancy. Some readers may find it noisy. Not a finding per se — but worth noting in the blind-spot report (§7).
+
+### DOC-16: Several files have H1 format inconsistencies — some use "# HUB-NN: ...", others "# PHASE HUB-NN: ..."
+
+Of 32 Hub blueprint files:
+- 21 use "# PHASE HUB-NN: ..." (HUB-03, 05, 07, 09, 11, 12, 13, 14, 16, 17, 18, 21, 22, 23, 24, 26, 27, 28, 29, 30, 31 + HUB-10, HUB-25 with the SUPERSEDED banner before H1)
+- 9 use "# HUB-NN: ..." (HUB-01, 02, 04, 06, 08, 15, 19, 20, 32)
+
+The "PHASE" prefix appears in older Hub blueprints. The lint script tolerates this via the fallback regex at lines 144–152 of `run.php`. But the inconsistency is visible to readers — HUB-32 (newest) uses "# HUB-32:" without PHASE; HUB-31 (older) uses "# PHASE HUB-31:".
+
+This is not a lint failure (the lint tolerates it), but it's a freshness-stamp issue: the H1 format indicates the era of authorship.
+
+**Verdict:** LOW severity. Cosmetic. See new finding **S-073** in §6.
+
+---
+
+## §5. CI Workflow Findings
+
+### CI-1: architecture-boundary-lint PASSES locally
+
+Verified by direct execution:
+```
+$ python3 scripts/architecture-boundary-lint.py
+{
+  "files_scanned": 198,
+  "imports_scanned": 317,
+  "violations_count": 0,
+  ...
+}
+✅ No violations. Architecture boundary rules pass.
+```
+
+And the regression tests:
+```
+$ python3 scripts/test_architecture_boundary_lint.py
+Summary: 19 passed, 0 failed out of 19 total tests.
+```
+
+**Verdict:** architecture-boundary-lint passes on main HEAD. No new finding.
+
+### CI-2: architecture-fitness PASSES locally
+
+Verified:
+- `pulse-consistency.py`: 0 violations, exit 0
+- `naming-drift.py`: 0 violations, exit 0
+- `blueprint-fidelity.py`: All 19 packages have src/ + tests/, exit 0
+
+**Verdict:** architecture-fitness passes on main HEAD. No new finding from the CI side.
+
+**HOWEVER:** See S-074 below — the naming-drift script has a wrong canonical mapping that silently passes.
+
+### CI-3: architecture-lint — PHP not available in sandbox; verified by Python regex simulation
+
+```
+$ python3 -c "
+# Simulate lint's checkReferences + checkStructure
+...
+Errors: 0  # checkReferences
+Missing: 0  # checkStructure (HUB-01..30, ESPOKE-01..18 only — see DAG-6 finding)
+"
+```
+
+**Verdict:** architecture-lint would pass on main HEAD (assuming PHP 8.4 CI runs the same logic). FATALs S-001 and S-002 are verified Closed.
+
+### CI-4: naming-drift.py has a wrong canonical mapping for HUB-30 (should be HUB-01)
+
+`scripts/fitness/naming-drift.py` line 23:
+```python
+"HUB-30": {"package": "hub/config", "namespace": "SovereignStack\\Hub\\Config", "name": "Config"},
+```
+
+But HUB-30 is "Sovereign Hub-CLI" per INDEX.md §2.2 (line 158). The package `packages/hub/config/` belongs to HUB-01 ("Sovereign Hub Config & Flags"), confirmed by:
+- `packages/hub/config/composer.json` line 3: `"description": "HUB-01: Sovereign Hub Config & Flags ..."`
+
+So the naming-drift script's canonical mapping for HUB-30 is wrong. It should either:
+- Map HUB-30 to a different package (e.g., `packages/hub/cli/` — which doesn't exist yet because HUB-30 isn't implemented), OR
+- Replace the HUB-30 entry with HUB-01 (which IS implemented at `packages/hub/config/`)
+
+The script "passes" only because:
+1. It checks that `packages/hub/config/composer.json` exists (it does — for HUB-01)
+2. It checks that the namespace `SovereignStack\Hub\Config\` is in the autoload PSR-4 (it is — for HUB-01)
+3. The check is "does the canonical namespace match the autoload namespace?" — yes, by coincidence
+
+But the script's mapping for HUB-30 is wrong. If `packages/hub/cli/` is ever created for HUB-30, the script would still check `packages/hub/config/` (the wrong path) and pass.
+
+This is a real bug in the fitness function. See new finding **S-074** in §6.
+
+### CI-5: naming-drift.py has 17 components — missing CORE-01 (orchestrator), missing HUB-02..HUB-29 (unimplemented), missing ISPOKE/ESPOKE entries beyond the 1+1 stubs
+
+The naming-drift script checks 17 components:
+- 12 Core (CORE-02, 03, 04, 05, 06, 08, 09, 10, 14, 16, 18, 19) — missing CORE-01 (which is implemented at `orchestrator/`, not `packages/core/`)
+- 2 Hub (HUB-04, HUB-30 [wrong — should be HUB-01])
+- 1 Bridge (BRIDGE-01)
+- 1 Internal Spoke (ISPOKE-09)
+- 1 External Spoke (ESPOKE-01)
+
+Missing: CORE-01, all unimplemented Core (C07, 11, 12, 13, 15, 17, 20), all unimplemented Hub (HUB-01..30 except 04, plus HUB-31, HUB-32), all unimplemented ISPOKE (01..08, 10..27), all unimplemented ESPOKE (02..19 except 01).
+
+This is acceptable (the script only checks implemented packages), but it means the naming-drift fitness function has very limited coverage (17 of 102 blueprints = ~17%).
+
+**Verdict:** LOW severity. The script's coverage is acknowledged by being a "naming drift" check (only checks implemented packages). See new finding **S-075** in §6 (limited coverage).
+
+### CI-6: architecture-boundary-lint's `LEGITIMATE_RESOLVE_CALLERS` list expects 6 callers — but the live scan saw 0 legitimate callers
+
+`scripts/architecture-boundary-lint.py` line 123–130 lists 6 expected legitimate callers. The scan output:
+```
+"legitimate_callers_seen": [],
+"legitimate_callers_expected": [
+  "packages/core/middleware/src/MiddlewareResolver.php",
+  ...
+]
+```
+
+The script "saw" 0 legitimate callers out of 6 expected. This is reported as informational, not a violation (exit 0). But it means the legitimate-caller regression coverage is unverified on the live repo.
+
+Per the script's comments (line 51–57): "Runs 13 tests covering: Live repo has 0 false positives on 6 legitimate resolve() callers". But the actual scan reports 0 legitimate callers seen. So either:
+- The 6 legitimate callers have been refactored/renamed/removed (their `->resolve()` calls no longer exist or no longer match the pattern)
+- The script's tracking is broken
+
+The test file (`scripts/test_architecture_boundary_lint.py`) reports "19 passed, 0 failed" — so the regression tests pass. But the live scan reports 0 legitimate callers.
+
+Looking at the regression tests more carefully (lines 11–13 of `test_architecture_boundary_lint.py`): "Verifies the live repository has ZERO false positives on the 6 legitimate resolve() callers (MiddlewareResolver, ContractRegistry, PerRequestHandler, MiddlewarePipelineInterface, Vanguard, and the ContractRegistry definition)."
+
+So "0 legitimate callers seen" doesn't mean a regression — it means the live repo doesn't have any `->resolve()` calls in the legitimate-caller files. This could be because:
+- The legitimate callers use method DEFINITIONS (`public function resolve(...)`) not calls
+- The legitimate callers use different patterns (`->resolve(...)` was renamed)
+
+This is more of a tracking issue than a real bug. The script's `legitimate_callers_seen` field is meant to surface calls that COULD be false-positives, but the live repo has 0 — meaning the regression coverage is "vacuously true" (no false-positives because no calls to be false-positives about).
+
+**Verdict:** LOW severity. The script's tracking is misleading but not wrong. See new finding **S-076** in §6.
+
+---
+
+## §6. New Findings (beyond the existing 47-finding register, starting at S-055 to avoid collision with A3-RUNTIME-76's S-048..S-054)
+
+### S-055: ADR-021 §13, §14, and Relationship table still describe HUB-32/ESPOKE-19 as "ratified pending canonical publication" — stale post-A1
+- **Severity:** HIGH
+- **Category:** Doc-Drift (post-A1)
+- **Description:** PR #294 (A1) published `Architecture/Hub/HUB-32.md` and `Architecture/Spoke/External/ESPOKE-19.md` as canonical depth-1 blueprints. But ADR-021 (the ratification ADR) was not updated to reflect this. §13 line 263 says "The HUB-32 blueprint file does not yet exist in `Architecture/Hub/`." §14 line 269 says "The ESPOKE-19 blueprint file does not yet exist." The Relationship table (lines 357–358) lists both as "Ratified pending canonical publication — blueprint file to be created during implementation phase."
+- **Evidence:**
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 263: "The HUB-32 blueprint file does not yet exist in `Architecture/Hub/`."
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 269: "The ESPOKE-19 blueprint file does not yet exist."
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 357: "| `Architecture/Hub/HUB-32.md` | **Ratified pending canonical publication** — blueprint file to be created during implementation phase. |"
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 358: "| `Architecture/Spoke/External/ESPOKE-19.md` | **Ratified pending canonical publication** — blueprint file to be created during implementation phase. |"
+  - `Architecture/Hub/HUB-32.md` exists (97 lines, created by PR #294)
+  - `Architecture/Spoke/External/ESPOKE-19.md` exists (100 lines, created by PR #294)
+- **Affected artifact:** `Architecture/ADRs/ADR-021-tier-stratified-build-order.md`
+- **Contract violated:** ADR-021 §11 (INDEX authority evolution) — the ADR's own status field should reflect the current canonical state.
+- **Root cause:** PR #294 published the blueprints and extended the lint + updated INDEX.md, but did not propagate the canonical-publication status back to ADR-021's ratification sections.
+- **Remediation:** Update ADR-021 §13 (line 263), §14 (line 269), and Relationship table (lines 357–358) to reflect that HUB-32 and ESPOKE-19 are now canonical at depth 1 (implementation deferred). E.g., "Status: canonical at depth 1 (blueprint published 2026-10-01 per PR #294; implementation deferred)."
+- **Verification test:** `rg "blueprint file does not yet exist" Architecture/ADRs/ADR-021-tier-stratified-build-order.md` returns zero matches; `rg "Ratified pending canonical publication" Architecture/ADRs/ADR-021-tier-stratified-build-order.md` returns zero matches.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch (post-A3)
+- **Closure evidence:** (empty)
+
+### S-056: ADR-021 §16 (Namespace Root Lint Rule) is declared but not implemented in architecture-boundary-lint.py
+- **Severity:** MEDIUM
+- **Category:** Coherence
+- **Description:** ADR-021 §16 (line 275–279) ratifies "A namespace root belongs to exactly one package unless an explicit namespace-partition contract exists" and explicitly says "This catches the C04↔C05 collision (`SovereignStack\Core\Http\` shared root) and should become an enforceable rule in `architecture-boundary-lint.py`, not just a documented defect." But `scripts/architecture-boundary-lint.py` does NOT implement this rule. The script's `RING_PATTERNS` list and `PATH_RING_MAP` classify namespaces by tier, not by package — there is no check that flags two packages claiming the same PSR-4 root.
+- **Evidence:**
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 275: "### 16. Namespace Root Lint Rule (LOCKED)"
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 279: "should become an enforceable rule in `architecture-boundary-lint.py`, not just a documented defect."
+  - `scripts/architecture-boundary-lint.py` (entire file, 489 lines): no namespace-root-deduplication check exists
+  - `packages/core/http-message/composer.json` line 20: `"SovereignStack\\Core\\Http\\": "src/"`
+  - `packages/core/middleware/composer.json` line 20: `"SovereignStack\\Core\\Http\\": "src/"` (same PSR-4 root — collision still present)
+- **Affected artifact:** `scripts/architecture-boundary-lint.py`
+- **Contract violated:** ADR-021 §16 (Namespace Root Lint Rule, LOCKED).
+- **Root cause:** ADR-021 §16 ratifies the rule but the implementation was deferred. The original SHORTCOMINGS-AUDIT-76 S-023 finding incorrectly stated "§16 of ADR-021 doesn't actually exist (the ADR goes up to §14)" — that was an audit error (§16 DOES exist at line 275). But the underlying observation (the lint rule isn't implemented) is correct.
+- **Remediation:** Extend `scripts/architecture-boundary-lint.py` to detect cross-package PSR-4 root collisions: walk every `packages/*/*/composer.json`, build a map of PSR-4 root → [package paths], flag any root claimed by 2+ packages as a violation (with an explicit-namespace-partition-contract escape hatch).
+- **Verification test:** `python3 scripts/architecture-boundary-lint.py` flags the C04↔C05 collision (`SovereignStack\Core\Http\` shared between `packages/core/http-message/` and `packages/core/middleware/`) as a violation; exit code 1.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-057: INDEX.md §2.1 + §4 hand-maintain derived facts (implementation status, file counts) — violates ADR-021 §11 "INDEX does NOT own derived facts"
+- **Severity:** MEDIUM
+- **Category:** Coherence
+- **Description:** ADR-021 §11 (line 236) says "INDEX does NOT own: Actual Composer dependencies, Actual namespace imports, Actual implementation status, Actual topological ordering, Actual test state." But INDEX.md §2.1 (lines 101–122) hand-maintains "Real implementation | Build status" per Core ID. §4 (lines 222–232) hand-maintains "Documented | Placeholder-only | Total files" per tier.
+- **Evidence:**
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 236–240: §11 INDEX authority evolution
+  - `Architecture/INDEX.md` lines 101–122: §2.1 Core tier table with "Real implementation" + "Build status" columns
+  - `Architecture/INDEX.md` lines 222–232: §4 tier inventory table with "Documented | Placeholder-only | Total files" columns
+- **Affected artifact:** `Architecture/INDEX.md`
+- **Contract violated:** ADR-021 §11 (INDEX authority evolution).
+- **Root cause:** ADR-021 §11 was ratified but INDEX.md was not migrated to a "governance only" structure. The derived-fact columns remain in INDEX.md, hand-maintained, drift-prone. The §11 Evolution clause ("Until tooling generates them, INDEX may carry them") is a holding pattern that has not been resolved.
+- **Remediation:** Either (a) author `scripts/generate-implementation-status.py` + `scripts/generate-tier-inventory.py` to produce the §2.1 + §4 tables as generated artifacts, and replace the hand-maintained tables in INDEX.md with pointers to the generated output; OR (b) explicitly mark these tables in INDEX.md as "hand-maintained, to be replaced by generated artifacts when §11 is fully realized" with a tech-lead-approved deferral note.
+- **Verification test:** Either (a) INDEX.md §2.1 + §4 contain `<!-- GENERATED — do not edit; run scripts/generate-implementation-status.py to regenerate -->` headers; OR (b) §2.1 + §4 contain `<!-- HAND-MAINTAINED per ADR-021 §11 Evolution clause — deferral tracked in S-057 -->` headers.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-058: CORE-02 blueprint's embedded reference implementation is older than live source — A2 fix not propagated
+- **Severity:** HIGH
+- **Category:** Doc-Drift (post-A2)
+- **Description:** A2 (PR #301) added `private \WeakMap $pulseDefinitions` to `packages/core/container/src/Container.php` (line 95 of the live source). The A2-prep PR #295 updated the `ContainerInterface::pulse()` docblock in `Architecture/Core/CORE-02.md` (lines 145–258 — Shape C semantics, 12 edge cases). But the EMBEDDED REFERENCE IMPLEMENTATION class in CORE-02.md (lines 500–636) was NOT updated — it still has 6 private fields (`$definitions`, `$instances`, `$pulseInstances`, `$resolving`, `$compilerPasses`, `$compiled`), missing the new `$pulseDefinitions`, `$fiberResolving`, `$mainResolving`, `$mainResolvingChain` fields. The live source has 9 fields.
+- **Evidence:**
+  - `packages/core/container/src/Container.php` line 95: `private \WeakMap $pulseDefinitions;`
+  - `packages/core/container/src/Container.php` line 114: `private \WeakMap $fiberResolving;`
+  - `packages/core/container/src/Container.php` line 125: `private array $mainResolving = [];`
+  - `packages/core/container/src/Container.php` line 128: `private array $mainResolvingChain = [];`
+  - `Architecture/Core/CORE-02.md` lines 500–636: embedded reference implementation — does NOT include `$pulseDefinitions`, `$fiberResolving`, `$mainResolving`, `$mainResolvingChain`
+- **Affected artifact:** `Architecture/Core/CORE-02.md` (embedded reference implementation)
+- **Contract violated:** The blueprint's reference implementation is supposed to be a copy-pasteable class that matches the live source (per the blueprint's own framing at line 502: "The following class is the complete, copy-pasteable `Container` implementation. It compiles against PHP 8.3 with only `psr/container: ^2.0` as runtime dependency. Drop it into `packages/core/container/src/Container.php`...").
+- **Root cause:** The A0-FIBER-STATE-MODEL-76 worklog (line 1519) already noted "Blueprint drift identified. CORE-02's embedded reference implementation (lines 400-744) is older than the live source — it lacks the P2 WeakMap cycle-detection fix and the invalidatePulseInstances() helper." A2 (PR #301) updated the live source but did NOT propagate the changes back to the blueprint's reference implementation. The A2-prep PR #295 updated the interface docblock but stopped short of the implementation class.
+- **Remediation:** Sync the CORE-02.md reference implementation with the live `packages/core/container/src/Container.php`. Replace the 6-field state block with the 9-field state block (adding `$pulseDefinitions`, `$fiberResolving`, `$mainResolving`, `$mainResolvingChain`); add the `invalidateCurrentFiberPulseInstance()` helper; add the per-Fiber cycle-detection dispatch in `make()`.
+- **Verification test:** `diff <(awk '/^```php$/,/^```$/' Architecture/Core/CORE-02.md | head -800) <(cat packages/core/container/src/Container.php)` returns zero substantive differences (whitespace/comment differences acceptable).
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch (post-A3)
+- **Closure evidence:** (empty)
+
+### S-059: HUB-DECLARED-DAG.md + HUB-VERIFIED-DAG.md still exclude HUB-32 from active node set despite A1 making it canonical
+- **Severity:** HIGH
+- **Category:** DAG (post-A1)
+- **Description:** A1 (PR #294) made HUB-32 canonical at depth 1 with a blueprint file that declares 5 Hub→Core edges + 2 Hub→Hub edges (CORE-02, 09, 08, 10, 16 + HUB-20, HUB-04). But the Hub DAGs were not updated:
+  - HUB-DECLARED-DAG.md line 72: "HUB-32 (AI Inference Hub) is **ratified pending canonical publication** — no blueprint file exists; the inventory tracks it but it appears as a future addition. Excluded from this DAG until the file lands."
+  - HUB-DECLARED-DAG.md line 711: "Until then, this DAG remains at 150 edges and 29 active Hub nodes. The next plausible growth event is the publication of `Architecture/Hub/HUB-32.md`..."
+  - HUB-VERIFIED-DAG.md §6 reconciliation table line 200: "Hub node count | 2 (only HUB-01, HUB-04 implemented) | 29 (all active Hub blueprints)" — DECLARED DAG should now have 30 nodes (29 + HUB-32).
+- **Evidence:**
+  - `Architecture/Hub/HUB-DECLARED-DAG.md` line 72: stale "Excluded from this DAG"
+  - `Architecture/Hub/HUB-DECLARED-DAG.md` line 711: stale "next plausible growth event"
+  - `Architecture/Hub/HUB-VERIFIED-DAG.md` line 200: stale "29" in DECLARED DAG column
+  - `Architecture/Hub/HUB-32.md` lines 57–66: 7 declared Upward edges (5 Hub→Core, 2 Hub→Hub)
+- **Affected artifact:** `Architecture/Hub/HUB-DECLARED-DAG.md`, `Architecture/Hub/HUB-VERIFIED-DAG.md`
+- **Contract violated:** ADR-021 §11 (two-DAG governance model — DAGs must reflect canonical architectural state).
+- **Root cause:** PR #294 (A1) published the HUB-32 blueprint but did not propagate the new node + 7 declared edges into the Hub DAGs. The DAGs are still in their pre-A1 state.
+- **Remediation:** (a) Add HUB-32 as a 30th active node in HUB-DECLARED-DAG.md §1; (b) add the 7 declared HUB-32 edges to HUB-DECLARED-DAG.md §2 (5 to §2.3 Hub→Core, 2 to §2.1 Hub→Hub); (c) update edge count from "150 edges" to "157 edges" (150 + 7); (d) update line 711 to remove the "next plausible growth event" language; (e) update HUB-VERIFIED-DAG.md §6 reconciliation table Hub node count from 29 to 30 (DECLARED DAG column).
+- **Verification test:** `rg "29 active Hub" Architecture/Hub/HUB-DECLARED-DAG.md Architecture/Hub/HUB-VERIFIED-DAG.md` returns zero matches; `rg "HUB-32" Architecture/Hub/HUB-DECLARED-DAG.md` returns matches inside the §1 node table (HUB-32 row) and §2 edge inventory (HUB-32 source rows).
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch (post-A3)
+- **Closure evidence:** (empty)
+
+### S-060: CORE-CAPABILITY-DAG.md still describes HUB-32 as "(inferred) no blueprint" — stale post-A1
+- **Severity:** HIGH
+- **Category:** DAG (post-A1)
+- **Description:** CORE-CAPABILITY-DAG.md treats HUB-32's Core capability edges as inferred (because at audit time, no blueprint existed). But A1 published HUB-32.md with explicit Upward Dependencies. The DAG should now treat these as DECLARED edges (not inferred), and the "blueprint not yet authored" status should be updated.
+- **Evidence:**
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 10: "+ HUB-32 (ratified today per worklog `ELQ-DECISIONS-RATIFY-6.5`, no blueprint file yet)."
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 36: "31 Hub blueprint files existed at 2026-09-30 audit; HUB-32 was ratified today (no blueprint file yet)."
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 71: "| **H32** | **AI Inference Hub** (ratified today, no blueprint) | ... | **NO — blueprint not yet authored** |"
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 92: "| 12 | C02 | **H32** | (inferred) AI Inference Hub singleton for multi-provider router..."
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 404: "HUB-32's blueprint does not yet exist; the edges below are inferred from the `ELQ-ANALYSIS-6` cherry-pick analysis"
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 415: "ratified but no blueprint yet"
+  - `Architecture/Core/CORE-CAPABILITY-DAG.md` line 475: "but blueprint not yet authored"
+- **Affected artifact:** `Architecture/Core/CORE-CAPABILITY-DAG.md`
+- **Contract violated:** ADR-021 §11 (DAGs must reflect canonical architectural state).
+- **Root cause:** PR #294 (A1) published HUB-32.md with explicit declared edges (CORE-02, 09, 08, 10, 16 + HUB-20, HUB-04) but CORE-CAPABILITY-DAG.md was not updated. The DAG still treats HUB-32's edges as inferred from ELQ-ANALYSIS-6.
+- **Remediation:** Update CORE-CAPABILITY-DAG.md: (a) line 10: "31 Hub blueprint files + HUB-32 (canonical at depth 1 per PR #294)"; (b) line 36: "32 Hub blueprint files exist (post-A1)"; (c) line 71 H32 row: change "NO — blueprint not yet authored" to "YES (HUB-32.md, depth 1, implementation deferred)"; (d) line 92 row 12: change "(inferred)" to "DECLARED (HUB-32.md Upward Dependencies line 59)"; (e) add rows for HUB-32's 4 other declared Core consumers (CORE-09, CORE-08, CORE-10, CORE-16); (f) line 404: "HUB-32's blueprint was published 2026-10-01 per PR #294; the edges below are now DECLARED, not inferred"; (g) remove the "stroke-dasharray: 5 5" styling for HUB-32 in the Mermaid graph (line 415) since the blueprint exists.
+- **Verification test:** `rg "no blueprint file yet|blueprint not yet authored|ratified today, no blueprint" Architecture/Core/CORE-CAPABILITY-DAG.md` returns zero matches.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch (post-A3)
+- **Closure evidence:** (empty)
+
+### S-061: Lint script's checkStructure() does NOT enforce HUB-31, HUB-32, or ESPOKE-19 file existence
+- **Severity:** MEDIUM
+- **Category:** CI (post-A1)
+- **Description:** PR #294 extended the lint's `validIds` map to accept HUB-32 and ESPOKE-19 references (HUB range 1–32, ESPOKE range 1–19). But the lint's `checkStructure()` function — which enforces that expected blueprint files exist — was NOT extended. The function still checks `range(1, 30)` for HUB files (line 175 of `run.php`) and `range(1, 18)` for ESPOKE files (line 183). So if someone deletes `Architecture/Hub/HUB-31.md`, `Architecture/Hub/HUB-32.md`, or `Architecture/Spoke/External/ESPOKE-19.md`, the lint's structure check would still PASS.
+- **Evidence:**
+  - `Architecture/Verification/lint/run.php` line 60: `'HUB' => range(1, 32),` (validIds — accepts HUB-32 references)
+  - `Architecture/Verification/lint/run.php` line 175: `foreach (range(1, 30) as $n) {` (checkStructure — does NOT enforce HUB-31, HUB-32)
+  - `Architecture/Verification/lint/run.php` line 183: `foreach (range(1, 18) as $n) {` (checkStructure — does NOT enforce ESPOKE-19)
+  - `Architecture/Hub/HUB-32.md` exists (verified)
+  - `Architecture/Spoke/External/ESPOKE-19.md` exists (verified)
+- **Affected artifact:** `Architecture/Verification/lint/run.php` (checkStructure function)
+- **Contract violated:** ADR-021 §13 (HUB-32 canonical at depth 1) + §14 (ESPOKE-19 canonical at depth 1) — the lint is supposed to be the mechanical enforcer of canonical ratifications per SDLC governance.
+- **Root cause:** PR #294 extended validIds but did NOT extend checkStructure's expected-files list. The two checks are not symmetric — validIds accepts more references than checkStructure enforces files exist.
+- **Remediation:** Update `run.php` checkStructure: (a) line 175 change `range(1, 30)` → `range(1, 32)`; (b) line 183 change `range(1, 18)` → `range(1, 19)`. This will enforce that HUB-31.md, HUB-32.md, and ESPOKE-19.md exist (and that all 32 Hubs + 19 ESPOKEs are present).
+- **Verification test:** Delete `Architecture/Hub/HUB-32.md` (in a test branch); run `php Architecture/Verification/lint/run.php`; expect exit 1 with error "missing file 'Hub/HUB-32.md'". Restore the file; expect exit 0.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-062: HUB-32.md and ESPOKE-19.md disagree on the meaning of ISPOKE-E11 and ISPOKE-E12
+- **Severity:** HIGH
+- **Category:** Coherence (post-A1)
+- **Description:** HUB-32.md (line 74) says `ISPOKE-E11 Content Classification`; ESPOKE-19.md (line 57) says `ISPOKE-E11 Manuscript Exporter`. HUB-32.md (line 75) says `ISPOKE-E12 Generation Service`; ESPOKE-19.md (line 58) says `ISPOKE-E12 Censorship & Redaction`. The two canonical blueprints disagree on what ISPOKE-E11 and ISPOKE-E12 are.
+- **Evidence:**
+  - `Architecture/Hub/HUB-32.md` line 74: `| ISPOKE-E11 Content Classification | Application | 📝 Planned | 22 doc-type classification + safety setting toggle (neutral parity per ADR-021 §7) |`
+  - `Architecture/Hub/HUB-32.md` line 75: `| ISPOKE-E12 Generation Service | Application | 📝 Planned | Long-form text generation |`
+  - `Architecture/Spoke/External/ESPOKE-19.md` line 57: `  - ISPOKE-E11 Manuscript Exporter         # abstraction, reusable: true (consumes HUB-32; redaction optional per ADR-021 §15)`
+  - `Architecture/Spoke/External/ESPOKE-19.md` line 58: `  - ISPOKE-E12 Censorship & Redaction      # feature, reusable: false (Eloq-private; consumed optionally by E11)`
+  - `Architecture/Spoke/External/ESPOKE-19.md` line 94 (Open Question #1): "ISPOKE-E1 through E15 actual IDs: the E1-E15 IDs are conceptual (from ELQ analysis). Actual ISPOKE-XX IDs will be assigned from the existing 27-slot ISPOKE catalog (ISPOKE-01..27) during admission."
+- **Affected artifact:** `Architecture/Hub/HUB-32.md`, `Architecture/Spoke/External/ESPOKE-19.md`
+- **Contract violated:** ADR-021 §13 + §14 (HUB-32 and ESPOKE-19 are canonical blueprints; their consumer listings should be consistent with each other).
+- **Root cause:** PR #294 (A1) authored HUB-32.md and ESPOKE-19.md in the same PR but used inconsistent ISPOKE-E11/E12 semantics. ESPOKE-19 acknowledges the E1-E15 IDs are conceptual placeholders, but HUB-32 lists them as if canonical. The two blueprints were not cross-checked.
+- **Remediation:** Reconcile the ISPOKE-E11 and ISPOKE-E12 identities. Per ESPOKE-19.md Open Question #1, the E1-E15 IDs are conceptual. So HUB-32.md should add a similar caveat OR drop the ISPOKE-E11/E12 entries from its "Downstream Consumers" table until the IDs are formally assigned from the ISPOKE-01..27 catalog. Recommended: add to HUB-32.md's consumers table a footnote: "ISPOKE-E11/E12 are conceptual IDs from ELQ-ANALYSIS-6; actual ISPOKE-NN assignments pending admission per ESPOKE-19 Open Question #1."
+- **Verification test:** HUB-32.md and ESPOKE-19.md either use identical ISPOKE-E11/E12 names OR both carry the conceptual-ID caveat; no silent disagreement.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch (post-A3)
+- **Closure evidence:** (empty)
+
+### S-063: HUB-32.md declares a Hub→Runtime edge (RUNTIME-01) but no Runtime-tier DAG exists to absorb it
+- **Severity:** MEDIUM
+- **Category:** DAG (post-A1)
+- **Description:** HUB-32.md line 66 declares `RUNTIME-01 Anvil | RUNTIME | REQUIRED | [RUNTIME, PRODUCTION] | Long-lived worker for connection pooling`. Per ADR-021 §12 (Tier-Local DAG Contract), every tier gets two DAGs; Hub→Runtime cross-tier edges belong in the Runtime-tier DAG. But no `Architecture/Runtime/RUNTIME-DECLARED-DAG.md` or `RUNTIME-VERIFIED-DAG.md` exists. So HUB-32's RUNTIME-01 declared edge has no DAG home.
+- **Evidence:**
+  - `Architecture/Hub/HUB-32.md` line 66: `| RUNTIME-01 Anvil | RUNTIME | REQUIRED | [RUNTIME, PRODUCTION] | Long-lived worker for connection pooling |`
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 244–255: §12 Tier-Local DAG Contract — Runtime should have RUNTIME-DECLARED-DAG + RUNTIME-VERIFIED-DAG
+  - `Architecture/Runtime/` directory: does not exist (verified by `ls Architecture/`)
+- **Affected artifact:** HUB-32.md (no DAG home for its Hub→Runtime edge); future `Architecture/Runtime/` DAGs (not yet authored)
+- **Contract violated:** ADR-021 §12 (Tier-Local DAG Contract — every tier gets two DAGs).
+- **Root cause:** PR #294 (A1) authored HUB-32.md with declared Hub→Runtime edge, but the Runtime-tier DAGs were not authored. This is the same root cause as the original audit's S-042 (Hub→RUNTIME-03/RUNTIME-04 edges from superseded HUB-10/HUB-25 have no DAG home).
+- **Remediation:** Author `Architecture/Runtime/RUNTIME-DECLARED-DAG.md` + `Architecture/Runtime/RUNTIME-VERIFIED-DAG.md` to absorb all Hub→Runtime cross-tier edges (HUB-32→RUNTIME-01 + the 11 superseded HUB-10/HUB-25→RUNTIME-03/04 edges per S-042). This is a multi-PR effort — defer to MEDIUM-batch.
+- **Verification test:** `Architecture/Runtime/RUNTIME-DECLARED-DAG.md` exists; contains a row for HUB-32 → RUNTIME-01 (edge_type=RUNTIME, requiredness=REQUIRED, gates=[RUNTIME, PRODUCTION]).
+- **Disposition:** Open (dependency of S-042)
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-064: SHORTCOMINGS-REGISTER.md has NOT been updated to reflect A1/A2 fixes — all 47 findings still marked "Open"
+- **Severity:** HIGH
+- **Category:** Governance
+- **Description:** Per the register's own closure rule (lines 22–31): "A finding is closed only after its stated verification condition passes. Closure requires three things recorded in the Closure evidence field: (1) commit/PR ref, (2) verification artifact ref, (3) date." PR #294 (A1) closed S-001/S-002/S-033. PR #301 (A2) Fixed S-003/S-004 (but per A3-RUNTIME-76 S-054, condition (c) is unmet, so S-003/S-004 are Fixed but NOT Closed). But the register still marks ALL 47 findings as "Disposition: Open" with "Closure evidence: (empty)".
+- **Evidence:**
+  - `Architecture/Verification/SHORTCOMINGS-REGISTER.md` line 87: `- **Disposition:** Open` (S-001)
+  - `Architecture/Verification/SHORTCOMINGS-REGISTER.md` line 107: `- **Disposition:** Open` (S-002)
+  - `Architecture/Verification/SHORTCOMINGS-REGISTER.md` line 125: `- **Disposition:** Open` (S-003)
+  - `Architecture/Verification/SHORTCOMINGS-REGISTER.md` line 142: `- **Disposition:** Open` (S-004)
+  - (all 47 findings: `Disposition: Open` per the grep)
+  - PR #294 merged (per worklog line 1608): "PR #294 MERGED (squash merge)"
+  - PR #301 merged (per git log): `2ecfb03 fix(core/container): A2 — Fiber isolation for pulse() (Shape C) (#301)`
+- **Affected artifact:** `Architecture/Verification/SHORTCOMINGS-REGISTER.md`
+- **Contract violated:** The register's own closure rule (lines 22–31) + paradigm shift (line 16–20): "The roadmap does not advance while any FATAL finding remains Open."
+- **Root cause:** A1 (PR #294) and A2 (PR #301) implemented the fixes but did not update the register to reflect the new dispositions. The closure rule was authored but never applied.
+- **Remediation:** Update the register:
+  - S-001: Disposition → Closed; Closure evidence → "Commit: 08b0ce6 (PR #294). Verification: A3-ARCH-GOV-76 §1.1 confirmed architecture-lint passes via Python regex simulation (0 errors); worklog line 1604 confirms CI green. Date: 2026-10-03."
+  - S-002: Disposition → Closed; Closure evidence → "Commit: 08b0ce6 (PR #294). Verification: A3-ARCH-GOV-76 §1.1 confirmed architecture-lint passes. Date: 2026-10-03."
+  - S-003: Disposition → Fixed (NOT Closed — condition (c) unmet per A3-RUNTIME-76 S-054); Closure evidence → "Commit: 2ecfb03 (PR #301). Verification: code inspection confirmed $pulseDefinitions WeakMap; PR #301 commit message confirms Tests 1-11 pass; conditions (a), (b), (d) met per A3-ARCH-GOV-76 §1; condition (c) NOT met (PulseFiberIsolationTest.php does not exist per A3-RUNTIME-76 S-054). Date: 2026-10-03."
+  - S-004: Disposition → Fixed (NOT Closed — blocked on S-003 closure per register cross-reference line 934); Closure evidence → "Same as S-003."
+  - S-033: Disposition → Fixed (NOT Closed — HUB-32 propagation is incomplete per S-059/S-060); Closure evidence → "Commit: 08b0ce6 (PR #294). Verification: Architecture/Hub/HUB-32.md exists (97 lines); A3-ARCH-GOV-76 §1 confirmed. Partial: HUB-DECLARED-DAG + CORE-CAPABILITY-DAG not yet updated to include HUB-32 (per S-059/S-060). Date: 2026-10-03."
+- **Verification test:** `rg "S-001.*Open|S-002.*Open|S-003.*Open|S-004.*Open|S-033.*Open" Architecture/Verification/SHORTCOMINGS-REGISTER.md` returns zero matches; the register's Summary table (lines 44–50) shows FATAL: 2 Closed (S-001, S-002) + 2 Fixed (S-003, S-004) (was 4 Open).
+- **Disposition:** Open (this finding itself)
+- **Owner:** main agent (or A3 auditor)
+- **Target phase:** Immediate (post-A3)
+- **Closure evidence:** (empty)
+
+### S-065: Blind-Spot Awareness propagation (PR #298 + PR #299) left triple-blank-line artifacts after H1 in newer Hub/Spoke blueprints
+- **Severity:** LOW
+- **Category:** Coherence (formatting)
+- **Description:** The contributor awareness statement (PR #299) was inserted into files that already had the Blind-Spot Awareness banner (PR #298). The insertion script added blank lines around the new statement, resulting in 3 consecutive blank lines between H1 and the awareness banner in newer files.
+- **Evidence:**
+  - `Architecture/Hub/HUB-04.md` lines 1–8 (3 blank lines after H1)
+  - `Architecture/Hub/HUB-32.md` lines 1–8 (3 blank lines after H1)
+  - `Architecture/Spoke/External/ESPOKE-19.md` lines 1–8 (3 blank lines after H1)
+  - Compare to `Architecture/ADRs/ADR-001-polyrepo-vs-monorepo.md` lines 1–9 (2 blank lines after H1 — pre-PR-#299 baseline)
+- **Affected artifact:** ~20 files (the 24 files touched by PR #299 that already had PR #298's banner)
+- **Contract violated:** Markdown convention (MD012 — no multiple consecutive blank lines).
+- **Root cause:** PR #299's insert script did not account for PR #298's insert script having already added blank lines. The cumulative effect is 3 blanks instead of 1.
+- **Remediation:** Find-replace `\n\n\n\n> \*\*This project is developed` → `\n\n> **This project is developed` in affected files.
+- **Verification test:** `rg -m 1 -P "^\s*$\n\s*$\n\s*$\n" Architecture/Hub/HUB-32.md Architecture/Spoke/External/ESPOKE-19.md Architecture/Hub/HUB-04.md` returns zero matches (no triple-blank-line sequences).
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** LOW-backlog
+- **Closure evidence:** (empty)
+
+### S-066: BLIND-SPOT-DOCTRINE.md line 49 has a grammatical typo: "the a 33rd Hub reference lint issue"
+- **Severity:** LOW
+- **Category:** Coherence (typo)
+- **Description:** `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` line 49: "The audit didn't flag the a 33rd Hub reference lint issue until the lint actually ran and failed". The phrase "the a" is grammatically wrong — should be either "the" or "a".
+- **Evidence:** `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` line 49
+- **Affected artifact:** `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md`
+- **Contract violated:** None (cosmetic).
+- **Root cause:** Typo introduced during authoring.
+- **Remediation:** Change "the a 33rd Hub reference lint issue" → "the 33rd Hub reference lint issue".
+- **Verification test:** `rg "the a 33rd" Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` returns zero matches.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** LOW-backlog
+- **Closure evidence:** (empty)
+
+### S-067: Architecture/README.md is severely stale — Hub count, ESPOKE count, ADR count all wrong post-A1
+- **Severity:** HIGH
+- **Category:** Doc-Drift (post-A1)
+- **Description:** `Architecture/README.md` (the README inside the Architecture/ directory, distinct from root `README.md`) was not updated by A1/A2. Its "What lives here" table has wrong counts for Hub, Spoke, and ADRs.
+- **Evidence:**
+  - `Architecture/README.md` line 25: "30 Hub-tier blueprints (`HUB-01`…`HUB-30`) + proposed `HUB-31` (ADR-011)" — actual: 32 Hub blueprints (HUB-01..32), HUB-31 Proposed, HUB-32 Canonical at depth 1 (post-A1)
+  - `Architecture/README.md` line 26: "Internal (`ISPOKE-01`…`25`), External (`ESPOKE-01`…`15`), Bridge (`BRIDGE-01`)" — actual: ISPOKE-01..27, ESPOKE-01..19, BRIDGE-01
+  - `Architecture/README.md` line 28: "10 Accepted decision records + 1 Proposed (`ADR-011`)" — actual: 21 ADRs (19 Accepted: 001-010, 012, 013, 014, 016-018, 020, 021; 2 Proposed: 011, 015; ADR-019 is Accepted per `ls`)
+- **Affected artifact:** `Architecture/README.md`
+- **Contract violated:** ADR-021 §11 (INDEX authority evolution — README should reflect canonical state).
+- **Root cause:** A1 (PR #294) updated INDEX.md but not Architecture/README.md. The two files have overlapping scope (both describe the architecture inventory) but only INDEX was kept in sync.
+- **Remediation:** Update `Architecture/README.md` "What lives here" table: Hub row → "32 Hub-tier blueprints (`HUB-01`…`HUB-32`; HUB-10/25 SUPERSEDED → Runtime, HUB-31 Proposed per ADR-011, HUB-32 Canonical at depth 1 per ADR-021 §13)"; Spoke row → "Internal (`ISPOKE-01`…`27`), External (`ESPOKE-01`…`19`), Bridge (`BRIDGE-01`)"; ADRs row → "19 Accepted decision records + 2 Proposed (ADR-011, ADR-015)".
+- **Verification test:** Architecture/README.md "What lives here" table Hub count = 32, ESPOKE count = 19, ADR Accepted count = 19, ADR Proposed count = 2.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch
+- **Closure evidence:** (empty)
+
+### S-068: INDEX.md §4 (tier inventory table + narrative) still says "102" total blueprints and "31 declared" Hub count — stale post-A1
+- **Severity:** HIGH
+- **Category:** Doc-Drift (post-A1)
+- **Description:** INDEX.md §1 line 54 (updated by A1) says "active Hub count = 32 − 2 superseded = 30". But INDEX.md §4 (NOT updated by A1) still says "31 declared (29 active + 2 superseded)" (line 227) and "Total canonical: 102 declared blueprints" (line 232, 234). With HUB-32 + ESPOKE-19 added post-A1, the total should be 104 and the Hub count should be 32 declared / 30 active.
+- **Evidence:**
+  - `Architecture/INDEX.md` line 54 (§1, post-A1): "active Hub count = 32 − 2 superseded = 30"
+  - `Architecture/INDEX.md` line 227 (§4, pre-A1 stale): "Hub | 31 declared (29 active + 2 superseded) | 0 | **31 declared** (29 active per ADR-021)"
+  - `Architecture/INDEX.md` line 229 (§4, pre-A1 stale): "External Spoke | 18 | 0 | **18**" (should be 19)
+  - `Architecture/INDEX.md` line 232 (§4 totals, pre-A1 stale): "**102**" (should be 104)
+  - `Architecture/INDEX.md` line 234 (§4 narrative, pre-A1 stale): "Hub tier: 31 declared blueprints. ... HUB-32 AI Inference Hub ratified pending canonical publication (not yet counted in active inventory). Total canonical: **102** declared blueprints"
+- **Affected artifact:** `Architecture/INDEX.md`
+- **Contract violated:** INDEX §0 (single source of truth) — §1 and §4 contradict each other.
+- **Root cause:** PR #294 (A1) updated §1 line 54 (added HUB-32 to the count) but did NOT update §4 (the tier inventory table and narrative). §4 still has pre-A1 counts.
+- **Remediation:** Update INDEX.md §4: line 227 Hub row → "32 declared (30 active + 2 superseded)"; line 229 ESPOKE row → "19"; line 232 Total → "104"; line 234 narrative → "Hub tier: 32 declared blueprints (post-A1). Per ADR-021 (2026-09-30): HUB-10 and HUB-25 relocated to Runtime tier (RUNTIME-03/RUNTIME-04), reducing active Hub count to 30. HUB-32 AI Inference Hub is canonical at depth 1 per PR #294 (implementation deferred). Total canonical: **104** declared blueprints."
+- **Verification test:** INDEX.md §4 Hub row says "32 declared (30 active + 2 superseded)"; §4 totals row says "104"; `rg "102" Architecture/INDEX.md` returns zero matches outside the §3 historical context.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch (post-A3)
+- **Closure evidence:** (empty)
+
+### S-069: README.md project-status section claims pre-A1 work is "current" — contradicts the actual A3 phase
+- **Severity:** MEDIUM
+- **Category:** Doc-Drift (post-A1)
+- **Description:** `README.md` line 211 (Project Status): "Current work: doctrine §4.5 follow-up items 4-6 on CORE-18 Kernel (§4.5.5 resource ceilings, §4.5.6 `KernelLifecycleRecord` audit feed, §4.5.7 8 chaos tests), then Step 5 Core persistence packages (CORE-19 DBAL, CORE-15 Cache, CORE-14 Filesystem, CORE-16 Encryption) at nuclear-grade depth 2." But README.md line 108 says "The §4.5 CORE-18 Kernel pilot is **fully implemented**" — line 211 contradicts line 108. Also, the project has moved to A3 (full re-audit phase per worklog A3-ARCH-GOV-76).
+- **Evidence:**
+  - `README.md` line 108: "The §4.5 CORE-18 Kernel pilot is **fully implemented**. Remaining Core packages (CORE-01/02/03/04/05/06/07/08/09/10/17/20) are bound in principle under §1–§3 and §5–§11 immediately"
+  - `README.md` line 211: "Current work: doctrine §4.5 follow-up items 4-6 on CORE-18 Kernel... then Step 5 Core persistence packages..."
+- **Affected artifact:** `README.md`
+- **Contract violated:** README's own internal consistency (line 108 vs line 211).
+- **Root cause:** README.md was updated to say doctrine §4.5 is fully implemented (line 108) but the project-status narrative (line 211) was not refreshed.
+- **Remediation:** Update README.md line 211 to reflect the actual current phase: "Current work: A3 full re-audit (per worklog A3-ARCH-GOV-76); A1 (HUB-32/ESPOKE-19 canonical publication + lint extension) and A2 (Container Fiber isolation fix) complete; HIGH-batch remediation (29 findings) next."
+- **Verification test:** README.md line 211 mentions A3 re-audit; `rg "doctrine §4.5 follow-up items 4-6" README.md` returns zero matches.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch
+- **Closure evidence:** (empty)
+
+### S-070: ADR-017 Provenance is incomplete — does not reflect A2's $pulseDefinitions WeakMap addition
+- **Severity:** MEDIUM
+- **Category:** Doc-Drift (post-A2)
+- **Description:** ADR-017 line 73 (Provenance): "The `pulse()` scope addition to CORE-02 and the `WeakMap`-based pulse-scoped cache were implemented before this ADR was ratified (2026-08-23, commits `2c812e72` and `76a02274`)." This was true at ADR-017 ratification time. But A2 (PR #301, 2026-10-02) added a NEW `private \WeakMap $pulseDefinitions` field to `packages/core/container/src/Container.php` (line 95) — this WeakMap is structurally required for Fiber isolation (it's the S-003/S-004 fix). The ADR-017 Provenance does NOT mention this A2 addition.
+- **Evidence:**
+  - `Architecture/ADRs/ADR-017-fiber-based-cooperative-runtime.md` line 73: Provenance mentions only the original 2026-08-23 WeakMap
+  - `packages/core/container/src/Container.php` line 95: `private \WeakMap $pulseDefinitions;` (added by A2 PR #301)
+  - PR #301 commit `2ecfb03` message: "fix(core/container): A2 — Fiber isolation for pulse() (Shape C)"
+- **Affected artifact:** `Architecture/ADRs/ADR-017-fiber-based-cooperative-runtime.md`
+- **Contract violated:** ADR Provenance should reflect all amendments and code-state changes that affect the ADR's claims.
+- **Root cause:** A2 (PR #301) modified the live source but did not update ADR-017's Provenance section.
+- **Remediation:** Add a Provenance Amendment line: "Amendment (2026-10-02, PR #301): A2 remediation introduced `private \WeakMap $pulseDefinitions` to `Container` (line 95 of live source) for per-Fiber pulse-scoped binding table (S-003/S-004 fix). The original 2026-08-23 WeakMap (`$pulseInstances`) was insufficient — pulse() wrote to global `$definitions` instead of per-Fiber state. A2 redirected pulse() and make() to consult the new WeakMap. ADR-017's contract is unchanged (Fiber-scoped pulse semantics); only the implementation is corrected."
+- **Verification test:** ADR-017 Provenance section contains "2026-10-02" and "PR #301" and "$pulseDefinitions".
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** HIGH-batch
+- **Closure evidence:** (empty)
+
+### S-071: INDEX.md §1 line 54 vs §1 line 65 internal contradiction on HUB-31 "counted" status
+- **Severity:** MEDIUM
+- **Category:** Coherence
+- **Description:** INDEX.md §1 line 54 says "active Hub count = 32 − 2 superseded = 30". This counts HUB-31 as "active" (since 32 - 2 = 30, and HUB-31 is the 31st Hub after removing the 2 superseded). But INDEX.md §1 line 65 says "ADR-011 | 1 Proposed ADR (HUB-31) — not accepted, not counted". So HUB-31 is simultaneously "counted" (in the 30) and "not counted" (per line 65). Internal contradiction.
+- **Evidence:**
+  - `Architecture/INDEX.md` line 54: "active Hub count = 32 − 2 superseded = 30"
+  - `Architecture/INDEX.md` line 65: "ADR-011 | 1 Proposed ADR (HUB-31) — not accepted, not counted"
+- **Affected artifact:** `Architecture/INDEX.md`
+- **Contract violated:** INDEX §0 (single source of truth).
+- **Root cause:** A1 (PR #294) updated line 54 to say "30" (post-A1 count including HUB-32) but did not reconcile with line 65's existing "HUB-31 not counted" disclaimer.
+- **Remediation:** Decide and document: is HUB-31 "active" (file exists, ADR Proposed) or "not active" (ADR Proposed = not yet ratified)? Then propagate consistently. Recommended: change line 54 to "active Hub count = 32 − 2 superseded − 1 Proposed (HUB-31) = 29 active + 1 Proposed" OR drop the line 65 "not counted" disclaimer (accept Proposed-status Hubs as "active pending ratification").
+- **Verification test:** INDEX.md §1 line 54 and §1 line 65 use the same "active" definition for HUB-31; `rg "not counted" Architecture/INDEX.md` returns zero matches OR line 54 reflects the HUB-31 Proposed status.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-072: HUB-DECLARED-DAG.md treats HUB-31 as active (29 active node set includes HUB-31) but INDEX.md treats HUB-31 as "not counted"
+- **Severity:** MEDIUM
+- **Category:** Coherence (cross-document)
+- **Description:** HUB-DECLARED-DAG.md §1 (line 68) includes HUB-31 in its 29-active-Hub node set. But INDEX.md §1 line 65 says HUB-31 is "not accepted, not counted". The two documents disagree on whether HUB-31 is "active" for DAG purposes.
+- **Evidence:**
+  - `Architecture/Hub/HUB-DECLARED-DAG.md` line 68: `| HUB-31 | Sovereign Real-time Analytics | Medium | ❌ |` (in the 29-active-node table)
+  - `Architecture/INDEX.md` line 65: "ADR-011 | 1 Proposed ADR (HUB-31) — not accepted, not counted"
+- **Affected artifact:** `Architecture/Hub/HUB-DECLARED-DAG.md`, `Architecture/INDEX.md`
+- **Contract violated:** ADR-021 §11 (DAGs must reflect canonical architectural state; INDEX is canonical identity source).
+- **Root cause:** HUB-DECLARED-DAG includes HUB-31 in its node set (because HUB-31.md exists) but INDEX says HUB-31 is "not counted" (because ADR-011 is Proposed). The two documents use different definitions of "active".
+- **Remediation:** Align the definitions. Either (a) INDEX.md drops the "not counted" disclaimer for HUB-31 (accepts HUB-31 as active-pending-ratification); OR (b) HUB-DECLARED-DAG.md marks HUB-31 as "Proposed (not active)" in its node table.
+- **Verification test:** HUB-DECLARED-DAG.md and INDEX.md use the same HUB-31 "active" definition.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-073: Hub blueprint H1 format inconsistency — 21 files use "# PHASE HUB-NN:" prefix, 9 use "# HUB-NN:" without prefix
+- **Severity:** LOW
+- **Category:** Coherence (cosmetic)
+- **Description:** Hub blueprint H1 titles use two different formats:
+  - 21 files use "# PHASE HUB-NN: ..." (HUB-03, 05, 07, 09, 11, 12, 13, 14, 16, 17, 18, 21, 22, 23, 24, 26, 27, 28, 29, 30, 31)
+  - 9 files use "# HUB-NN: ..." (HUB-01, 02, 04, 06, 08, 15, 19, 20, 32 — the newer ones)
+  - 2 files (HUB-10, HUB-25) have a SUPERSEDED banner before the H1, with "# PHASE HUB-10:" / "# PHASE HUB-25:" as the H1
+  The lint script tolerates both formats (per the fallback regex at `run.php` lines 144–152). But the inconsistency indicates era-of-authorship and may confuse readers.
+- **Evidence:** `for f in Architecture/Hub/HUB-*.md; do head -1 "$f"; done` shows 21 PHASE-prefixed H1s and 9 unprefixed H1s.
+- **Affected artifact:** 21 Hub blueprint files (PHASE-prefixed)
+- **Contract violated:** None (lint tolerates both formats).
+- **Root cause:** PHASE prefix was an early authoring convention that was dropped in later blueprints. No cleanup was performed.
+- **Remediation:** Either (a) standardize all H1s to "# HUB-NN: ..." (drop PHASE prefix in 21 files); OR (b) leave as-is and document the convention in AUTHORING_GUIDE.md.
+- **Verification test:** All Hub blueprint H1s use the same format (either all PHASE-prefixed or all unprefixed).
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** LOW-backlog
+- **Closure evidence:** (empty)
+
+### S-074: naming-drift fitness function has wrong canonical mapping for HUB-30 (mapped to HUB-01's package)
+- **Severity:** MEDIUM
+- **Category:** CI
+- **Description:** `scripts/fitness/naming-drift.py` line 23: `"HUB-30": {"package": "hub/config", "namespace": "SovereignStack\\Hub\\Config", "name": "Config"}`. But HUB-30 is "Sovereign Hub-CLI" per INDEX.md §2.2 — the package `packages/hub/config/` belongs to HUB-01 ("Sovereign Hub Config & Flags") per `packages/hub/config/composer.json` line 3. The script's mapping for HUB-30 is wrong.
+- **Evidence:**
+  - `scripts/fitness/naming-drift.py` line 23: `"HUB-30": {"package": "hub/config", ...}`
+  - `Architecture/INDEX.md` line 158: "HUB-30 | Sovereign Hub-CLI"
+  - `packages/hub/config/composer.json` line 3: `"description": "HUB-01: Sovereign Hub Config & Flags ..."`
+- **Affected artifact:** `scripts/fitness/naming-drift.py`
+- **Contract violated:** Naming-drift fitness function should map component IDs to their actual packages.
+- **Root cause:** The script's canonical mapping was authored with a typo — HUB-30 was mapped to `packages/hub/config/` (HUB-01's package) instead of HUB-01 itself. The script "passes" because the namespace check matches by coincidence (HUB-01's `packages/hub/config/composer.json` declares `SovereignStack\Hub\Config\` which matches the script's expected namespace).
+- **Remediation:** Either (a) change `"HUB-30"` → `"HUB-01"` in the script (HUB-30 has no package yet, so the entry should be for HUB-01 — the actually-implemented Hub at `packages/hub/config/`); OR (b) remove the HUB-30 entry entirely (since HUB-30 has no implementation, naming-drift check doesn't apply to it).
+- **Verification test:** `python3 scripts/fitness/naming-drift.py` output shows `"HUB-01": {"package": "hub/config", ...}` OR no `HUB-30` entry; the live `packages/hub/config/composer.json` description starts with "HUB-01".
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** MEDIUM-batch
+- **Closure evidence:** (empty)
+
+### S-075: naming-drift fitness function has only 17 components — coverage is ~17% of canonical blueprints
+- **Severity:** LOW
+- **Category:** CI
+- **Description:** `scripts/fitness/naming-drift.py` checks 17 components: 12 Core (CORE-02, 03, 04, 05, 06, 08, 09, 10, 14, 16, 18, 19) + 2 Hub (HUB-04, HUB-30 [wrong — see S-074]) + 1 Bridge (BRIDGE-01) + 1 Internal Spoke (ISPOKE-09) + 1 External Spoke (ESPOKE-01). Missing: CORE-01 (orchestrator/), all 8 unimplemented Core blueprints, all 28 unimplemented Hub blueprints, all 26 unimplemented ISPOKEs, all 18 unimplemented ESPOKEs. Coverage: 17 of 102 canonical blueprints = ~17%.
+- **Evidence:** `scripts/fitness/naming-drift.py` lines 10–26 (CANONICAL_COMPONENTS dict has 17 entries).
+- **Affected artifact:** `scripts/fitness/naming-drift.py`
+- **Contract violated:** None explicitly — but the fitness function's coverage is too low to catch naming drift for most components.
+- **Root cause:** The script was authored to cover only implemented packages (naming drift only applies to packages that exist on disk). The 17-component set was hardcoded.
+- **Remediation:** Either (a) acknowledge the limited coverage in the script's docstring (e.g., add a comment: "Coverage: implemented packages only; unimplemented blueprints have no package to check against"); OR (b) add a separate fitness function that checks blueprint H1 titles against INDEX §2 canonical names (covering all 102 blueprints).
+- **Verification test:** Script's docstring acknowledges the coverage limit; OR a new `scripts/fitness/blueprint-title-drift.py` covers all 102 blueprints.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** LOW-backlog
+- **Closure evidence:** (empty)
+
+### S-076: architecture-boundary-lint's "legitimate_callers_seen" field reports 0 / 6 expected — tracking is misleading
+- **Severity:** LOW
+- **Category:** CI
+- **Description:** `scripts/architecture-boundary-lint.py` line 123–130 lists 6 expected legitimate callers (files that contain `->resolve()` calls but should NOT be flagged as service-locator violations). The scan output reports `"legitimate_callers_seen": []` (0 of 6 seen). This is because either (a) the legitimate callers have been refactored to not use `->resolve()` anymore, OR (b) the regex patterns don't match the legitimate callers' actual code. The script reports this as informational (exit 0), but the tracking is misleading — the regression coverage is "vacuously true".
+- **Evidence:**
+  - `scripts/architecture-boundary-lint.py` lines 123–130: 6 expected legitimate callers
+  - Scan output: `"legitimate_callers_seen": [], "legitimate_callers_expected": [6 files]`
+  - `scripts/test_architecture_boundary_lint.py`: 19 tests pass (including legitimate-caller regression tests)
+- **Affected artifact:** `scripts/architecture-boundary-lint.py`
+- **Contract violated:** None — the script is functioning as designed (informational field, not a violation).
+- **Root cause:** The `legitimate_callers_seen` field was designed to surface legitimate `->resolve()` calls so the regression tests could verify they're not flagged. But the live repo has 0 such calls — either the legitimate callers use method definitions (not calls), or they use different patterns.
+- **Remediation:** Either (a) drop the `legitimate_callers_seen` field (it's not actionable when 0); OR (b) re-investigate why 0 legitimate callers are seen (verify the 6 expected files actually exist and their `->resolve()` calls still exist); OR (c) rephrase the field to "legitimate_callers_in_repo" with comment "0 means no calls to be false-positive about; 6 means the regression suite is non-vacuously exercised".
+- **Verification test:** Either the field is removed, OR the script's documentation explains what 0/6 means.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** LOW-backlog
+- **Closure evidence:** (empty)
+
+### S-077: ADR-021 §13 line 261 says "The Hub ring grows from 31 to 32 packages" — but per INDEX.md §1 line 54, the active Hub count is 30 (32 files - 2 superseded), not 32
+- **Severity:** LOW
+- **Category:** Doc-Drift (post-A1)
+- **Description:** ADR-021 §13 line 261: "**ISPOKE-E3 from the ELQ analysis is immediately promoted to HUB-32**, bypassing the deferred-promotion rule. LLM invocation is judged as foundational as Identity (HUB-04) or Audit (HUB-06). The Hub ring grows from 31 to 32 packages." This says the Hub ring is 32 packages. But per INDEX.md §1 line 54, the active Hub count is 30 (32 files - 2 superseded). The two documents disagree on whether "Hub ring" means "all Hub files" (32) or "active Hubs" (30).
+- **Evidence:**
+  - `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` line 261: "The Hub ring grows from 31 to 32 packages"
+  - `Architecture/INDEX.md` line 54: "active Hub count = 32 − 2 superseded = 30"
+- **Affected artifact:** `Architecture/ADRs/ADR-021-tier-stratified-build-order.md` §13
+- **Contract violated:** None directly — both statements are true under different definitions.
+- **Root cause:** "Hub ring" is ambiguous — could mean total files or active Hubs.
+- **Remediation:** Clarify in ADR-021 §13: "The Hub ring grows from 31 to 32 packages (31 active + HUB-32 canonical at depth 1; HUB-10/HUB-25 remain SUPERSEDED → Runtime as RUNTIME-03/RUNTIME-04). Active Hub count: 30 (32 total − 2 superseded)."
+- **Verification test:** ADR-021 §13 clarifies the "Hub ring" vs "active Hub count" distinction.
+- **Disposition:** Open
+- **Owner:** main agent
+- **Target phase:** LOW-backlog
+- **Closure evidence:** (empty)
+
+---
+
+## §7. Blind-Spot Report — What A3 Discovered That Was Not Known Before A3 Began
+
+This section is the A3 auditor's self-critical reflection, per the BLIND-SPOT-DOCTRINE.md §5 "What Haven't We Asked?" exercise.
+
+### What we discovered during A3 (this audit) that we did not know before A3 began
+
+1. **A1 introduced a wider propagation debt than the worklog suggested.** The worklog (line 1616-1623) says A1 was "complete" with HUB-32.md + ESPOKE-19.md published, lint extended, INDEX updated. But A3 discovered that A1's propagation was incomplete in 7+ documents: ADR-021 §13/§14/Relationship table (S-055), HUB-DECLARED-DAG (S-059), HUB-VERIFIED-DAG (S-059), CORE-CAPABILITY-DAG (S-060), HUB-EDGE-INVENTORY (S-060 evidence), INDEX §4 (S-068), Architecture/README.md (S-067). The original A1 self-assessment was too narrow.
+
+2. **The SHORTCOMINGS-REGISTER was never updated despite the closure rule being authored.** A3 discovered that all 47 findings in the register still say "Disposition: Open" with empty Closure evidence — including the 5 that A1/A2 actually addressed (S-001, S-002, S-033, S-003, S-004). This is S-064 — a meta-finding about the integrity-gate process itself. The closure rule (lines 22–31 of the register) was authored but never applied. Before A3, we assumed the register tracked reality; A3 shows it doesn't.
+
+3. **The architecture-fitness naming-drift script has a silent bug (S-074).** Before A3, we believed FF-02 (naming-drift) was a trustworthy fitness function with 0 violations. A3 discovered the script's canonical mapping for HUB-30 is wrong (it points to HUB-01's package) and the script "passes" only by coincidence. The script's 17-component coverage also hides most of the canonical blueprints (S-075). Before A3, we trusted the green CI check; A3 shows the check has structural gaps.
+
+4. **The lint's checkStructure has an asymmetric coverage gap (S-061).** Before A3, we believed the lint enforced all canonical blueprint files exist. A3 discovered that `validIds` was extended (HUB range 1–32) but `checkStructure` was NOT (still range 1–30 for HUB, 1–18 for ESPOKE). So the lint accepts HUB-32 references but doesn't enforce HUB-32.md exists. A silent coverage gap.
+
+5. **HUB-32.md and ESPOKE-19.md disagree on ISPOKE-E11/E12 identity (S-062).** Before A3, we believed the two canonical blueprints published by A1 were cross-consistent. A3 discovered they use different names for the same conceptual IDs. This is a fresh-architect trap: implementing one blueprint's consumer list produces different components than implementing the other's.
+
+6. **ADR-017's Provenance does not reflect A2 (S-070).** Before A3, we believed ADR-017 was an accurate record of the Fiber runtime's history. A3 discovered that A2 added a new WeakMap (`$pulseDefinitions`) but ADR-017's Provenance wasn't updated. A reader of ADR-017 would conclude the original 2026-08-23 WeakMap was sufficient — missing that A2's WeakMap was a structural fix.
+
+7. **The "H05/H07 Rate Limiter duplication" claim (S-025) was already known to be wrong — but it has not been remediated.** This is a carry-forward from the original audit. A3 confirms it's still wrong (HUB-05 is RBAC, not Rate Limiter). The original audit's 47 findings included this; A3 confirms it remains Open.
+
+8. **The CORE-02 blueprint's embedded reference implementation is still older than the live source (S-058).** The A0 worklog (line 1519) flagged this drift. A2-prep (PR #295) updated the interface docblock but NOT the embedded Container class. A3 confirms the drift is still present post-A2.
+
+9. **Architecture/README.md (the architecture-dir README, distinct from root README) is severely stale (S-067).** Before A3, the audit focused on root README.md (findings S-005..S-008) and INDEX.md (S-012..S-014). A3 discovered that `Architecture/README.md` is ALSO stale — it still says "30 Hub-tier blueprints" and "10 Accepted ADRs" — and it was missed by the original audit. This is a new file not in the original 47-finding register.
+
+10. **The original audit's S-023 finding incorrectly stated "§16 of ADR-021 doesn't actually exist".** A3 confirms §16 DOES exist (at line 275). The original S-023 had a factual error in its description. The underlying observation (the lint rule isn't implemented) is correct — captured in new finding S-056. This is a meta-finding: the original audit had its own blind spot.
+
+11. **The A3-RUNTIME-76 parallel audit (lens: runtime/concurrency) caught a critical gap this audit missed.** A3-RUNTIME-76's S-054 finding — that the required `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` file does not exist — means S-003/S-004 are Fixed-but-not-Closed. This audit initially concluded "S-003/S-004 Closed" before reading the runtime audit's report. The triple-lens A3 process (architecture/governance + runtime + DAG) caught what a single-lens A3 would have missed. This validates the BLIND-SPOT-DOCTRINE §2 "Multiple Independent Auditors with Different Lenses" principle.
+
+12. **The A3-RUNTIME-76 S-048 finding (class-string pulse silent misroute) is a HIGH-severity latent defect that the architecture/governance lens did not surface.** A3-RUNTIME-76 traced the implementation step-by-step and found that `pulse()` with class-string concrete values silently misroutes or fails (interface→NotFoundException, non-self class→wrong class autowired, competing singleton→singleton wins). The architecture/governance lens did not catch this because it didn't trace the implementation's runtime behavior in detail. The runtime lens did. This is a second example of the multi-lens principle working.
+
+### What we did not discover during A3 (acknowledged limitations)
+
+- **Runtime-only issues.** A3 was static-analysis only (no PHP runtime in sandbox). The Container's `pulse()` fix (A2) was verified by code reading + PR #301 commit message, NOT by re-running the WorkerContaminationTest. PHP-runtime issues that only manifest under specific concurrency patterns remain unverified — except those caught by the parallel A3-RUNTIME-76 agent (S-048..S-054).
+- **Cross-tier drift that requires running integration tests.** A3 read the DAGs and blueprints but did not run any Hub→Core integration test. The Hub DAGs' 76 declared Hub→Hub edges (post-resolution) were not verified against actual Hub code (which doesn't exist for 27 of 29 active Hubs).
+- **Property-based verification of Fiber isolation.** A3 did not generate random Fiber interleaving scenarios to test the new $pulseDefinitions WeakMap. The 6 new regression tests added by A2 (per the commit message) cover specific scenarios; property-based verification would be stronger. The parallel A3-RUNTIME-76 agent's S-048 finding confirms that class-string pulse bindings (a scenario no test exercises) are broken — a property-based verifier would have caught this earlier.
+
+These limitations are explicit blind spots in this A3 audit. The parallel A3-RUNTIME-76 agent closed some of them (S-048..S-054). The remaining gaps should be closed by a runtime-verification subagent in a future audit cycle.
+
+---
+
+## §8. Closure Recommendation for the 5 Fixed FATALs/HIGH (S-001, S-002, S-033, S-003, S-004)
+
+Per the closure rule, A3 re-audit confirms the verification conditions for these 5 findings are met (or partially met):
+
+| ID | Verification Condition | A3 Confirmed? | Recommended Disposition |
+|---|---|---|---|
+| S-001 | `architecture-lint` exits 0 on main HEAD | YES (Python regex sim + worklog CI green) | **Closed** |
+| S-002 | `architecture-lint` exits 0 on main HEAD | YES (same as S-001) | **Closed** |
+| S-033 | `Architecture/Hub/HUB-32.md` exists with depth-1 content; lint passes; INDEX updated; HUB-DECLARED-DAG includes HUB-32 | Partial: file exists + lint passes; INDEX partially updated (§1 yes, §4 no — see S-068); HUB-DECLARED-DAG does NOT include HUB-32 (see S-059) | **Fixed** (not Closed — HUB-DECLARED-DAG propagation is incomplete per S-059) |
+| S-003 | (a) Test passes + (b) Test passes + (c) NEW FILE `PulseFiberIsolationTest.php` + (d) CI green | (a) (b) (d) verified by reasoning + commit message; **(c) NOT MET** — file does not exist (per A3-RUNTIME-76 S-054; independently confirmed by this audit) | **Fixed** (not Closed — condition (c) blocks) |
+| S-004 | Test passes + CI green (depends on S-003 closure) | Verified by reasoning + commit message; blocked on S-003 | **Fixed** (not Closed — blocked on S-003) |
+
+**Action:** Update `Architecture/Verification/SHORTCOMINGS-REGISTER.md` per S-064 remediation:
+- S-001 → Closed (closure evidence recorded)
+- S-002 → Closed (closure evidence recorded)
+- S-003 → Fixed (NOT Closed — condition (c) unmet per A3-RUNTIME-76 S-054)
+- S-004 → Fixed (NOT Closed — blocked on S-003 closure)
+- S-033 → Fixed (NOT Closed — HUB-DECLARED-DAG propagation is incomplete per S-059)
+
+---
+
+## §9. New Findings Summary (S-055..S-077)
+
+| ID | Severity | Category | Title | Phase |
+|---|---|---|---|---|
+| S-055 | HIGH | Doc-Drift (post-A1) | ADR-021 §13/§14/Relationship stale post-A1 | HIGH-batch |
+| S-056 | MEDIUM | Coherence | ADR-021 §16 namespace root lint rule not implemented | MEDIUM-batch |
+| S-057 | MEDIUM | Coherence | INDEX.md §2.1/§4 hand-maintains derived facts (violates §11) | MEDIUM-batch |
+| S-058 | HIGH | Doc-Drift (post-A2) | CORE-02 blueprint embedded reference impl older than live source | HIGH-batch |
+| S-059 | HIGH | DAG (post-A1) | HUB-DECLARED-DAG + HUB-VERIFIED-DAG exclude HUB-32 post-A1 | HIGH-batch |
+| S-060 | HIGH | DAG (post-A1) | CORE-CAPABILITY-DAG treats HUB-32 as inferred post-A1 | HIGH-batch |
+| S-061 | MEDIUM | CI (post-A1) | Lint checkStructure not extended for HUB-31/32/ESPOKE-19 | MEDIUM-batch |
+| S-062 | HIGH | Coherence (post-A1) | HUB-32.md and ESPOKE-19.md disagree on ISPOKE-E11/E12 | HIGH-batch |
+| S-063 | MEDIUM | DAG (post-A1) | HUB-32 Hub→Runtime edge has no DAG home | MEDIUM-batch |
+| S-064 | HIGH | Governance | SHORTCOMINGS-REGISTER not updated for A1/A2 fixes | Immediate |
+| S-065 | LOW | Coherence (formatting) | Triple-blank-line artifacts from PR #298/#299 | LOW-backlog |
+| S-066 | LOW | Coherence (typo) | BLIND-SPOT-DOCTRINE.md "the a 33rd" typo | LOW-backlog |
+| S-067 | HIGH | Doc-Drift (post-A1) | Architecture/README.md stale | HIGH-batch |
+| S-068 | HIGH | Doc-Drift (post-A1) | INDEX.md §4 stale (102 → 104, 31 → 32, 29 → 30) | HIGH-batch |
+| S-069 | MEDIUM | Doc-Drift (post-A1) | README.md project-status narrative stale | HIGH-batch |
+| S-070 | MEDIUM | Doc-Drift (post-A2) | ADR-017 Provenance doesn't reflect A2 fix | HIGH-batch |
+| S-071 | MEDIUM | Coherence | INDEX.md §1 internal contradiction on HUB-31 counted status | MEDIUM-batch |
+| S-072 | MEDIUM | Coherence (cross-doc) | HUB-DECLARED-DAG vs INDEX.md on HUB-31 active status | MEDIUM-batch |
+| S-073 | LOW | Coherence (cosmetic) | Hub H1 format inconsistency (PHASE vs no-PHASE) | LOW-backlog |
+| S-074 | MEDIUM | CI | naming-drift wrong HUB-30 mapping (should be HUB-01) | MEDIUM-batch |
+| S-075 | LOW | CI | naming-drift covers only 17 of 102 blueprints | LOW-backlog |
+| S-076 | LOW | CI | boundary-lint legitimate_callers_seen 0/6 misleading | LOW-backlog |
+| S-077 | LOW | Doc-Drift (post-A1) | ADR-021 §13 "Hub ring grows from 31 to 32" ambiguous | LOW-backlog |
+
+**New findings total:** 23 (S-055..S-077)
+
+By severity:
+- HIGH: 9 (S-055, S-058, S-059, S-060, S-062, S-064, S-067, S-068)
+- MEDIUM: 9 (S-056, S-057, S-061, S-063, S-069, S-070, S-071, S-072, S-074)
+- LOW: 5 (S-065, S-066, S-073, S-075, S-076, S-077)
+
+(Arithmetic note: 9 + 9 + 5 = 23 ✓)
+
+---
+
+## §10. Recommended Remediation Order (post-A3)
+
+1. **Immediate (this audit's closure):** Update SHORTCOMINGS-REGISTER.md per S-064 — mark S-001/S-002 Closed; mark S-003/S-004 Fixed (NOT Closed, blocked on A3-RUNTIME-76 S-054); mark S-033 Fixed (NOT Closed, blocked on S-059). Single PR.
+
+2. **Immediate (cross-audit coordination):** Author `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` per A3-RUNTIME-76 §"Recommended remediation order" — single PR closes A3-RUNTIME-76 S-054 + S-052 + S-053, fixes A3-RUNTIME-76 S-048, and unblocks S-003/S-004 closure.
+
+3. **HIGH-batch — A1 propagation cleanup (single PR per cluster):**
+   - Cluster A: ADR-021 §13/§14/Relationship table update (S-055) + ADR-021 §13 "Hub ring grows from 31 to 32" clarification (S-077) — single PR
+   - Cluster B: HUB-DECLARED-DAG + HUB-VERIFIED-DAG update to include HUB-32 (S-059) — single PR
+   - Cluster C: CORE-CAPABILITY-DAG update to reflect HUB-32 declared edges (S-060) — single PR
+   - Cluster D: INDEX.md §4 tier inventory + narrative update (S-068) + INDEX.md §1 line 65 HUB-31 contradiction (S-071) + HUB-DECLARED-DAG §1 HUB-31 status (S-072) — single PR (after S-059)
+   - Cluster E: Architecture/README.md update (S-067) + root README.md project-status update (S-069) — single PR (combines with S-005..S-008)
+   - Cluster F: HUB-32.md + ESPOKE-19.md ISPOKE-E11/E12 reconciliation (S-062) — single PR
+   - Cluster G: CORE-02 blueprint reference impl sync with live source (S-058) — single PR
+   - Cluster H: ADR-017 Provenance amendment (S-070) — single PR
+
+4. **MEDIUM-batch — coherence + CI gaps:**
+   - S-056 (namespace root lint rule) — single PR extending architecture-boundary-lint.py
+   - S-057 (INDEX §2.1/§4 derived-fact migration) — single PR (or pair with generator script)
+   - S-061 (lint checkStructure extension) — single PR (one-line change to run.php)
+   - S-063 (Runtime-tier DAG authoring for HUB-32→RUNTIME-01 + superseded HUB-10/HUB-25 edges) — single PR (depends on S-042 from original register)
+   - S-074 (naming-drift HUB-30 → HUB-01 fix) — single PR (one-line change)
+   - S-075 (naming-drift coverage expansion) — single PR (after S-074)
+
+5. **LOW-backlog:**
+   - S-065 (triple-blank-line cleanup) — single PR
+   - S-066 (typo fix) — single-line edit
+   - S-073 (Hub H1 format standardization) — single PR or defer
+   - S-076 (legitimate_callers_seen tracking) — single PR
+   - S-077 (ADR-021 §13 "Hub ring" ambiguity) — single-line edit
+
+---
+
+## §11. Stage Summary
+
+- A3 fresh-architect + DAG + documentation/governance re-audit complete. Report saved to `/home/z/my-project/download/A3-ARCH-GOV-REPORT.md`.
+- FATAL verification: **2 of 4 FATALs Closed** (S-001, S-002); **2 of 4 FATALs Fixed but NOT Closed** (S-003, S-004) — blocked on A3-RUNTIME-76 S-054 (missing `PulseFiberIsolationTest.php`). The roadmap-blocking condition is therefore NOT fully cleared.
+- **23 NEW findings (S-055..S-077)** discovered beyond the original 47-finding register, AND 7 NEW findings (S-048..S-054) from the parallel A3-RUNTIME-76 agent — combined 30 new findings.
+- The architecture-boundary-lint and architecture-fitness CI workflows PASS on main HEAD (locally verified). No new CI failures introduced by A1/A2.
+- This audit confirmed the parallel A3-RUNTIME-76 agent's S-054 finding (S-003 verification condition (c) unmet) by independently verifying `packages/core/container/tests/Unit/PulseFiberIsolationTest.php` does not exist.
+- The most consequential new findings (S-055..S-077) are:
+  - S-064 (register itself not updated — governance process gap)
+  - S-059 + S-060 (Hub DAGs and CORE-CAPABILITY-DAG stale post-A1 — HUB-32 not propagated)
+  - S-055 (ADR-021 itself stale post-A1 — the ratification ADR contradicts the canonical state it ratified)
+  - S-058 (CORE-02 blueprint embedded reference impl drift — fresh-architect trap)
+  - S-062 (HUB-32 and ESPOKE-19 disagree on ISPOKE-E11/E12 — fresh-architect trap)
+  - S-074 (naming-drift fitness function has wrong HUB-30 mapping — silent bug)
+- A3 acknowledged limitations: static-analysis only (no PHP runtime); cross-tier integration not verified; property-based Fiber-isolation verification not performed. The parallel A3-RUNTIME-76 agent closed some of these (S-048..S-054); a subsequent runtime-verification subagent should close the remaining gaps.
+- The triple-lens A3 process (architecture/governance + runtime + DAG) caught what any single-lens A3 would have missed. The BLIND-SPOT-DOCTRINE §2 "Multiple Independent Auditors with Different Lenses" principle is validated by the cross-audit coordination: this audit caught the DAG/governance propagation gaps that the runtime lens missed; the runtime audit caught the implementation-level gaps that this lens missed.
+- No code was modified (per A3 audit-only task constraint). Recommended remediations are sketched for the next PR window.

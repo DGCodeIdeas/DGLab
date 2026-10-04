@@ -1,0 +1,302 @@
+   150→| 6 | Dependency type per edge | COMPILE: C04→C05 (composer-required), C02→C05 (composer-required via `psr/container`). C06→C05 is the *reverse* direction (middleware imports router) — see C06 below. |
+   151→| 7 | Current implementation status | IMPLEMENTED: 8 src files (`CallableMiddlewareAdapter`, `FinalRequestHandler`, `FinalRequestHandlerInterface`, `MiddlewarePipeline`, `MiddlewarePipelineInterface`, `MiddlewareResolver`, `MiddlewareResolverInterface`, `PerRequestHandler`). 7 test files including immutability + exception propagation. |
+   152→| 8 | Downstream consumers (Core) | C06 (hard, FinalRequestHandler invokes RouterInterface::match), C18 (hard, pipeline resolved from container). |
+   153→| 9 | Capability provided | Once at depth 2: HUB-08 can attach Hub-tier middleware; C18 can serve HTTP; BRIDGE-01 can wrap the pipeline with audit hooks. |
+   154→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0). |
+   155→| 11 | Gate prerequisites | None for depth 1; worker substrate for production immutability invariant at depth 2. |
+   156→
+   157→### C06 — Attribute-Based Router
+   158→
+   159→| # | Field | Value |
+   160→|---|---|---|
+   161→| 1 | ID / capability | C06 — attribute-based router with PCRE-compiled route table + method-indexed matching |
+   162→| 2 | Declared dependencies | Upward (per blueprint): C04 (HTTP Message — ServerRequestInterface, UriInterface), C05 (Middleware — FinalRequestHandler invokes RouterInterface::match), **C18 (Kernel — owns the Router instance, triggers AttributeRouteLoader during boot)**. |
+   163→| 3 | Actual Composer dependencies | `router/composer.json` requires: `php ^8.4`, `psr/http-message ^2.0`, `sovereign-stack/core-http-message`, `ext-mbstring`, `ext-pcre`. Does NOT require sovereign-stack/core-middleware or sovereign-stack/core-kernel. |
+   164→| 4 | Runtime dependencies | Blueprint: "PCRE-JIT load-bearing for sub-ms matching" — JIT compiler must be enabled at deploy time. No worker requirement. |
+   165→| 5 | Integration dependencies | None. |
+   166→| 6 | Dependency type per edge | COMPILE: C04→C06 (composer-required). **MISLABELED IN BLUEPRINT**: the "Upward: C05" and "Upward: C18" entries are actually *Downward* — middleware (C05) imports RouterInterface, and kernel (C18) imports RouterInterface. Actual verified edges from C06 are OUT of C06 (into C05 via composer-required by middleware, into C18 via composer-required by kernel). |
+   167→| 7 | Current implementation status | IMPLEMENTED: 13 src files (Router, RouterInterface, Route, RouteAttribute, RouteCollection, CompiledRoute, RouteCompiler, AttributeRouteLoader, RouteResult + 4 Exception classes). 7 test files including performance + path-traversal security. |
+   168→| 8 | Downstream consumers (Core) | C05 (composer-required), C18 (composer-required + src-import). |
+   169→| 9 | Capability provided | Once at depth 2: HUB-08 can do tenant-prefix rewriting; HUB-19 Validation can constrain route params; HUB-28 can hook the routing pipeline. |
+   170→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0). |
+   171→| 11 | Gate prerequisites | PCRE JIT enabled in production opcache. |
+   172→
+   173→### C07 — SuperPHP Lexer
+   174→
+   175→| # | Field | Value |
+   176→|---|---|---|
+   177→| 1 | ID / capability | C07 — pure-PHP lexer producing TokenStream for the SuperPHP three-stage template engine (ADR-005) |
+   178→| 2 | Declared dependencies | None at Core tier (pure-PHP leaf). External: `ext-mbstring`. |
+   179→| 3 | Actual Composer dependencies | Package not yet implemented; blueprint declares `composer.json` with zero `require` entries beyond PHP itself. |
+   180→| 4 | Runtime dependencies | Blueprint: "long-lived worker (PHP-FPM, RoadRunner, FrankenPHP) — Lexer instances are pure; tokenize() resets every per-call field". Worker-scoped singleton is *safe*, not *required*. |
+   181→| 5 | Integration dependencies | None. |
+   182→| 6 | Dependency type per edge | None Core-internal (leaf). |
+   183→| 7 | Current implementation status | NOT IMPLEMENTED. No `packages/core/superphp-lexer/` directory. |
+   184→| 8 | Downstream consumers (Core) | C11 (hard, parser consumes TokenStream + TokenType), C12 (indirect, references TokenType via C11's AST), C18 (hard, bootstraps lexer at boot). |
+   185→| 9 | Capability provided | Once at depth 2: SuperPHP template engine can be built; HUB-26 (UI Elements) and HUB-12 (Newsletter) can render templates. |
+   186→| 10 | SDLC maturity | UNKNOWN (blueprint exists, no code). |
+   187→| 11 | Gate prerequisites | ADR-005 (SuperPHP acceptance) — already accepted. |
+   188→
+   189→### C08 — Global Error & Exception Handler
+   190→
+   191→| # | Field | Value |
+   192→|---|---|---|
+   193→| 1 | ID / capability | C08 — global error/exception handler with PSR-3 logging, multi-format renderer, ErrorEvent dispatch |
+   194→| 2 | Declared dependencies | Upward: C09 (PSR-3 LoggerInterface), C04 (PSR-7 ResponseFactoryInterface + StreamFactoryInterface), C03 (PSR-14 EventDispatcherInterface), C10 (Config — debug flag), C02 (Container — optional; logger/renderer resolved through it when present). |
+   195→| 3 | Actual Composer dependencies | `error-handler/composer.json` requires: `php ^8.4`, `psr/log ^3.0`, `sovereign-stack/core-logger`. **Does NOT require `sovereign-stack/core-config`, `sovereign-stack/core-event-dispatcher`, `sovereign-stack/core-http-message`, or `sovereign-stack/core-container`.** Repos declared: `../config`, `../logger` (path repos only — not actually required by `require`). |
+   196→| 4 | Runtime dependencies | Blueprint: "Worker-scoped per ADR-017: built once at worker boot, holds the logger and renderer references for the worker's lifetime. Under FrankenPHP workers, `register()` is called once per worker process." Worker substrate required for production correctness (PHP global handler state is process-wide). |
+   197→| 5 | Integration dependencies | None. |
+   198→| 6 | Dependency type per edge | COMPILE: C09→C08 (composer-required). **DECLARED-BUT-UNVERIFIED**: C04→C08, C03→C08, C10→C08, C02→C08 — all declared in blueprint but error-handler/src/ only imports `Psr\Log\*` (PSR-3 contract). No `SovereignStack\Core\Http\*`, `SovereignStack\Core\EventDispatcher\*`, `SovereignStack\Core\Config\*`, or `SovereignStack\Core\Container\*` imports in src/. |
+   199→| 7 | Current implementation status | IMPLEMENTED: 5 src files (`ErrorHandler`, `ErrorHandlerInterface`, `RendererInterface`, `Renderer/JsonRenderer`, `Renderer/PlainTextRenderer`). 2 test files. Task 42 added `shutdownRegistered` flag + stale-callback guard. |
+   200→| 8 | Downstream consumers (Core) | C18 (hard, registers handler at boot), C05 (middleware delegates uncaught throwables), C13 (reuses ErrorRenderer for console). |
+   201→| 9 | Capability provided | Once at depth 2: HUB-06 can subscribe to ErrorEvent; HUB-15 can count errors by severity; production mode (`display_errors=Off`) is enforced. |
+   202→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0; Task 42 hardened shutdown guard). |
+   203→| 11 | Gate prerequisites | Worker substrate for production register/shutdown semantics. |
+   204→
+   205→### C09 — PSR-3 Logging Service
+   206→
+   207→| # | Field | Value |
+   208→|---|---|---|
+   209→| 1 | ID / capability | C09 — PSR-3 structured logging engine with HandlerStack, JSON/Line/Redacting formatters, flock-protected StreamHandler |
+   210→| 2 | Declared dependencies | Upward: C02 (DI Container — required at runtime; logger injected as singleton), C10 (Config — soft; reads `logging.threshold`, `logging.handlers[]`, `logging.redaction.keys`). External: `psr/log ^3.0`. |
+   211→| 3 | Actual Composer dependencies | `logger/composer.json` requires: `php ^8.4`, `psr/log ^3.0`, `sovereign-stack/core-config`. **Does NOT require `sovereign-stack/core-container`.** |
+   212→| 4 | Runtime dependencies | Blueprint: "Immutable, worker-scoped per ADR-017". Worker substrate for production singleton semantics. |
+   213→| 5 | Integration dependencies | None (file handler writes to local disk; not external-service). |
+   214→| 6 | Dependency type per edge | COMPILE: C10→C09 (composer-required). **DECLARED-BUT-UNVERIFIED**: C02→C09 — declared in blueprint as "required at runtime" but logger/src/ only uses `Psr\Log\LoggerTrait`, `Psr\Log\LogLevel`. No `SovereignStack\Core\Container\*` imports. The logger doesn't *consume* the container; it's *registered into* the container by C18 at boot. |
+   215→| 7 | Current implementation status | IMPLEMENTED: 9 src files (`Logger`, `LoggerInterface`, `HandlerInterface`, `FormatterInterface`, `LogRecord` + `Formatter/{Json,Line,Redacting}Formatter` + `Handler/StreamHandler`). 8 test files including log-injection security test. Task 42 added StreamHandler 0-byte write fix + HandlerInterface propagation docstring. |
+   216→| 8 | Downstream consumers (Core) | C03 (optional, listener-failure recording), C08 (hard, fault recording), C13 (soft, diagnostic events), C14 (hard, FilesystemException diagnostics), C16 (optional, audit-trail logging), C17 (hard, every provider), C18 (hard, boot/shutdown logs), C20 (soft, diagnostic sink). |
+   217→| 9 | Capability provided | Once at depth 2: every Hub/Spoke has structured logging; HUB-06 audit can subscribe to log records; redaction policies protect PII. |
+   218→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0). |
+   219→| 11 | Gate prerequisites | None for depth 1; worker substrate for production singleton at depth 2. |
+   220→
+   221→### C10 — Configuration & Environment Loader
+   222→
+   223→| # | Field | Value |
+   224→|---|---|---|
+   225→| 1 | ID / capability | C10 — JSON config loader + .env parser with dot-notation access, env interpolation, required-key enforcement |
+   226→| 2 | Declared dependencies | Upward: C02 (DI Container — singleton() binding). External: `ext-json`. |
+   227→| 3 | Actual Composer dependencies | `config/composer.json` requires: `php ^8.4`, `ext-mbstring`. **Does NOT require `sovereign-stack/core-container` or any other sovereign-stack package.** |
+   228→| 4 | Runtime dependencies | Blueprint: "No `getenv()` calls — not thread-safe in PHP-FPM worker pools". Worker substrate required for production correctness. |
+   229→| 5 | Integration dependencies | None. |
+   230→| 6 | Dependency type per edge | **DECLARED-BUT-UNVERIFIED**: C02→C10 — declared in blueprint as upward but config/src/ doesn't import any `SovereignStack\Core\Container\*` namespace, and composer.json doesn't require it. The "singleton binding" is a runtime/integration concern (C18 does the binding), not a compile-time dep of C10 itself. |
+   231→| 7 | Current implementation status | IMPLEMENTED: 10 src files (`ConfigInterface`, `ConfigBuilder`, `ConfigBuilderInterface`, `ConfigRepository`, `EnvLoader`, `EnvLoaderInterface` + 4 Exception classes). 8 test files including security test (config injection). |
+   232→| 8 | Downstream consumers (Core) | C08 (debug flag), C09 (log.level, log.channel), C13 (default app name + version, paths), C14 (filesystems.disks), C16 (soft, APP_KEY loading), C17 (Environment enum, ConfigInterface), C18 (app.env, app.debug, app.timezone — loaded first), C19 (database.default_dsn), C20 (no direct dep). |
+   233→| 9 | Capability provided | Once at depth 2: HUB-01 can consume frozen repository as base layer; HUB-15 can read health.check_interval; every Hub with `#[ConfigKey]`-annotated params is wired. |
+   234→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0). |
+   235→| 11 | Gate prerequisites | None. |
+   236→
+   237→### C11 — SuperPHP Parser
+   238→
+   239→| # | Field | Value |
+   240→|---|---|---|
+   241→| 1 | ID / capability | C11 — recursive-descent parser producing AST (Node hierarchy) for SuperPHP (ADR-005) |
+   242→| 2 | Declared dependencies | Upward: C07 (Lexer). External: `ext-mbstring`. Composer: `sovereign-stack/core-superphp-lexer ^0.1`. |
+   243→| 3 | Actual Composer dependencies | Package not yet implemented. |
+   244→| 4 | Runtime dependencies | Blueprint: "Parser instances are pure — long-lived worker (RoadRunner, FrankenPHP) cannot leak one request's token cursor". Worker-safe, not worker-required. |
+   245→| 5 | Integration dependencies | None. |
+   246→| 6 | Dependency type per edge | COMPILE: C07→C11 (declared; not yet verifiable in code). |
+   247→| 7 | Current implementation status | NOT IMPLEMENTED. |
+   248→| 8 | Downstream consumers (Core) | C12 (hard, AST consumption), C18 (hard, bootstraps parser at boot). |
+   249→| 9 | Capability provided | Once at depth 2: SuperPHP compiler can transform AST to PHP; HUB-26 (UI Elements) and HUB-12 (Newsletter) can render templates with control flow. |
+   250→| 10 | SDLC maturity | UNKNOWN (no code). |
+   251→| 11 | Gate prerequisites | C07 at depth 2. |
+   252→
+   253→### C12 — SuperPHP Compiler
+   254→
+   255→| # | Field | Value |
+   256→|---|---|---|
+   257→| 1 | ID / capability | C12 — AST→PHP compiler with OPcache-preload-friendly output (ADR-010), source-hash cache (uses C15), EchoVisitor default |
+   258→| 2 | Declared dependencies | Upward: C07 (indirect, via C11's Node types carrying source-position metadata), C11 (hard, produces Node AST). External: `ext-hash`. |
+   259→| 3 | Actual Composer dependencies | Package not yet implemented. |
+   260→| 4 | Runtime dependencies | Blueprint: "long-lived worker (PHP-FPM, RoadRunner, FrankenPHP) — same singleton is safe to reuse across concurrent template compiles". Worker-safe. |
+   261→| 5 | Integration dependencies | `storage/framework/views/` directory must be writable by PHP-FPM user — deploy-time filesystem concern. |
+   262→| 6 | Dependency type per edge | COMPILE: C07→C12 (indirect, declared), C11→C12 (hard, declared). **DECLARED-BUT-UNVERIFIED** until implemented. |
+   263→| 7 | Current implementation status | NOT IMPLEMENTED. |
+   264→| 8 | Downstream consumers (Core) | C18 (hard, bootstraps compiler as singleton at boot), C20 (hard, `superphp:compile` warm-up command). |
+   265→| 9 | Capability provided | Once at depth 2: Hub-tier view factories can render templates; HUB-26 (UI Elements) gets compiled-template cache; C20 can pre-warm cache pre-deploy. |
+   266→| 10 | SDLC maturity | UNKNOWN. |
+   267→| 11 | Gate prerequisites | C07, C11 at depth 2; C15 (Cache) at depth 2 for CompilerCache. |
+   268→
+   269→### C13 — CLI Engine (Console)
+   270→
+   271→| # | Field | Value |
+   272→|---|---|---|
+   273→| 1 | ID / capability | C13 — CLI dispatcher (parse argv, find command, validate signature, propagate exit code) — explicitly NOT a job runner or REPL |
+   274→| 2 | Declared dependencies | Upward: C02 (hard, autoRegister + command instantiation), C10 (soft, default app name + version + paths), C09 (soft, ?LoggerInterface). |
+   275→| 3 | Actual Composer dependencies | Package not yet implemented. |
+   276→| 4 | Runtime dependencies | None. |
+   277→| 5 | Integration dependencies | None. |
+   278→| 6 | Dependency type per edge | COMPILE: C02→C13 (hard). OPTIONAL: C10→C13, C09→C13. |
+   279→| 7 | Current implementation status | NOT IMPLEMENTED. |
+   280→| 8 | Downstream consumers (Core) | C01 (the `bin/loom` executable constructs Application — but C01 is currently implemented with its OWN minimal CLI dispatcher, not C13), C20 (hard, `bin/forge` uses autoRegister), C17 (downward-listed by C13 as "ConsoleServiceProvider will register Application"). |
+   281→| 9 | Capability provided | Once at depth 2: Hub-tier management commands (HUB-01 `flags:list`, HUB-02 `cache:flush`, HUB-06 `audit:replay`) can extend `SovereignStack\Core\Console\Command`. |
+   282→| 10 | SDLC maturity | UNKNOWN. |
+   283→| 11 | Gate prerequisites | C02 at depth 2. |
+   284→
+   285→### C14 — Filesystem Abstraction
+   286→
+   287→| # | Field | Value |
+   288→|---|---|---|
+   289→| 1 | ID / capability | C14 — safe blob storage with atomic writes, path-traversal protection, quarantine, integrity verification |
+   290→| 2 | Declared dependencies | Upward: C10 (filesystems.disks), C02 (binds FilesystemInterface), C09 (FilesystemException diagnostics), C03 (optional FileWritten/FileDeleted events). Optional: `aws/aws-sdk-php ^3.3` for S3Adapter. |
+   291→| 3 | Actual Composer dependencies | `filesystem/composer.json` requires: `php ^8.4`, `ext-fileinfo`. **Does NOT require any sovereign-stack package.** |
+   292→| 4 | Runtime dependencies | Blueprint §4.3.2: path-traversal breaker trips on repeated attempts "on the same Fiber" — implies Fiber-aware state per ADR-017. Worker substrate for production. |
+   293→| 5 | Integration dependencies | **INTEGRATION (OPTIONAL)**: S3 — only for `S3Adapter`; `aws/aws-sdk-php` is a `composer suggest`, not a hard require. |
+   294→| 6 | Dependency type per edge | **DECLARED-BUT-UNVERIFIED**: C02→C14, C10→C14, C09→C14, C03→C14 — all declared in blueprint but filesystem/src/ only imports its own `SovereignStack\Core\Filesystem\Internal\*` namespace. No external Core imports. The blueprint's declared deps are runtime/integration concerns (the bindings + diagnostics happen at C18 boot, not in C14 itself). OPTIONAL: C14→C15 (declared by C15 as blocking for FileAdapter — see below). |
+   295→| 7 | Current implementation status | IMPLEMENTED: 10 src files (7 in src/ + 3 in src/Internal/: `AtomicWriter`, `PathGuard`, `Quarantine`). 2 test files including depth-3 test. |
+   296→| 8 | Downstream consumers (Core) | C09 (Logger file handler), C12 (compiled-template cache), C15 (optional FileStore driver), C20 (soft, stub loading + file writing). |
+   297→| 9 | Capability provided | Once at depth 2: HUB-03 (Asset Engine) can store uploads; HUB-06 (Audit) can archive rotated batches; HUB-11 (Cloud Storage) can do S3-backed large-object flows; C12 can write compiled templates. |
+   298→| 10 | SDLC maturity | Depth 2 (shipped v0.1.0). |
+   299→| 11 | Gate prerequisites | None for unit tests; S3 credentials + bucket for end-to-end S3Adapter tests. |
+   300→
+   301→### C15 — Cache Abstraction (PSR-6/16)
+   302→
+   303→| # | Field | Value |
+   304→|---|---|---|
+   305→| 1 | ID / capability | C15 — PSR-6 + PSR-16 cache abstraction with ArrayAdapter (L1) and RedisAdapter (production); JSON-only serialization; stampede protection via Fiber + Redis NX EX |
+   306→| 2 | Declared dependencies | None at Core tier (leaf primitive per blueprint). External: `psr/cache ^3.0`, `psr/simple-cache ^3.0`, optional `ext-redis`. **Soft-blocked on C14 (Filesystem)** only for a hypothetical future FileAdapter. |
+   307→| 3 | Actual Composer dependencies | Package not yet implemented. |
+   308→| 4 | Runtime dependencies | Blueprint §4.2 stampede protection: "in-process `array<string, Fiber>` + Redis `SET NX EX 10` cross-process lock; 1s wait timeout for concurrent fibers; on timeout, fall through". **Fiber + cross-process Redis coordination required for production correctness.** §4.2 circuit breaker (Redis) — CLOSED/OPEN/HALF_OPEN. Worker substrate mandatory. |
+   309→| 5 | Integration dependencies | **INTEGRATION (OPTIONAL for production)**: Redis 7.x via `ext-redis` (for RedisAdapter). ArrayAdapter works without Redis. |
+   310→| 6 | Dependency type per edge | OPTIONAL: C14→C15 (declared as "blocked on C14 only for FileAdapter" — the core ArrayAdapter/RedisAdapter need no other Core-tier component). |
+   311→| 7 | Current implementation status | NOT IMPLEMENTED. No `packages/core/cache/` directory. |
+   312→| 8 | Downstream consumers (Core) | C06 (caches compiled route tables), C09 (handler-rotation state), C18 (boot-phase provider manifest), C12 (CompilerCache). |
+   313→| 9 | Capability provided | Once at depth 2: HUB-02 (Sovereign Hub Cache) can build directly on RedisAdapter to add Cache Tags, Atomic Locks, Write-Through/Read-Through (ADR-006); HUB-04 session storage; HUB-07 atomic rate-limit counters; BRIDGE-01 DTO transformation cache. |
+   314→| 10 | SDLC maturity | UNKNOWN. |
+   315→| 11 | Gate prerequisites | C14 at depth 2 (only if FileAdapter is in scope; ArrayAdapter+RedisAdapter don't need C14). Redis 7.x for production RedisAdapter; Fiber-aware worker for stampede protection. |
+   316→
+   317→### C16 — Binary Encryption Envelope
+   318→
+   319→| # | Field | Value |
+   320→|---|---|---|
+   321→| 1 | ID / capability | C16 — AES-256-GCM encryption envelope + Argon2id password hashing (ADR-008) + HKDF-SHA256 + KeyRegistry |
+   322→| 2 | Declared dependencies | External (hard): `ext-openssl`, `ext-sodium` (or PHP built against libargon2), `ext-hash`. Upward: C10 (soft, APP_KEY + per-tenant overrides via ConfigInterface), C09 (optional, audit-trail logging — default `new NullLogger()`). |
+   323→| 3 | Actual Composer dependencies | `crypto/composer.json` requires: `php ^8.4`, `ext-openssl`, `ext-sodium`, `ext-hash`, `psr/log ^3.0`. **Does NOT require sovereign-stack/core-config or sovereign-stack/core-logger.** |
+   324→| 4 | Runtime dependencies | Blueprint §4.4.5: audit + provenance — "repeated failures from a single Fiber page operator" — implies Fiber-aware breaker state. Worker substrate for production. |
+   325→| 5 | Integration dependencies | None. |
+   326→| 6 | Dependency type per edge | **DECLARED-BUT-CONTRACT-LEVEL**: C10→C16 (declared as soft — `KeyRegistry` reads APP_KEY via ConfigInterface; in tests can bypass via addKey() directly) and C09→C16 (optional — constructor arg, default NullLogger). crypto/src/ imports only `Psr\Log\LoggerInterface` + `Psr\Log\NullLogger` (PSR-3 contract). No direct `SovereignStack\Core\Config\*` or `SovereignStack\Core\Logger\*` imports. |
+   327→| 7 | Current implementation status | IMPLEMENTED: 8 src files (`Encrypter`, `EncrypterInterface`, `Envelope`, `Hasher`, `KeyRegistry`, `KeyRegistryInterface`, `PasswordHasher`, `CryptoException`). 4 test files. |
+   328→| 8 | Downstream consumers (Core) | C19 (optional, column-level encryption for tenant PII). Hub-tier: BRIDGE-01 (HMAC payload verification — corrected per Finding 3), HUB-04 (PasswordHasher + JWT signing-key at-rest), HUB-20 (Vault — KEK + per-secret DEKs), HUB-02 (optional PII cache encryption). |
+   329→| 9 | Capability provided | Once at depth 2: HUB-04 can verify Argon2id passwords + store JWT signing keys at rest; HUB-20 Vault can manage envelope-encryption key lifecycle; BRIDGE-01 can do AEAD payload verification. |
+   330→| 10 | SDLC maturity | Depth 2 (shipped v0.1.0). |
+   331→| 11 | Gate prerequisites | `libargon2-dev` installed before PHP compile (per DEPLOY-01 + ADR-008). Worker substrate for production breaker semantics. |
+   332→
+   333→### C17 — Service Provider System
+   334→
+   335→| # | Field | Value |
+   336→|---|---|---|
+   337→| 1 | ID / capability | C17 — `#[AsProvider]` attribute + ProviderRegistry + boot/register phases; transitively consumed by every Hub and Spoke |
+   338→| 2 | Declared dependencies | Upward: C02 (ContainerInterface, CompilerPassInterface), C10 (Environment enum, ConfigInterface), C09 (Psr\Log\LoggerInterface). External: `psr/container ^2.0`, `psr/log ^3.0`. |
+   339→| 3 | Actual Composer dependencies | Package not yet implemented. C18 currently has a local `Stub/ProviderRegistryInterface` + `Stub/EmptyProviderRegistry` as a forward-declared placeholder for C17's contract. |
+   340→| 4 | Runtime dependencies | None. |
+   341→| 5 | Integration dependencies | None. |
+   342→| 6 | Dependency type per edge | COMPILE: C02→C17, C10→C17, C09→C17 (all declared; not yet verifiable). |
+   343→| 7 | Current implementation status | NOT IMPLEMENTED as a package. **C18's `Stub/ProviderRegistryInterface.php` forward-declares the contract.** |
+   344→| 8 | Downstream consumers (Core) | C18 (hard, `ProviderRegistry::discover()` / `registerAll()` / `bootAll()` in boot phase), C20 (hard, generated ServiceProvider skeletons use #[AsProvider]). |
+   345→| 9 | Capability provided | Once at depth 2: every Hub and Spoke package ships at least one ServiceProvider annotated with #[AsProvider]; C18 can do tier-aware boot phases; C20 can scaffold new providers. |
+   346→| 10 | SDLC maturity | UNKNOWN (no code; placeholder only). |
+   347→| 11 | Gate prerequisites | C02, C10, C09 at depth 2. |
+   348→
+   349→### C18 — Core Kernel & Lifecycle
+   350→
+   351→| # | Field | Value |
+   352→|---|---|---|
+   353→| 1 | ID / capability | C18 — orchestrates request lifecycle (boot → handle → terminate); wires all Core-tier components into the Pulse round-trip; explicitly NOT an HTTP server (delegates to FrankenPHP/RoadRunner/PHP-FPM), NOT a CLI dispatcher (C13 owns that), NOT a service locator |
+   354→| 2 | Declared dependencies | Upward: C02 (Container — instantiated, bindings registered into, compiled), C10 (Config — loaded first, drives every subsequent binding), C09 (Logging — singleton, flushed during terminate()), C08 (Error Handler — registered before any other code runs), C17 (Service Providers — discovered, register() then boot()), C03 (Event Dispatcher — dispatched for every lifecycle event), C05 (Middleware Pipeline — resolved from container, handle() invoked per request), C06 (Router — bound into the pipeline's terminal handler). C19 (DBAL) optional during terminate() — no-op if not landed. |
+   355→| 3 | Actual Composer dependencies | `kernel/composer.json` requires: `php ^8.4`, `psr/http-message ^2.0`, `psr/event-dispatcher ^1.0`, `psr/container ^2.0`, `psr/log ^3.0`, `sovereign-stack/core-container`, `sovereign-stack/core-event-dispatcher`, `sovereign-stack/core-http-message`, `sovereign-stack/core-middleware`, `sovereign-stack/core-router`, `sovereign-stack/core-config`, `sovereign-stack/core-logger`, `sovereign-stack/core-error-handler`. **Does NOT require `sovereign-stack/core-crypto`, `sovereign-stack/core-dbal`, `sovereign-stack/core-filesystem`, or `sovereign-stack/core-service-providers`.** |
+   356→| 4 | Runtime dependencies | Blueprint: "the HTTP entry point (`public/index.php` for PHP-FPM, a RoadRunner worker for long-running, a FrankenPHP worker for the modern path) calls `Kernel::boot()` once at process start, then loops `Kernel::handle($request)` per incoming request, then calls `Kernel::terminate()` on shutdown". **Worker substrate is mandatory for HTTP serving.** §4.5.7 chaos scenarios include "double-handle from parallel fibers" + "terminate during handling" — Fiber-aware. |
+   357→| 5 | Integration dependencies | None directly (DBAL MySQL is gated as optional in terminate()). |
+   358→| 6 | Dependency type per edge | **VERIFIED-IN-CODE**: C02→C18, C03→C18, C05→C18, C06→C18, C08→C18, C09→C18, C10→C18 — all 7 are imported in `kernel/src/Kernel.php` + `HttpBootstrapper.php` + `KernelInterface.php`. **VERIFIED-IN-COMPOSER-ONLY**: C04→C18 (kernel composer requires core-http-message but src/ doesn't import any http-message class — see §6 Honest Gaps). **DECLARED-BUT-UNVERIFIED**: C17→C18 (C17 not implemented; kernel has Stub/ProviderRegistryInterface as forward-decl). **OPTIONAL**: C19→C18 (DBAL during terminate() — no-op if absent). |
+   359→| 7 | Current implementation status | IMPLEMENTED: 15 src files (12 in src/ + 3 Event classes: BootEvent, RequestReceivedEvent, ResponseReadyEvent, TerminateEvent + Stub/ dir). 4 test files (state machine, request context, integration hello-world, worker contamination). Task 42 added `KernelException` named constructors for accurate state-machine messages. |
+   360→| 8 | Downstream consumers (Core) | None at Core tier (C18 is the sink). Hub tier (every Hub service booted via service provider); C13/C20 (call Kernel::boot() then dispatch CLI then Kernel::terminate()); HTTP entry point; DEPLOY-01 (container image starts from Kernel::boot()); BRIDGE-01 (RequestReceivedEvent + ResponseReadyEvent hooks). |
+   361→| 9 | Capability provided | Once at depth 2: any Hub can be booted via a ServiceProvider; HTTP serving works end-to-end; CLI tools have a boot/terminate envelope; DEPLOY-01 can package the kernel into an OCI image; BRIDGE-01 can intercept lifecycle events. |
+   362→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0). |
+   363→| 11 | Gate prerequisites | All 8 hard upward deps (C02, C03, C05, C06, C08, C09, C10, C17) at depth 2. Worker substrate (FrankenPHP/RoadRunner/PHP-FPM) for HTTP serving at depth 2. |
+   364→
+   365→### C19 — Database Abstraction Layer
+   366→
+   367→| # | Field | Value |
+   368→|---|---|---|
+   369→| 1 | ID / capability | C19 — thin PDO wrapper with fluent QueryBuilder, nested transactions, application-level tenant scoping (MySQL has no RLS) |
+   370→| 2 | Declared dependencies | Upward: `ext-pdo`, `ext-pdo_mysql` (production), `ext-pdo_sqlite` (test fixture), `psr/log ^3.0`. C10 (optional, DSN resolution), C02 (optional, singleton wiring). MySQL 8 (InnoDB) per ADR-013 (note: ADR-007 says PostgreSQL-over-MySQL; ADR-013 later supersedes — MySQL primary). |
+   371→| 3 | Actual Composer dependencies | `dbal/composer.json` requires: `php ^8.4`, `ext-pdo`, `ext-pdo_sqlite`, `psr/log ^3.0`. **Does NOT require `ext-pdo_mysql` (suggested for production), `sovereign-stack/core-config`, or `sovereign-stack/core-container`.** |
+   372→| 4 | Runtime dependencies | None beyond MySQL connection. |
+   373→| 5 | Integration dependencies | **INTEGRATION (REQUIRED for production)**: MySQL 8 (InnoDB) per ADR-013. SQLite for tests. |
+   374→| 6 | Dependency type per edge | **DECLARED-BUT-UNVERIFIED**: C10→C19, C02→C19 — declared as optional in blueprint but dbal/src/ only imports `Psr\Log\LoggerInterface`, `Psr\Log\NullLogger`. No `SovereignStack\Core\Config\*` or `SovereignStack\Core\Container\*` imports. **INTEGRATION**: MySQL 8 (production) / SQLite (test fixture). |
+   375→| 7 | Current implementation status | IMPLEMENTED: 11 src files (`Connection`, `ConnectionInterface`, `DatabaseException`, `DriverInterface`, `Driver/MysqlDriver`, `Driver/SqliteDriver`, `QueryBuilder`, `QueryBuilderInterface`, `TenantContext`, `Transaction`, `TypeMapper`). 4 test files. |
+   376→| 8 | Downstream consumers (Core) | C18 (optional, terminate-only — close connections), C20 (soft, forge:migrate delegates to MigrationRunner). Hub-tier: HUB-04, HUB-06, HUB-01, HUB-19, HUB-21. |
+   377→| 9 | Capability provided | Once at depth 2: HUB-04 (Identity) can persist users/sessions/password-hashes; HUB-06 (Audit) can do high-volume append-only audit table with generated-column index; HUB-21 (Nexus) can do multi-tenant coordination; C20 can do migration scaffolding. |
+   378→| 10 | SDLC maturity | Depth 2 (shipped v0.4.0; baseline shows 11 src + 4 tests). |
+   379→| 11 | Gate prerequisites | MySQL 8 InnoDB service container in CI; SQLite 3.44 for unit tests. |
+   380→
+   381→### C20 — Developer CLI Toolchain ("Sovereign Forge")
+   382→
+   383→| # | Field | Value |
+   384→|---|---|---|
+   385→| 1 | ID / capability | C20 — code generator (`forge:make:hub`, `forge:make:spoke`, `forge:make:command`, `forge:migrate`, `forge:serve`) |
+   386→| 2 | Declared dependencies | Upward: C13 (hard — Forge extends Application, every command extends Command), C17 (hard — generated ServiceProvider skeletons use #[AsProvider]), C02 (soft, auto-wiring), C14 (soft, stub loading + file writing), C19 (soft, forge:migrate delegates to MigrationRunner), C09 (soft, diagnostic sink). |
+   387→| 3 | Actual Composer dependencies | Package not yet implemented. |
+   388→| 4 | Runtime dependencies | `forge:serve` shells out to `php -S` (built-in web server) via `proc_open` — only proc_open call in the package, covered by CI security test. |
+   389→| 5 | Integration dependencies | None (forge:serve uses local PHP web server, not an external service). |
+   390→| 6 | Dependency type per edge | COMPILE: C13→C20, C17→C20 (hard, declared). OPTIONAL: C02→C20, C14→C20, C19→C20, C09→C20 (soft, declared). |
+   391→| 7 | Current implementation status | NOT IMPLEMENTED. |
+   392→| 8 | Downstream consumers (Core) | None at Core tier. Downward: every Hub/ISpoke/ESpoke package produced by forge:make:* (transitive); C01 release pipeline (consumes composer.json repositories section that Forge maintains); DEPLOY-01 image build (consumes package layout that Forge scaffolds). |
+   393→| 9 | Capability provided | Once at depth 2: developers can scaffold new Hub/Spoke packages; Hub-tier management commands can be added via `forge:make:command`; release pipeline can consume Forge-maintained composer.json. |
+   394→| 10 | SDLC maturity | UNKNOWN. |
+   395→| 11 | Gate prerequisites | C13, C17 at depth 2. |
+   396→
+   397→---
+   398→
+   399→## §4. Mermaid — typed-edge Core dependency DAG
+   400→
+   401→**Convention:** `X --> Y` means Y consumes X (Y depends on X; X is upstream).
+   402→
+   403→```mermaid
+   404→graph TD
+   405→    %% ---------- Core nodes ----------
+   406→    C01[C01 Loom Orchestrator]
+   407→    C02[C02 DI Container]
+   408→    C03[C03 Event Dispatcher]
+   409→    C04[C04 HTTP Message]
+   410→    C05[C05 Middleware]
+   411→    C06[C06 Router]
+   412→    C07[C07 SuperPHP Lexer]
+   413→    C08[C08 Error Handler]
+   414→    C09[C09 PSR-3 Logger]
+   415→    C10[C10 Config Loader]
+   416→    C11[C11 SuperPHP Parser]
+   417→    C12[C12 SuperPHP Compiler]
+   418→    C13[C13 CLI Engine]
+   419→    C14[C14 Filesystem]
+   420→    C15[C15 Cache Abstraction]
+   421→    C16[C16 Encryption]
+   422→    C17[C17 Service Providers]
+   423→    C18[C18 Kernel]
+   424→    C19[C19 DBAL]
+   425→    C20[C20 Dev CLI/Forge]
+   426→
+   427→    %% ---------- COMPILE edges (verified-in-code: src/ imports) ----------
+   428→    C02 ==>|compile+src| C18
+   429→    C03 ==>|compile+src| C18
+   430→    C05 ==>|compile+src| C18
+   431→    C06 ==>|compile+src| C18
+   432→    C08 ==>|compile+src| C18
+   433→    C09 ==>|compile+src| C18
+   434→    C10 ==>|compile+src| C18
+   435→
+   436→    %% ---------- COMPILE edges (verified-in-composer: composer.json require) ----------
+   437→    C04 -->|compile+composer| C05
+   438→    C04 -->|compile+composer| C06
+   439→    C04 -->|compile+composer| C18
+   440→    C05 -->|compile+composer| C06
+   441→    C09 -->|compile+composer| C08
+   442→    C10 -->|compile+composer| C09
+   443→
+   444→    %% ---------- COMPILE edges (declared-but-unverified — not yet implemented) ----------
+   445→    C07 -->|compile+declared| C11
+   446→    C11 -->|compile+declared| C12
+   447→    C13 -->|compile+declared| C20
+   448→    C17 -->|compile+declared| C20
+   449→
+
+[showing lines 150-449 of 667; use offset=450 with limit to continue reading]

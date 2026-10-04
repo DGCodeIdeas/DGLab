@@ -1,0 +1,636 @@
+     1→     1→<?php
+     2→     2→declare(strict_types=1);
+     3→     3→
+     4→     4→namespace SovereignStack\Core\Container;
+     5→     5→
+     6→     6→/**
+     7→     7→ * Reference implementation of {@see ContainerInterface} and
+     8→     8→ * {@see ContainerBuilderInterface}.
+     9→     9→ *
+    10→    10→ * State:
+    11→    11→ *   - $definitions       : id -> ServiceDefinition (the binding table)
+    12→    12→ *   - $instances         : id -> resolved object (shared-instance cache)
+    13→    13→ *   - $pulseInstances    : WeakMap<Fiber, array<string, mixed>> (auto-evicts on Fiber GC)
+    14→    14→ *                          Resolved pulse-scoped object cache (per-Fiber).
+    15→    15→ *   - $pulseDefinitions  : WeakMap<Fiber, array<string, ServiceDefinition>> (auto-evicts on
+    16→    16→ *                          Fiber GC) — per-Fiber pulse() binding table (Shape C).
+    17→    17→ *                          Replaces the previous (broken) practice of writing pulse()
+    18→    18→ *                          bindings into the global $definitions array, which leaked
+    19→    19→ *                          per-Pulse state across Fiber boundaries (S-003/S-004).
+    20→    20→ *   - $fiberResolving    : WeakMap<Fiber, {resolving, chain}> — per-Fiber cycle
+    21→    21→ *                          detection state (auto-evicts on Fiber GC)
+    22→    22→ *   - $mainResolving     : concrete-key -> true — cycle detection set for the
+    23→    23→ *                          main (non-Fiber) context; presence == on stack
+    24→    24→ *   - $mainResolvingChain: ordered list of [id, concrete] tuples for diagnostics,
+    25→    25→ *                          main context only (per-Fiber chains live inside
+    26→    26→ *                          $fiberResolving)
+    27→    27→ *   - $compilerPasses    : list of passes to run during compile()
+    28→    28→ *   - $compiled          : freeze flag; mutation methods assert false before running
+    29→    29→ *
+    30→    30→ * Resolution flow (see also the sequence diagram in this blueprint):
+    31→    31→ *   make(A) ->
+    32→    32→ *     1. if A in $instances -> return cached object
+    33→    33→ *     2. compute concrete (definition->concrete ?? $id); if concrete already in
+    34→    34→ *        $resolving -> throw CircularDependencyException(chain from $resolvingChain)
+    35→    35→ *     3. push [id, concrete] onto $resolving and $resolvingChain
+    36→    36→ *     4. try { build(concrete) } finally { pop from both }
+    37→    37→ *     5. if shared -> cache in $instances
+    38→    38→ *     6. return object
+    39→    39→ *
+    40→    40→ * Cycle detection is resolution-time, not graph-time, and keys on the *concrete*
+    41→    41→ * class being constructed (not the binding id). This is deliberate: autowire()
+    42→    42→ * recurses by calling make() with class-string FQCNs (e.g. `make(B::class)`),
+    43→    43→ * not with the user's binding id. Keying on concrete catches cycles whether
+    44→    44→ * the cycle enters via the user's bound id or via an autowired FQCN, and never
+    45→    45→ * stack-overflows. The full chain of [id, concrete] pairs is preserved on the
+    46→    46→ * exception via getResolutionChain() for diagnostics.
+    47→    47→ */
+    48→    48→final class Container implements ContainerInterface, ContainerBuilderInterface
+    49→    49→{
+    50→    50→    /** @var array<string, ServiceDefinition> */
+    51→    51→    private array $definitions = [];
+    52→    52→
+    53→    53→    /** @var array<string, mixed> Worker-scoped instance cache (singleton + instance). */
+    54→    54→    private array $instances = [];
+    55→    55→
+    56→    56→    /**
+    57→    57→     * Pulse-scoped instance cache, keyed on the Fiber object itself.
+    58→    58→     *
+    59→    59→     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, mixed>>
+    60→    60→     *
+    61→    61→     * WeakMap<Fiber, array<string, mixed>> — when a Fiber is garbage-collected
+    62→    62→     * (Pulse completes), PHP automatically evicts the entire inner array for
+    63→    63→     * that Fiber. No manual cleanup, no scheduler coupling, no memory leak
+    64→    64→     * over a long-running FrankenPHP worker lifetime.
+    65→    65→     *
+    66→    66→     * Outside any Fiber context (main context), pulse-scoped bindings behave
+    67→    67→     * as transient — each make() call returns a fresh instance with no caching.
+    68→    68→     * This is intentional: pulse() is defined as per-Pulse, and the main context
+    69→    69→     * is not a Pulse.
+    70→    70→     */
+    71→    71→    private \WeakMap $pulseInstances;
+    72→    72→
+    73→    73→    /**
+    74→    74→     * Pulse-scoped definition table (Shape C), keyed on the Fiber object itself.
+    75→    75→     *
+    76→    76→     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, ServiceDefinition>>
+    77→    77→     *
+    78→    78→     * Holds the per-Fiber pulse() bindings. Each pulse($id, $value) call writes
+    79→    79→     * a ServiceDefinition into the CURRENT Fiber's bucket only — never into the
+    80→    80→     * global $definitions array. make() consults this table FIRST (before the
+    81→    81→     * worker-scoped $instances cache) so per-Pulse value bindings shadow
+    82→    82→     * worker-scoped singletons for the current Fiber.
+    83→    83→     *
+    84→    84→     * WeakMap<Fiber, ...> — when a Fiber is garbage-collected (Pulse completes),
+    85→    85→     * PHP automatically evicts that Fiber's entire pulse binding table. This is
+    86→    86→     * the structural guarantee that per-Pulse state never leaks to a subsequent
+    87→    87→     * Pulse on the same worker (S-003/S-004 remediation).
+    88→    88→     *
+    89→    89→     * pulse() requires a current Fiber: calling it from the main (non-Fiber)
+    90→    90→     * context throws {@see ContainerException} — there is no Pulse to bind to.
+    91→    91→     */
+    92→    92→    /**
+    93→    93→     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array<string, ServiceDefinition>>
+    94→    94→     */
+    95→    95→    private \WeakMap $pulseDefinitions;
+    96→    96→
+    97→    97→    /**
+    98→    98→     * Per-Fiber cycle-detection state, keyed on the Fiber object itself.
+    99→    99→     *
+   100→   100→     * Under ADR-017's cooperative scheduler (Fibers), cycle detection MUST be
+   101→   101→     * per-Fiber — otherwise a constructor that calls Fiber::suspend() leaves
+   102→   102→     * the cycle stack populated, and any other Fiber resolving the same id
+   103→   103→     * spuriously throws CircularDependencyException.
+   104→   104→     *
+   105→   105→     * WeakMap<Fiber, ...> — when a Fiber is garbage-collected, PHP
+   106→   106→     * automatically evicts its cycle-detection state. Mirrors $pulseInstances
+   107→   107→     * (same rationale, same P2 fix — this was previously a plain
+   108→   108→     * `array<int, ...>` keyed on spl_object_id($fiber), which worked but
+   109→   109→     * never evicted stale entries for long-dead Fibers over a worker's
+   110→   110→     * lifetime).
+   111→   111→     *
+   112→   112→     * @var \WeakMap<\Fiber<mixed, mixed, mixed, mixed>, array{resolving: array<string, true>, chain: list<array{0: string, 1: mixed}>}>
+   113→   113→     */
+   114→   114→    private \WeakMap $fiberResolving;
+   115→   115→
+   116→   116→    /**
+   117→   117→     * Cycle-detection state for the main (non-Fiber) context.
+   118→   118→     *
+   119→   119→     * WeakMap requires an object key, so the main context — which has no
+   120→   120→     * Fiber to key on — is tracked separately here instead of the old
+   121→   121→     * "fiberId 0" bucket inside the array.
+   122→   122→     *
+   123→   123→     * @var array<string, true>
+   124→   124→     */
+   125→   125→    private array $mainResolving = [];
+   126→   126→
+   127→   127→    /** @var list<array{0: string, 1: mixed}> */
+   128→   128→    private array $mainResolvingChain = [];
+   129→   129→
+   130→   130→    /** @var list<CompilerPassInterface> */
+   131→   131→    private array $compilerPasses = [];
+   132→   132→
+   133→   133→    private bool $compiled = false;
+   134→   134→
+   135→   135→    public function __construct()
+   136→   136→    {
+   137→   137→        $this->pulseInstances = new \WeakMap();
+   138→   138→        $this->pulseDefinitions = new \WeakMap();
+   139→   139→        $this->fiberResolving = new \WeakMap();
+   140→   140→    }
+   141→   141→
+   142→   142→    public function bind(string $id, mixed $concrete = null, bool $singleton = false): void
+   143→   143→    {
+   144→   144→        $this->assertNotCompiled();
+   145→   145→
+   146→   146→        $concrete ??= $id;
+   147→   147→
+   148→   148→        $this->definitions[$id] = new ServiceDefinition(
+   149→   149→            abstract: $id,
+   150→   150→            concrete: $concrete,
+   151→   151→            shared: $singleton,
+   152→   152→            tags: [],
+   153→   153→        );
+   154→   154→
+   155→   155→        // Invalidate cached instance — re-binding must not return stale.
+   156→   156→        unset($this->instances[$id]);
+   157→   157→        $this->invalidatePulseInstances($id);
+   158→   158→    }
+   159→   159→
+   160→   160→    public function singleton(string $id, mixed $concrete = null): void
+   161→   161→    {
+   162→   162→        $this->bind($id, $concrete, true);
+   163→   163→    }
+   164→   164→
+   165→   165→    public function pulse(string $id, mixed $concrete = null): void
+   166→   166→    {
+   167→   167→        $this->assertNotCompiled();
+   168→   168→
+   169→   169→        // Shape C: pulse() is a request-time, Fiber-local value-binding
+   170→   170→        // operation. It requires a current Fiber — there is no Pulse scope
+   171→   171→        // to bind to from the main (non-Fiber) context. Per CORE-02 edge
+   172→   172→        // case #1, this throws ContainerException (NOT LogicException, which
+   173→   173→        // is reserved for the compiled-container guard above).
+   174→   174→        /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
+   175→   175→        $fiber = \Fiber::getCurrent();
+   176→   176→        if ($fiber === null) {
+   177→   177→            throw new ContainerException(
+   178→   178→                'pulse() requires a current Fiber context — it binds a value to '
+   179→   179→                . 'the current Pulse scope. Called from the main (non-Fiber) context. '
+   180→   180→                . 'Use bind() or singleton() for boot-time registration.'
+   181→   181→            );
+   182→   182→        }
+   183→   183→
+   184→   184→        $concrete ??= $id;
+   185→   185→
+   186→   186→        // Write the definition into the CURRENT Fiber's pulse binding table,
+   187→   187→        // NOT the global $definitions array. Per-Pulse state must never leak
+   188→   188→        // across Fiber boundaries (S-003/S-004 remediation, CORE-02 Shape C).
+   189→   189→        // Initialize the inner array on first write to this Fiber — avoids
+   190→   190→        // "cannot assign offset to null" and the mixed-type inference
+   191→   191→        // ambiguity on chained WeakMap[$fiber][$id] = $def.
+   192→   192→        if (!isset($this->pulseDefinitions[$fiber])) {
+   193→   193→            $this->pulseDefinitions[$fiber] = [];
+   194→   194→        }
+   195→   195→        $this->pulseDefinitions[$fiber][$id] = new ServiceDefinition(
+   196→   196→            abstract: $id,
+   197→   197→            concrete: $concrete,
+   198→   198→            shared: false,
+   199→   199→            pulseScoped: true,
+   200→   200→            tags: [],
+   201→   201→        );
+   202→   202→
+   203→   203→        // Invalidate the cached pulse instance for THIS ID in the CURRENT
+   204→   204→        // Fiber only — re-binding must not return the stale cached object.
+   205→   205→        // Per CORE-02 edge case #11: invalidation is Fiber-local; other
+   206→   206→        // Fibers' cached pulse instances (if any) are untouched.
+   207→   207→        $this->invalidateCurrentFiberPulseInstance($fiber, $id);
+   208→   208→    }
+   209→   209→
+   210→   210→    public function instance(string $id, object $instance): void
+   211→   211→    {
+   212→   212→        $this->assertNotCompiled();
+   213→   213→
+   214→   214→        $this->instances[$id] = $instance;
+   215→   215→        $this->definitions[$id] = new ServiceDefinition(
+   216→   216→            abstract: $id,
+   217→   217→            concrete: $instance,
+   218→   218→            shared: true,
+   219→   219→            tags: [],
+   220→   220→        );
+   221→   221→        $this->invalidatePulseInstances($id);
+   222→   222→    }
+   223→   223→
+   224→   224→    public function make(string $id, array $parameters = []): mixed
+   225→   225→    {
+   226→   226→        // 0. Pulse-scoped definitions for the CURRENT Fiber (Shape C).
+   227→   227→        //    Per CORE-02 make() precedence step 1: the current Fiber's pulse
+   228→   228→        //    bindings shadow EVERYTHING ELSE (singletons, global definitions).
+   229→   229→        //    The pulse definition's concrete value IS the instance for non-
+   230→   230→        //    Closure values; Closures are invoked with ($container, $parameters);
+   231→   231→        //    class-strings fall through to normal resolution (steps 2+).
+   232→   232→        /** @var \Fiber<mixed, mixed, mixed, mixed>|null $pulseFiber */
+   233→   233→        $pulseFiber = \Fiber::getCurrent();
+   234→   234→        if ($pulseFiber !== null && isset($this->pulseDefinitions[$pulseFiber][$id])) {
+   235→   235→            // Cached resolved pulse instance for this Fiber — short-circuit.
+   236→   236→            if (isset($this->pulseInstances[$pulseFiber][$id])) {
+   237→   237→                return $this->pulseInstances[$pulseFiber][$id];
+   238→   238→            }
+   239→   239→
+   240→   240→            $pulseConcrete = $this->pulseDefinitions[$pulseFiber][$id]->concrete;
+   241→   241→
+   242→   242→            // Non-Closure object — the value IS the instance. Cache and return.
+   243→   243→            if (is_object($pulseConcrete) && !($pulseConcrete instanceof \Closure)) {
+   244→   244→                if (!isset($this->pulseInstances[$pulseFiber])) {
+   245→   245→                    $this->pulseInstances[$pulseFiber] = [];
+   246→   246→                }
+   247→   247→                $this->pulseInstances[$pulseFiber][$id] = $pulseConcrete;
+   248→   248→                return $pulseConcrete;
+   249→   249→            }
+   250→   250→
+   251→   251→            // Closure — invoke with ($container, $parameters), cache, return.
+   252→   252→            if ($pulseConcrete instanceof \Closure) {
+   253→   253→                $object = $pulseConcrete($this, $parameters);
+   254→   254→                if (!isset($this->pulseInstances[$pulseFiber])) {
+   255→   255→                    $this->pulseInstances[$pulseFiber] = [];
+   256→   256→                }
+   257→   257→                $this->pulseInstances[$pulseFiber][$id] = $object;
+   258→   258→                return $object;
+   259→   259→            }
+   260→   260→
+   261→   261→            // Class-string — fall through to normal resolution below.
+   262→   262→            // (step 1b / step 2+ will resolve it via autowire and the step-8b
+   263→   263→            // pulseScoped cache will store it in $pulseInstances[$pulseFiber].)
+   264→   264→            // No action here.
+   265→   265→        }
+   266→   266→
+   267→   267→        // 1. Resolved-instance cache (worker-scoped).
+   268→   268→        if (array_key_exists($id, $this->instances)) {
+   269→   269→            return $this->instances[$id];
+   270→   270→        }
+   271→   271→
+   272→   272→        // 1b. Pulse-scoped cache (one instance per Fiber/Pulse).
+   273→   273→        //     Uses WeakMap keyed on the Fiber object — auto-evicts on Fiber GC.
+   274→   274→        //     Outside any Fiber, pulse-scoped bindings are transient (no cache).
+   275→   275→        $definition = $this->definitions[$id] ?? null;
+   276→   276→        if ($definition !== null && $definition->pulseScoped) {
+   277→   277→            /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
+   278→   278→            $fiber = \Fiber::getCurrent();
+   279→   279→            if ($fiber !== null && isset($this->pulseInstances[$fiber][$id])) {
+   280→   280→                return $this->pulseInstances[$fiber][$id];
+   281→   281→            }
+   282→   282→        }
+   283→   283→
+   284→   284→        // 2. Resolve the concrete binding (fall back to $id when unbound, supporting
+   285→   285→        //    make(SomeClass::class) without an explicit bind() — see blueprint).
+   286→   286→        //    PHPStan strict rule: `?->concrete ?? $id` is redundant (`?->` already
+   287→   287→        //    handles null receiver; `??` is then equivalent). Use an explicit
+   288→   288→        //    null check so the access is plain `->`, which PHPStan accepts.
+   289→   289→        $concrete = $definition !== null ? $definition->concrete : $id;
+   290→   290→
+   291→   291→        // 3. Reject unresolvable ids before pushing onto the stack. If there is no
+   292→   292→        //    explicit definition AND $id is not a class-string, the caller asked for
+   293→   293→        //    something that cannot be constructed — throw NotFoundException rather
+   294→   294→        //    than returning the bare string (the old `default => $concrete` arm in
+   295→   295→        //    build() did that, violating the PSR-11 contract).
+   296→   296→        if ($definition === null && !(is_string($concrete) && class_exists($concrete))) {
+   297→   297→            throw new NotFoundException(
+   298→   298→                "No service registered for id [$id] and [$id] is not an instantiable class."
+   299→   299→            );
+   300→   300→        }
+   301→   301→
+   302→   302→        // 4. Cycle detection — keyed on the concrete class being built. Autowire
+   303→   303→        //    recurses by calling make() with class-string FQCNs (e.g. make(B::class)),
+   304→   304→        //    so keying on concrete catches cycles entered via autowire even when the
+   305→   305→        //    user's binding id differs from the FQCN. The chain returned on the
+   306→   306→        //    exception preserves the binding ids for diagnostics.
+   307→   307→        //    After the step-3 guard, $concrete is guaranteed to be either a class-string
+   308→   308→        //    (the autowire path) or an object (Closure or pre-built instance) — never
+   309→   309→        //    a primitive scalar. The is_object check narrows mixed to object for
+   310→   310→        //    spl_object_hash().
+   311→   311→        if (is_string($concrete)) {
+   312→   312→            $resolutionKey = $concrete;
+   313→   313→        } elseif (is_object($concrete)) {
+   314→   314→            $resolutionKey = spl_object_hash($concrete);
+   315→   315→        } else {
+   316→   316→            // Unreachable after the step-3 guard: if $definition is non-null,
+   317→   317→            // $concrete came from $definition->concrete (Closure|object|class-string
+   318→   318→            // per ServiceDefinition docblock); if $definition is null, step 3
+   319→   319→            // required $concrete to be a class-string. Throwing here is a defensive
+   320→   320→            // invariant — if it ever fires, a new ServiceDefinition concrete type
+   321→   321→            // was introduced without updating this dispatch.
+   322→   322→            throw new \LogicException(
+   323→   323→                'Unreachable: $concrete is neither string nor object after step-3 guard. '
+   324→   324→                . 'Got type: ' . get_debug_type($concrete)
+   325→   325→            );
+   326→   326→        }
+   327→   327→
+   328→   328→        // Per-Fiber cycle detection (ADR-017 Fiber safety fix), via WeakMap.
+   329→   329→        // Outside any Fiber, fall back to the dedicated main-context state —
+   330→   330→        // WeakMap cannot be keyed on "no Fiber".
+   331→   331→        /** @var \Fiber<mixed, mixed, mixed, mixed>|null $cycleFiber */
+   332→   332→        $cycleFiber = \Fiber::getCurrent();
+   333→   333→        if ($cycleFiber !== null) {
+   334→   334→            if (!isset($this->fiberResolving[$cycleFiber])) {
+   335→   335→                $this->fiberResolving[$cycleFiber] = ['resolving' => [], 'chain' => []];
+   336→   336→            }
+   337→   337→            $resolving = &$this->fiberResolving[$cycleFiber]['resolving'];
+   338→   338→            $resolvingChain = &$this->fiberResolving[$cycleFiber]['chain'];
+   339→   339→        } else {
+   340→   340→            $resolving = &$this->mainResolving;
+   341→   341→            $resolvingChain = &$this->mainResolvingChain;
+   342→   342→        }
+   343→   343→
+   344→   344→        if (isset($resolving[$resolutionKey])) {
+   345→   345→            $chain = array_map(
+   346→   346→                static fn(array $pair) => $pair[0],
+   347→   347→                $resolvingChain,
+   348→   348→            );
+   349→   349→            $chain[] = $id;
+   350→   350→            throw CircularDependencyException::fromChain($chain);
+   351→   351→        }
+   352→   352→
+   353→   353→        // 5. Push onto both the cycle-detection set and the chain.
+   354→   354→        $resolving[$resolutionKey] = true;
+   355→   355→        $resolvingChain[] = [$id, $concrete];
+   356→   356→
+   357→   357→        try {
+   358→   358→            // 6. Build by concrete type.
+   359→   359→            $object = $this->build($concrete, $parameters);
+   360→   360→        } finally {
+   361→   361→            // 7. Always pop, even on exception — no state leak (Security Property #3).
+   362→   362→            unset($resolving[$resolutionKey]);
+   363→   363→            array_pop($resolvingChain);
+   364→   364→        }
+   365→   365→
+   366→   366→        // 8. Cache shared singletons (worker-scoped).
+   367→   367→        if ($definition !== null && $definition->shared) {
+   368→   368→            $this->instances[$id] = $object;
+   369→   369→        }
+   370→   370→
+   371→   371→        // 8b. Cache pulse-scoped instances (per-Fiber, via WeakMap).
+   372→   372→        if ($definition !== null && $definition->pulseScoped) {
+   373→   373→            /** @var \Fiber<mixed, mixed, mixed, mixed>|null $fiber */
+   374→   374→            $fiber = \Fiber::getCurrent();
+   375→   375→            if ($fiber !== null) {
+   376→   376→                // Initialize the inner array on first write to this Fiber —
+   377→   377→                // avoids "cannot assign offset to null" and the mixed-type
+   378→   378→                // inference ambiguity on chained WeakMap[$fiber][$id] = $obj.
+   379→   379→                if (!isset($this->pulseInstances[$fiber])) {
+   380→   380→                    $this->pulseInstances[$fiber] = [];
+   381→   381→                }
+   382→   382→                $this->pulseInstances[$fiber][$id] = $object;
+   383→   383→            }
+   384→   384→        }
+   385→   385→
+   386→   386→        return $object;
+   387→   387→    }
+   388→   388→
+   389→   389→    /**
+   390→   390→     * PSR-11 get(): throws NotFoundException on unknown ids.
+   391→   391→     *
+   392→   392→     * SECURITY: has() returns true for any autoloadable class (via class_exists()),
+   393→   393→     * so get() CAN autowire arbitrary class-strings that haven't been explicitly
+   394→   394→     * bound. This is the PSR-11 "auto-resolution" behavior — it's intentional for
+   395→   395→     * developer convenience (controllers, listeners, etc.) but callers MUST NOT
+   396→   396→     * pass untrusted user input as $id to get()/has()/make(), as this would allow
+   397→   397→     * instantiation of arbitrary autoloadable classes.
+   398→   398→     *
+   399→   399→     * @param string $id Service identifier or class-string. MUST NOT be user input.
+   400→   400→     * @return mixed The resolved service instance.
+   401→   401→     * @throws NotFoundException If $id is not bound, not pre-instantiated, and not an autoloadable class.
+   402→   402→     */
+   403→   403→    public function get(string $id): mixed
+   404→   404→    {
+   405→   405→        if (!$this->has($id)) {
+   406→   406→            throw new NotFoundException("No service registered for id [$id].");
+   407→   407→        }
+   408→   408→
+   409→   409→        return $this->make($id);
+   410→   410→    }
+   411→   411→
+   412→   412→    /**
+   413→   413→     * PSR-11 has(): true if the id is bound, pre-instantiated, or
+   414→   414→     * refers to an autoloadable class (the latter supports autowiring
+   415→   415→     * of unregistered class-strings via make()).
+   416→   416→     */
+   417→   417→    public function has(string $id): bool
+   418→   418→    {
+   419→   419→        return array_key_exists($id, $this->instances)
+   420→   420→            || array_key_exists($id, $this->definitions)
+   421→   421→            || class_exists($id);
+   422→   422→    }
+   423→   423→
+   424→   424→    public function addCompilerPass(CompilerPassInterface $pass): void
+   425→   425→    {
+   426→   426→        $this->assertNotCompiled();
+   427→   427→        $this->compilerPasses[] = $pass;
+   428→   428→    }
+   429→   429→
+   430→   430→    public function compile(): void
+   431→   431→    {
+   432→   432→        // Idempotent: a second call is a no-op.
+   433→   433→        if ($this->compiled) {
+   434→   434→            return;
+   435→   435→        }
+   436→   436→
+   437→   437→        foreach ($this->compilerPasses as $pass) {
+   438→   438→            $pass->process($this);
+   439→   439→        }
+   440→   440→
+   441→   441→        $this->compiled = true;
+   442→   442→    }
+   443→   443→
+   444→   444→    // ----- ContainerBuilderInterface -----
+   445→   445→
+   446→   446→    public function getDefinitions(): array
+   447→   447→    {
+   448→   448→        return $this->definitions;
+   449→   449→    }
+   450→   450→
+   451→   451→    public function getDefinition(string $id): ServiceDefinition
+   452→   452→    {
+   453→   453→        if (!array_key_exists($id, $this->definitions)) {
+   454→   454→            throw new NotFoundException("No definition registered for id [$id].");
+   455→   455→        }
+   456→   456→
+   457→   457→        return $this->definitions[$id];
+   458→   458→    }
+   459→   459→
+   460→   460→    public function hasDefinition(string $id): bool
+   461→   461→    {
+   462→   462→        return array_key_exists($id, $this->definitions);
+   463→   463→    }
+   464→   464→
+   465→   465→    // ----- Internals -----
+   466→   466→
+   467→   467→    /**
+   468→   468→     * Guard: mutation methods must not run after compile().
+   469→   469→     */
+   470→   470→    private function assertNotCompiled(): void
+   471→   471→    {
+   472→   472→        if ($this->compiled) {
+   473→   473→            throw new \LogicException(
+   474→   474→                'Cannot modify the container after it has been compiled.'
+   475→   475→            );
+   476→   476→        }
+   477→   477→    }
+   478→   478→
+   479→   479→    /**
+   480→   480→     * Purge any pulse-scoped cached instance for $id across every live Fiber.
+   481→   481→     *
+   482→   482→     * bind()/pulse() already invalidate $instances[$id] on rebind; this is
+   483→   483→     * the equivalent for $pulseInstances. WeakMap does not support a direct
+   484→   484→     * nested unset() — `unset($this->pulseInstances[$fiber][$id])` silently
+   485→   485→     * no-ops (PHP raises "Indirect modification of overloaded element of
+   486→   486→     * WeakMap has no effect" and leaves the entry in place) — so each
+   487→   487→     * Fiber's inner array must be read out, modified, and written back.
+   488→   488→     */
+   489→   489→    private function invalidatePulseInstances(string $id): void
+   490→   490→    {
+   491→   491→        /** @var \Fiber<mixed, mixed, mixed, mixed> $fiber */
+   492→   492→        foreach ($this->pulseInstances as $fiber => $cached) {
+   493→   493→            if (array_key_exists($id, $cached)) {
+   494→   494→                unset($cached[$id]);
+   495→   495→                $this->pulseInstances[$fiber] = $cached;
+   496→   496→            }
+   497→   497→        }
+   498→   498→    }
+   499→   499→
+   500→   500→    /**
+   501→   501→     * Purge the cached pulse instance for $id in the CURRENT Fiber only.
+   502→   502→     *
+   503→   503→     * Called by {@see pulse()} when a new value is bound for the current
+   504→   504→     * Pulse — the previously-cached object (if any) is stale and must not
+   505→   505→     * be returned by the next make() in this Fiber.
+   506→   506→     *
+   507→   507→     * Per CORE-02 edge case #11: invalidation is Fiber-local. Other Fibers'
+   508→   508→     * cached pulse instances (if any) are NOT touched — they hold their OWN
+   509→   509→     * pulse values, which are independent by the Fiber-isolation invariant.
+   510→   510→     *
+   511→   511→     * WeakMap does not support a direct nested unset() —
+   512→   512→     * `unset($this->pulseInstances[$fiber][$id])` silently no-ops (PHP raises
+   513→   513→     * "Indirect modification of overloaded element of WeakMap has no effect"
+   514→   514→     * and leaves the entry in place) — so the inner array must be read out,
+   515→   515→     * modified, and written back. Mirrors invalidatePulseInstances() but
+   516→   516→     * scoped to a single Fiber.
+   517→   517→     */
+   518→   518→    /**
+   519→   519→     * @param \Fiber<mixed, mixed, mixed, mixed> $fiber
+   520→   520→     */
+   521→   521→    private function invalidateCurrentFiberPulseInstance(\Fiber $fiber, string $id): void
+   522→   522→    {
+   523→   523→        if (!isset($this->pulseInstances[$fiber])) {
+   524→   524→            return;
+   525→   525→        }
+   526→   526→
+   527→   527→        $cached = $this->pulseInstances[$fiber];
+   528→   528→        if (array_key_exists($id, $cached)) {
+   529→   529→            unset($cached[$id]);
+   530→   530→            $this->pulseInstances[$fiber] = $cached;
+   531→   531→        }
+   532→   532→    }
+   533→   533→
+   534→   534→    /**
+   535→   535→     * Construct an instance from the concrete binding.
+   536→   536→     *
+   537→   537→     * Dispatches on the concrete's runtime type via a match expression:
+   538→   538→     *   - Closure              -> invoke with ($container, $parameters)
+   539→   539→     *   - object (non-Closure) -> return as-is (from instance() or bind($id, $obj))
+   540→   540→     *   - class-string         -> autowire via reflection
+   541→   541→     *   - interface-string     -> throw NotFoundException (must be bound to concrete)
+   542→   542→     *   - any other scalar     -> return as-is (primitive bindings from explicit bind())
+   543→   543→     *
+   544→   544→     * Note: the scalar arm is reachable ONLY via an explicit `bind('key', $scalar)`
+   545→   545→     * call — make() rejects unbound non-class strings before reaching build(), so
+   546→   546→     * this default arm cannot accidentally return an unbound id as a string.
+   547→   547→     *
+   548→   548→     * @throws NotFoundException If a class-string concrete does not exist.
+   549→   549→     * @param array<string, mixed> $parameters
+   550→   550→     */
+   551→   551→    private function build(mixed $concrete, array $parameters): mixed
+   552→   552→    {
+   553→   553→        return match (true) {
+   554→   554→            $concrete instanceof \Closure => $concrete($this, $parameters),
+   555→   555→            is_object($concrete) => $concrete,
+   556→   556→            is_string($concrete) && class_exists($concrete) => $this->autowire($concrete, $parameters),
+   557→   557→            is_string($concrete) && interface_exists($concrete) => throw new NotFoundException("Interface [$concrete] cannot be resolved directly; bind to a concrete implementation."),
+   558→   558→            default => $concrete, // primitive value from explicit bind('key', $scalar)
+   559→   559→        };
+   560→   560→    }
+   561→   561→
+   562→   562→    /**
+   563→   563→     * Reflective autowiring.
+   564→   564→     *
+   565→   565→     * For each constructor parameter (in declaration order):
+   566→   566→     *   1. If $parameters contains the parameter name -> use the supplied value.
+   567→   567→     *   2. Else if the parameter has a default -> use the default.
+   568→   568→     *   3. Else if the parameter has a class-string type hint -> recurse into make().
+   569→   569→     *   4. Else -> throw NotFoundException (cannot resolve primitive without default).
+   570→   570→     *
+   571→   571→     * Union types, intersection types, and `readonly` properties on the
+   572→   572→     * constructor are handled implicitly by ReflectionParameter: only
+   573→   573→     * {@see \ReflectionNamedType} with isBuiltin() = false is recursed;
+   574→   574→     * everything else falls through to the default-or-throw path.
+   575→   575→     * @param array<string, mixed> $parameters
+   576→   576→     */
+   577→   577→    private function autowire(string $class, array $parameters): object
+   578→   578→    {
+   579→   579→        /** @var class-string $class */
+   580→   580→        $reflection = new \ReflectionClass($class);
+   581→   581→
+   582→   582→        if (!$reflection->isInstantiable()) {
+   583→   583→            throw new NotFoundException(
+   584→   584→                "Class [$class] is not instantiable (abstract, interface, or trait)."
+   585→   585→            );
+   586→   586→        }
+   587→   587→
+   588→   588→        $constructor = $reflection->getConstructor();
+   589→   589→
+   590→   590→        if ($constructor === null) {
+   591→   591→            return new $class();
+   592→   592→        }
+   593→   593→
+   594→   594→        $arguments = [];
+   595→   595→
+   596→   596→        foreach ($constructor->getParameters() as $parameter) {
+   597→   597→            $name = $parameter->getName();
+   598→   598→
+   599→   599→            // 1. Caller-supplied override (by name, then by position).
+   600→   600→            if (array_key_exists($name, $parameters)) {
+   601→   601→                $arguments[] = $parameters[$name];
+   602→   602→                continue;
+   603→   603→            }
+   604→   604→
+   605→   605→            $position = $parameter->getPosition();
+   606→   606→            if (array_key_exists($position, $parameters)) {
+   607→   607→                $arguments[] = $parameters[$position];
+   608→   608→                continue;
+   609→   609→            }
+   610→   610→
+   611→   611→            // 2. Default value.
+   612→   612→            if ($parameter->isDefaultValueAvailable()) {
+   613→   613→                $arguments[] = $parameter->getDefaultValue();
+   614→   614→                continue;
+   615→   615→            }
+   616→   616→
+   617→   617→            // 3. Class-string type hint -> recurse (cycle detection applies).
+   618→   618→            $type = $parameter->getType();
+   619→   619→            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+   620→   620→                $className = $type->getName();
+   621→   621→                if (class_exists($className) || interface_exists($className)) {
+   622→   622→                    $arguments[] = $this->make($className);
+   623→   623→                    continue;
+   624→   624→                }
+   625→   625→            }
+   626→   626→
+   627→   627→            // 4. Unresolvable primitive.
+   628→   628→            throw new NotFoundException(
+   629→   629→                "Cannot resolve parameter [\$$name] of [$class]: no type hint, "
+   630→   630→                . "no default value, and no caller-supplied value."
+   631→   631→            );
+   632→   632→        }
+   633→   633→
+   634→   634→        return $reflection->newInstanceArgs($arguments);
+   635→   635→    }
+   636→   636→}

@@ -110,6 +110,76 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 
 ## Resolved
 
+### OD-12 — APIfy: turn capability contracts into APIs (RECORDED — implementation deferred)
+
+- **Fork:** Should DGLab have a Hub capability that turns existing application capability contracts into HTTP APIs? If so, should it be declarative (explicit API declarations) or automatic (reflection over PHP classes)?
+- **Decision:** **LOCKED** — APIfy is a new Hub capability (future HUB-33). Design ratified by SAAI + three independent AI reviews (2026-10-02). Implementation deferred until the first real API surface (Showcase/LMS) provides concrete operations.
+
+**Locked design principles:**
+
+1. **Declarative API exposure** — capabilities explicitly declare their API contract; APIfy does NOT automatically expose every public method via reflection
+2. **Explicit API declarations** — each exposed operation is an intentional, reviewable declaration (method, path, input DTO, output DTO, auth, exposure policy)
+3. **APIfy owns transport mechanics** — routing, request/response mapping, serialization, HTTP error mapping, API versioning, OpenAPI generation
+4. **APIfy does NOT own business authorization** — the underlying capability decides who may perform operations; APIfy owns exposure policy, not authorization policy
+5. **Public/private = exposure, not authorization** — public ≠ unauthenticated; private ≠ trusted; authentication ≠ authorization
+6. **Capabilities do NOT depend on APIfy** — APIfy depends on capability contracts; capabilities remain usable through HTTP, CLI, UI, jobs, or any other transport
+7. **APIfy is NOT a GodService** — it does not aggregate capabilities; it exposes them individually
+8. **API contract ≠ application contract** — they evolve for different reasons; APIfy performs the transport mapping between them
+
+**Ownership model:**
+
+| Concern | Owner |
+|---|---|
+| What the capability can do | Capability |
+| Domain invariants/state transitions | Domain |
+| Business authorization | Capability |
+| Who the caller is | Identity |
+| Whether an operation is API-exposed | APIfy |
+| HTTP method/path/version | APIfy |
+| Request → application command mapping | APIfy |
+| Response serialization | APIfy |
+| HTTP status/error envelope | APIfy |
+| Public/private API exposure | APIfy + deployment |
+| Authentication mechanism | Identity, wired by APIfy |
+| OpenAPI description | APIfy |
+| API version compatibility | APIfy |
+
+**Architectural boundary:**
+```
+API Consumer
+    │
+    ▼
+  APIfy (Hub capability)
+  ├── API Contract declarations
+  ├── Routing
+  ├── HTTP message handling
+  ├── Auth wiring (delegates to Identity)
+  ├── DTO mapping
+  ├── Serialization
+  ├── Error envelope
+  ├── API versioning
+  └── OpenAPI generation
+    │
+    ▼
+Capability Application Contract
+  (Identity / Showcase / LMS / future)
+    │
+    ▼
+  Core infrastructure
+```
+
+**What APIfy must NOT become:**
+- A platform façade ($api->createProduct(), $api->createCourse()...)
+- A second authorization system
+- A dependency for capabilities to function
+- A CRUD-only framework (operations like publishProduct(), enroll(), recordProgress() are valid API operations)
+
+**Implementation trigger:** Deferred until Showcase or LMS provides enough concrete operations to design the declaration format from actual use rather than prematurely inventing a generic DSL.
+
+- **Owner:** Architecture lead (DGCI)
+- **Decision route:** Recorded here as OD-12. Will become ADR-022 when implementation begins. HUB-33 blueprint (depth 1, canonical) will be published at that time.
+
+
 ### OD-01 — HUB-31 (Real-Time Analytics & Metrics Ledger): accepted as full Hub tier
 - **Decision:** Accept `ADR-011` as-is. HUB-31 promoted from Proposed to accepted.
 - **Action:** `INDEX.md` updated — HUB-31 added to Hub tier table; count updated to 97 blueprints.
