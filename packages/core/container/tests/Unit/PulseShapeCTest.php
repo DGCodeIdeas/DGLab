@@ -136,6 +136,7 @@ final class PulseShapeCTest extends TestCase
             return new stdClass();
         };
 
+        /** @var ContainerException|null $caught */
         $caught = null;
         $fiber = new Fiber(function () use ($container, $factory, &$caught): void {
             try {
@@ -269,6 +270,7 @@ final class PulseShapeCTest extends TestCase
                 $caught = $e;
             }
         });
+        /** @var ContainerException|null $caught */
         $caught = null;
 
         $injector = new Fiber(function () use ($container, $consumerFiber): void {

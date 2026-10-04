@@ -101,6 +101,7 @@ interface ContainerInterface extends PsrContainerInterface
      *                            overrides. Named keys match parameter names;
      *                            integer keys match parameter position.
      *
+     * @throws ContainerException If invalid Pulse state is encountered (Shape C fail-closed).
      * @return mixed The resolved service instance.
      *
      * @throws CircularDependencyException If $id is part of a resolution cycle.
