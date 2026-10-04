@@ -48,19 +48,32 @@ interface ContainerInterface extends PsrContainerInterface
     /**
      * Register a Pulse-scoped binding — one instance per Fiber (per Pulse).
      *
-     * When a Pulse resolves this service, it receives a fresh instance that is
-     * cached for the duration of that Pulse only. A different Pulse (even in the
-     * same worker, even concurrently) receives its own independent instance.
+     * Shape C contract (A3-C revised, S-048):
+     *   pulse() accepts materialized values literally. Objects and scalar
+     *   values — including strings — are bound literally to the current
+     *   Fiber. Closures are rejected because they are executable factories.
+     *   pulse() never performs dependency resolution.
      *
-     * This is the correct scope for tenant-scoped services (repositories, unit-
-     * of-work, request context) under the Fiber-based cooperative runtime (OD-07).
+     * When a Pulse resolves this service, it receives the bound value as-is,
+     * cached for the duration of that Pulse only. A different Pulse (even in
+     * the same worker, even concurrently) receives its own independent
+     * binding (or falls through to global definitions if it never bound
+     * one for itself).
+     *
+     * This is the correct scope for tenant-scoped services (repositories,
+     * unit-of-work, request context) under the Fiber-based cooperative
+     * runtime (OD-07).
      *
      * @param string $id       The service identifier.
-     * @param mixed  $concrete The concrete resolver (same types as {@see bind()}).
+     * @param mixed  $concrete The materialized value to bind literally. Required.
+     *                         Closures are NOT accepted (use bind() or
+     *                         singleton() for factory registration).
      *
-     * @throws \LogicException If the container has already been compiled.
+     * @throws \LogicException    If the container has already been compiled.
+     * @throws ContainerException If called outside a Fiber context, or if
+     *                            $concrete is a Closure.
      */
-    public function pulse(string $id, mixed $concrete = null): void;
+    public function pulse(string $id, mixed $concrete): void;
 
     /**
      * Register a pre-built object instance as a shared binding.

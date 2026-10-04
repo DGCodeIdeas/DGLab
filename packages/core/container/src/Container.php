@@ -162,7 +162,33 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         $this->bind($id, $concrete, true);
     }
 
-    public function pulse(string $id, mixed $concrete = null): void
+    /**
+     * Register a Pulse-scoped binding — one instance per Fiber (per Pulse).
+     *
+     * Shape C contract (A3-C revised, S-048):
+     *   pulse() accepts materialized values literally. Objects and scalar
+     *   values — including strings — are bound literally to the current Fiber.
+     *   Closures are rejected because they are executable factories.
+     *   pulse() never performs dependency resolution. Invalid Pulse state
+     *   fails closed and never falls through to global definitions.
+     *
+     * Specifically:
+     *   - $concrete is REQUIRED (no default; no fallthrough to $id).
+     *   - Strings are literal values — no class_exists() check, no class-string
+     *     interpretation.
+     *   - Closures throw ContainerException (use bind() or singleton() for
+     *     factory registration).
+     *   - All other values (objects, strings, ints, floats, bools, null,
+     *     arrays) are bound literally to the current Fiber's pulse table.
+     *
+     * @param string $id       The service identifier.
+     * @param mixed  $concrete The materialized value to bind literally. Required.
+     *
+     * @throws \LogicException       If the container has already been compiled.
+     * @throws ContainerException    If called outside a Fiber, or if $concrete
+     *                               is a Closure.
+     */
+    public function pulse(string $id, mixed $concrete): void
     {
         $this->assertNotCompiled();
 
@@ -181,7 +207,16 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
             );
         }
 
-        $concrete ??= $id;
+        // Shape C: Closures are factories, not materialized values. Reject them
+        // explicitly — pulse() accepts only values that are the instance, not
+        // factories that produce the instance. Use bind()/singleton() for
+        // factory registration.
+        if ($concrete instanceof \Closure) {
+            throw new ContainerException(
+                'pulse() accepts materialized values only; Closures are factories. '
+                . 'Use bind() or singleton() for factory registration.'
+            );
+        }
 
         // Write the definition into the CURRENT Fiber's pulse binding table,
         // NOT the global $definitions array. Per-Pulse state must never leak
@@ -189,6 +224,10 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         // Initialize the inner array on first write to this Fiber — avoids
         // "cannot assign offset to null" and the mixed-type inference
         // ambiguity on chained WeakMap[$fiber][$id] = $def.
+        //
+        // All non-Closure values are stored literally — objects, strings,
+        // scalars, null, arrays. make() returns them as-is (Shape C: the
+        // value IS the instance).
         if (!isset($this->pulseDefinitions[$fiber])) {
             $this->pulseDefinitions[$fiber] = [];
         }
@@ -226,42 +265,39 @@ final class Container implements ContainerInterface, ContainerBuilderInterface
         // 0. Pulse-scoped definitions for the CURRENT Fiber (Shape C).
         //    Per CORE-02 make() precedence step 1: the current Fiber's pulse
         //    bindings shadow EVERYTHING ELSE (singletons, global definitions).
-        //    The pulse definition's concrete value IS the instance for non-
-        //    Closure values; Closures are invoked with ($container, $parameters);
-        //    class-strings fall through to normal resolution (steps 2+).
+        //    Shape C: the value IS the instance. All non-Closure values
+        //    (objects, strings, scalars, null, arrays) are returned as-is and
+        //    cached per-Fiber. Closures should never reach here (pulse()
+        //    rejects them); an Invalid Pulse state fails closed and never
+        //    falls through to global definitions.
         /** @var \Fiber<mixed, mixed, mixed, mixed>|null $pulseFiber */
         $pulseFiber = \Fiber::getCurrent();
         if ($pulseFiber !== null && isset($this->pulseDefinitions[$pulseFiber][$id])) {
-            // Cached resolved pulse instance for this Fiber — short-circuit.
+            // Cached resolved pulse instance — short-circuit
             if (isset($this->pulseInstances[$pulseFiber][$id])) {
                 return $this->pulseInstances[$pulseFiber][$id];
             }
 
             $pulseConcrete = $this->pulseDefinitions[$pulseFiber][$id]->concrete;
 
-            // Non-Closure object — the value IS the instance. Cache and return.
-            if (is_object($pulseConcrete) && !($pulseConcrete instanceof \Closure)) {
-                if (!isset($this->pulseInstances[$pulseFiber])) {
-                    $this->pulseInstances[$pulseFiber] = [];
-                }
-                $this->pulseInstances[$pulseFiber][$id] = $pulseConcrete;
-                return $pulseConcrete;
-            }
-
-            // Closure — invoke with ($container, $parameters), cache, return.
+            // Shape C: the value IS the instance. Return it directly and cache it.
+            // This covers objects, strings, scalars, null, arrays — all literal values.
+            // Closures should never reach here (pulse() rejects them), but fail closed
+            // if somehow one does.
             if ($pulseConcrete instanceof \Closure) {
-                $object = $pulseConcrete($this, $parameters);
-                if (!isset($this->pulseInstances[$pulseFiber])) {
-                    $this->pulseInstances[$pulseFiber] = [];
-                }
-                $this->pulseInstances[$pulseFiber][$id] = $object;
-                return $object;
+                // This should never happen — pulse() rejects Closures. Fail closed.
+                throw new ContainerException(
+                    "Invalid Pulse state: Closure found in pulse definitions for [$id]. "
+                    . 'This indicates a contract violation — pulse() should have rejected this value.'
+                );
             }
 
-            // Class-string — fall through to normal resolution below.
-            // (step 1b / step 2+ will resolve it via autowire and the step-8b
-            // pulseScoped cache will store it in $pulseInstances[$pulseFiber].)
-            // No action here.
+            // All non-Closure values are bound literally — cache and return.
+            if (!isset($this->pulseInstances[$pulseFiber])) {
+                $this->pulseInstances[$pulseFiber] = [];
+            }
+            $this->pulseInstances[$pulseFiber][$id] = $pulseConcrete;
+            return $pulseConcrete;
         }
 
         // 1. Resolved-instance cache (worker-scoped).
