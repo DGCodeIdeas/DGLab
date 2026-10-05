@@ -106,10 +106,10 @@ V2 adds the explicit lifecycle ladder (sub-states within the broader lifecycle):
 
 | ID | Status | Verification gap | PR that closes gap |
 |---|---|---|---|
-| **S-001** | Fixed (PR #294) | Awaiting re-audit confirming `architecture-lint` still passes at HEAD | (re-audit pending) |
-| **S-002** | Fixed (PR #294) | Same as S-001 | (re-audit pending) |
-| **S-003** | Fixed (PR #301 + #303) | Verification condition (c) gap closed by PR #303 (creates `PulseFiberIsolationTest.php`); conditions (a), (b) verified by A3-RUNTIME-76; (d) CI green. Re-audit to confirm `PulseFiberIsolationTest.php` exists + passes pending | (re-audit pending) |
-| **S-004** | Fixed (PR #301 + #303) | Same as S-003 — blocked on S-003 closure per cross-reference table | (re-audit pending) |
+| **S-001** | Verified (PR #294) | Awaiting re-audit confirming `architecture-lint` still passes at HEAD | (re-audit pending) |
+| **S-002** | Verified (PR #294) | Same as S-001 | (re-audit pending) |
+| **S-003** | Verified (PR #301 + #303) | Verification condition (c) gap closed by PR #303 (creates `PulseFiberIsolationTest.php`); conditions (a), (b) verified by A3-RUNTIME-76; (d) CI green. Re-audit to confirm `PulseFiberIsolationTest.php` exists + passes pending | (re-audit pending) |
+| **S-004** | Verified (PR #301 + #303) | Same as S-003 — blocked on S-003 closure per cross-reference table | (re-audit pending) |
 
 > **Note:** At audit time (HEAD `200479e`, post-A2 pre-PR-303), S-003/S-004 verification condition (c) was UNMET per A3-RUNTIME-76 finding S-054. PR #303 (per the runtime report's recommended remediation #1) creates the missing test file, closing the gap. S-003/S-004 remain `Fixed` (not `Verified`) until a re-audit confirms.
 
