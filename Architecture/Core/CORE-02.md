@@ -249,8 +249,9 @@ interface ContainerInterface extends PsrContainerInterface
      * only the definitions table is missing the per-Fiber scoping.
      *
      * @param string $id       The service identifier.
-     * @param mixed  $concrete The concrete VALUE to bind to the current Fiber's Pulse scope.
-     *                          This IS the instance returned by `make($id)` — not a factory.
+     * @param mixed  $concrete The literal value to bind to the current Fiber's Pulse scope.
+     *                          This IS the instance returned by `make($id)` — not a factory. Accepts objects,
+     *                          strings, scalars, null, and arrays. Closures are rejected.
      *
      * @throws \LogicException If the container has already been compiled.
      * @throws \SovereignStack\Core\Container\ContainerException If called outside a Fiber context.
