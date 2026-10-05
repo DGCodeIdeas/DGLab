@@ -80,7 +80,7 @@ interface PartnerIntegrationBridgeContract extends BoundaryContractInterface
 - **Isolation:** partner traffic isolated from standard public API traffic via dedicated `HUB-08`
   route groups.
 - **Retry Logic:** exponential backoff for failed deliveries using `HUB-10`'s dead-letter pattern (see
-  `HUB-10.md` → `docs/queue-patterns/dead-letter-handling.md`), not a bespoke retry mechanism.
+  `HUB-10.md` → `archive/pre-A3-audit/docs/queue-patterns/dead-letter-handling.md`), not a bespoke retry mechanism.
 
 ## Benchmark & Verification Methodology
 | Target | Method |

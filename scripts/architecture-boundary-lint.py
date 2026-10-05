@@ -185,7 +185,7 @@ def ring_for_path(file_path: Path) -> Optional[str]:
     for prefix, ring in PATH_RING_MAP:
         if rel.startswith(prefix):
             return ring
-    return None  # not in a tier we check (e.g., scripts/, anvil/, docs/)
+    return None  # not in a tier we check (e.g., scripts/, anvil/, archive/)
 
 
 # --- PHP `use` statement parsing --------------------------------------------
@@ -341,7 +341,7 @@ def scan_file(file_path: Path, result: ScanResult, allowlist: dict[str, set[str]
     """Scan a single PHP file for ring-boundary and service-locator violations."""
     source_ring = ring_for_path(file_path) or "external"
     if source_ring not in ALLOWED_TARGETS:
-        # Not a tier we check (e.g., scripts/, docs/)
+        # Not a tier we check (e.g., scripts/, archive/)
         return
 
     try:

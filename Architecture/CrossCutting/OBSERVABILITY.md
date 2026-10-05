@@ -296,7 +296,7 @@ Four dashboards are required for every DGLab deployment. Dashboard JSON is versi
 
 ## §6. Alert Rules
 
-Every alert below ships in `docs/observability/alerts/<alert-name>.yml` and is loaded by the Prometheus rule loader. Every alert has a runbook (placeholder URL until the runbook is written; the URL is part of the alert's annotations). Severity determines the routing: `critical` → PagerDuty; `warning` → Slack `#dglab-alerts`; `info` → daily email digest.
+Every alert below ships in `observability/alerts/<alert-name>.yml` and is loaded by the Prometheus rule loader. Every alert has a runbook (placeholder URL until the runbook is written; the URL is part of the alert's annotations). Severity determines the routing: `critical` → PagerDuty; `warning` → Slack `#dglab-alerts`; `info` → daily email digest.
 
 | Alert name | Expression | `for` | Severity | Runbook | Channel |
 |---|---|---|---|---|---|
@@ -520,15 +520,15 @@ Observability is not an afterthought bolted on at deploy time; it is verified in
 
 | Artifact | Path | Reviewed by |
 |---|---|---|
-| Dashboard JSON | `docs/observability/dashboards/<name>.json` | On-call engineer + service owner |
-| Alert rules | `docs/observability/alerts/<name>.yml` | On-call engineer + service owner |
-| Runbook stubs | `docs/observability/runbooks/<alert-name>.md` | On-call engineer (must exist before alert is enabled) |
-| Sampling config | `docs/observability/sampling.yaml` | On-call engineer |
+| Dashboard JSON | `observability/dashboards/<name>.json` | On-call engineer + service owner |
+| Alert rules | `observability/alerts/<name>.yml` | On-call engineer + service owner |
+| Runbook stubs | `observability/runbooks/<alert-name>.md` | On-call engineer (must exist before alert is enabled) |
+| Sampling config | `observability/sampling.yaml` | On-call engineer |
 | Audit schema migrations | `migrations/audit/<YYYYMMDDHHMMSS>_<desc>.sql` | Security officer + DBA |
 
 ### Alert silence windows
 
-Silencing an alert (e.g., during planned maintenance) is a **PR-reviewed operation**. The silence is declared in `docs/observability/silences/<name>.yml` with `start`, `end`, `reason`, `approver`, and `linkedChangeTicket`. DEPLOY-01 applies it to Alertmanager. Silences with `end - start > 24h` require security-officer co-approval for `BridgeViolationRate`, `JWTForgeryAttempt`, `AuditLogWriteFailure`, or `TenantConfigDrift` — these are compliance-relevant and may not be silenced casually.
+Silencing an alert (e.g., during planned maintenance) is a **PR-reviewed operation**. The silence is declared in `observability/silences/<name>.yml` with `start`, `end`, `reason`, `approver`, and `linkedChangeTicket`. DEPLOY-01 applies it to Alertmanager. Silences with `end - start > 24h` require security-officer co-approval for `BridgeViolationRate`, `JWTForgeryAttempt`, `AuditLogWriteFailure`, or `TenantConfigDrift` — these are compliance-relevant and may not be silenced casually.
 
 ### PR checklist (added to every PR template)
 

@@ -9,6 +9,8 @@ COPY . .
 # Expose the port Render expects
 EXPOSE 80
 
-# Serve the Architecture directory using PHP's built-in web server
-# This keeps the process alive and makes blueprints viewable
-CMD ["php", "-S", "0.0.0.0:80", "-t", "docs/architecture/origin"]
+# Serve the canonical Architecture directory using PHP's built-in web server.
+# Note: pre-A3, this CMD pointed at `docs/architecture/origin` (Vision A monolith, now archived at
+# `archive/docs/architecture/origin/`). Per correction #1 (docs/ tree archival), it now points at the
+# canonical `Architecture/` tree.
+CMD ["php", "-S", "0.0.0.0:80", "-t", "Architecture"]

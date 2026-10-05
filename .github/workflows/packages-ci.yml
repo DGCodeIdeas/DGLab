@@ -10,7 +10,7 @@ name: Packages CI
 #   - If YES → gate succeeds, test jobs run, suite reports success only if
 #              all matrix entries pass
 #
-# This allows docs-only PRs (Architecture/, docs/, README, etc.) to merge
+# This allows docs-only PRs (Architecture/, archive/, README, etc.) to merge
 # without waiting for a Packages CI run that would never trigger.
 # =============================================================================
 

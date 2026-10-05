@@ -31,17 +31,17 @@ Below are **21 findings**: 13 confirmed from the prior analysis (re-verified ind
 
 ### Finding 1 — Two Incompatible Architectures Share One Name
 **Severity:** 🟠 High
-**Evidence:** `docs/architecture/origin/**` (Vision A: PHP monolith "CMS Studio" with in-process Spokes) coexists with `docs/blueprints/**` (Vision B: ~50+ independently versioned polyrepo with mandatory `BRIDGE-01` boundary). No document in either tree states which is canonical.
+**Evidence:** `archive/docs/architecture/origin/**` (Vision A: PHP monolith "CMS Studio" with in-process Spokes, now archived) coexists with `archive/Arc/Blueprints/**` (Vision B: ~50+ independently versioned polyrepo with mandatory `BRIDGE-01` boundary, now superseded by `Architecture/`). No document in either archived tree states which is canonical — that declaration lives in `01_MASTER_INDEX.md` §1 (now `Architecture/INDEX.md`).
 
 **Impact:** A new developer reading `HUB_AND_SPOKE.md` first builds a mental model where Spokes are in-process PHP classes — the opposite of the polyrepo model that `orchestrator/` and `packages/core/` actually implement. Every downstream architectural decision (deployment, security boundary, testing strategy) diverges based on which vision is read first.
 
-**Resolution:** `01_MASTER_INDEX.md` §1 declares Vision B canonical and archives all of `docs/architecture/origin/**`. Governance Rule 4 forbids new work under the archived tree.
+**Resolution:** `01_MASTER_INDEX.md` §1 declares Vision B canonical and archives all of `archive/docs/architecture/origin/**` (originally `docs/architecture/origin/**`, pre-A3). Governance Rule 4 forbids new work under the archived tree.
 
 ---
 
 ### Finding 2 — Evaluation Layer Scored a Version of Core That No Longer Exists
 **Severity:** 🔴 Critical
-**Evidence:** `docs/evaluation/BLUEPRINT_RANKINGS.md` (line 53–72) assigns scores that match **zero** current files:
+**Evidence:** `archive/docs/evaluation/BLUEPRINT_RANKINGS.md` (line 53–72) assigns scores that match **zero** current files:
 
 | ID | Evaluation claims (June 1, 2026) | Actual file (verified 2026-08-04) |
 |---|---|---|
@@ -63,17 +63,17 @@ The evaluation's recommended implementation sequence (`CORE-01 → CORE-02 → C
 
 **Impact:** Any planning conversation that references the evaluation scores is reasoning about the wrong system. The "32-week timeline" derived from those scores is invalid.
 
-**Resolution:** `01_MASTER_INDEX.md` §2 is the authoritative ID→component table. `docs/evaluation/` is marked stale and must carry a "valid as of commit `<sha>`" header per Governance Rule 3.
+**Resolution:** `01_MASTER_INDEX.md` §2 is the authoritative ID→component table. `archive/docs/evaluation/` is marked stale and must carry a "valid as of commit `<sha>`" header per Governance Rule 3.
 
 ---
 
 ### Finding 3 — Live Cross-References Inside the "Approved" Set Are Wrong
 **Severity:** 🔴 Critical
-**Evidence:** `docs/blueprints/Spoke/Bridge/BRIDGE-01.md` (the self-rated 96/100 "architectural masterpiece") states under "Transitive Core Dependencies":
+**Evidence:** `archive/Arc/Blueprints/Spoke/Bridge/BRIDGE-01.md` (the self-rated 96/100 "architectural masterpiece") states under "Transitive Core Dependencies":
 
 > `CORE-09: Cryptography & Hashing (Payload Verification)`
 
-The actual `docs/blueprints/Core/CORE-09.md` (verified 2026-08-04) is titled **"PSR-3 Logging Service / Structured Logging Engine"**. The cryptography component is `CORE-16` ("Binary Encryption Envelope"). The single most security-critical document in the repository cites the wrong upstream dependency for its payload-verification logic.
+The actual `archive/Arc/Blueprints/Core/CORE-09.md` (verified 2026-08-04) is titled **"PSR-3 Logging Service / Structured Logging Engine"**. The cryptography component is `CORE-16` ("Binary Encryption Envelope"). The single most security-critical document in the repository cites the wrong upstream dependency for its payload-verification logic.
 
 Additional wrong references in the same `BRIDGE-01.md`:
 - `CORE-01: Polyrepo Orchestrator (Enforcement Logic)` — CORE-01 is the release-automation tool, not an enforcement-logic component. The Bridge's enforcement logic is its own; it does not call into Loom.
@@ -91,8 +91,8 @@ Additional wrong references in the same `BRIDGE-01.md`:
 
 | Version | Size | Content |
 |---|---|---|
-| Approved `docs/blueprints/Core/CORE-01.md` | 2,230 bytes | 5 prose sections, 1 Mermaid flowchart, zero interfaces, zero code |
-| Disapproved `docs/blueprints/disapproved/CORE-01.md` (per prior analysis) | ~7,600 bytes | `KernelInterface`, typed `Environment` enum, complete `ErrorHandler` class, boot-sequence sequence diagram, performance budgets tied to OPcache preload, 100%-path unit-test criteria |
+| Approved `archive/Arc/Blueprints/Core/CORE-01.md` | 2,230 bytes | 5 prose sections, 1 Mermaid flowchart, zero interfaces, zero code |
+| Disapproved `archive/Arc/Blueprints/disapproved/CORE-01.md` (per prior analysis) | ~7,600 bytes | `KernelInterface`, typed `Environment` enum, complete `ErrorHandler` class, boot-sequence sequence diagram, performance budgets tied to OPcache preload, 100%-path unit-test criteria |
 
 The same pattern holds across the disapproved set: the rejection rationale is a single boilerplate file (see Finding 12) stating "Varying from the original blueprints" — no per-file diff, no specific deviation cited.
 
@@ -104,7 +104,7 @@ The same pattern holds across the disapproved set: the rejection rationale is a 
 
 ### Finding 5 — Byte-For-Byte Duplicate Masquerading as Mobile Variant
 **Severity:** 🟡 Medium
-**Evidence:** `docs/architecture/origin/Sovereign_Stack_Blueprint/SOVEREIGN_STACK_MASTER.md` (~126 KB) and `docs/architecture/origin/Mobile_Optimized/SOVEREIGN_STACK_MASTER.md` (~123 KB) are near-identical. The `Mobile_Optimized/` directory name promises a mobile-tuned variant; it delivers none.
+**Evidence:** `archive/docs/architecture/origin/Sovereign_Stack_Blueprint/SOVEREIGN_STACK_MASTER.md` (~126 KB) and `archive/docs/architecture/origin/Mobile_Optimized/SOVEREIGN_STACK_MASTER.md` (~123 KB) are near-identical. The `Mobile_Optimized/` directory name promises a mobile-tuned variant; it delivers none.
 
 **Impact:** Wasted maintenance surface — any edit to one copy must be manually replicated to the other, and historically has not been. Also inflates repo size by ~123 KB.
 
@@ -115,10 +115,10 @@ The same pattern holds across the disapproved set: the rejection rationale is a 
 ### Finding 6 — Sibling Documents Contradict Completion Claims
 **Severity:** 🟡 Medium
 **Evidence:**
-- `docs/architecture/origin/PhasedBlueprints/README.md` marks **Nexus** as `✅ COMPLETED (CORE)`.
-- `docs/architecture/origin/PhasedBlueprints/ANALYSIS_REPORT.md` (same directory) states **Nexus is 40% complete**.
-- `docs/architecture/origin/ComponentBlueprints/README.md` marks **AdminPanel** as `✅ COMPLETED (LEGACY)`.
-- `docs/architecture/origin/ComponentBlueprints/DECOMMISSIONING_PLAN.md` (same folder) lists AdminPanel under components being actively decommissioned.
+- `archive/docs/architecture/origin/PhasedBlueprints/README.md` marks **Nexus** as `✅ COMPLETED (CORE)`.
+- `archive/docs/architecture/origin/PhasedBlueprints/ANALYSIS_REPORT.md` (same directory) states **Nexus is 40% complete**.
+- `archive/docs/architecture/origin/ComponentBlueprints/README.md` marks **AdminPanel** as `✅ COMPLETED (LEGACY)`.
+- `archive/docs/architecture/origin/ComponentBlueprints/DECOMMISSIONING_PLAN.md` (same folder) lists AdminPanel under components being actively decommissioned.
 
 Additionally, `ANALYSIS_REPORT.md` contains the literal unexpanded shell command `$(date)` as its "generated" timestamp — evidence the report was never actually run through a shell.
 
@@ -130,7 +130,7 @@ Additionally, `ANALYSIS_REPORT.md` contains the literal unexpanded shell command
 
 ### Finding 7 — The "81-Phase" Claim Doesn't Match Its Own Category Table
 **Severity:** 🟡 Medium
-**Evidence:** `docs/architecture/origin/PhasedBlueprints/README.md` claims "81 distinct phases." Its own category table sums to **99**:
+**Evidence:** `archive/docs/architecture/origin/PhasedBlueprints/README.md` claims "81 distinct phases." Its own category table sums to **99**:
 
 ```
 AuthService 5 + SuperPHP Engine 10 + Superpowers SPA 10 + DownloadService 5 + EventDispatcher 5
@@ -149,7 +149,7 @@ The `BLUEPRINT_RANKINGS.md` also references "81 services" as an operational-comp
 ### Finding 8 — The Tier Everything Depends On Has Zero Implementation
 **Severity:** 🔴 Critical
 **Evidence:**
-- `docs/hub-taxonomy/hub-blueprint-taxonomy.md` marks `CORE-02` (DI Container) as a direct dependency of: HUB-01, HUB-02, and transitively of every other Hub blueprint that resolves services through the container.
+- `archive/pre-A3-audit/docs/hub-taxonomy/hub-blueprint-taxonomy.md` marks `CORE-02` (DI Container) as a direct dependency of: HUB-01, HUB-02, and transitively of every other Hub blueprint that resolves services through the container.
 - `packages/core/container/composer.json` declares: *"CORE-02: PSR-11 compliant Dependency Injection Container with autowiring, compiler passes, and circular dependency detection."*
 - `packages/core/container/src/` contains **only `.gitkeep`** (0 bytes, verified 2026-08-04). No PHP files. No tests. No interfaces.
 - By contrast, `packages/core/event-dispatcher/src/` (CORE-03) has 8 real, tested PHP classes, and `orchestrator/src/` (CORE-01) has 4 real, tested PHP classes with a full PHPUnit suite.
@@ -165,8 +165,8 @@ No blueprint, roadmap, or evaluation document identifies this as the critical-pa
 ### Finding 9 — The Only "Deploy" Blueprint Doesn't Deploy the Application
 **Severity:** 🔴 Critical
 **Evidence:**
-- `docs/blueprints/Deploy/DEPLOY-01.md` (8,881 bytes) and the root-level `render.yaml` (164 bytes) describe exactly one thing: a free-tier Render web service serving the **Markdown documentation** over PHP's built-in development server.
-- The root-level `Dockerfile` (399 bytes) confirms this: `CMD ["php", "-S", "0.0.0.0:80", "-t", "docs/architecture/origin"]` — it serves the **legacy Vision A documentation directory**, not even the current `docs/blueprints/` directory.
+- `archive/Arc/Blueprints/Deploy/DEPLOY-01.md` (8,881 bytes) and the root-level `render.yaml` (164 bytes) describe exactly one thing: a free-tier Render web service serving the **Markdown documentation** over PHP's built-in development server.
+- The root-level `Dockerfile` (399 bytes) confirms this: `CMD ["php", "-S", "0.0.0.0:80", "-t", "docs/architecture/origin"]` — it serves the **legacy Vision A documentation directory**, not even the current `archive/Arc/Blueprints/` directory.
 - `docker-compose.yml` (292 bytes) contains only the comment *"Nothing here yet, but you can add your services and configurations as needed."*
 
 There is no blueprint for deploying Core services, ~30 Hub services, Internal/External Spokes, the Bridge, or any datastore (MySQL/Postgres, Redis, queue broker). There is no CI/CD pipeline definition, no image registry, no health-check aggregation, no secret-management strategy.
@@ -200,7 +200,7 @@ There is no blueprint for deploying Core services, ~30 Hub services, Internal/Ex
 
 ### Finding 11 — Solutions Document Was Never Merged Back
 **Severity:** 🟠 High
-**Evidence:** `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` (36,596 bytes) accurately identifies real gaps, including:
+**Evidence:** `archive/docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` (36,596 bytes) accurately identifies real gaps, including:
 - *"Only 15 of Planned Spokes Documented"*
 - *"Bridge Single Point of Failure; No Redundancy Strategy"*
 - *"Sparse Architectural Details for Cache (HUB-02) and Queue (HUB-11)"*
@@ -215,7 +215,7 @@ None of these fixes appear in the referenced blueprint files. HUB-02 remains a 2
 
 ### Finding 12 — 72 Rejected Blueprints Share One Boilerplate Reason
 **Severity:** 🟢 Low
-**Evidence:** `docs/blueprints/disapproved/` contains 74 entries (the prior analysis counted 72; the tree shows 74 — likely 2 README/index files plus 72 blueprint rejections). The entire rejection rationale is a single file:
+**Evidence:** `archive/Arc/Blueprints/disapproved/` contains 74 entries (the prior analysis counted 72; the tree shows 74 — likely 2 README/index files plus 72 blueprint rejections). The entire rejection rationale is a single file:
 
 > `Reason: Varying from the original blueprints.`
 
@@ -229,7 +229,7 @@ No per-file diff, no specific deviation cited, no reviewer notes, no date. `EVAL
 
 ### Finding 13 — Internal Spoke Tier Is Under-Counted in Every Score and Timeline
 **Severity:** 🟡 Medium
-**Evidence:** Every evaluation document states Internal Spokes as **"15 blueprints."** But `docs/internal-spokes/placeholder-blueprints.md` (10,175 bytes) documents **10 additional** planned spokes (`ISPOKE-16` through `ISPOKE-25`) as `📝 Placeholder` stubs with full dependency lists and estimated completion dates running to **Week 48**.
+**Evidence:** Every evaluation document states Internal Spokes as **"15 blueprints."** But `archive/pre-A3-audit/docs/internal-spokes/placeholder-blueprints.md` (10,175 bytes) documents **10 additional** planned spokes (`ISPOKE-16` through `ISPOKE-25`) as `📝 Placeholder` stubs with full dependency lists and estimated completion dates running to **Week 48**.
 
 The tier's real scope is **25**, and 40% of it was excluded from every quality score and the "32-week" master timeline. The placeholder document's own summary table (line 159) lists all 10 with phase assignments (Phase 4: ISPOKE-16–20; Phase 5: ISPOKE-21–25) and week ranges extending to 43–48.
 
@@ -243,7 +243,7 @@ The tier's real scope is **25**, and 40% of it was excluded from every quality s
 
 ### Finding 14 — Hub Taxonomy Document Has Arithmetic Errors
 **Severity:** 🟠 High
-**Evidence:** `docs/hub-taxonomy/hub-blueprint-taxonomy.md` "Summary by Classification" section:
+**Evidence:** `archive/pre-A3-audit/docs/hub-taxonomy/hub-blueprint-taxonomy.md` "Summary by Classification" section:
 
 | Criticality | Claimed count | Listed blueprints | Actual count |
 |---|---|---|---|
@@ -262,7 +262,7 @@ The Medium row claims 6 but lists 5. The total claims 31 but the Hub tier has 30
 
 ### Finding 15 — The True Timeline Extends to 48+ Weeks, Not 32
 **Severity:** 🟡 Medium
-**Evidence:** `docs/evaluation/BLUEPRINT_RANKINGS.md` line 253: *"Total Timeline: 32 weeks with parallel work; ~6-7 months with properly resourced team."* But `docs/internal-spokes/placeholder-blueprints.md` schedules ISPOKE-25 (Incident Response Console) for **Weeks 43–48** — and that is only the Internal Spoke tier. External Spokes (Phase 5 in the evaluation) are scheduled for Weeks 25–32, which overlaps the Internal Spoke Phase 4 window (Weeks 27–36). The phases cannot run in parallel as the evaluation implies because External Spokes depend on BRIDGE-01, which depends on Internal Spokes being complete.
+**Evidence:** `archive/docs/evaluation/BLUEPRINT_RANKINGS.md` line 253: *"Total Timeline: 32 weeks with parallel work; ~6-7 months with properly resourced team."* But `archive/pre-A3-audit/docs/internal-spokes/placeholder-blueprints.md` schedules ISPOKE-25 (Incident Response Console) for **Weeks 43–48** — and that is only the Internal Spoke tier. External Spokes (Phase 5 in the evaluation) are scheduled for Weeks 25–32, which overlaps the Internal Spoke Phase 4 window (Weeks 27–36). The phases cannot run in parallel as the evaluation implies because External Spokes depend on BRIDGE-01, which depends on Internal Spokes being complete.
 
 Reconstructed true timeline (minimum critical path):
 - Phase 1 (Core): Weeks 1–8 (CORE-02 is unbuilt; add 2 weeks minimum)
@@ -282,9 +282,9 @@ Reconstructed true timeline (minimum critical path):
 
 ### Finding 16 — The "81 Approved" Count Is Itself Wrong
 **Severity:** 🟡 Medium
-**Evidence:** `docs/evaluation/EVALUATION_SUMMARY.md` line 9: *"Approved Blueprints: 81."* Actual file count from the repo tree (verified 2026-08-04):
+**Evidence:** `archive/docs/evaluation/EVALUATION_SUMMARY.md` line 9: *"Approved Blueprints: 81."* Actual file count from the repo tree (verified 2026-08-04):
 
-| Tier | Files in `docs/blueprints/<Tier>/` | Count |
+| Tier | Files in `archive/Arc/Blueprints/<Tier>/` | Count |
 |---|---|---|
 | Core | `CORE-01.md` … `CORE-20.md` | 20 |
 | Hub | `HUB-01.md` … `HUB-30.md` | 30 |
@@ -336,13 +336,13 @@ EXPOSE 80
 CMD ["php", "-S", "0.0.0.0:80", "-t", "docs/architecture/origin"]
 ```
 
-The `-t docs/architecture/origin` flag serves the **Vision A legacy documentation** (the archived, contradictory, byte-duplicated tree from Findings 1, 5, 6, 7) — not the current `docs/blueprints/` directory. A visitor who reaches the deployed documentation site sees the wrong architecture.
+The `-t docs/architecture/origin` flag serves the **Vision A legacy documentation** (the archived, contradictory, byte-duplicated tree from Findings 1, 5, 6, 7) — not the current `archive/Arc/Blueprints/` directory. A visitor who reaches the deployed documentation site sees the wrong architecture.
 
 This compounds Finding 9: not only does the "deploy" blueprint deploy only documentation, it deploys the *wrong* documentation.
 
 **Impact:** Public-facing documentation actively misleads anyone who reads it. The Render free-tier service (per `render.yaml`, name `sovereign-stack-blueprints`) is the de facto public face of the project, and it shows the archived, superseded architecture.
 
-**Resolution:** `blueprints/Deploy/DEPLOY-01-core-hub.md` replaces the documentation-only Dockerfile with a real application deployment. A separate `DEPLOY-00` (documentation site) is added in `01_MASTER_INDEX.md` §6 to serve `docs/blueprints/` (the canonical tree) if a documentation site is still desired.
+**Resolution:** `blueprints/Deploy/DEPLOY-01-core-hub.md` replaces the documentation-only Dockerfile with a real application deployment. A separate `DEPLOY-00` (documentation site) is added in `01_MASTER_INDEX.md` §6 to serve `archive/Arc/Blueprints/` (the canonical tree) if a documentation site is still desired.
 
 ---
 
@@ -351,7 +351,7 @@ This compounds Finding 9: not only does the "deploy" blueprint deploy only docum
 **Evidence:** The repo tree (1,221 entries) contains **zero** files under `docs/decisions/`. The prior analysis noted this directory "seems to be a newer addition" but did not flag that it is empty. There are no Architecture Decision Records anywhere in the repository.
 
 Key architectural choices that are undocumented as decisions:
-- Why polyrepo over monorepo (the repo is polyrepo, but `docs/architecture/origin/` describes a monolith)
+- Why polyrepo over monorepo (the repo is polyrepo, but `archive/docs/architecture/origin/` describes a monolith)
 - Why PSR-11 container over PHP-DI / Symfony DI / Laravel container
 - Why ES256 (asymmetric) JWT signing over HS256 (symmetric)
 - Why Argon2id over bcrypt (referenced in CORE-16 but not decided)
@@ -370,7 +370,7 @@ Key architectural choices that are undocumented as decisions:
 
 ### Finding 20 — CORE-03 Blueprint Diverges From Its Implementation
 **Severity:** 🟠 High
-**Evidence:** The approved `docs/blueprints/Core/CORE-03.md` (1,754 bytes) describes the Event Dispatcher as:
+**Evidence:** The approved `archive/Arc/Blueprints/Core/CORE-03.md` (1,754 bytes) describes the Event Dispatcher as:
 
 > *"An 'Emit and Forget' or 'Haltable Pipeline' pattern."*
 > *"Reference: /thephpleague/event design patterns for prioritized listeners."*

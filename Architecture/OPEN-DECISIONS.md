@@ -239,7 +239,7 @@ Capability Application Contract
 ## Resolved (during consolidation)
 
 - **Two-architecture ambiguity (Vision A vs. Vision B).** Resolved by `INDEX.md` §1 declaring
-  `Architecture/` the sole source of truth and archiving `docs/architecture/origin/` (Vision A) and the
+  `Architecture/` the sole source of truth and archiving `archive/docs/architecture/origin/` (Vision A) and the
   `Legacy/` code.
 - **`HUB-28` = API Versioning, not analytics.** Resolved in `INDEX.md` §2.2; the five spokes were
   corrected (Finding 15, Pattern B).
@@ -251,7 +251,7 @@ Capability Application Contract
    16 as primary per `ADR-013`; a later decision shift **reversed** it — `ADR-013` now makes **MySQL 8
    (InnoDB)** the primary datastore, with the PostgreSQL driver **relegated behind CORE-19 and disabled by
    default** (re-enabled only at the next decision scale). `STRUCTURE-05/07/08/09`, `CORE-19`, `DEPLOY-02`,
-   and the spoke/datastore blueprints are aligned to MySQL; the `docs/blueprints/` tree (MySQL) is archived
+   and the spoke/datastore blueprints are aligned to MySQL; the `archive/Arc/Blueprints/` tree (MySQL) is archived
    and never merged. The reversal is recorded in `INCONSISTENCIES.md` #1.
 - **ADR number collision.** `THREAT_MODEL.md` §10's "ADR-011" → ADR-012 (pending); `Migration/04`'s
   "ADR-011" SuperPHP reference → ADR-005 (already Accepted).

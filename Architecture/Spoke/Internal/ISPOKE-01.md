@@ -11,7 +11,7 @@ Internal Spoke (Staff-only Application)
 
 ## Resolves
 Merges the self-identified but never-integrated weakness from
-`docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` ("CRUD Engine (ISPOKE-01) Could Be Over-Generalized") into
+`archive/docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` ("CRUD Engine (ISPOKE-01) Could Be Over-Generalized") into
 this file directly, per Governance Rule 5, and corrects the tier inventory context per
 `00_CRITIQUE.md` Finding 13 (this is spoke 1 of a true 25, not of 15).
 
@@ -49,7 +49,7 @@ Spoke's core CI criterion (permission-leak prevention, below) is meaningless wit
 - `CORE-19`: DBAL
 - `CORE-06`: Router
 
-(Cross-checked against `docs/hub-taxonomy/hub-blueprint-taxonomy.md` — all IDs above match current
+(Cross-checked against `archive/pre-A3-audit/docs/hub-taxonomy/hub-blueprint-taxonomy.md` (historical pre-A3 reference) — all IDs above match current
 Hub blueprint titles; no drift found in this direction, unlike the Core-tier renumbering in Finding 2.)
 
 ## Architectural Design

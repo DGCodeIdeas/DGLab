@@ -275,7 +275,7 @@ Type B, §A.7) expressible: a Pulse entering via HTTP may exit via the event bus
 > **Directory-name caution.** v0.1 of this document also carried a per-spoke folder-name column
 > (`admin/`, `devportal/`, `codex/`, …). Those folder names disagree with the `## Component Name`
 > fields in the actual `ISPOKE-*` / `ESPOKE-*` blueprints for several IDs, and the v0.1 names for
-> `ISPOKE-16`–`25` disagree with `docs/internal-spokes/placeholder-blueprints.md`. The column is
+> `ISPOKE-16`–`25` disagree with `archive/pre-A3-audit/docs/internal-spokes/placeholder-blueprints.md` (pre-A3 historical reference). The column is
 > therefore **not** reproduced here. `INDEX.md` §2 is the only naming authority; the open naming
 > question is recorded in `OPEN-DECISIONS.md`.
 
