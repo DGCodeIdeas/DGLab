@@ -74,6 +74,8 @@ jobs:
         include:
           - package: core/container
             working-dir: packages/core/container
+          - package: core/cache
+            working-dir: packages/core/cache
           - package: core/event-dispatcher
             working-dir: packages/core/event-dispatcher
           - package: core/http-message

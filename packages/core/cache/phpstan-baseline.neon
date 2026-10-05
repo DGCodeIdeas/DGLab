@@ -1,0 +1,10 @@
+parameters:
+    ignoreErrors:
+        - "#Call to an undefined method object::get#"
+        - "#Call to an undefined method object::set#"
+        - "#Call to an undefined method object::del#"
+        - "#Call to an undefined method object::exists#"
+        - "#Call to an undefined method object::setex#"
+        - "#Call to an undefined method object::flushDb#"
+        - "#Cannot cast mixed to int#"
+        - "#Cannot cast mixed to string#"
