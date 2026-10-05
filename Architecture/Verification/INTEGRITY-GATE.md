@@ -1,6 +1,6 @@
 # Integrity Gate
 
-**Status:** Binding governance gate (per tech-lead directive 2026-10-05)
+**Status:** PASSED (2026-10-05) — Binding governance gate (per tech-lead directive 2026-10-05)
 **Purpose:** Establish a finite, auditable condition for declaring the current architecture/governance baseline internally consistent enough to resume roadmap work.
 **Audience:** All stakeholders — humans and AIs
 
@@ -14,6 +14,37 @@
 <!-- End Blind-Spot Awareness -->
 
 ---
+
+
+## Gate Decision (2026-10-05)
+
+> **Integrity Gate: PASSED**
+>
+> The baseline has zero open FATAL findings, every blocking HIGH has an explicit disposition, required verification evidence exists, canonical governance artifacts are synchronized, CI/architecture verification passes, and targeted convergence produced no new undispositioned FATAL/HIGH findings.
+
+### Verification evidence:
+
+| Criterion | Result | Evidence |
+|---|---|---|
+| 1. FATAL: zero Open, all have verification evidence | ✅ PASSED | S-001/S-002: architecture-lint passes; S-003/S-004: container+kernel CI green + PulseShapeCTest.php (10 tests) |
+| 2. HIGH: all have disposition | ✅ PASSED | 19 Deferred + 2 Accepted + 1 Closed (see HIGH-DISPOSITION-MATRIX.md) |
+| 3. Governance consistency | ✅ PASSED | S-077 register reconciliation (PR #304) |
+| 4. Targeted verification | ✅ PASSED | S-001..S-004 moved to Verified |
+| 5. CI + architecture-lint pass | ✅ PASSED | All CI green; architecture-lint fixed (HUB-33 reference removed) |
+| 6. Convergence: zero new FATAL/HIGH without disposition | ✅ PASSED | PRs #303/#304/#305 produced no new undispositioned findings |
+| 7. Traceability | ✅ PASSED | Every blocking finding has status, owner, verification condition |
+
+### Roadmap resumed.
+
+The roadmap may now proceed with:
+- Hub build order (Phase 3)
+- DAG generators (scripts)
+- SDLC-AGRD v4.0
+- Runtime-tier DAGs
+- ELQ port (implementation phase)
+- APIfy (when first API surface is ready)
+
+MEDIUM/LOW findings remain tracked in the register but do not block roadmap work.
 
 ## Gate Criteria
 

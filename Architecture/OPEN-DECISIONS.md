@@ -113,7 +113,7 @@ resolved. When a decision is made, move the entry to *Resolved* and cite the dec
 ### OD-12 — APIfy: turn capability contracts into APIs (RECORDED — implementation deferred)
 
 - **Fork:** Should DGLab have a Hub capability that turns existing application capability contracts into HTTP APIs? If so, should it be declarative (explicit API declarations) or automatic (reflection over PHP classes)?
-- **Decision:** **LOCKED** — APIfy is a new Hub capability (future HUB-33). Design ratified by SAAI + three independent AI reviews (2026-10-02). Implementation deferred until the first real API surface (Showcase/LMS) provides concrete operations.
+- **Decision:** **LOCKED** — APIfy is a new Hub capability (future 33rd Hub). Design ratified by SAAI + three independent AI reviews (2026-10-02). Implementation deferred until the first real API surface (Showcase/LMS) provides concrete operations.
 
 **Locked design principles:**
 
@@ -177,7 +177,7 @@ Capability Application Contract
 **Implementation trigger:** Deferred until Showcase or LMS provides enough concrete operations to design the declaration format from actual use rather than prematurely inventing a generic DSL.
 
 - **Owner:** Architecture lead (DGCI)
-- **Decision route:** Recorded here as OD-12. Will become ADR-022 when implementation begins. HUB-33 blueprint (depth 1, canonical) will be published at that time.
+- **Decision route:** Recorded here as OD-12. Will become ADR-022 when implementation begins. a 33rd Hub blueprint (depth 1, canonical) will be published at that time.
 
 
 ### OD-01 — HUB-31 (Real-Time Analytics & Metrics Ledger): accepted as full Hub tier
