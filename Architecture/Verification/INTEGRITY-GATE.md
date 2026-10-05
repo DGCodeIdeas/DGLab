@@ -30,7 +30,7 @@
 | 2. HIGH: all have disposition | ✅ PASSED | 19 Deferred + 2 Accepted + 1 Closed (see HIGH-DISPOSITION-MATRIX.md) |
 | 3. Governance consistency | ✅ PASSED | S-077 register reconciliation (PR #304) |
 | 4. Targeted verification | ✅ PASSED | S-001..S-004 moved to Verified |
-| 5. CI + architecture-lint pass | ✅ PASSED | All CI green; architecture-lint fixed (HUB-33 reference removed) |
+| 5. CI + architecture-lint pass | ✅ PASSED | All CI green; architecture-lint fixed (a 33rd Hub reference removed) |
 | 6. Convergence: zero new FATAL/HIGH without disposition | ✅ PASSED | PRs #303/#304/#305 produced no new undispositioned findings |
 | 7. Traceability | ✅ PASSED | Every blocking finding has status, owner, verification condition |
 
