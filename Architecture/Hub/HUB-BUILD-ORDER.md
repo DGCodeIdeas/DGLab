@@ -118,7 +118,8 @@ The effective graph used for wave computation. Each row lists the **REQUIRED** H
 | HUB-28 | HUB-08, HUB-15 | UNKNOWN | HUB-28 Direct Hub |
 | HUB-29 | HUB-15, HUB-16 | UNKNOWN | HUB-29 Direct Hub |
 | HUB-30 | HUB-02, HUB-15, HUB-21 | UNKNOWN | HUB-30 Direct Hub — **none of these at depth ≥2; HUB-30 in Wave 0 as grandfathered foundation per task brief; see §9 discrepancy D-1** |
-| HUB-31 | HUB-02, HUB-21 | UNKNOWN | HUB-31 Direct Hub |
+| HUB-30 (blocked by HUB-21, HUB-15, HUB-02 — all blocked by CORE-15 cascade)
+  HUB-31 | HUB-02, HUB-21 | UNKNOWN | HUB-31 Direct Hub |
 
 **Effective Hub→Hub edge count: ~50 REQUIRED edges** (subset of 76 declared, after S-027 removal of 1, S-028 promotion of 6, S-030 removal of 25 downward-only, S-031 UNKNOWN→REQUIRED with 2 OPTIONAL exempt).
 
@@ -338,7 +339,8 @@ Wave 2 — Hubs whose REQUIRED Hub deps are all in Wave 0 ∪ Wave 1
 
 Wave 3 — (none — cascade frozen by CORE-15 / CORE-12 / CORE-20)
 
-Blocked / Deferred — 20 capabilities
+Blocked / Deferred — 21 capabilities
+  (HUB-30 added — was incorrectly in Wave 0)
   HUB-02  — blocked by CORE-15 (REQUIRED, COMPILE); not yet at depth 2
   HUB-05  — blocked by HUB-02 (→ CORE-15)
   HUB-07  — blocked by HUB-02 (→ CORE-15)
