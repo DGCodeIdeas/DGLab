@@ -50,7 +50,7 @@ The 22 load-bearing terms of the architecture. Component-level terms (CORE-xx, H
 
 ### H
 
-**Hub Tier** — The 30 shared-service blueprints (HUB-01..30) consumed by all Spokes. Organised into 5 categories (Infrastructure, Integration, Data, Observability, Security) per `docs/hub-taxonomy/hub-categories.md`. Hub components depend only on Core; they never depend on Spoke or Bridge code.
+**Hub Tier** — The 32 shared-service blueprints (HUB-01..32) consumed by all Spokes. Organised into 5 categories (Infrastructure, Integration, Data, Observability, Security) per the pre-A3 historical reference at `archive/pre-A3-audit/docs/hub-taxonomy/hub-categories.md`; the canonical Hub tier is at `Architecture/Hub/` (32 blueprints + DAGs). Hub components depend only on Core; they never depend on Spoke or Bridge code.
 
 ### I
 
@@ -64,7 +64,7 @@ The 22 load-bearing terms of the architecture. Component-level terms (CORE-xx, H
 
 **Sovereign Forge** — Codename for CORE-20 (Developer CLI Toolchain). The only sanctioned way to scaffold a new Hub service: generates package skeleton, `composer.json`, CI workflow, and blueprint stub from a Fidelity-Bar-compliant template. HUB-30 extends the Forge with Hub admin commands.
 
-**Sovereign Stack** — The overall name for the DGLab architecture as defined by Vision B (polyrepo). Comprises the Core/Hub/Bridge/Spoke/Deploy tiers totalling **96** blueprint files (`INDEX.md` §4). Anything in `docs/architecture/origin/` is *not* the Sovereign Stack — it is Vision A.
+**Sovereign Stack** — The overall name for the DGLab architecture as defined by Vision B (polyrepo). Comprises the Core/Hub/Bridge/Spoke/Deploy tiers totalling **102** blueprint files (`INDEX.md` §4). Anything in `archive/docs/architecture/origin/` is *not* the Sovereign Stack — it is Vision A.
 
 **Spoke Tier** — The 40 application blueprints split into Internal (ISPOKE-01..25) and External (ESPOKE-01..15) spokes. The only tier permitted to contain business logic; Core and Hub are infrastructure-only.
 
@@ -78,7 +78,7 @@ The 22 load-bearing terms of the architecture. Component-level terms (CORE-xx, H
 
 ### V
 
-**Vision A** — The deprecated monolith architecture in `docs/architecture/origin/`. A single-repo, framework-style rebuild that contradicts Vision B on every tier boundary (Findings 1, 5, 6, 7). No new work is permitted; preserved for historical reference only.
+**Vision A** — The deprecated monolith architecture in `archive/docs/architecture/origin/`. A single-repo, framework-style rebuild that contradicts Vision B on every tier boundary (Findings 1, 5, 6, 7). No new work is permitted; preserved for historical reference only.
 
 **Vision B** — The canonical polyrepo architecture, now consolidated in `Architecture/`. The active development target; all blueprints and ADRs in `Architecture/`, and all code in `packages/` and `orchestrator/`, belong to Vision B. If a Vision A document contradicts a Vision B document, Vision B wins.
 
@@ -303,7 +303,7 @@ Alphabetical. Definition is the in-stack meaning.
 
 | Acronym | Expansion | Definition |
 |---|---|---|
-| ADR | Architecture Decision Record | Documented decision with Context, Decision, Status, Consequences. Lives in `docs/decisions/`. |
+| ADR | Architecture Decision Record | Documented decision with Context, Decision, Status, Consequences. Lives in `Architecture/ADRs/` (canonical ADR-001..021). The pre-A3 historical ADR-001..005 set is archived at `archive/pre-A3-audit/docs/architecture/decisions/` and covers different topics — do not conflate. |
 | AEAD | Authenticated Encryption with Associated Data | Encryption mode used by CORE-16 (AES-256-GCM provides AEAD). |
 | APCu | Alternative PHP Cache (user cache) | In-memory key-value cache for single-node PHP. One of the CORE-15 drivers. |
 | ASVS | Application Security Verification Standard | OWASP security verification framework; L2 is the Sovereign Stack baseline. |
@@ -397,10 +397,11 @@ documentation tree listed below is archived and read-only (see the `ARCHIVED.md`
 | `packages/core/container/` | CORE-02 (DI Container) — stub only (`.gitkeep`); blocking defect |
 | `packages/core/event-dispatcher/` | CORE-03 reference implementation — tested |
 | `packages/core/` | Parent of all Core-tier package impls; only 02 and 03 exist today |
-| ~~`Arc/`~~ | **ARCHIVED** — predecessor of `Architecture/` |
-| ~~`docs/blueprints/`~~ | **ARCHIVED** — third, incompatible CORE numbering; never merge |
-| ~~`docs/architecture/origin/`~~ | **ARCHIVED** — Vision A monolith |
-| ~~`docs/evaluation/`~~ | **ARCHIVED** — stale scores against a pre-renumbering Core tier |
+| ~~`Arc/`~~ | **ARCHIVED** — predecessor of `Architecture/` (now at `archive/Arc/`) |
+| ~~`docs/blueprints/`~~ | **ARCHIVED** — third, incompatible CORE numbering; now at `archive/Arc/Blueprints/` (never merge) |
+| ~~`docs/architecture/origin/`~~ | **ARCHIVED** — Vision A monolith; now at `archive/docs/architecture/origin/` |
+| ~~`docs/evaluation/`~~ | **ARCHIVED** — stale scores against a pre-renumbering Core tier; now at `archive/docs/evaluation/` |
+| ~~`docs/`~~ (entire tree) | **ARCHIVED (pre-A3)** — pre-A3-audit material; now at `archive/pre-A3-audit/docs/`. See `archive/pre-A3-audit/README.md` for the index. |
 | ~~`Analysis_Critiques_Rewrites/`~~ | **ARCHIVED** — provenance corpus for this consolidation |
 
 ---

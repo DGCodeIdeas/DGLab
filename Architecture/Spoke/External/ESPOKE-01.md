@@ -10,7 +10,7 @@
 External Spoke (Public-facing Application)
 
 ## Resolves
-Merges the self-identified weakness from `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md`
+Merges the self-identified weakness from `archive/docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md`
 ("SEO Optimization Relies on Perfect Markup") into this file per Governance Rule 5, and aligns this
 Spoke's Bridge-dependency behavior with `BRIDGE-01`'s corrected fail-closed contract.
 

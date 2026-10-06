@@ -199,8 +199,8 @@ When uncertain, check in this order; **lower number wins**:
 6. `Architecture/Verification/lint/run.php` — automated checks
 7. `packages/*/` — live code
 
-`docs/architecture/origin/`, `docs/blueprints/`, `docs/evaluation/` (if present) are **archived, read-only,
-historical** — an earlier abandoned monolith design. Never treat them as current.
+`archive/docs/architecture/origin/`, `archive/Arc/Blueprints/`, `archive/docs/evaluation/`, `archive/pre-A3-audit/docs/` (all archived trees) are **archived, read-only,
+historical** — earlier abandoned monolith designs and pre-A3-audit material. Never treat them as current.
 
 ## 11. Agent conventions & hand-off
 
