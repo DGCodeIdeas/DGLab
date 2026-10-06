@@ -40,3 +40,19 @@ tmp/
 temp/
 *.tmp
 dglab_clone
+
+# Local AI/session artifacts — never repository documentation.
+# These are scratch/log files from local development sessions and IM gateway
+# operations. They are committed by accident; .gitignore rules prevent future
+# tracking. Already-tracked instances are untracked via `git rm --cached`
+# (file content remains on local disk).
+Assisted.log
+Notes.md
+SESSION_STATE.md
+
+# Local scratch/junk directory — never tracked.
+# If a local .junk/ directory exists, it is disposable scratch material.
+# Per SAAI rule: "archive/ preserves provenance; it is not a dumping ground."
+# .junk/ contents are NOT archived; they are deleted locally when no longer
+# needed. This rule prevents accidental tracking of disposable scratch.
+.junk/
