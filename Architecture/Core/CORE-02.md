@@ -15,7 +15,7 @@ Core (Foundational Infrastructure)
 ## Resolves
 - **Finding 2** (evaluation mislabels CORE-02 as "Lifecycle Hooks") — establishes the canonical identity of CORE-02 as the Dependency Injection Container per `01_MASTER_INDEX.md` §2.
 - **Finding 8** (empty `.gitkeep` stub blocking the entire Hub tier) — provides a complete, copy-pasteable reference implementation that compiles against the existing `packages/core/container/composer.json` with zero new dependencies.
-- **Finding 10** (bare "< 0.5ms" target with no methodology) — replaces the assertion with a named PHPUnit `--group performance` harness, GitHub Actions `ubuntu-latest` / PHP 8.3 / opcache baseline, and a depth-1/5/20 synthetic dependency-chain load model; absolute targets are explicitly marked "provisional, unverified" until measured.
+- **Finding 10** (bare "< 0.5ms" target with no methodology) — replaces the assertion with a named PHPUnit `--group performance` harness, GitHub Actions `ubuntu-latest` / PHP 8.4 / opcache baseline, and a depth-1/5/20 synthetic dependency-chain load model; absolute targets are explicitly marked "provisional, unverified" until measured.
 
 ## Component Name
 Reactive DI Container — `SovereignStack\Core\Container` (PSR-4 mapped to `packages/core/container/src/` per the existing `composer.json`).
@@ -28,7 +28,7 @@ The container is intentionally minimal: the only runtime dependency is `psr/cont
 The container is **not** a service locator. Code that holds a reference to `ContainerInterface` should call `get()` only at composition roots (kernel boot, controller factories, console command factories). Application code is expected to receive its dependencies through constructor injection and remain container-agnostic. The container is **not** a reactive runtime by itself — the "Reactive" in its name refers to the planned integration with CORE-07/11/12 (SuperPHP), where `@persist`-scoped services will be resolved through this container; that integration is out of scope for this blueprint and tracked under CORE-12.
 
 ### Repo state (verified 2026-08-04)
-- `packages/core/container/composer.json` — declares `php: ^8.3`, `psr/container: ^2.0` (runtime); `phpstan/phpstan: ^1.10`, `phpunit/phpunit: ^10.5`, `friendsofphp/php-cs-fixer: ^3.48` (dev). PSR-4 autoloads `SovereignStack\Core\Container\` from `src/`.
+- `packages/core/container/composer.json` — declares `php: ^8.4`, `psr/container: ^2.0` (runtime); `phpstan/phpstan: ^1.10`, `phpunit/phpunit: ^10.5`, `friendsofphp/php-cs-fixer: ^3.48` (dev). PSR-4 autoloads `SovereignStack\Core\Container\` from `src/`.
 - `packages/core/container/src/` — contains only `.gitkeep` (0 bytes). **No PHP files exist.**
 - `packages/core/container/phpstan.neon` — `level: max`, paths `src/` and `tests/`.
 - `packages/core/container/phpunit.xml.dist` — single testsuite over `tests/`, source coverage over `src/`.
@@ -69,7 +69,7 @@ The container is **not** a service locator. Code that holds a reference to `Cont
 ## Dependency Status
 - **Upward:** None at the Core tier. The container is the foundational primitive.
 - **Downward:** CORE-10 (Config), CORE-17 (Service Providers), CORE-18 (Kernel), and the entire Hub tier (HUB-01 through HUB-30).
-- **Runtime:** `psr/container: ^2.0` (the interface contracts `Psr\Container\ContainerInterface`, `Psr\Container\ContainerExceptionInterface`, `Psr\Container\NotFoundExceptionInterface`). PHP 8.3+ (uses `readonly` classes, constructor promotion, `match` expressions, typed properties, `finally` blocks). Optional `psr/log: ^3.0` for diagnostic logging during compilation (suggest-only; not invoked by the reference implementation).
+- **Runtime:** `psr/container: ^2.0` (the interface contracts `Psr\Container\ContainerInterface`, `Psr\Container\ContainerExceptionInterface`, `Psr\Container\NotFoundExceptionInterface`). PHP 8.4+ (uses `readonly` classes, constructor promotion, `match` expressions, typed properties, `finally` blocks). Optional `psr/log: ^3.0` for diagnostic logging during compilation (suggest-only; not invoked by the reference implementation).
 
 ## Architectural Design
 
@@ -500,7 +500,7 @@ final class CircularDependencyException extends \RuntimeException implements \Ps
 
 ### Reference Implementation
 
-The following class is the complete, copy-pasteable `Container` implementation. It compiles against PHP 8.3 with only `psr/container: ^2.0` as runtime dependency. Drop it into `packages/core/container/src/Container.php` alongside the interface files above and `composer dump-autoload` will pick it up unchanged.
+The following class is the complete, copy-pasteable `Container` implementation. It compiles against PHP 8.4 with only `psr/container: ^2.0` as runtime dependency. Drop it into `packages/core/container/src/Container.php` alongside the interface files above and `composer dump-autoload` will pick it up unchanged.
 
 ```php
 <?php
@@ -921,7 +921,7 @@ stateDiagram-v2
 
 ## Integration Strategy
 
-**Upward (what CORE-02 consumes).** The container depends only on `psr/container: ^2.0` and the PHP 8.3 standard library (`ReflectionClass`, `ReflectionNamedType`, `\Closure`, `\RuntimeException`, `\LogicException`). No other Core-tier component is invoked during resolution.
+**Upward (what CORE-02 consumes).** The container depends only on `psr/container: ^2.0` and the PHP 8.4 standard library (`ReflectionClass`, `ReflectionNamedType`, `\Closure`, `\RuntimeException`, `\LogicException`). No other Core-tier component is invoked during resolution.
 
 **Downward (what consumes CORE-02).**
 
@@ -951,7 +951,7 @@ stateDiagram-v2
 
 | Target | Harness | Baseline | Load model | Status |
 |---|---|---|---|---|
-| Resolution time per service | PHPUnit `--group performance` | GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled (`opcache.enable_cli=1`) | Synthetic dependency chains of depth 1, 5, 20; 10,000 iterations per depth; report median + p95 of `microtime(true)` deltas | **Provisional, unverified** until first measurement run lands in CI |
+| Resolution time per service | PHPUnit `--group performance` | GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled (`opcache.enable_cli=1`) | Synthetic dependency chains of depth 1, 5, 20; 10,000 iterations per depth; report median + p95 of `microtime(true)` deltas | **Provisional, unverified** until first measurement run lands in CI |
 | Scaling bound | Same | Same | Assert `T(depth=20) / T(depth=1) <= 25` (i.e. resolution cost grows sub-quadratically with chain depth; linear is `<= 20`) | **Provisional, unverified** |
 | Container compile time | Same | Same | 500 service definitions, 5 compiler passes; assert `compile()` < 100 ms wall-clock | **Provisional, unverified** |
 | Memory footprint | Same | Same | `memory_get_usage(true)` before `new Container()` and after `compile()` with 500 definitions; assert delta < 1 MB | **Provisional, unverified** |
@@ -1019,3 +1019,45 @@ After landing, run `composer dump-autoload` and `vendor/bin/phpunit`. The PSR-11
 
 ## SemVer Impact
 **Major.** This is the inaugural `1.0.0` release of `sovereign-stack/core-container`. It introduces the `ContainerInterface`, `ContainerBuilderInterface`, `CompilerPassInterface`, `ServiceDefinition`, `NotFoundException`, and `CircularDependencyException` contracts that the entire Hub tier depends on. Any future change to these interfaces (added methods, signature changes, narrowed return types) is a SemVer major. The reference `Container` implementation is part of the published API surface only via the interfaces it implements; its private internals may change in minor releases.
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #317)
+
+> **This section was added in PR #317 (Core rewrite Batch 1, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #317
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for all 3 Core blueprints in this batch: CORE-01 Loom, CORE-02 Container, CORE-18 Kernel — all shipped per the verified DAG).
+
+### What Was NOT Changed in PR #317
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/*/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), misattribution phrases (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #317 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
