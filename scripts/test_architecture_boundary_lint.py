@@ -24,7 +24,11 @@ This script:
      - Use of PSR interfaces from any ring (allowed external dependency)
 
 Run via:
-  python3 /home/z/my-project/scripts/test_architecture_boundary_lint.py
+  python3 scripts/test_architecture_boundary_lint.py
+
+The checker path is derived dynamically from this test script's location
+(Path(__file__).resolve().parent / "architecture-boundary-lint.py"), so
+the same test works in CI runners and local developer environments.
 """
 
 from __future__ import annotations
@@ -37,7 +41,14 @@ from dataclasses import dataclass
 # Import the checker (dash-named file — use importlib to load)
 import importlib.util
 import sys as _sys
-_checker_path = Path("/home/z/my-project/scripts/architecture-boundary-lint.py")
+# Checker path is derived dynamically from this test script's location.
+# Previous hardcoded value `/home/z/my-project/scripts/...` was invalid for
+# CI runners (which use /home/runner/work/<repo>/<repo>/). Per SAAI invariant:
+#   "A green architecture-boundary-lint result must mean the boundary was
+#    actually inspected — not that the scanner found zero files."
+# Pre-existing bug discovered while verifying PR #312: the hardcoded path
+# caused FileNotFoundError in the regression test step.
+_checker_path = Path(__file__).resolve().parent / "architecture-boundary-lint.py"
 _spec = importlib.util.spec_from_file_location("architecture_boundary_lint", _checker_path)
 architecture_boundary_lint = importlib.util.module_from_spec(_spec)
 # Register in sys.modules BEFORE exec so @dataclass can find cls.__module__

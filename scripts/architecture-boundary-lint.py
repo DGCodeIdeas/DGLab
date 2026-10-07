@@ -21,9 +21,13 @@ This script walks the live DGLab repository and enforces:
    in production code (constructor-injection only).
 
 Usage:
-  python3 /home/z/my-project/scripts/architecture-boundary-lint.py
-  php /home/z/my-project/scripts/architecture-boundary-lint.php
+  python3 scripts/architecture-boundary-lint.py
+  php scripts/architecture-boundary-lint.php
   (when PHP 8.4 is available — equivalent PHP version is the canonical form)
+
+Repository root is derived dynamically from this script's location
+(Path(__file__).resolve().parent.parent), so the same script works in CI
+runners and local developer environments without modification.
 
 Exit code:
   0 = no violations
@@ -45,7 +49,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-REPO_ROOT = Path("/home/z/my-project")
+# Repository root is derived dynamically from this script's location.
+# Previous hardcoded value `/home/z/my-project` was invalid for CI runners
+# (which use /home/runner/work/<repo>/<repo>/). Dynamic discovery ensures
+# portability across environments. Per SAAI invariant:
+#   "A green architecture-boundary-lint result must mean the boundary was
+#    actually inspected — not that the scanner found zero files."
+# Pre-existing bug discovered while verifying PR #312: the hardcoded path
+# caused the scanner to find 0 files and report false-positive success.
+REPO_ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST_PATH = REPO_ROOT / ".github" / "architecture-export-allowlist.yaml"
 
 
@@ -185,7 +197,7 @@ def ring_for_path(file_path: Path) -> Optional[str]:
     for prefix, ring in PATH_RING_MAP:
         if rel.startswith(prefix):
             return ring
-    return None  # not in a tier we check (e.g., scripts/, anvil/, docs/)
+    return None  # not in a tier we check (e.g., scripts/, anvil/, archive/)
 
 
 # --- PHP `use` statement parsing --------------------------------------------
@@ -341,7 +353,7 @@ def scan_file(file_path: Path, result: ScanResult, allowlist: dict[str, set[str]
     """Scan a single PHP file for ring-boundary and service-locator violations."""
     source_ring = ring_for_path(file_path) or "external"
     if source_ring not in ALLOWED_TARGETS:
-        # Not a tier we check (e.g., scripts/, docs/)
+        # Not a tier we check (e.g., scripts/, archive/)
         return
 
     try:
@@ -426,6 +438,7 @@ def scan_repository() -> ScanResult:
     """Walk the repository and scan every production PHP file."""
     result = ScanResult()
     allowlist = load_export_allowlist()
+    result._allowlist = allowlist  # expose for main()'s JSON summary (cosmetic bug fix)
 
     # Scan packages/{core,hub,spoke,bridge}/*/src/
     for tier in ["core", "hub", "spoke/internal", "spoke/external", "bridge"]:
@@ -447,6 +460,7 @@ def scan_repository() -> ScanResult:
 
 def main() -> int:
     result = scan_repository()
+    allowlist = getattr(result, "_allowlist", {}) or {}
 
     # Emit JSON summary to stdout
     summary = {
@@ -456,7 +470,7 @@ def main() -> int:
         "violations": [v.to_dict() for v in result.violations],
         "legitimate_callers_seen": result.legitimate_callers_seen,
         "legitimate_callers_expected": LEGITIMATE_RESOLVE_CALLERS,
-        "allowlist_packages_enforced": list(allowlist.keys()) if "allowlist" in dir() else [],
+        "allowlist_packages_enforced": list(allowlist.keys()),
     }
     print(json.dumps(summary, indent=2))
 
