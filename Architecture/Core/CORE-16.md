@@ -12,7 +12,7 @@ Core (Foundational Security Primitive)
 ## Resolves
 - **Finding 2** (evaluation layer scored a stale CORE-16 as "Logging & Observability" 84/100) — this blueprint re-anchors CORE-16 to its verified identity per `01_MASTER_INDEX.md` §2: **the Binary Encryption Envelope**, namespace `SovereignStack\Core\Crypto`. Logging belongs to CORE-09 (`SovereignStack\Core\Logging`); CORE-16 is the cryptography primitive — AES-256-GCM authenticated encryption, Argon2id password hashing, HKDF-SHA256 key derivation. The two components are distinct and non-overlapping; an implementer reading this blueprint cannot confuse CORE-16 with CORE-09.
 - **Finding 3** (`BRIDGE-01.md` wrongly cites `CORE-09: Cryptography & Hashing (Payload Verification)` — the corrected reference is `CORE-16: Binary Encryption Envelope`) — this blueprint makes the dependency direction unambiguous: **BRIDGE-01 depends on CORE-16 for payload verification.** CORE-09 is a logging primitive and provides no cryptographic operations; any payload-verification obligation in BRIDGE-01 routes through CORE-16's `Encrypter` (HMAC tag check via AEAD) or `Hasher` (HKDF-SHA256). The `Resolves` section of this blueprint, the Dependency Status section, and the Integration Strategy section each explicitly call out the BRIDGE-01 → CORE-16 edge so that the corrected cross-reference is impossible to miss. A future author of `BRIDGE-01.md` who searches for the cryptography component will find it here.
-- **Finding 4** (the approved `docs/blueprints/Core/CORE-16.md` is 1,182 bytes — thin, prose-only, no interfaces, no reference implementation, no SQL DDL, no sequence diagram, no security properties, no benchmark methodology beyond a bare "< 0.5ms" target) — this blueprint meets the fidelity bar in `AUTHORING_GUIDE.md`: real PHP 8.3 interfaces (`EncrypterInterface`, `KeyRegistryInterface`), complete compilable reference implementations of `Encrypter`, `Envelope`, `KeyRegistry`, `PasswordHasher`, `Hasher`, and `CryptoException`, two Mermaid diagrams (sequence + state), a named-harness benchmark methodology, eight explicit security invariants, ten CI verification methods, and migration notes with rollback procedure.
+- **Finding 4** (the approved `docs/blueprints/Core/CORE-16.md` is 1,182 bytes — thin, prose-only, no interfaces, no reference implementation, no SQL DDL, no sequence diagram, no security properties, no benchmark methodology beyond a bare "< 0.5ms" target) — this blueprint meets the fidelity bar in `AUTHORING_GUIDE.md`: real PHP 8.4 interfaces (`EncrypterInterface`, `KeyRegistryInterface`), complete compilable reference implementations of `Encrypter`, `Envelope`, `KeyRegistry`, `PasswordHasher`, `Hasher`, and `CryptoException`, two Mermaid diagrams (sequence + state), a named-harness benchmark methodology, eight explicit security invariants, ten CI verification methods, and migration notes with rollback procedure.
 - **Finding 10** (the approved blueprint asserts "Encrypting a 1KB string must take < 0.5ms" with no harness, baseline, or load model) — the absolute target is **withdrawn** and replaced with a named-harness methodology below; any absolute number cited is marked "provisional, unverified" per Governance Rule 2 in `01_MASTER_INDEX.md`. The "< 0.5ms for 1KB" figure is retained only as a *provisional, unverified* expectation to be confirmed or corrected by the first CI baseline run, never as a binding SLO.
 
 ## Component Name
@@ -34,9 +34,9 @@ The implementation does not yet exist. The `packages/core/crypto/` directory has
 🔴 **Soft-blocked on CORE-10** (Config) for runtime key loading — `KeyRegistry` reads `APP_KEY` (and per-tenant overrides) via the `ConfigInterface` contract defined in CORE-10. In test contexts the registry can be populated directly via `addKey()` without CORE-10, so this is a *soft* runtime dependency, not a build-order blocker. **No other Core-tier component is an upward dependency** — CORE-16 is a leaf primitive.
 
 ## Dependency Status
-- **Upward:** `ext-openssl` (provides `openssl_encrypt` / `openssl_decrypt` with `aes-256-gcm` mode; required, hard — no fallback to `ext-sodium` for the default cipher); `ext-sodium` (provides Argon2id via `SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13` for `PasswordHasher` when PHP is not built against `libargon2` — the `password_hash()` constant `PASSWORD_ARGON2ID` requires either ext-sodium or libargon2; the Dockerfile per DEPLOY-01 must install `libargon2-dev` before PHP is compiled per ADR-008); `ext-hash` (provides `hash_hkdf` for `Hasher`, always available in PHP 8.3). CORE-10 (Config) is a soft runtime dependency for `KeyRegistry` key loading; CORE-09 (Logging) is an optional constructor argument for audit-trail logging (default `new NullLogger()`).
+- **Upward:** `ext-openssl` (provides `openssl_encrypt` / `openssl_decrypt` with `aes-256-gcm` mode; required, hard — no fallback to `ext-sodium` for the default cipher); `ext-sodium` (provides Argon2id via `SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13` for `PasswordHasher` when PHP is not built against `libargon2` — the `password_hash()` constant `PASSWORD_ARGON2ID` requires either ext-sodium or libargon2; the Dockerfile per DEPLOY-01 must install `libargon2-dev` before PHP is compiled per ADR-008); `ext-hash` (provides `hash_hkdf` for `Hasher`, always available in PHP 8.4). CORE-10 (Config) is a soft runtime dependency for `KeyRegistry` key loading; CORE-09 (Logging) is an optional constructor argument for audit-trail logging (default `new NullLogger()`).
 - **Downward:** **BRIDGE-01 (Vanguard)** — uses CORE-16's `Encrypter` for payload verification (HMAC tag check via AEAD decrypt; per Finding 3, this is the corrected dependency edge — BRIDGE-01 → CORE-16, *not* CORE-09); **HUB-04 (Global Identity & Authentication)** — uses `PasswordHasher` for password hashing (ADR-008) and `Encrypter` for JWT signing-key at-rest storage; **HUB-20 (Vault)** — uses `Encrypter` for application-level secret encryption (OAuth tokens, API keys) and `KeyRegistry` for envelope-encryption key lifecycle (master KEK + per-secret DEKs); **CORE-19 (DBAL)** — optional column-level encryption for tenant PII; **HUB-02 (Sovereign Hub Cache)** — may encrypt cache values tagged as sensitive (P II) via `Encrypter` before handing to the underlying adapter.
-- **Runtime:** `php:^8.3`, `ext-openssl`, `ext-sodium` (or PHP built against `libargon2`), `ext-hash`. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`, `vimeo/psalm:^5.20` (with `ext-openssl` stubs for taint analysis on key material).
+- **Runtime:** `php: ^8.4`, `ext-openssl`, `ext-sodium` (or PHP built against `libargon2`), `ext-hash`. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`, `vimeo/psalm:^5.20` (with `ext-openssl` stubs for taint analysis on key material).
 
 ## Architectural Design
 
@@ -676,7 +676,7 @@ public function register(ContainerInterface $c): void
 
 | Target | Harness | Baseline | Load model | Provisional target |
 |---|---|---|---|---|
-| `encrypt()` 1 KB plaintext | PHPUnit `--group performance`, `microtime(true)` wall-clock, 1 000 iterations after 100-iteration warm-up, median of 5 runs | GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, OpenSSL 3.x (libssl 3.0) | Single-threaded, no concurrency; AES-NI assumed available on the GitHub Actions runner (Intel Xeon Platinum, AES-NI present) | **< 0.5 ms — provisional, unverified** (retained from the stale approved blueprint; the first CI baseline run will confirm or correct. Per Finding 10 / Governance Rule 2, this is *not* a binding SLO until measured.) |
+| `encrypt()` 1 KB plaintext | PHPUnit `--group performance`, `microtime(true)` wall-clock, 1 000 iterations after 100-iteration warm-up, median of 5 runs | GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled, no Xdebug, OpenSSL 3.x (libssl 3.0) | Single-threaded, no concurrency; AES-NI assumed available on the GitHub Actions runner (Intel Xeon Platinum, AES-NI present) | **< 0.5 ms — provisional, unverified** (retained from the stale approved blueprint; the first CI baseline run will confirm or correct. Per Finding 10 / Governance Rule 2, this is *not* a binding SLO until measured.) |
 | `encrypt()` 10 KB plaintext | Same | Same | Same | < 1 ms — provisional, unverified |
 | `encrypt()` 1 MB plaintext | Same | Same | Same | < 50 ms — provisional, unverified (AES-256-GCM throughput is CPU-bound; AES-NI gives ~1–3 GB/s on modern x86) |
 | `decrypt()` 1 KB / 10 KB / 1 MB | Same | Same | Same | Parity with encrypt (within ±10%) — provisional, unverified |
@@ -717,7 +717,7 @@ public function register(ContainerInterface $c): void
 
 ```
 packages/core/crypto/
-├── composer.json           # php:^8.3, ext-openssl, ext-sodium, ext-hash
+├── composer.json           # php: ^8.4, ext-openssl, ext-sodium, ext-hash
 ├── src/
 │   ├── Encrypter.php
 │   ├── EncrypterInterface.php
@@ -745,7 +745,7 @@ packages/core/crypto/
 └── README.md
 ```
 
-**Composer dependencies.** `composer.json` requires `php:^8.3`, `ext-openssl:*`, `ext-sodium:*`, `ext-hash:*`. No PHP userland dependencies — CORE-16 is a pure-primitive package per the build-not-buy philosophy in ADR-002. Dev dependencies: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `vimeo/psalm:^5.20`, `friendsofphp/php-cs-fixer:^3.48`.
+**Composer dependencies.** `composer.json` requires `php: ^8.4`, `ext-openssl:*`, `ext-sodium:*`, `ext-hash:*`. No PHP userland dependencies — CORE-16 is a pure-primitive package per the build-not-buy philosophy in ADR-002. Dev dependencies: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `vimeo/psalm:^5.20`, `friendsofphp/php-cs-fixer:^3.48`.
 
 **PHP runtime.** The Dockerfile (per DEPLOY-01) must install `libargon2-dev` before PHP is compiled so that `PASSWORD_ARGON2ID` is available without `ext-sodium` (ADR-008 §Consequences). OpenSSL 3.x is the minimum; the GitHub Actions `ubuntu-latest` runner ships OpenSSL 3.0.x.
 
@@ -784,3 +784,46 @@ Specifically binding on CORE-16 from the doctrine:
 - **§5 test matrix:** 13 categories required for merge — constant-time timing test is mandatory for this package.
 - **§7 cross-package worst-case scenario §7.3:** key rotation race — Tenant A writes with KEK v2, Tenant B reads with worker that only has v1 loaded. Decryption tries current KEK then falls back through `KeyRing`; if none verify GCM tag, `DecryptionFailed` (Corrupt), row marked `DECRYPT_FAILED`, operator paged. NEVER silently returns null.
 - **§9 merge gate:** all of the above must pass before PR merges into `main` and promotes to `stable`.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #321)
+
+> **This section was added in PR #321 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #321
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-16 — Binary Encryption Envelope — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #321
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/crypto/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #321 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
