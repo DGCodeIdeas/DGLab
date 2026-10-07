@@ -56,3 +56,10 @@ SESSION_STATE.md
 # .junk/ contents are NOT archived; they are deleted locally when no longer
 # needed. This rule prevents accidental tracking of disposable scratch.
 .junk/
+
+# IM gateway upload directory — never tracked.
+# Per SAAI rule: this is the IM gateway's storage location for user-pasted
+# content, not project content. Files here are disposable scratch from IM
+# sessions and should never be committed. Preemptive rule (no files are
+# currently tracked in upload/; this prevents future accidental tracking).
+upload/
