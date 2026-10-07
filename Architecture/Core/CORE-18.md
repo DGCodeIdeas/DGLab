@@ -14,8 +14,8 @@ Core (Foundational Infrastructure)
 
 ## Resolves
 - **Finding 2** (evaluation layer mislabels CORE-18 as "Event System") — re-anchors CORE-18 to its canonical identity per `01_MASTER_INDEX.md` §2: the **Core Kernel & Lifecycle**, the single entry point that boots the application and dispatches requests. The PSR-14 Event Dispatcher is CORE-03 (already implemented in `packages/core/event-dispatcher/`); CORE-18 *consumes* CORE-03 for lifecycle signals but is not itself the event system.
-- **Finding 4** (1,529-byte thin approved file with no interfaces, no implementation, no benchmark methodology, no security properties) — replaces the prose-only stub with a full implementation-spec blueprint meeting every item of the `AUTHORING_GUIDE.md` fidelity bar: real PHP 8.3 interfaces, a complete compilable `Kernel` reference implementation, sequence + state diagrams, named-harness benchmark methodology, CI verification criteria, and explicit security invariants.
-- **Finding 10** (bare "< 10ms Hello World" target with no harness, baseline, or load model) — replaced with a named PHPUnit `--group performance` harness, GitHub Actions `ubuntu-latest` / PHP 8.3 / opcache + OPcache preload (per ADR-010) baseline, and a "Hello World" request load model that separates one-time boot cost from per-request cost. The absolute "< 10ms" target is explicitly marked **"provisional, unverified"** until the first CI measurement run writes the baseline into `docs/perf/CORE-18-baselines.md`.
+- **Finding 4** (1,529-byte thin approved file with no interfaces, no implementation, no benchmark methodology, no security properties) — replaces the prose-only stub with a full implementation-spec blueprint meeting every item of the `AUTHORING_GUIDE.md` fidelity bar: real PHP 8.4 interfaces, a complete compilable `Kernel` reference implementation, sequence + state diagrams, named-harness benchmark methodology, CI verification criteria, and explicit security invariants.
+- **Finding 10** (bare "< 10ms Hello World" target with no harness, baseline, or load model) — replaced with a named PHPUnit `--group performance` harness, GitHub Actions `ubuntu-latest` / PHP 8.4 / opcache + OPcache preload (per ADR-010) baseline, and a "Hello World" request load model that separates one-time boot cost from per-request cost. The absolute "< 10ms" target is explicitly marked **"provisional, unverified"** until the first CI measurement run writes the baseline into `docs/perf/CORE-18-baselines.md`.
 
 ## Component Name
 Core Kernel & Lifecycle — `SovereignStack\Core\Kernel` (PSR-4 mapped to `packages/core/kernel/src/` per the package's `composer.json`).
@@ -38,7 +38,7 @@ Per `01_MASTER_INDEX.md` §5 build sequence, CORE-18 lands at Step 3 (after Step
 ## Dependency Status
 - **Upward (consumed by Kernel):** CORE-02 (DI Container — instantiated, bindings registered into, compiled), CORE-10 (Config — loaded first, drives every subsequent binding), CORE-09 (Logging — registered as a singleton; flushed during `terminate()`), CORE-08 (Error Handler — registered before any other code runs), CORE-17 (Service Providers — discovered, `register()` invoked, `boot()` invoked), CORE-03 (Event Dispatcher — dispatched for every lifecycle event), CORE-05 (Middleware Pipeline — resolved from container, `handle()` invoked per request), CORE-06 (Router — bound into the pipeline's terminal handler). CORE-19 (DBAL) is consumed during `terminate()` only, to close connections; if CORE-19 has not landed yet, the Kernel treats its absence as a no-op (the optional-cleanup branch in `terminate()`).
 - **Downward (consumers of Kernel):** the Hub tier (every Hub service is booted by the Kernel via a service provider); `bin/loom` and `bin/forge` (CORE-13, CORE-20) call `Kernel::boot()` then dispatch a CLI command then `Kernel::terminate()`; the HTTP entry point (`public/index.php` or a RoadRunner worker) calls `boot()` once then loops `handle()` per request then `terminate()` on shutdown; DEPLOY-01's container image starts from `Kernel::boot()`; BRIDGE-01's Vanguard uses the Kernel's `RequestReceivedEvent` and `ResponseReadyEvent` hooks for audit logging.
-- **Runtime:** `php: ^8.3`, `psr/http-message: ^2.0` (for `ServerRequestInterface` / `ResponseInterface`), `psr/event-dispatcher: ^1.0` (for the `EventDispatcherInterface` consumed from CORE-03), `psr/container: ^2.0` (transitively via CORE-02), `psr/log: ^3.0` (transitively via CORE-09). Dev: `phpunit/phpunit: ^10.5`, `phpstan/phpstan: ^1.10`, `friendsofphp/php-cs-fixer: ^3.48`. No PHP extensions beyond the standard library.
+- **Runtime:** `php: ^8.4`, `psr/http-message: ^2.0` (for `ServerRequestInterface` / `ResponseInterface`), `psr/event-dispatcher: ^1.0` (for the `EventDispatcherInterface` consumed from CORE-03), `psr/container: ^2.0` (transitively via CORE-02), `psr/log: ^3.0` (transitively via CORE-09). Dev: `phpunit/phpunit: ^10.5`, `phpstan/phpstan: ^1.10`, `friendsofphp/php-cs-fixer: ^3.48`. No PHP extensions beyond the standard library.
 
 ## Architectural Design
 
@@ -326,7 +326,7 @@ final class TerminateEvent extends Event
 
 ### Reference Implementation
 
-The complete `Kernel` class. It compiles against PHP 8.3 with only the declared dependencies. The state-transition assertions on every public method are the load-bearing correctness check: removing any of them creates a code path where the kernel can be used after termination, which violates Security Property §1.
+The complete `Kernel` class. It compiles against PHP 8.4 with only the declared dependencies. The state-transition assertions on every public method are the load-bearing correctness check: removing any of them creates a code path where the kernel can be used after termination, which violates Security Property §1.
 
 ```php
 <?php
@@ -714,10 +714,10 @@ For CLI entry points (`bin/loom`, `bin/forge`), the pattern is identical except 
 
 | Target | Method |
 |---|---|
-| Cold-boot wall-clock time (one-time `boot()` cost) | **Harness:** PHPUnit `--group performance`, `KernelBootBenchmarkTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3.3, opcache enabled, OPcache preload enabled (per ADR-010), no Xdebug. **Load model:** 1 000 iterations of `boot()` followed by `terminate()` (each iteration is a fresh `Kernel` instance — boot cost is per-process, not per-request); 100-iteration warm-up; `microtime(true)` wall-clock; median of 5 runs. **Assert:** scaling relationship (boot time scales linearly with the number of registered service providers, ±10%); absolute target "boot < 50 ms with 0 providers" is **provisional, unverified** until first CI run writes `docs/perf/CORE-18-baselines.md`. |
-| Per-request wall-clock time (`handle()` cost for a "Hello World" route) | **Harness:** PHPUnit `--group performance`, `KernelHandleBenchmarkTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3.3, opcache + preload, no Xdebug. **Load model:** single `Kernel::boot()` once at test start; then 10 000 iterations of `handle(ServerRequestFactory::create('GET', '/hello'))` against a controller that returns `new TextResponse('Hello World')`; 1 000-iteration warm-up; `microtime(true)` wall-clock; median of 5 runs. **Assert:** scaling relationship (per-request time scales linearly with middleware-stack depth, ±10%); absolute target "< 10 ms Hello World" is **provisional, unverified** (the original claim in the approved blueprint cited this number with no harness — per Governance Rule 2 it is withdrawn and will be re-asserted only after first CI run). |
-| Termination wall-clock time (cleanup cost) | **Harness:** PHPUnit `--group performance`, `KernelTerminateBenchmarkTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3.3, opcache + preload, no Xdebug. **Load model:** 1 000 iterations of `boot()` → `handle($helloWorldRequest)` → `terminate()`; `microtime(true)` wall-clock on the `terminate()` call only; median of 5 runs. **Assert:** termination time does not exceed 2× boot time (provisional, unverified); if it does, the regression is investigated as a resource-leak candidate. |
-| Resource-leak detection (post-terminate) | **Harness:** PHPUnit `--group default`, `KernelResourceLeakTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3.3. **Load model:** `boot()` → `handle()` × 100 requests → `terminate()`; before and after the run, capture open file descriptors via `\function_exists('posix_getrlimit') ? posix_getrlimit() : null` and (where available) `lsof -p <pid> | wc -l`. **Assert:** post-terminate file-descriptor count ≤ pre-boot count + 5 (the +5 covers PHPUnit's own handles); DB connection count is 0 (verified by counting instances of `PDO` via a container-inspecting test double). |
+| Cold-boot wall-clock time (one-time `boot()` cost) | **Harness:** PHPUnit `--group performance`, `KernelBootBenchmarkTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.4.3, opcache enabled, OPcache preload enabled (per ADR-010), no Xdebug. **Load model:** 1 000 iterations of `boot()` followed by `terminate()` (each iteration is a fresh `Kernel` instance — boot cost is per-process, not per-request); 100-iteration warm-up; `microtime(true)` wall-clock; median of 5 runs. **Assert:** scaling relationship (boot time scales linearly with the number of registered service providers, ±10%); absolute target "boot < 50 ms with 0 providers" is **provisional, unverified** until first CI run writes `docs/perf/CORE-18-baselines.md`. |
+| Per-request wall-clock time (`handle()` cost for a "Hello World" route) | **Harness:** PHPUnit `--group performance`, `KernelHandleBenchmarkTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.4.3, opcache + preload, no Xdebug. **Load model:** single `Kernel::boot()` once at test start; then 10 000 iterations of `handle(ServerRequestFactory::create('GET', '/hello'))` against a controller that returns `new TextResponse('Hello World')`; 1 000-iteration warm-up; `microtime(true)` wall-clock; median of 5 runs. **Assert:** scaling relationship (per-request time scales linearly with middleware-stack depth, ±10%); absolute target "< 10 ms Hello World" is **provisional, unverified** (the original claim in the approved blueprint cited this number with no harness — per Governance Rule 2 it is withdrawn and will be re-asserted only after first CI run). |
+| Termination wall-clock time (cleanup cost) | **Harness:** PHPUnit `--group performance`, `KernelTerminateBenchmarkTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.4.3, opcache + preload, no Xdebug. **Load model:** 1 000 iterations of `boot()` → `handle($helloWorldRequest)` → `terminate()`; `microtime(true)` wall-clock on the `terminate()` call only; median of 5 runs. **Assert:** termination time does not exceed 2× boot time (provisional, unverified); if it does, the regression is investigated as a resource-leak candidate. |
+| Resource-leak detection (post-terminate) | **Harness:** PHPUnit `--group default`, `KernelResourceLeakTest`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.4.3. **Load model:** `boot()` → `handle()` × 100 requests → `terminate()`; before and after the run, capture open file descriptors via `\function_exists('posix_getrlimit') ? posix_getrlimit() : null` and (where available) `lsof -p <pid> | wc -l`. **Assert:** post-terminate file-descriptor count ≤ pre-boot count + 5 (the +5 covers PHPUnit's own handles); DB connection count is 0 (verified by counting instances of `PDO` via a container-inspecting test double). |
 
 **Iron rule compliance:** every absolute number in this table is explicitly marked "provisional, unverified" until the first CI measurement run. The bare "< 10 ms Hello World" target in the prior approved blueprint is withdrawn per Finding 10 / Governance Rule 2. The only non-provisional assertions are scaling relationships (linear in provider count; linear in middleware depth), which can be verified on first run without an external baseline.
 
@@ -758,7 +758,7 @@ For CLI entry points (`bin/loom`, `bin/forge`), the pattern is identical except 
 
 ```
 packages/core/kernel/
-├── composer.json          # php ^8.3, psr/http-message ^2.0, sovereign-stack/core-event-dispatcher ^1.0
+├── composer.json          # php ^8.4, psr/http-message ^2.0, sovereign-stack/core-event-dispatcher ^1.0
 ├── phpstan.neon           # level: 8, bleedingEdge: true
 ├── phpunit.xml.dist       # testsuite over tests/, coverage over src/
 ├── src/
@@ -841,3 +841,45 @@ Specifically binding on CORE-18 from the doctrine §4.5:
 | 6 | 8 chaos tests (all scenarios covered) | §4.5.7 | #257 | ✅ |
 
 Frozen contracts landed: `PanicException` (PR #251), `KernelException::bootstrapperTimeoutExceeded/bootAggregateTimeoutExceeded/requestTimeoutExceeded/terminateTimeoutExceeded/bootstrapperCountExceeded` (PRs #249/#253), `Kernel::BOOTSTRAPPER_TIMEOUT_SECONDS/BOOTSTRAPPER_COUNT_CEILING/BOOT_AGGREGATE_TIMEOUT_SECONDS/REQUEST_TIMEOUT_SECONDS/TERMINATE_TIMEOUT_SECONDS` (PRs #249/#253), `KernelLifecycleRecord` (PR #256), `Kernel::$lifecycleRecords` + `getLifecycleRecords()` (PR #256).
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #317)
+
+> **This section was added in PR #317 (Core rewrite Batch 1, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #317
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for all 3 Core blueprints in this batch: CORE-01 Loom, CORE-02 Container, CORE-18 Kernel — all shipped per the verified DAG).
+
+### What Was NOT Changed in PR #317
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/*/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), misattribution phrases (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #317 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
