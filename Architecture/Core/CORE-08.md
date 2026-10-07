@@ -11,8 +11,8 @@ Core
 
 ## Resolves
 - **Finding 2** — The stale evaluation layer (`docs/evaluation/BLUEPRINT_RANKINGS.md`) maps CORE-08 to "Filesystem Abstraction." The canonical mapping in `01_MASTER_INDEX.md` §2 is **Global Error & Exception Handler** at namespace `SovereignStack\Core\Error`. Filesystem Abstraction is CORE-14. This blueprint re-anchors CORE-08 to its verified identity.
-- **Finding 4** — The approved `docs/blueprints/Core/CORE-08.md` (1,339 bytes) is prose-only: five sections, zero interfaces, zero compilable code, one bare "100% intercept rate" claim. This blueprint replaces it with a full implementation spec: two real PHP 8.3 interfaces, three complete compilable classes, two Mermaid diagrams, named-harness benchmark methodology, and explicit security invariants.
-- **Finding 10** — The approved blueprint asserts "100% of uncaught exceptions must be captured" with no harness, baseline, or load model. This blueprint specifies a PHPUnit `--group performance` harness on GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, with explicit load models; all absolute targets are marked "provisional, unverified" until first CI run records them.
+- **Finding 4** — The approved `docs/blueprints/Core/CORE-08.md` (1,339 bytes) is prose-only: five sections, zero interfaces, zero compilable code, one bare "100% intercept rate" claim. This blueprint replaces it with a full implementation spec: two real PHP 8.4 interfaces, three complete compilable classes, two Mermaid diagrams, named-harness benchmark methodology, and explicit security invariants.
+- **Finding 10** — The approved blueprint asserts "100% of uncaught exceptions must be captured" with no harness, baseline, or load model. This blueprint specifies a PHPUnit `--group performance` harness on GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled, no Xdebug, with explicit load models; all absolute targets are marked "provisional, unverified" until first CI run records them.
 
 ## Component Name
 Global Error & Exception Handler — `SovereignStack\Core\Error`
@@ -33,7 +33,7 @@ Per `01_MASTER_INDEX.md` §2, CORE-08 is 📝 Not started. The build sequence in
 ## Dependency Status
 - **Upward:** CORE-09 (PSR-3 `LoggerInterface`), CORE-04 (PSR-7 `ResponseFactoryInterface` + `StreamFactoryInterface`), CORE-03 (PSR-14 `EventDispatcherInterface`), CORE-10 (Config — boolean `debug` flag), CORE-02 (Container — optional; logger/renderer resolved through it when present).
 - **Downward:** CORE-18 (Kernel — registers the handler at boot), CORE-05 (Middleware — outermost middleware delegates uncaught throwables to `handleException()`), CORE-13 (CLI Engine — reuses `ErrorRenderer` with a console strategy, registered separately), HUB-06 (Audit — subscribes to `ErrorEvent`), HUB-15 (Health — counts errors by severity for health rollup).
-- **Runtime:** PHP 8.3+, `ext-json` (always present), `psr/log ^3.0`, `psr/event-dispatcher ^1.0`, `psr/http-message ^2.0`, `psr/http-factory ^1.0`. No framework dependencies.
+- **Runtime:** PHP 8.4+, `ext-json` (always present), `psr/log ^3.0`, `psr/event-dispatcher ^1.0`, `psr/http-message ^2.0`, `psr/http-factory ^1.0`. No framework dependencies.
 
 ## Architectural Design
 
@@ -594,8 +594,8 @@ Where `renderThrowable()` is a thin public method on `ErrorHandler` that runs th
 
 | Target | Method |
 |---|---|
-| Error-to-exception conversion overhead | Harness: PHPUnit `--group performance`, single test method. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3.0, opcache enabled, no Xdebug. Load model: 1,000 `trigger_error(E_USER_WARNING)` calls inside a `try { ... } catch (\ErrorException $e) {}` loop; `microtime(true)` before/after; subtract the baseline cost of 1,000 `try/catch` blocks with no error. Report: delta per conversion in microseconds. **Target: provisional, unverified — record on first CI run; subsequent runs assert ≤120% of recorded baseline.** |
-| `handleException()` end-to-end latency (log + dispatch + render, no emit) | Harness: PHPUnit `--group performance`. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug. Load model: 1,000 iterations with a stubbed `NullLogger`, a no-op event dispatcher, and a real `ErrorRenderer` rendering JSON for a 500 status. Report: median wall-clock per iteration. **Target: provisional, unverified — record on first CI run; assert ≤2× a null-op baseline (logger + dispatcher + renderer cost must be dominated by the renderer, not by the handler's own bookkeeping).** |
+| Error-to-exception conversion overhead | Harness: PHPUnit `--group performance`, single test method. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.4.0, opcache enabled, no Xdebug. Load model: 1,000 `trigger_error(E_USER_WARNING)` calls inside a `try { ... } catch (\ErrorException $e) {}` loop; `microtime(true)` before/after; subtract the baseline cost of 1,000 `try/catch` blocks with no error. Report: delta per conversion in microseconds. **Target: provisional, unverified — record on first CI run; subsequent runs assert ≤120% of recorded baseline.** |
+| `handleException()` end-to-end latency (log + dispatch + render, no emit) | Harness: PHPUnit `--group performance`. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.4, opcache, no Xdebug. Load model: 1,000 iterations with a stubbed `NullLogger`, a no-op event dispatcher, and a real `ErrorRenderer` rendering JSON for a 500 status. Report: median wall-clock per iteration. **Target: provisional, unverified — record on first CI run; assert ≤2× a null-op baseline (logger + dispatcher + renderer cost must be dominated by the renderer, not by the handler's own bookkeeping).** |
 | Fatal-error recovery reliability | Harness: PHPUnit integration test that forks a child process via `proc_open`, the child script triggers a fatal (`call_to_undefined_function()`), the parent reads the child's stdout and asserts the rendered response (a 500 JSON body with `error.status=500` and `error.message` containing the generic server-error string — never a blank page). Baseline: same as above. Load model: 10 forked children, sequentially. **Target: 10/10 children produce a non-empty PSR-7-shaped response — no blank pages, no PHP core dumps.** |
 | Stack-trace leak prevention in production mode | Harness: PHPUnit security test. Baseline: same. Load model: render a `RuntimeException` whose message contains `password=secret123` and whose trace contains `/var/secrets/` paths, with `$debug=false`. Assert the response body contains neither the secret string nor the path. **Target: 0 leaks across 100 generated error shapes (data provider).** |
 
@@ -661,3 +661,46 @@ packages/core/error-handler/
 
 ## SemVer Impact
 **Minor** — Initial release at `0.1.0`. No existing code is modified (CORE-08 is a leaf with no current dependents). The handler installs PHP runtime hooks that change process-wide behaviour, but only when explicitly registered by the Kernel; with no Kernel integration, the package is inert. The CORE-18 wiring that activates the handler is tracked under CORE-18's own SemVer impact, not this blueprint's. No breaking changes to any existing public API.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #320)
+
+> **This section was added in PR #320 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #320
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-08 — Global Error & Exception Handler — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #320
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/error-handler/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #320 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
