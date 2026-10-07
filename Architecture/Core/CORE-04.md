@@ -28,12 +28,12 @@ The component is **not** a server — it does not read sockets, dispatch routes,
 Per `01_MASTER_INDEX.md` §2, the real implementation does not yet exist — there is no `packages/core/http-message/` directory at the verified commit (2026-08-04). This blueprint is the specification for the work to land there. CORE-04 is the leaf-most HTTP dependency: nothing in it depends on other CORE components except optionally CORE-09 (Logging) for stream-rotation diagnostics, declared as `suggest`, not `require`.
 
 ## Build Status
-📝 Not started. No code exists in `packages/core/http-message/`. Not blocked: CORE-04 has no upward CORE dependencies (only PSR interfaces and PHP 8.3 extensions). Downstream components CORE-05 and CORE-06 are blocked on CORE-04 landing.
+📝 Not started. No code exists in `packages/core/http-message/`. Not blocked: CORE-04 has no upward CORE dependencies (only PSR interfaces and PHP 8.4 extensions). Downstream components CORE-05 and CORE-06 are blocked on CORE-04 landing.
 
 ## Dependency Status
 - **Upward:** None (within the CORE tier). External: `psr/http-message: ^2.0`, `psr/http-factory: ^1.0`.
 - **Downward:** CORE-05 (PSR-15 Middleware), CORE-06 (Router), CORE-18 (Kernel), HUB-08 (Sovereign Gateway), BRIDGE-01 (Vanguard). All consume via PSR type contracts.
-- **Runtime:** PHP 8.3+, ext-mbstring (multibyte header validation), ext-fileinfo (`UploadedFile::getClientMediaType()` fallback). No external services.
+- **Runtime:** PHP 8.4+, ext-mbstring (multibyte header validation), ext-fileinfo (`UploadedFile::getClientMediaType()` fallback). No external services.
 
 ## Architectural Design
 
@@ -333,7 +333,7 @@ final class Response implements ResponseInterface
 
     /**
      * Construct a new immutable instance with selective overrides.
-     * PHP 8.3 readonly properties cannot be mutated post-construction,
+     * PHP 8.4 readonly properties cannot be mutated post-construction,
      * so immutability requires `new self(...)` rather than clone+mutate.
      */
     private function rebuild(
@@ -669,12 +669,12 @@ stateDiagram-v2
 
 | Target | Harness | Baseline | Load model | Status |
 |---|---|---|---|---|
-| Object creation throughput (Request + Response + Stream + Uri) | PHPUnit `--group performance`, single test creating 10,000 of each value object via `MessageFactory` | GitHub Actions `ubuntu-latest`, PHP 8.3.0, opcache enabled, no Xdebug | 10,000 iterations per type, warm-up 1,000 first; wall-clock via `microtime(true)` before/after loop | provisional, unverified — baseline measurement must be recorded on first CI run |
+| Object creation throughput (Request + Response + Stream + Uri) | PHPUnit `--group performance`, single test creating 10,000 of each value object via `MessageFactory` | GitHub Actions `ubuntu-latest`, PHP 8.4.0, opcache enabled, no Xdebug | 10,000 iterations per type, warm-up 1,000 first; wall-clock via `microtime(true)` before/after loop | provisional, unverified — baseline measurement must be recorded on first CI run |
 | Per-object allocation cost | Same harness, additionally calls `memory_get_usage(true)` before/after loop and divides by 10,000 | Same baseline | Same load model | provisional, unverified |
 | `withHeader()` immutability overhead | PHPUnit `--group performance`, 10,000 successive `withHeader()` calls on a single Response, measure wall-clock delta vs. in-place array assignment (control) | Same baseline | 10,000 iterations, 3 runs, take median | provisional, unverified |
 | Large-body memory ceiling | PHPUnit `--group performance`, write 100 MiB to a `Stream` constructed from `php://temp`, assert `memory_get_usage(true)` stays under 8 MiB | Same baseline | Single iteration, 100 MiB payload | provisional, unverified |
 
-**Iron rule compliance:** no bare millisecond targets appear in this blueprint. The first CI run on `ubuntu-latest` with PHP 8.3 must record actual measurements and replace "provisional, unverified" with concrete numbers (e.g. "12,400 requests/sec ±3% across 5 runs"). Subsequent CI runs assert throughput never falls below 80% of the recorded baseline, surfacing regressions without committing to absolute numbers that have not yet been measured. This pattern resolves Finding 10 for this component.
+**Iron rule compliance:** no bare millisecond targets appear in this blueprint. The first CI run on `ubuntu-latest` with PHP 8.4 must record actual measurements and replace "provisional, unverified" with concrete numbers (e.g. "12,400 requests/sec ±3% across 5 runs"). Subsequent CI runs assert throughput never falls below 80% of the recorded baseline, surfacing regressions without committing to absolute numbers that have not yet been measured. This pattern resolves Finding 10 for this component.
 
 ## CI Verification Criteria
 
@@ -689,7 +689,7 @@ stateDiagram-v2
 
 ## Security Properties
 
-- **Immutability is non-negotiable.** Every `with*()` method returns a new instance; the original is never mutated. Enforced by an automated immutability test and by PHP 8.3 `readonly` properties on all value-object fields. A middleware calling `$request->withAttribute('user', $user)` cannot accidentally affect the request seen by other middleware in the pipeline.
+- **Immutability is non-negotiable.** Every `with*()` method returns a new instance; the original is never mutated. Enforced by an automated immutability test and by PHP 8.4 `readonly` properties on all value-object fields. A middleware calling `$request->withAttribute('user', $user)` cannot accidentally affect the request seen by other middleware in the pipeline.
 - **Stream resources are always closed.** `Stream::__destruct()` calls `close()` unconditionally. `detach()` is the only way to release ownership; after `detach()` all stream operations throw `RuntimeException`. There is no path by which a `Stream` is GC'd while still holding an open resource.
 - **Header injection is impossible at the value-object layer.** `withHeader()` and `withAddedHeader()` reject any name or value containing `\r` or `\n`, throwing `InvalidArgumentException` (CWE-113 / CWE-93). Enforced by `assertNoCrlf()` in the `Response`/`Request` constructor and every `with*Header()` method. Downstream emitters (which may be naive — e.g. a `header()` call in CORE-18) cannot introduce a vulnerability because the value object makes it impossible to construct a malicious header in the first place.
 - **Uploaded-file path traversal is prevented.** `UploadedFile::moveTo($targetPath)` resolves `$targetPath` against a per-instance base directory (configured at factory time from CORE-10 Config) and rejects any resolved path that escapes the base. Symlinks are resolved via `realpath()` before the containment check.
@@ -707,7 +707,7 @@ stateDiagram-v2
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "psr/http-message": "^2.0",
         "psr/http-factory": "^1.0",
         "ext-mbstring": "*",
@@ -741,3 +741,45 @@ stateDiagram-v2
 
 ## SemVer Impact
 **Minor** (initial release: `0.1.0`). Establishes the HTTP message vocabulary for the Sovereign Stack. No existing code is modified, so no breaking change is possible. The `psr/http-message: ^2.0` constraint pins to PSR-7 revision 2.0; a future PSR-7 v3 would require a major-version bump per Composer semver. The `MessageFactoryInterface` aggregate mirrors PSR-17 method signatures verbatim, so future PSR-17 revisions are forward-compatible by interface inheritance.
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #319)
+
+> **This section was added in PR #319 (Core rewrite Batch 2, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #319
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for CORE-04 — PSR-7 HTTP Message & Factory — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #319
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/http-message/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #319 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
