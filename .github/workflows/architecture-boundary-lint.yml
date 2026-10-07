@@ -12,6 +12,15 @@ name: Architecture Boundary Lint
 #
 # Sister workflow to architecture-lint.yml (which checks documentation/reference
 # structure). This workflow checks executable ring-boundary rules.
+#
+# INVARIANT (per SAAI directive 2026-10-06): Three-state reporting.
+#   PASS       — control executed and passed
+#   FAIL       — control executed and failed
+#   UNVERIFIED — control did not execute (e.g., 0 files scanned, ImportError,
+#                runner misconfiguration). MUST NOT be reported as green.
+# A green architecture-boundary-lint result MUST mean the boundary was actually
+# inspected — not that the scanner found zero files. The 'Verify scan coverage'
+# step below enforces this invariant by failing the workflow if files_scanned == 0.
 
 on:
   push:
@@ -44,8 +53,36 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install Python dependencies
+        # Required because scripts/architecture-boundary-lint.py imports `yaml`
+        # (PyYAML) at line 42 to parse .github/architecture-export-allowlist.yaml.
+        # Pre-existing bug discovered while verifying PR #312: the workflow's
+        # "Set up Python" step installed Python but not PyYAML, causing every
+        # PR that touched the trigger paths to fail with ModuleNotFoundError.
+        run: pip install pyyaml
+
       - name: Run architecture-boundary-lint
-        run: python3 scripts/architecture-boundary-lint.py
+        # Output: JSON summary on stdout + human-readable report on stderr.
+        # Exit code: 0 = no violations, 1 = violations, 2 = checker error.
+        run: python3 scripts/architecture-boundary-lint.py | tee /tmp/abl-summary.json
+
+      - name: Verify scan coverage
+        # INVARIANT (per SAAI directive 2026-10-06): A green result MUST mean
+        # the boundary was actually inspected. If files_scanned == 0, the
+        # scanner found nothing to inspect (e.g., wrong REPO_ROOT, missing
+        # packages/ directory, broken checkout) — this is UNVERIFIED, not PASS.
+        # Pre-existing bug: PR #312's CI showed files_scanned=0 but the step
+        # succeeded because the script exited 0 on empty results. This step
+        # fails the workflow if files_scanned == 0, preventing false-positive
+        # green status.
+        run: |
+          files_scanned=$(python3 -c "import json; print(json.load(open('/tmp/abl-summary.json'))['files_scanned'])" 2>/dev/null || echo 0)
+          echo "files_scanned=$files_scanned"
+          if [ "$files_scanned" -eq 0 ]; then
+            echo "::error::architecture-boundary-lint scanned 0 files. This is UNVERIFIED, not PASS. The scanner likely has a wrong REPO_ROOT or the checkout is missing packages/. Per SAAI invariant: 'A green result MUST mean the boundary was actually inspected.'"
+            exit 1
+          fi
+          echo "✓ scan coverage verified: $files_scanned files inspected"
 
       - name: Run architecture-boundary-lint regression tests
         # Per SPEC-001 §41 Acceptance: "False positives are covered by regression tests."

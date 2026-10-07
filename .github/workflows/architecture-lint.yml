@@ -4,6 +4,15 @@ name: Architecture Lint
 # and service-locator prohibition now live in architecture-boundary-lint.yml.
 # This workflow handles documentation/reference-structure checks only.
 # See: architecture-boundary-lint.yml for the executable architecture fitness gate.
+#
+# INVARIANT (per SAAI directive 2026-10-06): Three-state reporting.
+#   PASS       — control executed and passed (lint ran, found 0 errors)
+#   FAIL       — control executed and failed (lint ran, found errors)
+#   UNVERIFIED — control did not execute (e.g., PHP not installed, missing
+#                Architecture/ directory, runner misconfiguration).
+#                MUST NOT be reported as green.
+# A green architecture-lint result MUST mean the lint actually ran and scanned
+# files — not that the workflow step succeeded without running.
 
 on:
   push:
@@ -35,9 +44,27 @@ jobs:
       - name: Run architecture-lint
         run: php Architecture/Verification/lint/run.php
 
-      # Note: as of this workflow's introduction, run.php performs exactly
-      # 3 checks (reference existence, misattribution phrases, structural
-      # completeness) — see Architecture/CrossCutting/REPO-STATE-AUDIT.md §5.
-      # Do not assume broader coverage (Pulse consistency, naming drift,
-      # Soft-Freeze, blueprint-fidelity) is enforced here yet; those are
+      - name: Run architecture-lint self-test (negative regression test)
+        # Per SAAI directive 2026-10-06: "A structural checker that only tests
+        # the happy path isn't sufficient." The self-test creates a temp
+        # directory with missing expected files, runs checkStructure() against
+        # it, and verifies the lint reports the missing files as errors.
+        # If the self-test fails (lint didn't detect missing files), this step
+        # fails — preventing false-positive green status.
+        run: php Architecture/Verification/lint/run.php --self-test
+
+      # Note: run.php performs 4 checks (as of PR #314 — previously 3, with
+      # misattribution claimed but unimplemented):
+      #   1. Reference existence — every CORE/HUB/ISPOKE/ESPOKE/BRIDGE/DEPLOY
+      #      token must be a defined ID.
+      #   2. Misattribution phrases — historically-wrong phrasings must not
+      #      appear in active (non-strikethrough, non-code) form. Implemented
+      #      in PR #314 (was previously claimed in docstring but unimplemented).
+      #   3. Structural completeness — every expected blueprint file must exist.
+      #      Updated in PR #314 to expect HUB-31, HUB-32, ADR-016..021 (was
+      #      previously only HUB-01..30, ADR-001..015 — pre-existing gap).
+      #   4. Self-test (negative regression) — verifies the lint correctly
+      #      fails when expected files are missing.
+      # Broader coverage (Pulse consistency, naming drift, Soft-Freeze,
+      # blueprint-fidelity) is NOT enforced here yet; those are
       # cooldown-expansion targets per SDLC-AGRD.md §6, not current scope.
