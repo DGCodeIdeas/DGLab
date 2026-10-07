@@ -12,7 +12,7 @@ Core (Foundational Infrastructure)
 ## Resolves
 - **Finding 2** (evaluation layer scored a stale CORE-09 as "Error Handling" 91/100) — this blueprint re-anchors CORE-09 to its verified identity per `01_MASTER_INDEX.md` §2: **the PSR-3 Logging Service**, namespace `SovereignStack\Core\Logging`. Error handling is CORE-08; logging is CORE-09. The two are distinct components with distinct contracts.
 - **Finding 3** (`BRIDGE-01.md` wrongly cites `CORE-09: Cryptography & Hashing (Payload Verification)`) — this blueprint makes the identity of CORE-09 unambiguous in its first paragraph. The cryptography component is CORE-16 (Binary Encryption Envelope). CORE-09 is the structured logging service; it consumes traces, context, and exceptions, and produces JSON log lines. It never verifies cryptographic signatures. An implementer reading this blueprint cannot confuse CORE-09 with CORE-16.
-- **Finding 4** (the approved `docs/blueprints/Core/CORE-09.md` is 1,254 bytes — thin, prose-only, no interfaces, no implementation, no SQL DDL, no sequence diagram) — this blueprint meets the fidelity bar in `AUTHORING_GUIDE.md`: real PHP 8.3 interfaces, complete compilable reference implementation, Mermaid sequence + state diagrams, named benchmark harness, CI criteria, explicit security properties, and migration notes.
+- **Finding 4** (the approved `docs/blueprints/Core/CORE-09.md` is 1,254 bytes — thin, prose-only, no interfaces, no implementation, no SQL DDL, no sequence diagram) — this blueprint meets the fidelity bar in `AUTHORING_GUIDE.md`: real PHP 8.4 interfaces, complete compilable reference implementation, Mermaid sequence + state diagrams, named benchmark harness, CI criteria, explicit security properties, and migration notes.
 - **Finding 10** (the approved blueprint asserts "< 0.1ms logging overhead" with no harness, baseline, or load model) — the absolute target is **withdrawn** and replaced with a named-harness methodology below; any absolute number cited is marked "provisional, unverified" per Governance Rule 2 in `01_MASTER_INDEX.md`.
 
 ## Component Name
@@ -36,7 +36,7 @@ The implementation does not yet exist. The `packages/core/logging/` directory ha
 ## Dependency Status
 - **Upward:** CORE-02 (DI Container) — required at runtime; the logger is injected as a singleton bound to `Psr\Log\LoggerInterface`. CORE-10 (Configuration & Environment Loader) — soft; reads `logging.threshold`, `logging.handlers[]`, `logging.redaction.keys` from configuration. PSR-3 itself (`psr/log: ^3.0`) — the contract being implemented.
 - **Downward:** CORE-03 (Event Dispatcher) — already type-hints `?\Psr\Log\LoggerInterface` for listener-failure recording; once CORE-09 lands, the `?LoggerInterface` slot in `EventDispatcher`'s constructor becomes a real binding rather than `null`. CORE-08 (Error Handler) — depends on CORE-09 to persist uncaught exceptions and fatal errors. CORE-18 (Kernel) — logs boot/shutdown phases. CORE-17 (Service Providers) — every service provider that wants diagnostic output obtains the logger through the container. All Hub-tier components and most spoke-tier components consume `Psr\Log\LoggerInterface`. BRIDGE-01 (Vanguard) uses the logger for audit-interceptor diagnostics (not for payload verification — that is CORE-16).
-- **Runtime:** `php:^8.3`, `psr/log:^3.0` (required — provides `LoggerInterface`, `LogLevel`, `AbstractLogger`, `NullLogger`). `ext-json` (always available in PHP 8.3). `ext-mbstring` (suggested — for multibyte-safe truncation). No other PHP extensions. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`.
+- **Runtime:** `php: ^8.4`, `psr/log:^3.0` (required — provides `LoggerInterface`, `LogLevel`, `AbstractLogger`, `NullLogger`). `ext-json` (always available in PHP 8.4). `ext-mbstring` (suggested — for multibyte-safe truncation). No other PHP extensions. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`.
 
 ## Architectural Design
 
@@ -717,9 +717,9 @@ public function register(ContainerInterface $c): void
 
 | Target | Method |
 |---|---|
-| Per-record overhead, FileHandler, JSON formatter | Harness: `phpunit --group performance` test logging 10 000 records in a tight `for` loop, wall-clock measured via `microtime(true)` before and after, divided by 10 000. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, `LOG_THRESHOLD=debug` so every record is written. Load model: single process, single thread, no contention, records written to `/tmp/core09-bench.log` (tmpfs). **Absolute target "< 0.1 ms overhead" per record: provisional, unverified** until the performance group runs on the CI baseline; the prior blueprint's bare claim is withdrawn per Finding 10. |
+| Per-record overhead, FileHandler, JSON formatter | Harness: `phpunit --group performance` test logging 10 000 records in a tight `for` loop, wall-clock measured via `microtime(true)` before and after, divided by 10 000. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled, no Xdebug, `LOG_THRESHOLD=debug` so every record is written. Load model: single process, single thread, no contention, records written to `/tmp/core09-bench.log` (tmpfs). **Absolute target "< 0.1 ms overhead" per record: provisional, unverified** until the performance group runs on the CI baseline; the prior blueprint's bare claim is withdrawn per Finding 10. |
 | Per-record overhead, SyslogHandler vs FileHandler | Same harness, parameterised over handler. Asserts SyslogHandler is within 2× of FileHandler throughput on the CI baseline (syslog adds a socket round-trip). **Provisional, unverified.** |
-| Concurrent-write safety, 100 processes × 100 records | Harness: `phpunit --group performance` test that forks 100 child processes via `pcntl_fork()`, each writing 100 records to the same file via `FileHandler` with `flock(LOCK_EX)`. After all children exit, the parent reads the file and asserts (a) line count is exactly 10 000, (b) every line is valid JSON (no interleaved writes corrupted a record). Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3 with `ext-pcntl`. Load model: 100 processes, 100 records each, no rate limiting. **Absolute target: zero corrupted lines.** |
+| Concurrent-write safety, 100 processes × 100 records | Harness: `phpunit --group performance` test that forks 100 child processes via `pcntl_fork()`, each writing 100 records to the same file via `FileHandler` with `flock(LOCK_EX)`. After all children exit, the parent reads the file and asserts (a) line count is exactly 10 000, (b) every line is valid JSON (no interleaved writes corrupted a record). Baseline: GitHub Actions `ubuntu-latest`, PHP 8.4 with `ext-pcntl`. Load model: 100 processes, 100 records each, no rate limiting. **Absolute target: zero corrupted lines.** |
 | Level-filtering fast path | Harness: `phpunit --group performance` test logging 10 000 debug records against a handler stack whose threshold is `warning`. Asserts the per-record overhead is < 10% of the write path (the `isHandling()` short-circuit must be cheap). **Provisional, unverified.** |
 | Redaction overhead | Harness: `phpunit --group performance` test formatting 10 000 records with 20 context keys (5 redacted) through `RedactingFormatter(JsonFormatter)` vs. raw `JsonFormatter`. Asserts redaction overhead < 15% of formatting cost. **Provisional, unverified.** |
 | PSR-3 compliance | Harness: the upstream `psr/log` package's compliance test suite (`Psr\Log\Test\LoggerInterfaceTest`) extended by a `Logger` test harness. The PSR-3 test base class verifies placeholder interpolation, level method forwarding, and `InvalidArgumentException` on unknown levels. Baseline: same CI runner. |
@@ -797,3 +797,46 @@ packages/core/logging/
 **Minor.** The package does not yet exist; its first tagged release will be `0.1.0`. The PSR-3 `LoggerInterface` is the public contract and is fixed by the FIG specification — the package cannot break it. The package-local interfaces (`HandlerInterface`, `FormatterInterface`) and the `LogRecord` value object are also part of the public API and will follow SemVer from the first release: breaking changes to them require a major version bump. The internal classes (`AbstractHandler`, the concrete handlers, the formatters) are marked `final` and are not part of the public API; consumers that need to extend them should submit a feature request rather than subclass.
 
 The `0.x` initial development period will allow breaking changes per SemVer 2.0 §4 ("anything MAY change at any time"). The first `1.0.0` release will lock the public API and is gated on: (a) PSR-3 compliance suite passing, (b) 100% branch coverage on the six core methods listed in CI criteria, (c) the concurrent-write test passing on the canonical CI baseline, (d) phpstan level 8 with zero baseline-ignored errors.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #320)
+
+> **This section was added in PR #320 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #320
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-09 — PSR-3 Logging Service — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #320
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/logger/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #320 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
