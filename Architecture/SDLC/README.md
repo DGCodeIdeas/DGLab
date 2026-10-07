@@ -10,13 +10,16 @@
 
 The SDLC documents specify DGLab's development methodology — Spiral Deepening for a Solo Tech Lead. The methodology is being rewritten (per Tech-Lead directive 2026-10-06: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time").
 
-### Current Documents (Batch 1 — PR #316)
+### Current Documents (Batches 1 + 2 — PRs #316, #318)
 
 | Document | Subject | Status |
 |---|---|---|
-| [`SDLC-01-Foundations.md`](SDLC-01-Foundations.md) | Spiral Deepening model, depth scale 1-6, laps, milestones, cooldowns, versioning, solo invariants | Canonical (rewrite of SDLC-AGRD §1-4) |
-| [`SDLC-02-Governance.md`](SDLC-02-Governance.md) | Two-DAG model, edge dimensions, Eligible(X) formula, four-tool lint separation, PASS/FAIL/UNVERIFIED invariant, calibration | Canonical (rewrite of SDLC-AGRD §5-7 + ADR-021 governance) |
-| [`SDLC-03-InterfaceFreeze.md`](SDLC-03-InterfaceFreeze.md) | Interface freeze rules, ADR format, ADR-gated changes, OD lifecycle, Fidelity Bar, AUTHORING_GUIDE, explicit unknowns | Canonical (rewrite of SDLC-AGRD §8-10 + authoring/freeze rules) |
+| [`SDLC-01-Foundations.md`](SDLC-01-Foundations.md) | Spiral Deepening model, depth scale 1-6, laps, milestones, cooldowns, versioning, solo invariants | Canonical (Batch 1) |
+| [`SDLC-02-Governance.md`](SDLC-02-Governance.md) | Two-DAG model, edge dimensions, Eligible(X) formula, four-tool lint separation, PASS/FAIL/UNVERIFIED invariant, calibration | Canonical (Batch 1) |
+| [`SDLC-03-InterfaceFreeze.md`](SDLC-03-InterfaceFreeze.md) | Interface freeze rules, ADR format, ADR-gated changes, OD lifecycle, Fidelity Bar, AUTHORING_GUIDE, explicit unknowns | Canonical (Batch 1) |
+| [`SDLC-04-CooldownMechanics.md`](SDLC-04-CooldownMechanics.md) | Variable-duration cooldowns (v3.5), four gates (worklog/OD/refactor/rest), mini-cooldowns (OD-11), CI verification step, worklog protocol | Canonical (Batch 2) |
+| [`SDLC-05-AI-Assisted-Development-Protocol.md`](SDLC-05-AI-Assisted-Development-Protocol.md) | What AI may/may not do, verification conditions for AI work, subagent protocol, confident-but-wrong failure mode | Canonical (Batch 2) |
+| [`SDLC-06-Generator-Specifications.md`](SDLC-06-Generator-Specifications.md) | Deterministic generators, generator contract, determinism/reproducibility/source-truth/no-hidden-state invariants, CI regeneration check | Canonical (Batch 2) |
 
 ### Superseded Material
 
@@ -38,11 +41,11 @@ Per Tech-Lead directive, the rewrite applies these binding doctrines:
 
 ## Future Batches
 
-Per Tech-Lead directive: "three documents at a time." This is Batch 1. Future batches will add more SDLC documents as the methodology continues to be specified with proper detail. Candidate future documents (not yet written):
+Per Tech-Lead directive: "three documents at a time." Batches 1 and 2 are merged (SDLC-01..06). Future batches will add more SDLC documents as the methodology continues to be specified with proper detail. Candidate future documents (not yet written):
 
-- **SDLC-04: Cooldown Mechanics** — variable-duration cooldowns, rest-check gates, mini-cooldowns (OD-11), worklog reconciliation protocol.
-- **SDLC-05: AI-Assisted Development Protocol** — how AI assistants participate, what they may and may not decide, verification conditions for AI-produced work.
-- **SDLC-06: Generator Specifications** — deterministic generation of build orders, DAGs, and other derived artifacts; CI regeneration checks.
+- **SDLC-07: Calibration Formula** — the specific measurable inputs + deterministic output for project calibration (currently indicative in SDLC-02 §4).
+- **SDLC-08: Repository Hygiene Lint Specification** — the planned third lint in the four-tool separation (currently planned, not implemented).
+- **SDLC-09: Architecture-State Validator Specification** — the planned fourth lint in the four-tool separation (currently planned, not implemented).
 
 These are candidates, not commitments. The Tech Lead decides which batches come next based on implementation reality.
 
