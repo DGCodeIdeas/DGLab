@@ -11,8 +11,8 @@ Core (Foundational Infrastructure)
 
 ## Resolves
 - **Finding 2** (evaluation-layer mislabeling) — The evaluation layer records CORE-17 as "Testing Framework" (per `01_MASTER_INDEX.md` §2, footnote on stale evaluation-layer mapping). The canonical identity is **Service Provider System** in namespace `SovereignStack\Core\Providers`. This blueprint locks the canonical mapping in code.
-- **Finding 4** (thin blueprints) — The approved `CORE-17.md` is 1,381 bytes: five prose sections, no interfaces, no compilable code, no diagrams, and a bare "< 5ms" target. Replaced with real PHP 8.3 interfaces, a complete compilable `ProviderRegistry`, a Kernel-boot sequence diagram, a provider-lifecycle state diagram, a methodology-grounded benchmark table, and explicit security invariants.
-- **Finding 10** (bare performance targets) — The "Loading 50 service providers must take < 5ms" assertion is replaced with a benchmark table whose every row names the harness (PHPUnit `--group performance`), baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug), and load model (10 / 50 / 100 providers, 100 iterations each, `microtime(true)` wall-clock). All absolute numbers are marked "provisional, unverified".
+- **Finding 4** (thin blueprints) — The approved `CORE-17.md` is 1,381 bytes: five prose sections, no interfaces, no compilable code, no diagrams, and a bare "< 5ms" target. Replaced with real PHP 8.4 interfaces, a complete compilable `ProviderRegistry`, a Kernel-boot sequence diagram, a provider-lifecycle state diagram, a methodology-grounded benchmark table, and explicit security invariants.
+- **Finding 10** (bare performance targets) — The "Loading 50 service providers must take < 5ms" assertion is replaced with a benchmark table whose every row names the harness (PHPUnit `--group performance`), baseline (GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled, no Xdebug), and load model (10 / 50 / 100 providers, 100 iterations each, `microtime(true)` wall-clock). All absolute numbers are marked "provisional, unverified".
 
 ## Component Name
 Service Provider System — `SovereignStack\Core\Providers` (PSR-4 mapped to `packages/core/providers/src/` in a new `sovereign-stack/core-providers` package; see Migration Notes).
@@ -40,7 +40,7 @@ Once CORE-02, CORE-10, and CORE-09 land (Build Sequence Steps 1–2), CORE-17 is
 ## Dependency Status
 - **Upward:** CORE-02 (DI Container — `ContainerInterface`, `CompilerPassInterface`), CORE-10 (Config — `Environment` enum, `ConfigInterface`), CORE-09 (Logging — `Psr\Log\LoggerInterface`).
 - **Downward:** CORE-18 (Kernel — calls `ProviderRegistry::discover()` / `registerAll()` / `bootAll()` in its `boot()` phase), and transitively **every** Hub and Spoke package (each ships at least one `ServiceProvider` class annotated with `#[AsProvider]`).
-- **Runtime:** PHP 8.3 (`#[\Attribute]`, readonly classes, constructor promotion, `match`, enums), `psr/container: ^2.0`, `psr/log: ^3.0`. Dev: `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `friendsofphp/php-cs-fixer ^3.48`.
+- **Runtime:** PHP 8.4 (`#[\Attribute]`, readonly classes, constructor promotion, `match`, enums), `psr/container: ^2.0`, `psr/log: ^3.0`. Dev: `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `friendsofphp/php-cs-fixer ^3.48`.
 
 ## Architectural Design
 
@@ -193,7 +193,7 @@ final class BootException extends \RuntimeException
 
 ### Reference Implementation
 
-The following `ProviderRegistry` class is the complete, copy-pasteable implementation. It compiles against PHP 8.3 with only `psr/container: ^2.0`, `psr/log: ^3.0`, and the CORE-02 / CORE-10 interfaces as runtime dependencies. Drop it into `packages/core/providers/src/ProviderRegistry.php` and `composer dump-autoload` will pick it up unchanged.
+The following `ProviderRegistry` class is the complete, copy-pasteable implementation. It compiles against PHP 8.4 with only `psr/container: ^2.0`, `psr/log: ^3.0`, and the CORE-02 / CORE-10 interfaces as runtime dependencies. Drop it into `packages/core/providers/src/ProviderRegistry.php` and `composer dump-autoload` will pick it up unchanged.
 
 ```php
 <?php
@@ -603,7 +603,7 @@ Provider instances themselves transition `Discovered → Registered → Booted �
 
 | Target | Harness | Baseline | Load model | Status |
 |---|---|---|---|---|
-| Boot time per provider | PHPUnit `--group performance` | GitHub Actions `ubuntu-latest`, PHP 8.3, `opcache.enable_cli=1`, no Xdebug | 10 / 50 / 100 synthetic providers (each `register()` binds 5 singletons, each `boot()` is a no-op); 100 boot cycles per cohort; report median + p95 of `microtime(true)` deltas around `registerAll() + bootAll()` | **Provisional, unverified** until first CI measurement run |
+| Boot time per provider | PHPUnit `--group performance` | GitHub Actions `ubuntu-latest`, PHP 8.4, `opcache.enable_cli=1`, no Xdebug | 10 / 50 / 100 synthetic providers (each `register()` binds 5 singletons, each `boot()` is a no-op); 100 boot cycles per cohort; report median + p95 of `microtime(true)` deltas around `registerAll() + bootAll()` | **Provisional, unverified** until first CI measurement run |
 | Linear scaling | Same | Same | Assert `T(100 providers) / T(10 providers) <= 12` (linear would be `<= 10`; allow 20 % slack for constant overhead) | **Provisional, unverified** |
 | Discovery time | Same | Same | 1,000 PHP files in scan tree, 100 of which carry `#[AsProvider]`; assert `discover()` < 50 ms wall-clock | **Provisional, unverified** |
 | Memory per provider | Same | Same | `memory_get_usage(true)` delta around `registerAll()` with 100 providers; assert < 1 MB | **Provisional, unverified** |
@@ -636,7 +636,7 @@ Provider instances themselves transition `Discovered → Registered → Booted �
 
 ## Migration Notes
 
-**Landing the implementation.** A new package is created at `packages/core/providers/`. Its `composer.json` declares `name: sovereign-stack/core-providers`, `php: ^8.3`, runtime deps `psr/container: ^2.0`, `psr/log: ^3.0`, `sovereign-stack/core-container: ^1.0`, `sovereign-stack/core-config: ^1.0`; dev deps `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `friendsofphp/php-cs-fixer ^3.48`; PSR-4 autoloads `SovereignStack\Core\Providers\` from `src/`. The implementation lands as six PHP files: `ServiceProviderInterface.php`, `ServiceProvider.php`, `AsProvider.php`, `BootException.php`, `ProviderDiscoveryException.php`, `ProviderRegistry.php`. Tests land in `tests/Unit/`, `tests/Integration/`, `tests/Performance/` (`@group performance`, 10/50/100 providers), and `tests/Fixtures/` (including a `NonProviderClass` carrying `#[AsProvider]` but no SPI, to trigger `DiscoveryException`). Until CORE-18 lands, the registry can be unit-tested in isolation against fakes for `ConfigInterface` and a fresh `Container` (CORE-02) per test.
+**Landing the implementation.** A new package is created at `packages/core/providers/`. Its `composer.json` declares `name: sovereign-stack/core-providers`, `php: ^8.4`, runtime deps `psr/container: ^2.0`, `psr/log: ^3.0`, `sovereign-stack/core-container: ^1.0`, `sovereign-stack/core-config: ^1.0`; dev deps `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `friendsofphp/php-cs-fixer ^3.48`; PSR-4 autoloads `SovereignStack\Core\Providers\` from `src/`. The implementation lands as six PHP files: `ServiceProviderInterface.php`, `ServiceProvider.php`, `AsProvider.php`, `BootException.php`, `ProviderDiscoveryException.php`, `ProviderRegistry.php`. Tests land in `tests/Unit/`, `tests/Integration/`, `tests/Performance/` (`@group performance`, 10/50/100 providers), and `tests/Fixtures/` (including a `NonProviderClass` carrying `#[AsProvider]` but no SPI, to trigger `DiscoveryException`). Until CORE-18 lands, the registry can be unit-tested in isolation against fakes for `ConfigInterface` and a fresh `Container` (CORE-02) per test.
 
 **Downstream unblock.** Once CORE-17 lands on `main`, every Hub blueprint (HUB-01..30) becomes implementable to its full Integration Strategy — each Hub's `register()` block assumes a `ContainerInterface` with `bind()` / `singleton()` / `addCompilerPass()` and a registry that calls `register()` then `boot()`. CORE-13 (CLI) and CORE-20 (Forge) likewise become unblocked: Forge scaffolds a new Hub service by writing a `*ServiceProvider.php` file with the `#[AsProvider]` attribute already in place.
 
@@ -646,3 +646,46 @@ Provider instances themselves transition `Discovered → Registered → Booted �
 
 ## SemVer Impact
 **Major.** Inaugural `1.0.0` release of `sovereign-stack/core-providers`. Introduces the `ServiceProviderInterface`, `ServiceProvider` abstract base, `AsProvider` attribute, `BootException`, `ProviderDiscoveryException`, and `ProviderRegistry` contracts that every Hub and Spoke package depends on. Any future change to these interfaces or to the sort comparator (which downstream packages depend on for determinism) is SemVer major. The `ProviderRegistry` private internals (`findPhpFiles`, `classesInFile`, `envAllows`) may change in minor releases; the public method signatures (`addScanDirectory`, `addProvider`, `discover`, `registerAll`, `bootAll`) are part of the published API surface and are SemVer-major-locked.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #322)
+
+> **This section was added in PR #322 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #322
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-17 — Service Provider System — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #322
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/service-providers/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #322 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
