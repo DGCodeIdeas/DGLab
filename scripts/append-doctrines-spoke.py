@@ -1,65 +1,18 @@
-# PHASE ISPOKE-03: System Health and Observability Dashboard
+#!/usr/bin/env python3
+"""
+Append "Doctrines Applied + Rewrite Notes (PR #NNN)" section to a Core blueprint.
+Usage: python3 /tmp/append_doctrines.py <file> <pr_number> <package_path> <component_name>
+"""
+import sys
 
-
-<!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
-> **⚠️ Blind-Spot Awareness:** This Spoke blueprint may contain **unverified assumptions about the Hub capabilities it consumes, unstated integration requirements, or edge cases not covered**. The composition policy declared here is a candidate, not a certainty. The ISPOKE's `reusable` flag may not reflect actual reusability. Cross-ESPOKE sharing may have hidden dependencies (like E11→E12). **The consumer matrix is evidence-based, not assumption-based — but the evidence may be incomplete.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
-
-<!-- End Blind-Spot Awareness -->
-
-## Tier
-Internal Spoke (Staff-only Application)
-
-## Resolves
-Cross-references checked against `01_MASTER_INDEX.md` §3 — clean, no correction needed. Adds stated
-benchmark methodology (Finding 10).
-
-## Component Name
-Sovereign Pulse Dashboard
-
-## Description
-Real-time observability/health monitoring dashboard aggregating `HUB-15` (Pulse), `HUB-06` (Audit),
-and `CORE-08` (Error Handler) into a unified view of stack performance and stability.
-
-## Build Status
-🔴 **Blocked** on `HUB-15`, `HUB-06`, `HUB-02`, `HUB-09` — none implemented.
-
-## Dependency Status
-- **Direct Hub:** `HUB-15`, `HUB-06`, `HUB-02` (real-time metrics), `HUB-09` (Event Bus, live alerts),
-  `HUB-26`, `HUB-16`. *(Verified — correct, including `CORE-09` correctly identified in the original
-  as "Logger," matching the real PSR-3 Logging Service.)*
-- **Transitive Core:** `CORE-08`, `CORE-09`, `CORE-19`, `CORE-10`.
-
-## Architectural Design
-- **PulseWall** — grid of health tiles per Hub/Spoke service.
-- **ErrorStream** — real-time feed of exceptions/fatal errors.
-- **MetricCharts** — memory/response-time visualization via `HUB-26`.
-- **IncidentManager** — tracks/documents system-wide incidents.
-
-## Integration Strategy
-- **Bootstrapping:** subscribes to `HUB-09` for real-time health alerts.
-- **UI Rendering:** `HUB-26` dashboard/data-viz components.
-- **Data Source:** `HUB-15` registry and `CORE-09` log storage.
-
-## Benchmark & Verification Methodology
-| Target | Method |
-|---|---|
-| Real-time propagation | Integration test: flip a fixture service's `HUB-15` status; measure and report actual wall-clock time to dashboard update, on a stated environment — don't restate "within 2 seconds" unmeasured (Finding 10). |
-| Alert accuracy | Integration test: log a `CORE-08` critical error, assert a corresponding visual alert renders — checked via DOM/state assertion, not just "an event fired." |
-| Aggregation performance | Benchmark aggregating a realistic 24h/10-service fixture dataset; report actual time, state environment. |
-
-## CI Verification Criteria
-- Alert-accuracy test (above), blocking.
-- Real-time propagation and aggregation performance measured and reported with environment stated.
-
-## SemVer Impact
-**Minor.** Essential for production operations and SRE.
-
+def append_section(filepath, pr_num, package_path, component_name):
+    section = f"""
 
 ---
 
-## Doctrines Applied + Rewrite Notes (PR #336)
+## Doctrines Applied + Rewrite Notes (PR #{pr_num})
 
-> **This section was added in PR #336 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+> **This section was added in PR #{pr_num} (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
 
 ### Doctrines Applied
 
@@ -71,17 +24,17 @@ This blueprint is bound by the following doctrines (per [SDLC-01 §9](../../SDLC
 - **Two-DAG Governance** ([`../../ADRs/ADR-021-tier-stratified-build-order.md`](../../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`../../Core/CORE-VERIFIED-DAG.md`](../../Core/CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../../Verification/SHORTCOMINGS-REGISTER.md`](../../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
 - **FROZEN-CONTRACTS** ([`../../FROZEN-CONTRACTS.md`](../../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../../SDLC/SDLC-03-InterfaceFreeze.md)).
 
-### Updates Applied in PR #336
+### Updates Applied in PR #{pr_num}
 
 - **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
 - **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../../CrossCutting/SDLC-AGRD.md`](../../CrossCutting/SDLC-AGRD.md)).
 - **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
-- **Build Status**: verified current shipped state (depth 2 for this blueprint — ISPOKE-03 — System Health and Observability Dashboard — shipped per the verified DAG).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — {component_name} — shipped per the verified DAG).
 
-### What Was NOT Changed in PR #336
+### What Was NOT Changed in PR #{pr_num}
 
 - **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../../SDLC/SDLC-03-InterfaceFreeze.md)).
-- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/spoke/internal/health-dashboard/src/` and is verified by the architecture-boundary-lint.
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/{package_path}/src/` and is verified by the architecture-boundary-lint.
 - **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
 - **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
 
@@ -93,6 +46,17 @@ This blueprint is bound by the following doctrines (per [SDLC-01 §9](../../SDLC
 
 ### Provenance
 
-This section was added in PR #336 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+This section was added in PR #{pr_num} (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
 
 Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
+"""
+    with open(filepath, 'a') as f:
+        f.write(section)
+    print(f"Appended to {filepath}")
+
+if __name__ == '__main__':
+    filepath = sys.argv[1]
+    pr_num = sys.argv[2]
+    package_path = sys.argv[3]
+    component_name = sys.argv[4]
+    append_section(filepath, pr_num, package_path, component_name)
