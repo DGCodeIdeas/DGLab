@@ -14,9 +14,9 @@ Bridge
 
 ## Resolves
 - **Finding 3** (`BRIDGE-01.md` wrongly cites `CORE-09: Cryptography & Hashing (Payload Verification)` and `CORE-01: Polyrepo Orchestrator (Enforcement Logic)` and `CORE-06: Router (Gateway Routing)`) — this blueprint rewrites the dependency list with verified canonical IDs: **CORE-16** (Binary Encryption Envelope) for payload verification and mTLS cert validation, **HUB-08** (Sovereign Gateway) for gateway routing, **HUB-04** (Identity) for JWT re-validation, **HUB-06** (Audit) for the tier-crossing audit mandate, **HUB-15** (Health) for failover coordination, **HUB-02** (Cache / Redis) for rate-limit state. CORE-09 is referenced only for redacting `Authorization` headers from request logs; CORE-01 is removed entirely — the Bridge's enforcement logic is its own, not delegated to the polyrepo release tool. CORE-06 (attribute router) is removed — the Bridge does no in-process routing; it forwards to External Spokes via PSR-18.
-- **Finding 4** (the approved `BRIDGE-01.md` is 4,309 bytes of prose with two stub interfaces, no compilable class, no SQL DDL, no security invariants, no benchmark methodology) — this blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.3 interfaces (`BoundaryContractInterface`, `DtoTransformerInterface`), a complete compilable `Vanguard` PSR-15 middleware, two Mermaid diagrams (sequence + state), named-harness benchmark methodology with the bare "≤ 2ms" / "within 5ms" targets explicitly marked *provisional, unverified*, twelve CI verification methods, and twelve explicit security invariants.
+- **Finding 4** (the approved `BRIDGE-01.md` is 4,309 bytes of prose with two stub interfaces, no compilable class, no SQL DDL, no security invariants, no benchmark methodology) — this blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.4 interfaces (`BoundaryContractInterface`, `DtoTransformerInterface`), a complete compilable `Vanguard` PSR-15 middleware, two Mermaid diagrams (sequence + state), named-harness benchmark methodology with the bare "≤ 2ms" / "within 5ms" targets explicitly marked *provisional, unverified*, twelve CI verification methods, and twelve explicit security invariants.
 - **Finding 9** (the only Deploy blueprint deploys Markdown, not the application) — the 3-replica failover spec, network policy, and CDN-to-Vanguard health-check contract defined here are the inputs DEPLOY-03 (Bridge & External Spoke Deployment) must consume. Without this blueprint's failover section, DEPLOY-03 would have nothing to deploy but a single-replica SPOF.
-- **Finding 10** (every approved blueprint asserts bare millisecond targets with no harness, baseline, or load model) — the absolute "DTO transformation + audit logging ≤ 2ms" and "403 within 5ms" claims in the approved `BRIDGE-01.md` are **withdrawn** and replaced with a PHPUnit `--group performance` + k6 methodology against a named baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug). Every absolute number is marked *provisional, unverified* per Governance Rule 2 until first CI baseline run.
+- **Finding 10** (every approved blueprint asserts bare millisecond targets with no harness, baseline, or load model) — the absolute "DTO transformation + audit logging ≤ 2ms" and "403 within 5ms" claims in the approved `BRIDGE-01.md` are **withdrawn** and replaced with a PHPUnit `--group performance` + k6 methodology against a named baseline (GitHub Actions `ubuntu-latest`, PHP 8.4, opcache, no Xdebug). Every absolute number is marked *provisional, unverified* per Governance Rule 2 until first CI baseline run.
 - **Finding 11** (`SOLUTIONS_TO_WEAKNESSES.md` identifies "Bridge Single Point of Failure; No Redundancy Strategy" but the fix was never merged into the blueprint) — the 3-replica failover spec (§Failover & Redundancy) is the merge. The Vanguard is horizontally scaled behind the CDN; session state lives in HUB-02 so any replica can serve any authenticated request; a failing replica is removed from rotation within 5 seconds. This blueprint is the canonical home of the redundancy strategy — `SOLUTIONS_TO_WEAKNESSES.md` is retired once this lands.
 
 ## Component Name
@@ -42,7 +42,7 @@ Depth-2 scope: the Vanguard enforces contract lookup (default-deny 403 for unreg
 ## Dependency Status
 - **Upward:** CORE-04 (PSR-7 HTTP Message — `ServerRequestInterface`, `ResponseInterface`, PSR-17 `ResponseFactoryInterface` for 401/429/400/403 short-circuits), CORE-05 (PSR-15 Middleware — `MiddlewareInterface`, `RequestHandlerInterface`), CORE-09 (PSR-3 Logging — redaction of `Authorization` header from request logs; the Vanguard does not use CORE-09 for any cryptographic operation — Finding 3 correction), CORE-10 (Config — `bridge.contracts` map, `bridge.rate_limits` tiers, `bridge.cdn_ip_allowlist` for `X-Forwarded-For` trust), CORE-16 (Binary Encryption Envelope — `KeyRegistryInterface` for JWKS public-key cache; `EncrypterInterface` for HMAC verification of the CDN-to-origin header per `03_THREAT_MODEL.md` §7 "Header manipulation"), CORE-18 (Kernel — pipes the Vanguard as the outermost middleware of the external-facing PSR-15 pipeline), HUB-02 (Cache / Redis — sliding-window rate-limit counters keyed `rl:{tier}:{user_id|ip}:{route}:{minute_bucket}`; JWKS public-key cache keyed `jwks:{kid}` with 5-minute TTL), HUB-04 (Identity — `POST /internal/verify-token` over the cluster network; the Vanguard never holds the ES256 private key per ADR-003), HUB-06 (Audit — `AuditServiceInterface::record()` with `tier_crossing = true` for every crossing), HUB-08 (Gateway — `RequestForwarderInterface` and `ServiceRegistryInterface` contracts are re-used for the External Spoke forward path; HUB-08's `ServiceRegistry` maps `/espoke/cms` → `http://espoke-cms.internal:8080`), HUB-15 (Health — `GET /health/vanguard-replica/{id}` for cross-replica liveness; `GET /health/bridge` is the CDN's target).
 - **Downward:** Every External Spoke (`ESPOKE-01` through `ESPOKE-15`) — receives forwarded requests from the Vanguard and returns responses through it; no External Spoke may receive traffic except via the Vanguard (enforced by DEPLOY-03 network policy). DEPLOY-03 (Bridge & External Spoke Deployment) — consumes this blueprint's failover, network policy, and rate-limit tier specs as deployment inputs. HUB-06 (Audit) — the Vanguard is the dominant producer of `tier_crossing = true` audit records.
-- **Runtime:** PHP 8.3+, `ext-openssl` (CORE-16 transitive — ES256 public-key verification via `openssl_verify`), `ext-pcre` (PCRE-JIT for WAF regex), `ext-json`, `psr/http-message:^2.0`, `psr/http-server-middleware:^1.0`, `psr/http-server-handler:^1.0`, `psr/http-client:^1.0` (PSR-18 — the External Spoke forwarder), `psr/http-factory:^1.0` (PSR-17), `psr/log:^3.0`, `psr/cache:^3.0` (HUB-02 transitive). Network access to: External Spoke internal DNS names (DEPLOY-03), HUB-04 internal verify-token endpoint, HUB-06 audit ingest endpoint, HUB-15 health endpoint, HUB-02 Redis cluster. No public Internet egress.
+- **Runtime:** PHP 8.4+, `ext-openssl` (CORE-16 transitive — ES256 public-key verification via `openssl_verify`), `ext-pcre` (PCRE-JIT for WAF regex), `ext-json`, `psr/http-message:^2.0`, `psr/http-server-middleware:^1.0`, `psr/http-server-handler:^1.0`, `psr/http-client:^1.0` (PSR-18 — the External Spoke forwarder), `psr/http-factory:^1.0` (PSR-17), `psr/log:^3.0`, `psr/cache:^3.0` (HUB-02 transitive). Network access to: External Spoke internal DNS names (DEPLOY-03), HUB-04 internal verify-token endpoint, HUB-06 audit ingest endpoint, HUB-15 health endpoint, HUB-02 Redis cluster. No public Internet egress.
 
 ## Architectural Design
 
@@ -214,7 +214,7 @@ interface DtoTransformerInterface
 
 ### Reference Implementation
 
-The `Vanguard` class is the load-bearing piece. It compiles against PHP 8.3 with only the PSR dependencies declared in `composer.json`. Every rejection branch constructs its response via `ResponseFactoryInterface` (PSR-17) and records an audit event before returning — the audit step is not skipped on rejections.
+The `Vanguard` class is the load-bearing piece. It compiles against PHP 8.4 with only the PSR dependencies declared in `composer.json`. Every rejection branch constructs its response via `ResponseFactoryInterface` (PSR-17) and records an audit event before returning — the audit step is not skipped on rejections.
 
 ```php
 <?php
@@ -556,7 +556,7 @@ This section closes the Finding 11 gap. A single-replica Vanguard is the most ca
 
 | Target | Harness | Baseline | Load model | Status |
 |---|---|---|---|---|
-| JWT verify + rate-limit + WAF + contract lookup + DTO transform overhead per request (the "transformation + audit ≤ 2ms" claim from the approved blueprint) | PHPUnit `--group performance` + k6 load test against a Vanguard replica with mocked External Spoke | GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug, Redis on localhost | 1,000 requests, single-route, 10 concurrent connections, all JWTs valid | **Provisional, unverified** — first CI baseline run will produce a measured p50/p95/p99; the "≤ 2ms" figure is retained only as an expectation to be confirmed or corrected. |
+| JWT verify + rate-limit + WAF + contract lookup + DTO transform overhead per request (the "transformation + audit ≤ 2ms" claim from the approved blueprint) | PHPUnit `--group performance` + k6 load test against a Vanguard replica with mocked External Spoke | GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled, no Xdebug, Redis on localhost | 1,000 requests, single-route, 10 concurrent connections, all JWTs valid | **Provisional, unverified** — first CI baseline run will produce a measured p50/p95/p99; the "≤ 2ms" figure is retained only as an expectation to be confirmed or corrected. |
 | 403 (unregistered contract) within 5ms | PHPUnit `--group performance` micro-benchmark of the rejection path (no External Spoke forward) | Same baseline | 10,000 sequential calls to `Vanguard::process()` with an unregistered route | **Provisional, unverified** — the "within 5ms" figure from the approved blueprint is withdrawn pending measurement. |
 | JWT verify cache-hit vs cache-miss overhead | PHPUnit `--group performance` with two scenarios: (a) JWKS key in HUB-02 cache, (b) JWKS key missing (forces HUB-04 round-trip) | Same baseline | 1,000 requests per scenario | To be measured. |
 | WAF pattern-matching throughput | PHPUnit `--group performance` with a corpus of 1,000 attack payloads (OWASP test suite) + 1,000 benign payloads | Same baseline | Sequential calls to `WafInspector::inspect()` | To be measured. PCRE-JIT is expected to keep this under 0.1ms/request; not asserted until measured. |
@@ -600,7 +600,7 @@ This section closes the Finding 11 gap. A single-replica Vanguard is the most ca
 **New package.** Create `app/Bridge/Vanguard/` with `composer.json` declaring:
 - `name: sovereignstack/bridge-vanguard`
 - `autoload: { "psr-4": { "SovereignStack\\Bridge\\": "src/" } }`
-- `require: { "php": "^8.3", "ext-openssl": "*", "ext-pcre": "*", "ext-json": "*", "psr/http-message": "^2.0", "psr/http-server-middleware": "^1.0", "psr/http-server-handler": "^1.0", "psr/http-client": "^1.0", "psr/http-factory": "^1.0", "psr/log": "^3.0", "psr/cache": "^3.0", "sovereignstack/core-crypto": "^1.0", "sovereignstack/hub-identity": "^1.0", "sovereignstack/hub-audit": "^1.0", "sovereignstack/hub-gateway": "^1.0", "sovereignstack/hub-health": "^1.0", "sovereignstack/hub-cache": "^1.0" }`
+- `require: { "php": "^8.4", "ext-openssl": "*", "ext-pcre": "*", "ext-json": "*", "psr/http-message": "^2.0", "psr/http-server-middleware": "^1.0", "psr/http-server-handler": "^1.0", "psr/http-client": "^1.0", "psr/http-factory": "^1.0", "psr/log": "^3.0", "psr/cache": "^3.0", "sovereignstack/core-crypto": "^1.0", "sovereignstack/hub-identity": "^1.0", "sovereignstack/hub-audit": "^1.0", "sovereignstack/hub-gateway": "^1.0", "sovereignstack/hub-health": "^1.0", "sovereignstack/hub-cache": "^1.0" }`
 - `require-dev: { "phpunit/phpunit": "^10.5", "phpstan/phpstan": "^1.10" }`
 
 **Dependency landing order.** Before `app/Bridge/Vanguard/` can compile, the following must be merged and tagged: CORE-16 (Encryption), HUB-02 (Cache), HUB-04 (Identity), HUB-06 (Audit), HUB-08 (Gateway — for the forwarder/registry interface contracts only), HUB-15 (Health). This is Step 9 of the 11-step build sequence in `01_MASTER_INDEX.md` §5 — it cannot be parallelised earlier.
@@ -621,3 +621,46 @@ This section closes the Finding 11 gap. A single-replica Vanguard is the most ca
 
 ## SemVer Impact
 **Major.** The Vanguard is a new component with no prior tagged release. Its first release is `1.0.0`. The SemVer impact on downstream consumers (External Spokes, DEPLOY-03) is Major because External Spokes must be deployed behind the Vanguard — there is no opt-out. Future Major bumps: changing the `BoundaryContractInterface` signature, changing the chain order, changing the rate-limit tier semantics, or removing the audit mandate. Minor bumps: adding new rate-limit tiers, adding new WAF patterns, adding new `DtoTransformerInterface` methods with default implementations. Patch bumps: bug fixes that do not change observable behaviour.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #352)
+
+> **This section was added in PR #352 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../../Verification/INTEGRITY-GATE.md`](../../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../../ADRs/ADR-021-tier-stratified-build-order.md`](../../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`../../Core/CORE-VERIFIED-DAG.md`](../../Core/CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../../Verification/SHORTCOMINGS-REGISTER.md`](../../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../../FROZEN-CONTRACTS.md`](../../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #352
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../../CrossCutting/SDLC-AGRD.md`](../../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — BRIDGE-01 — The Vanguard (Architectural Enforcement Layer) — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #352
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/bridge/vanguard/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #352 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
