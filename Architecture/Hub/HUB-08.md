@@ -11,9 +11,9 @@ Hub
 
 ## Resolves
 - **Finding 3** — `BRIDGE-01.md` cites `CORE-06: Router (Gateway Routing)` for the gateway routing concern. CORE-06 is the attribute-based router that matches a `(method, path)` pair to a controller class+method inside a single application; it is **not** the Hub-tier API Gateway that routes Spoke requests to upstream Hub services over the network. The corrected reference is `HUB-08: Sovereign Gateway`. This blueprint pins HUB-08 as the canonical owner of the internal service-mesh routing concern so future readers cannot re-introduce the stale CORE-06 citation.
-- **Finding 4** — No approved `HUB-08.md` file exists in the repo cache at the verified commit (2026-08-04); the taxonomy entry (`hub-blueprint-taxonomy.md` line 50) declares HUB-08 "Critical / Beta / Large" but points at a missing file. This blueprint replaces the absence with real PHP 8.3 interface contracts, complete compilable `Gateway` / `AuthMiddleware` / `RateLimitMiddleware` / `WafMiddleware` / `ServiceRegistry` / `RequestForwarder` classes, sequence + state diagrams, named-harness benchmark methodology, CI criteria, and explicit security invariants.
+- **Finding 4** — No approved `HUB-08.md` file exists in the repo cache at the verified commit (2026-08-04); the taxonomy entry (`hub-blueprint-taxonomy.md` line 50) declares HUB-08 "Critical / Beta / Large" but points at a missing file. This blueprint replaces the absence with real PHP 8.4 interface contracts, complete compilable `Gateway` / `AuthMiddleware` / `RateLimitMiddleware` / `WafMiddleware` / `ServiceRegistry` / `RequestForwarder` classes, sequence + state diagrams, named-harness benchmark methodology, CI criteria, and explicit security invariants.
 - **Finding 8** — The entire Hub tier is blocked because CORE-02 (DI Container) is a `.gitkeep`-only stub. HUB-08 is no exception: it cannot resolve `AuthMiddleware` / `RateLimitMiddleware` / `WafMiddleware` / `RequestForwarder` through the container until CORE-02 lands, and it cannot run without CORE-06, HUB-04 (Identity), and HUB-07 (Rate Limiter) also being implemented. This blueprint makes the block explicit and enumerates every unblocking prerequisite.
-- **Finding 10** — Stale approved Hub blueprints (e.g., HUB-04) assert bare latency targets like "auth check < 1ms (hot cache)" with no harness, baseline, or load model. This blueprint replaces that pattern with a PHPUnit `--group performance` methodology against a named baseline (GitHub Actions `ubuntu-latest`, PHP 8.3, opcache, no Xdebug), with a 1,000-request forwarding load model, and with every absolute latency target explicitly marked **"provisional, unverified"** until first CI baseline run.
+- **Finding 10** — Stale approved Hub blueprints (e.g., HUB-04) assert bare latency targets like "auth check < 1ms (hot cache)" with no harness, baseline, or load model. This blueprint replaces that pattern with a PHPUnit `--group performance` methodology against a named baseline (GitHub Actions `ubuntu-latest`, PHP 8.4, opcache, no Xdebug), with a 1,000-request forwarding load model, and with every absolute latency target explicitly marked **"provisional, unverified"** until first CI baseline run.
 
 ## Component Name
 Sovereign Gateway — `SovereignStack\Hub\Gateway` (PSR-4 mapped to `packages/hub/gateway/src/`).
@@ -35,7 +35,7 @@ What HUB-08 is **not**: not the attribute router (CORE-06), not the external edg
 
 - **Upward:** CORE-04 (PSR-7 HTTP Message & Factory — `ServerRequestInterface`, `ResponseInterface`, PSR-17 `ResponseFactoryInterface`), CORE-05 (PSR-15 Middleware — `MiddlewareInterface`, `RequestHandlerInterface`), CORE-06 (Attribute Router — co-exists on the PSR-15 pipeline; HUB-08 is the *outer* Hub-tier middleware, CORE-06's `FinalRequestHandler` is the *terminal* Core-tier handler), CORE-09 (PSR-3 Logging — WAF block events, access logs at debug level), CORE-10 (Config — `ServiceRegistry` mappings), CORE-18 (Kernel — owns the `Gateway` instance, pipes it as the outermost Hub middleware during boot), HUB-04 (Identity — `TokenService::verifyToken()`), HUB-07 (Rate Limiter — `RateLimiter::check()`).
 - **Downward:** Every Spoke that calls a Hub service (all 25 Internal Spokes, all 15 External Spokes) routes through HUB-08. BRIDGE-01 (Vanguard) is itself a downstream consumer: BRIDGE-01's "Runtime Enforcement" section ("The Bridge uses `HUB-08` middleware to intercept all cross-tier traffic") refers to HUB-08, not CORE-06 (per Finding 3 correction).
-- **Runtime:** PHP 8.3+, `ext-json`, `ext-pcre` (PCRE-JIT for WAF regex matching), `psr/http-message: ^2.0`, `psr/http-server-middleware: ^1.0`, `psr/http-server-handler: ^1.0`, `psr/http-client: ^1.0` (PSR-18 — `RequestForwarder`'s HTTP client), `psr/http-factory: ^1.0` (PSR-17 — `ResponseFactoryInterface` for 401/429/400 short-circuits), `psr/log: ^3.0`. No PHP extensions beyond stock. Network access to internal Hub service DNS names (DEPLOY-02 network policy).
+- **Runtime:** PHP 8.4+, `ext-json`, `ext-pcre` (PCRE-JIT for WAF regex matching), `psr/http-message: ^2.0`, `psr/http-server-middleware: ^1.0`, `psr/http-server-handler: ^1.0`, `psr/http-client: ^1.0` (PSR-18 — `RequestForwarder`'s HTTP client), `psr/http-factory: ^1.0` (PSR-17 — `ResponseFactoryInterface` for 401/429/400 short-circuits), `psr/log: ^3.0`. No PHP extensions beyond stock. Network access to internal Hub service DNS names (DEPLOY-02 network policy).
 
 ## Architectural Design
 
@@ -144,7 +144,7 @@ interface RequestForwarderInterface
 
 ### Reference Implementation
 
-The `Gateway` class and its three gate middleware. Each class compiles against PHP 8.3 with only the PSR dependencies declared in `composer.json`. The `Gateway::process()` method is the load-bearing piece — it shows the strict ordering and the three short-circuit branches (401, 429, 400) before the happy-path forward.
+The `Gateway` class and its three gate middleware. Each class compiles against PHP 8.4 with only the PSR dependencies declared in `composer.json`. The `Gateway::process()` method is the load-bearing piece — it shows the strict ordering and the three short-circuit branches (401, 429, 400) before the happy-path forward.
 
 ```php
 <?php
@@ -323,7 +323,7 @@ HUB-08 is wired into the system by CORE-18 (Kernel) during boot. The Kernel cons
 
 | Target | Method |
 |---|---|
-| Gateway end-to-end forwarding overhead (auth + rate-limit + WAF + forward) | Harness: PHPUnit `--group performance` with `microtime(true)` wall-clock measurement around `Gateway::process()`. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled (`opcache.enable_cli=1`), no Xdebug, no tidal-cache. Load model: 1,000 sequential requests with a stubbed PSR-18 client (no real network hop — measures Gateway CPU only) + 100 requests with a real loopback HTTP client (measures forwarder overhead). Assert: median overhead is recorded and tracked; absolute ms target is **provisional, unverified** until first CI baseline run lands three times within ±20% (per Governance Rule 2). |
+| Gateway end-to-end forwarding overhead (auth + rate-limit + WAF + forward) | Harness: PHPUnit `--group performance` with `microtime(true)` wall-clock measurement around `Gateway::process()`. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled (`opcache.enable_cli=1`), no Xdebug, no tidal-cache. Load model: 1,000 sequential requests with a stubbed PSR-18 client (no real network hop — measures Gateway CPU only) + 100 requests with a real loopback HTTP client (measures forwarder overhead). Assert: median overhead is recorded and tracked; absolute ms target is **provisional, unverified** until first CI baseline run lands three times within ±20% (per Governance Rule 2). |
 | AuthMiddleware hot-path cost | Same harness; isolate `AuthMiddleware::authenticate()` with a stubbed `TokenService` that returns a cached `TokenClaims` (simulating HUB-04's hot-cache verify per its <1ms target). Load model: 10,000 calls. Assert: median recorded, **provisional, unverified**. |
 | WAF regex scan cost | Same harness; isolate `WafMiddleware::scan()` against a 5KB JSON body + 200-byte query string. Load model: 10,000 calls, six regex patterns. Assert: median recorded, **provisional, unverified**. |
 | ServiceRegistry resolve cost | Same harness; 100 registered prefixes, 10,000 `resolve()` calls with uniformly random paths. Assert: longest-prefix-match is O(n) in registered prefix count; median recorded, **provisional, unverified**. |
@@ -353,7 +353,7 @@ HUB-08 is wired into the system by CORE-18 (Kernel) during boot. The Kernel cons
 
 ## Migration Notes
 
-**New package:** `packages/hub/gateway/` with `composer.json` declaring `php: ^8.3`, `psr/http-message: ^2.0`, `psr/http-server-middleware: ^1.0`, `psr/http-server-handler: ^1.0`, `psr/http-client: ^1.0`, `psr/http-factory: ^1.0`, `psr/log: ^3.0`, and `require-dev` with `phpunit/phpunit: ^11.0`, `phpstan/phpstan: ^1.11`, `vimeo/psalm: ^5.20`. PSR-4 autoload: `"SovereignStack\\Hub\\Gateway\\": "src/"`. Package name: `sovereign-stack/hub-gateway`. Initial version: `0.1.0`.
+**New package:** `packages/hub/gateway/` with `composer.json` declaring `php: ^8.4`, `psr/http-message: ^2.0`, `psr/http-server-middleware: ^1.0`, `psr/http-server-handler: ^1.0`, `psr/http-client: ^1.0`, `psr/http-factory: ^1.0`, `psr/log: ^3.0`, and `require-dev` with `phpunit/phpunit: ^11.0`, `phpstan/phpstan: ^1.11`, `vimeo/psalm: ^5.20`. PSR-4 autoload: `"SovereignStack\\Hub\\Gateway\\": "src/"`. Package name: `sovereign-stack/hub-gateway`. Initial version: `0.1.0`.
 
 **Dependency landing order:** HUB-08 lands in Step 8 of the 11-step build sequence (`01_MASTER_INDEX.md` §5), after CORE-02 / CORE-04 / CORE-05 / CORE-06 (Steps 1–4) and after HUB-04 + HUB-07 (earlier in Step 8 per `hub-dependency-graph.md`'s `HUB-05 → HUB-07 → HUB-08 → HUB-10` sequence). Once HUB-08 lands, it unblocks BRIDGE-01 (Step 9), every Internal Spoke (Step 10), and every External Spoke (Step 11).
 
@@ -363,3 +363,46 @@ HUB-08 is wired into the system by CORE-18 (Kernel) during boot. The Kernel cons
 
 ## SemVer Impact
 **Major** — inaugural `1.0.0` release. HUB-08 is the Hub-tier security chokepoint; its `GatewayInterface`, `ServiceRegistryInterface`, and `RequestForwarderInterface` contracts are part of the public Hub API surface that every Spoke depends on. Breaking changes to these interfaces require a SemVer-major bump on the Hub tier as a whole.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #326)
+
+> **This section was added in PR #326 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #326
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — HUB-08 — Sovereign Gateway — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #326
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/hub/gateway/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #326 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
