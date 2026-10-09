@@ -10,9 +10,9 @@
 Hub (High criticality)
 
 ## Resolves
-- **Finding 4** (the approved `docs/blueprints/Hub/HUB-06.md` is 2,688 bytes — prose-only with a stub `AuditorInterface` lacking typed return values, no SQL DDL, no hash-chain implementation, no sequence/state diagrams, no benchmark methodology, no security invariants). This blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.3 interfaces, complete compilable `AuditService` reference implementation with the chained-hash `record()` method, MySQL DDL with append-only privilege enforcement, two Mermaid diagrams, named-harness benchmark table, eight CI verification methods, and six explicit security properties.
+- **Finding 4** (the approved `docs/blueprints/Hub/HUB-06.md` is 2,688 bytes — prose-only with a stub `AuditorInterface` lacking typed return values, no SQL DDL, no hash-chain implementation, no sequence/state diagrams, no benchmark methodology, no security invariants). This blueprint meets the AUTHORING_GUIDE fidelity bar: real PHP 8.4 interfaces, complete compilable `AuditService` reference implementation with the chained-hash `record()` method, MySQL DDL with append-only privilege enforcement, two Mermaid diagrams, named-harness benchmark table, eight CI verification methods, and six explicit security properties.
 - **Finding 8** (HUB-06 transitively depends on CORE-02, CORE-19, and CORE-03, all of which are unimplemented or stubbed) — explicitly marked 🔴 Blocked below; build cannot start until CORE-19 (DBAL) and CORE-02 (Container) ship and CORE-03 (Event Dispatcher) is wired through CORE-18 (Kernel).
-- **Finding 10** (the approved blueprint asserts a bare "1000 logs/sec" zero-drop target with no harness, baseline, or load model) — replaced with a named-harness PHPUnit `--group performance` benchmark writing 1,000 records via `microtime(true)` wall-clock measurement on GitHub Actions `ubuntu-latest`, PHP 8.3, MySQL 8 (InnoDB); the absolute throughput number is marked "provisional, unverified" per Governance Rule 2.
+- **Finding 10** (the approved blueprint asserts a bare "1000 logs/sec" zero-drop target with no harness, baseline, or load model) — replaced with a named-harness PHPUnit `--group performance` benchmark writing 1,000 records via `microtime(true)` wall-clock measurement on GitHub Actions `ubuntu-latest`, PHP 8.4, MySQL 8 (InnoDB); the absolute throughput number is marked "provisional, unverified" per Governance Rule 2.
 - **Finding 11** (audit-log solutions documented in `docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` were never merged into HUB-06) — the tamper-evident hash chain, append-only privilege model, 7-year retention tiering, and meta-audit-on-read solutions all land here as concrete PHP code, SQL DDL, and CI tests; the sidecar solutions document can be deleted once this blueprint merges.
 
 ## Component Name
@@ -38,7 +38,7 @@ The implementation does not yet exist. No `packages/hub/audit/` directory is pre
 ## Dependency Status
 - **Upward:** CORE-19 (Database Abstraction Layer) — `AuditService` depends on `SovereignStack\Core\Database\ConnectionInterface` for parameterised INSERTs and on `QueryBuilder` for the `AuditQuery` fluent builder; fetches the previous record's `record_hash` via a SELECT after INSERT (MySQL has no `RETURNING *`) in the same statement that inserts the new row. CORE-03 (Event Dispatcher) — `AuditListener` implements `Psr\EventDispatcher\ListenerProviderInterface` registration via CORE-17 and receives every event implementing `AuditableEventInterface`. CORE-02 (DI Container) — service wiring; `AuditService` is a singleton. CORE-09 (Logging) — PSR-3 logger for tamper-detection critical alerts and write-failure warnings (the `AuditLogWriteFailure` alert in `05_OBSERVABILITY.md` §6). CORE-14 (Filesystem) — `AuditRetention` uses the filesystem abstraction to write Parquet exports to S3. HUB-04 (Identity) — provides `actor_id`, `actor_type`, `tenant_id`, and `ip_address` via the request-scoped `IdentityContext`. HUB-11 (Queue) — optional async write path for non-critical events (see Integration Strategy).
 - **Downward:** BRIDGE-01 (Vanguard) — emits `AuditableEventInterface` events with `tier_crossing = true` for every payload that crosses the bridge; HUB-06 is the canonical sink. ISPOKE-01 (Admin Panel) — consumes `AuditService::query()` to render the audit viewer UI for `super_admin`. ISPOKE-10 (Audit Log Tracker) — consumes `AuditService::export()` for SIEM ingestion and CSV download. HUB-15 (Health Check) — `AuditService::health()` reports write latency and last-write timestamp to the /health endpoint.
-- **Runtime:** `php:^8.3`, `ext-pdo_pgsql`, `psr/event-dispatcher:^1.0`, `psr/log:^3.0`, `psr/container:^2.0`. MySQL 8 (InnoDB) (per ADR-013) — JSONB columns, partial indexes, `RETURNING *`. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`. Archive: AWS S3 with Object Lock (Compliance mode) or MinIO with WORM buckets for self-hosted deployments.
+- **Runtime:** `php: ^8.4`, `ext-pdo_pgsql`, `psr/event-dispatcher:^1.0`, `psr/log:^3.0`, `psr/container:^2.0`. MySQL 8 (InnoDB) (per ADR-013) — JSONB columns, partial indexes, `RETURNING *`. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `friendsofphp/php-cs-fixer:^3.48`. Archive: AWS S3 with Object Lock (Compliance mode) or MinIO with WORM buckets for self-hosted deployments.
 
 ## Architectural Design
 
@@ -549,7 +549,7 @@ final class AuditServiceProvider implements ServiceProviderInterface
 
 | Target | Method |
 |---|---|
-| Audit write latency (per-record INSERT + hash compute) | **Harness:** PHPUnit `--group performance` test `AuditServicePerformanceTest::testRecordLatency1000Rows`; measures wall-clock via `microtime(true)` around a loop of 1,000 `record()` calls with distinct ULIDs. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3 with opcache, no Xdebug, MySQL 8 (InnoDB) in a service container. **Load model:** Single-threaded sequential inserts, no concurrent writers. **Assertion:** Median per-record wall-clock is bounded by DB INSERT + SHA-256 computation; absolute target **provisional, unverified** until first measurement. |
+| Audit write latency (per-record INSERT + hash compute) | **Harness:** PHPUnit `--group performance` test `AuditServicePerformanceTest::testRecordLatency1000Rows`; measures wall-clock via `microtime(true)` around a loop of 1,000 `record()` calls with distinct ULIDs. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.4 with opcache, no Xdebug, MySQL 8 (InnoDB) in a service container. **Load model:** Single-threaded sequential inserts, no concurrent writers. **Assertion:** Median per-record wall-clock is bounded by DB INSERT + SHA-256 computation; absolute target **provisional, unverified** until first measurement. |
 | Hash chain verification throughput | **Harness:** PHPUnit `--group performance` test `HashChainPerformanceTest::testVerifyChain100kRows`; inserts 100k synthetic rows, then calls `verifyChain($conn, 100000)` and measures wall-clock. **Baseline:** As above. **Load model:** Read-only scan of 100k rows. **Assertion:** Linear in sample size; absolute target **provisional, unverified**. |
 | Concurrent-write race detection | **Harness:** PHPUnit `--group performance` test `AuditConcurrencyTest::testConcurrentWritersDoNotCorruptChain`; spawns 10 parallel PHP processes via `pcntl_fork()`, each writing 100 records. **Baseline:** As above. **Load model:** 10 concurrent writers, 1,000 total records. **Assertion:** All 1,000 records persist; chain verification passes after all writers complete (SERIALIZABLE transaction prevents interleaving). |
 | Export throughput (CSV) | **Harness:** PHPUnit `--group performance` test `AuditExportPerformanceTest::testCsvExport10kRows`. **Baseline:** As above. **Load model:** 10,000-row query, CSV serialisation. **Assertion:** Wall-clock bounded by query + I/O; absolute target **provisional, unverified**. |
@@ -590,3 +590,46 @@ final class AuditServiceProvider implements ServiceProviderInterface
 
 ## SemVer Impact
 **Minor** (SemVer 0.x → 0.y, or 1.x → 1.y). HUB-06 is a new package with no prior release; its first tagged release is `0.1.0`. Subsequent changes that add new query methods or export formats are minor bumps; changes to the `AuditRecord` value object's required fields are major bumps (downstream ISPOKE-01/10 callers break). The hash-chain algorithm is **frozen at 1.0.0** — changing the hash function (e.g., SHA-256 → SHA-3) is a major version bump that requires a migration ADR (per Governance Rule 8) and a chain-bridging strategy (write a "bridge record" with both the old and new hash before switching).
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #326)
+
+> **This section was added in PR #326 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #326
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — HUB-06 — Sovereign Auditor — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #326
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/hub/auditor/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #326 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.

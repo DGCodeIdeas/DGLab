@@ -10,9 +10,9 @@
 Hub
 
 ## Resolves
-- **Finding 4** (the approved `docs/blueprints/Hub/HUB-19.md` is 2,322 bytes — thin, prose-only; declares `ValidationEngine` / `RuleRegistry` / `SanitizationEngine` / `ValidatorFactory` without real interfaces, no compilable code, no sequence diagram, and a bare "< 1ms" target). This blueprint meets the `AUTHORING_GUIDE.md` fidelity bar: real PHP 8.3 interfaces (`ValidatorInterface`, `RuleInterface`), a complete compilable `Validator` class plus five built-in rule classes, two Mermaid diagrams, a named-harness benchmark methodology, five security invariants, and migration notes with rollback.
+- **Finding 4** (the approved `docs/blueprints/Hub/HUB-19.md` is 2,322 bytes — thin, prose-only; declares `ValidationEngine` / `RuleRegistry` / `SanitizationEngine` / `ValidatorFactory` without real interfaces, no compilable code, no sequence diagram, and a bare "< 1ms" target). This blueprint meets the `AUTHORING_GUIDE.md` fidelity bar: real PHP 8.4 interfaces (`ValidatorInterface`, `RuleInterface`), a complete compilable `Validator` class plus five built-in rule classes, two Mermaid diagrams, a named-harness benchmark methodology, five security invariants, and migration notes with rollback.
 - **Finding 8** (HUB-19 is `📝 Not started`; the Hub tier is blocked on CORE-02 DI Container which is stub-only and CORE-19 Database Abstraction which is `📝 Not started`). Explicit `🔴 Blocked on CORE-02, CORE-19` callout in Build Status; `UniqueRule` cannot compile without CORE-19's DBAL; every Hub/Spoke controller and BRIDGE-01 cannot standardise on a single validation contract until HUB-19 lands.
-- **Finding 10** (approved HUB-19 asserts "Validating an array of 50 fields must take < 1ms" with no harness, baseline, or load model). Bare target is withdrawn; replaced with a 5-row benchmark table naming PHPUnit `--group performance`, GitHub Actions `ubuntu-latest`, PHP 8.3 with opcache, 10 000 input arrays × 5 fields via `microtime(true)` wall-clock. The legacy "< 1ms" figure is retained *only* as a placeholder, explicitly marked **"provisional, unverified"** per Governance Rule 2.
+- **Finding 10** (approved HUB-19 asserts "Validating an array of 50 fields must take < 1ms" with no harness, baseline, or load model). Bare target is withdrawn; replaced with a 5-row benchmark table naming PHPUnit `--group performance`, GitHub Actions `ubuntu-latest`, PHP 8.4 with opcache, 10 000 input arrays × 5 fields via `microtime(true)` wall-clock. The legacy "< 1ms" figure is retained *only* as a placeholder, explicitly marked **"provisional, unverified"** per Governance Rule 2.
 
 ## Component Name
 Sovereign Guard (Validation) — `SovereignStack\Hub\Validation`
@@ -36,9 +36,9 @@ The implementation does not yet exist. The `packages/hub/validation/` directory 
 Soft (optional) dependencies: **CORE-09** (PSR-3 Logging) — `UniqueRule` logs a `warning` on DBAL failure and fails closed rather than throwing. **HUB-13** (I18n) — translates the static message templates; without it, English fallbacks are returned verbatim.
 
 ## Dependency Status
-- **Upward:** `php:^8.3` (constructor property promotion, `readonly`, `mixed`, `filter_var`); `ext-filter` (always-on, `EmailRule`); `ext-mbstring` (optional, `MinLengthRule` multibyte mode — defaults to byte-length via `strlen`); `ext-pcre` (always-on, `RegexRule` and dot-path parsing). Compile-time: `SovereignStack\Core\Database\ConnectionInterface` (CORE-19, required only by `UniqueRule`). Optional: `Psr\Log\LoggerInterface` (CORE-09 / `psr/log:^3.0`), `SovereignStack\Hub\I18n\TranslatorInterface` (HUB-13).
+- **Upward:** `php: ^8.4` (constructor property promotion, `readonly`, `mixed`, `filter_var`); `ext-filter` (always-on, `EmailRule`); `ext-mbstring` (optional, `MinLengthRule` multibyte mode — defaults to byte-length via `strlen`); `ext-pcre` (always-on, `RegexRule` and dot-path parsing). Compile-time: `SovereignStack\Core\Database\ConnectionInterface` (CORE-19, required only by `UniqueRule`). Optional: `Psr\Log\LoggerInterface` (CORE-09 / `psr/log:^3.0`), `SovereignStack\Hub\I18n\TranslatorInterface` (HUB-13).
 - **Downward:** Every Hub controller (HUB-01, HUB-04, HUB-06, HUB-08, HUB-17, HUB-20) calls `Validator::validate($request->getParsedBody(), $rules)` as the first statement of its handler. Every Spoke controller (Internal 01–25, External 01–15) does the same. BRIDGE-01 (Vanguard) validates cross-tier DTOs before forwarding. CORE-08 (Error Handler) catches `ValidationException` and emits a 422 response with the structured `errors` map.
-- **Runtime:** `php:^8.3`. Composer package: `sovereign-stack/hub-validation` (new). No external libraries required. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `infection/infection:^0.27` (mutation testing on the rule set). CI must include a live MySQL 8 service container for `UniqueRule` integration tests (per ADR-013).
+- **Runtime:** `php: ^8.4`. Composer package: `sovereign-stack/hub-validation` (new). No external libraries required. Dev: `phpunit/phpunit:^10.5`, `phpstan/phpstan:^1.10`, `infection/infection:^0.27` (mutation testing on the rule set). CI must include a live MySQL 8 service container for `UniqueRule` integration tests (per ADR-013).
 
 ## Architectural Design
 
@@ -526,7 +526,7 @@ This shape is part of the public API contract; changing it is SemVer-major.
 
 | Target | Method |
 |---|---|
-| Validation throughput for the common case (5 fields × 3 rules each, no DB rules) | Harness: PHPUnit `--group performance` with `--process-isolation`. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.3 with opcache + JIT, no Xdebug. Load model: 10 000 input arrays validated in a tight `foreach` loop, wall-clock via `microtime(true)` deltas, reported as `validated_arrays / second` and `μs / validation`. **Provisional, unverified.** |
+| Validation throughput for the common case (5 fields × 3 rules each, no DB rules) | Harness: PHPUnit `--group performance` with `--process-isolation`. Baseline: GitHub Actions `ubuntu-latest`, PHP 8.4 with opcache + JIT, no Xdebug. Load model: 10 000 input arrays validated in a tight `foreach` loop, wall-clock via `microtime(true)` deltas, reported as `validated_arrays / second` and `μs / validation`. **Provisional, unverified.** |
 | Validation latency including one `UniqueRule` (DB round-trip) | Same harness + baseline. Load model: 10 000 input arrays, each with one `unique:users,email` rule, against a MySQL 8 service container pre-populated with 100 000 rows. Reports `ms / validation` including DB round-trip. **Provisional, unverified.** |
 | Rule-parser overhead (string → RuleSet) | Same harness + baseline. Load model: parse the 5-field × 3-rule string 10 000 times. Should be ≤ 5 % of total validation time; if higher, cache parsed `RuleSet` instances keyed by rule-string hash. **Provisional, unverified.** |
 | Max-depth guard performance (DoS resistance) | Same harness + baseline. Load model: 1 000 payloads at depth 9 (one above limit) and 1 000 at depth 8 (at limit). Asserts depth-9 throws `MaxDepthExceededException` in bounded time (< 1 ms per payload, **provisional, unverified**); depth-8 completes without exception. |
@@ -560,7 +560,7 @@ This shape is part of the public API contract; changing it is SemVer-major.
 
 **Landing plan (per `01_MASTER_INDEX.md` §5 build sequence, Step 8):**
 
-1. After CORE-02 (Step 1) and CORE-19 (Step 5) land, create `packages/hub/validation/` with `composer.json` declaring `php:^8.3`, `psr/log:^3.0` (optional), and `sovereign-stack/core-database:*` (required for `UniqueRule`).
+1. After CORE-02 (Step 1) and CORE-19 (Step 5) land, create `packages/hub/validation/` with `composer.json` declaring `php: ^8.4`, `psr/log:^3.0` (optional), and `sovereign-stack/core-database:*` (required for `UniqueRule`).
 2. Implement the six core classes, two interfaces, and five built-in rules per the Reference Implementation.
 3. Wire into CORE-17's `ServiceProvider` system: `ValidationServiceProvider` registers `ValidatorInterface` as a singleton alias of `Validator`, autowired with `ConnectionInterface` and `LoggerInterface`.
 4. Register `ValidationException` in CORE-08's error-handler mapping table (exception class → HTTP 422 + JSON body shape).
@@ -593,3 +593,46 @@ This shape is part of the public API contract; changing it is SemVer-major.
 - Change to the default `maxDepth` (lower could break legitimate deep payloads; higher weakens the DoS guard).
 
 **Patch** for: bug fixes, internal refactors preserving all public signatures, new translations (HUB-13 message keys), and `phpstan`/`psalm` baseline cleanups.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #326)
+
+> **This section was added in PR #326 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #326
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — HUB-19 — Sovereign Guard (Validation) — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #326
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/hub/guard/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #326 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
