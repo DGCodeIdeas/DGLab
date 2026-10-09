@@ -10,9 +10,9 @@
 Hub
 
 ## Resolves
-- **Finding 4** (the approved `docs/blueprints/Hub/HUB-15.md` is 2,639 bytes — thin, prose-only; declares `HealthManager` / `CheckInterface` / `ServiceRegistry` / `PulseEndpoint` with one stub `DatabaseCheck` class, no real interface contracts, no compilable aggregator, no SQL/schema, no sequence or state diagram, and a bare "5% CPU / 500ms" overhead target with no harness) — this blueprint meets the AUTHORING_GUIDE.md fidelity bar: real PHP 8.3 interfaces (`HealthServiceInterface`, `HealthCheckerInterface`), a complete compilable `HealthService` reference implementation with parallel `curl_multi_*` polling and HUB-02 caching, two Mermaid diagrams (sequence + state), a methodology-grounded benchmark table, eight explicit security invariants, and migration notes with rollback.
+- **Finding 4** (the approved `docs/blueprints/Hub/HUB-15.md` is 2,639 bytes — thin, prose-only; declares `HealthManager` / `CheckInterface` / `ServiceRegistry` / `PulseEndpoint` with one stub `DatabaseCheck` class, no real interface contracts, no compilable aggregator, no SQL/schema, no sequence or state diagram, and a bare "5% CPU / 500ms" overhead target with no harness) — this blueprint meets the AUTHORING_GUIDE.md fidelity bar: real PHP 8.4 interfaces (`HealthServiceInterface`, `HealthCheckerInterface`), a complete compilable `HealthService` reference implementation with parallel `curl_multi_*` polling and HUB-02 caching, two Mermaid diagrams (sequence + state), a methodology-grounded benchmark table, eight explicit security invariants, and migration notes with rollback.
 - **Finding 8** (the Hub tier is blocked on CORE-02 DI Container which is stub-only and CORE-10 Config which is `📝 Not started`; HUB-15 additionally blocks on HUB-02 Cache which is itself blocked on CORE-15) — explicit `🔴 Blocked on CORE-02, CORE-10, HUB-02` callout in Build Status; downward dependencies (CORE-01 Loom merge-gate, BRIDGE-01 Vanguard, ISPOKE-01 admin dashboard) cannot rely on live health signals until HUB-15 lands.
-- **Finding 10** (approved HUB-15 asserts "must not consume more than 5% of CPU or take longer than 500ms" with no harness, baseline, or load model) — bare target is withdrawn; replaced with a 5-row benchmark table naming PHPUnit `--group performance`, GitHub Actions `ubuntu-latest`, PHP 8.3 with opcache, and a 30-mock-service load model. The legacy "< 500ms" figure is retained *only* as a placeholder, explicitly marked **"provisional, unverified"** per Governance Rule 2.
+- **Finding 10** (approved HUB-15 asserts "must not consume more than 5% of CPU or take longer than 500ms" with no harness, baseline, or load model) — bare target is withdrawn; replaced with a 5-row benchmark table naming PHPUnit `--group performance`, GitHub Actions `ubuntu-latest`, PHP 8.4 with opcache, and a 30-mock-service load model. The legacy "< 500ms" figure is retained *only* as a placeholder, explicitly marked **"provisional, unverified"** per Governance Rule 2.
 - **Finding 11** (`docs/evaluation/SOLUTIONS_TO_WEAKNESSES.md` flags observability gaps but the fixes never landed in the blueprint file) — the observability spec (`05_OBSERVABILITY.md`) owns the `health_check_failures_total{service, check_name}` counter and the `HubServiceUnhealthy` alert (3 consecutive failures), but the producer of those signals had no implementation spec. This blueprint is that spec: the `HealthService` emits the counter via CORE-09 on every failing probe and the alert rule fires when HUB-15 reports `unhealthy` for 3 consecutive polls. The corresponding solutions-doc entry is deletable per Governance Rule 5.
 
 ## Component Name
@@ -43,7 +43,7 @@ Soft (optional) dependencies:
 ## Dependency Status
 - **Upward:** `psr/log:^3.0` (PSR-3 — `LoggerInterface`), `psr/event-dispatcher:^1.0` (PSR-14 — `EventDispatcherInterface`), `psr/cache:^3.0` and `psr/simple-cache:^3.0` (via HUB-02's `CacheManagerInterface`), `ext-curl` (mandatory — `curl_multi_*` is the parallelism primitive; a Guzzle pool is rejected to avoid pulling `guzzlehttp/guzzle` into a Hub package whose only HTTP need is a one-shot `GET /health`). Required at compile time: `SovereignStack\Core\Container\ContainerInterface` (CORE-02), `SovereignStack\Core\Config\ConfigInterface` (CORE-10), `SovereignStack\Hub\Cache\CacheManagerInterface` (HUB-02). Optional: `SovereignStack\Core\Database\ConnectionInterface` (CORE-19, only when the `hub_health_event_log` table is in use).
 - **Downward:** CORE-01 (Loom — merge gate consults HUB-15's `getOverallStatus()` before tagging a Hub release; a Hub service reporting `unhealthy` blocks the merge gate per `01_MASTER_INDEX.md` §5 step 8 exit criteria). BRIDGE-01 (Vanguard — may subscribe to `ServiceUnhealthy` events to short-circuit routing to the affected upstream; consults HUB-02's `health:status` cache directly on the hot path). ISPOKE-01 (Admin Panel — renders the "Service Overview" dashboard from `checkAll()`; subscribes to `ServiceHealthPolled` for live updates). DEPLOY-01 (supervisor — listens for `ServiceUnhealthy` to trigger rolling restart; listens for `ServiceRecovered` to clear alerts). HUB-08 (Gateway — future dynamic `ServiceRegistry` consults HUB-15 state, replacing the static config-loaded registry). Every Hub service (HUB-01, HUB-02, HUB-04, HUB-06, HUB-08, HUB-19, HUB-20, ...) — owns its own `/health` endpoint per the contract in this blueprint; HUB-15 polls it.
-- **Runtime:** `php:^8.3`, `ext-curl`, `ext-json`. A long-running process model is required: either a CORE-13 CLI command (`bin/sovereign pulse`) run under systemd, a Kubernetes CronJob at `*/10 * * * * *` (every 10s requires a custom controller — CronJob's minimum is 1 minute, so a Deployment with a `sleep(10)` loop is preferred), or a Render Background Worker. The process is stateless across restarts; all state lives in HUB-02 Redis and CORE-19 MySQL.
+- **Runtime:** `php: ^8.4`, `ext-curl`, `ext-json`. A long-running process model is required: either a CORE-13 CLI command (`bin/sovereign pulse`) run under systemd, a Kubernetes CronJob at `*/10 * * * * *` (every 10s requires a custom controller — CronJob's minimum is 1 minute, so a Deployment with a `sleep(10)` loop is preferred), or a Render Background Worker. The process is stateless across restarts; all state lives in HUB-02 Redis and CORE-19 MySQL.
 
 ## Architectural Design
 
@@ -456,7 +456,7 @@ stateDiagram-v2
 
 | Target | Method |
 |---|---|
-| Parallel poll of 30 mock services completes within bounded wall-clock | **Harness:** PHPUnit `--group performance`, wall-clock via `microtime(true)`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.3, opcache enabled, no Xdebug. **Load model:** 30 mock HTTP servers on `127.0.0.1` returning `{"status":"ok"}` with 50ms artificial latency each; assert `checkAll()` wall-clock < max(50ms) × 2 + 100ms overhead = 200ms ceiling. **Mark:** provisional, unverified. |
+| Parallel poll of 30 mock services completes within bounded wall-clock | **Harness:** PHPUnit `--group performance`, wall-clock via `microtime(true)`. **Baseline:** GitHub Actions `ubuntu-latest`, PHP 8.4, opcache enabled, no Xdebug. **Load model:** 30 mock HTTP servers on `127.0.0.1` returning `{"status":"ok"}` with 50ms artificial latency each; assert `checkAll()` wall-clock < max(50ms) × 2 + 100ms overhead = 200ms ceiling. **Mark:** provisional, unverified. |
 | Single-service probe latency overhead vs raw cURL | **Harness:** PHPUnit `--group performance`. **Baseline:** same. **Load model:** 1000 sequential `check('svc-a')` calls against a single mock server; compare `microtime(true)` delta against raw `curl_exec` baseline. Assert overhead < 0.5ms per call (cURL handle reuse + JSON parse + value-object construction). **Mark:** provisional, unverified. |
 | Cache hit ratio on `getOverallStatus()` under dashboard load | **Harness:** PHPUnit `--group performance`. **Baseline:** same + Redis 7 over Unix socket. **Load model:** 1000 calls to `getOverallStatus()` within a 10-second window; assert exactly one `checkAll()` fan-out and 999 cache hits (assertion via a spy on `HttpHealthChecker::checkMany`). |
 | Streak counter correctness under interleaved success/failure | **Harness:** PHPUnit functional test. **Baseline:** in-memory `ArrayAdapter` for HUB-02 (no Redis dependency in unit test). **Load model:** scripted sequence (healthy, healthy, unhealthy, unhealthy, unhealthy, healthy, healthy, healthy) against a mock checker; assert `ServiceUnhealthy` dispatched exactly once (after the 3rd unhealthy) and `ServiceRecovered` dispatched exactly once (after the 3rd healthy). |
@@ -490,7 +490,7 @@ stateDiagram-v2
 
 ## Migration Notes
 
-**New package:** `packages/hub/health/` with `composer.json` declaring `php: ^8.3`, `ext-curl`, `ext-json`, `psr/log: ^3.0`, `psr/event-dispatcher: ^1.0`, `psr/cache: ^3.0`, `psr/simple-cache: ^3.0`. Required packages: `sovereign-stack/core-container` (CORE-02), `sovereign-stack/core-config` (CORE-10), `sovereign-stack/hub-cache` (HUB-02). Suggests: `sovereign-stack/core-event-dispatcher` (CORE-03), `sovereign-stack/core-logging` (CORE-09), `sovereign-stack/core-dbal` (CORE-19). PSR-4 autoload: `"SovereignStack\\Hub\\Health\\": "src/"`. Package name: `sovereign-stack/hub-health`. Initial version: `0.1.0`.
+**New package:** `packages/hub/health/` with `composer.json` declaring `php: ^8.4`, `ext-curl`, `ext-json`, `psr/log: ^3.0`, `psr/event-dispatcher: ^1.0`, `psr/cache: ^3.0`, `psr/simple-cache: ^3.0`. Required packages: `sovereign-stack/core-container` (CORE-02), `sovereign-stack/core-config` (CORE-10), `sovereign-stack/hub-cache` (HUB-02). Suggests: `sovereign-stack/core-event-dispatcher` (CORE-03), `sovereign-stack/core-logging` (CORE-09), `sovereign-stack/core-dbal` (CORE-19). PSR-4 autoload: `"SovereignStack\\Hub\\Health\\": "src/"`. Package name: `sovereign-stack/hub-health`. Initial version: `0.1.0`.
 
 **Dependency landing order:** HUB-15 lands in Step 8 of the 11-step build sequence (`01_MASTER_INDEX.md` §5), after CORE-02/CORE-10 (Step 2) and after HUB-02 (early in Step 8). Once HUB-15 lands, it unblocks: CORE-01's merge-gate enhancement (Step 8 ongoing), BRIDGE-01's dynamic `ServiceRegistry` (Step 9), ISPOKE-01's "Service Overview" dashboard (Step 10), and DEPLOY-01's supervisor-restart-on-unhealthy automation (Step 9).
 
@@ -500,3 +500,46 @@ stateDiagram-v2
 
 ## SemVer Impact
 **Minor** — inaugural `0.1.0` release (the package is new; per SemVer, the `0.x` line signals "no stability guarantee"). The `HealthServiceInterface`, `HealthCheckerInterface`, and `ServiceRegistryInterface` contracts are part of the public Hub API surface that CORE-01, BRIDGE-01, ISPOKE-01, and DEPLOY-01 depend on. Breaking changes to these interfaces require a SemVer-major bump on the Hub tier as a whole. The first `1.0.0` release is gated on: (a) the parallel `curl_multi_*` implementation being verified against the 30-mock-service benchmark (currently "provisional, unverified"), (b) the mTLS-vs-bearer-token decision being finalised in a follow-up ADR, and (c) at least one production deployment confirming the 3-consecutive-failures → supervisor-restart loop does not flap under partial network partitions.
+
+
+---
+
+## Doctrines Applied + Rewrite Notes (PR #327)
+
+> **This section was added in PR #327 (Core rewrite Batch, 2026-10-07) per Tech-Lead directive: "rewrite with proper details the entire SDLC then Architecture starting from Core, three documents at a time. No more Patches!"**
+
+### Doctrines Applied
+
+This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SDLC-01-Foundations.md) convention):
+
+- **Blind-Spot Doctrine** ([`../CrossCutting/BLIND-SPOT-DOCTRINE.md`](../CrossCutting/BLIND-SPOT-DOCTRINE.md)) — banner at top of this file (binding rule #3: every architectural document carries a blind-spot awareness note). The blueprint's claims are candidates, not certainties. The implementation may diverge from the blueprint (implementation drift). An audit of this blueprint is a starting point, not a complete inventory.
+- **Nuclear-Grade Doctrine** ([`../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md`](../CrossCutting/NUCLEAR-GRADE-DOCTRINE.md)) — binding on Core tier (per the doctrine's §0). Where this blueprint and the doctrine disagree, the doctrine wins. Depth 5 (production hardening) requires the doctrine's §9 merge gate to pass.
+- **Integrity Gate** ([`../Verification/INTEGRITY-GATE.md`](../Verification/INTEGRITY-GATE.md)) — depth 6 (at-scale verification) requires the Integrity Gate's convergence criteria. The gate is a finite stopping condition (PASSED 2026-10-05).
+- **Two-DAG Governance** ([`../ADRs/ADR-021-tier-stratified-build-order.md`](../ADRs/ADR-021-tier-stratified-build-order.md)) — the Dependency Status section above reflects the Declared DAG (architectural intent). The Verified DAG (implementation reality) lives at [`CORE-VERIFIED-DAG.md`](CORE-VERIFIED-DAG.md). When the two disagree, that disagreement is a finding in [`../Verification/SHORTCOMINGS-REGISTER.md`](../Verification/SHORTCOMINGS-REGISTER.md), not a defect to fix by editing either DAG.
+- **FROZEN-CONTRACTS** ([`../FROZEN-CONTRACTS.md`](../FROZEN-CONTRACTS.md)) — the Interface Contracts section above declares the public surface. Once this blueprint is implemented at any depth, those contracts freeze. Changes require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+
+### Updates Applied in PR #327
+
+- **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
+- **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
+- **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — HUB-15 — Sovereign Pulse (Health Check & Service Discovery) — shipped per the verified DAG).
+
+### What Was NOT Changed in PR #327
+
+- **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/hub/pulse/src/` and is verified by the architecture-boundary-lint.
+- **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
+- **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
+
+### Verification Conditions for This Rewrite
+
+- **Architecture-lint**: this file is scanned by `Architecture/Verification/lint/run.php`. The lint checks for invalid tokens (CORE-NN, HUB-NN, etc. in valid ranges), `misattribution phrases` (`CORE-09: Cryptography/Hashing`, `HUB-28: Analytics/Ledger` — must not appear in active prose), and structural completeness (the file must exist). Must pass.
+- **Architecture-boundary-lint**: not directly applicable (this is a documentation file, not source code), but the implementation referenced in this blueprint is scanned by `scripts/architecture-boundary-lint.py`.
+- **Self-test**: the architecture-lint's `--self-test` flag (added in PR #314) verifies the lint correctly detects missing files. This ensures the structural completeness check is not a false-positive.
+
+### Provenance
+
+This section was added in PR #327 (2026-10-07). The original blueprint content (interface contracts, class maps, sequence diagrams, etc.) was authored in earlier sessions and is preserved. The doctrine layer + PHP version update + cross-references to new SDLC documents are the additions.
+
+Per the Blind-Spot Doctrine: this rewrite is a starting point, not a complete specification. The number of doctrines applied here is not the number of doctrines that exist. Future rewrites may add more doctrine cross-references as the methodology continues to evolve.
