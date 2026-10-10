@@ -33,7 +33,7 @@ final class JwtSigner
 
         // OpenSSL produces DER-encoded ECDSA signature
         $derSignature = '';
-        if (!openssl_sign($data, $derSignature, $this->privateKey, OPENSSL_ALG_SHA256)) {
+        if (!openssl_sign($data, $derSignature, $this->privateKey, \OPENSSL_ALG_SHA256)) {
             throw new \RuntimeException('JWT signing failed: ' . openssl_error_string());
         }
 
