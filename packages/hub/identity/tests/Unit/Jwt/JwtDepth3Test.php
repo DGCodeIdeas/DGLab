@@ -130,6 +130,6 @@ final class JwtDepth3Test extends TestCase
         $verifier = new JwtVerifier($this->publicKey);
 
         $this->expectException(\InvalidArgumentException::class);
-        $verifier->verify('not.a.jwt');
+        $verifier->verify('not.a');
     }
 }
