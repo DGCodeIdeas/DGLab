@@ -94,6 +94,8 @@ jobs:
             working-dir: packages/core/dbal
           - package: hub/config
             working-dir: packages/hub/config
+          - package: hub/identity
+            working-dir: packages/hub/identity
           - package: bridge/vanguard
             working-dir: packages/bridge/vanguard
           - package: spoke/internal/codex
