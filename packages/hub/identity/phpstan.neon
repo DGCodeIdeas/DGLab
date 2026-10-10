@@ -7,13 +7,13 @@ parameters:
         - src
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
-        - '#has parameter \$roles with no value type specified in iterable type array#'
+        - '#has parameter $roles with no value type specified in iterable type array#'
         - '#does not accept array#'
         - '#Constant OPENSSL_ALG_SHA256 not found#'
-        - - '#openssl_sign expects int#'
+        - '#openssl_sign expects int#'
         - '#openssl_verify expects int#'
         - '#should return array<string, mixed> but returns array#'
-        - '#Value assigned to variable \$seqLen only flows into values that are never used#'
+        - '#Value assigned to variable $seqLen only flows into values that are never used#'
         - '#Binary operation#'
         - '#Cannot access offset#'
         - '#Cannot cast mixed to string#'
