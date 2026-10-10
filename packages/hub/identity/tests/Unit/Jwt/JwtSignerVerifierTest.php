@@ -6,8 +6,8 @@ use SovereignStack\Hub\Identity\Jwt\JwtSigner;
 use SovereignStack\Hub\Identity\Jwt\JwtVerifier;
 final class JwtSignerVerifierTest extends TestCase
 {
-    private string $privateKey;
-    private string $publicKey;
+    private string $privateKey = '';
+    private string $publicKey = '';
     protected function setUp(): void
     {
         $config = [

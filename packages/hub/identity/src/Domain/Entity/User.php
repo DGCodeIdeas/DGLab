@@ -7,13 +7,14 @@ use SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier;
 use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 final class User
 {
-    /** @var RoleIdentifier[] */
+    /** @var array<array-key, RoleIdentifier> */
     private array $roles;
     private DateTimeImmutable $updatedAt;
     public function __construct(
         private readonly UserId $id,
         private Email $email,
         private string $passwordHash,
+        /** @param array<array-key, RoleIdentifier> $roles */
         array $roles = [],
         private readonly DateTimeImmutable $createdAt = new DateTimeImmutable(),
         ?DateTimeImmutable $updatedAt = null,
@@ -25,6 +26,7 @@ final class User
     public function email(): Email { return $this->email; }
     public function passwordHash(): string { return $this->passwordHash; }
     /** @return RoleIdentifier[] */
+    /** @return array<array-key, RoleIdentifier> */
     public function roles(): array { return $this->roles; }
     public function createdAt(): DateTimeImmutable { return $this->createdAt; }
     public function updatedAt(): DateTimeImmutable { return $this->updatedAt; }

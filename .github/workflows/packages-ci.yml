@@ -94,6 +94,8 @@ jobs:
             working-dir: packages/core/dbal
           - package: hub/config
             working-dir: packages/hub/config
+          - package: hub/identity
+            working-dir: packages/hub/identity
           - package: bridge/vanguard
             working-dir: packages/bridge/vanguard
           - package: spoke/internal/codex
@@ -115,7 +117,7 @@ jobs:
         with:
           php-version: '8.4'
           coverage: none
-          extensions: mbstring, xml, dom
+          extensions: mbstring, xml, dom, openssl
           tools: composer:v2
 
       - name: Configure Git identity (for tests that create commits)

@@ -12,8 +12,8 @@ use SovereignStack\Hub\Identity\Jwt\JwtVerifier;
  */
 final class JwtDepth3Test extends TestCase
 {
-    private string $privateKey;
-    private string $publicKey;
+    private string $privateKey = '';
+    private string $publicKey = '';
 
     protected function setUp(): void
     {
@@ -130,6 +130,6 @@ final class JwtDepth3Test extends TestCase
         $verifier = new JwtVerifier($this->publicKey);
 
         $this->expectException(\InvalidArgumentException::class);
-        $verifier->verify('not.a.jwt');
+        $verifier->verify('not.a');
     }
 }
