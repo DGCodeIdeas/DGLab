@@ -44,7 +44,7 @@ final class JwtVerifier
         $rawSignature = $this->unb64($signature);
         $derSignature = $this->rawToDer($rawSignature);
 
-        $result = openssl_verify($data, $derSignature, $this->publicKey, \OPENSSL_ALG_SHA256);
+        $result = openssl_verify($data, $derSignature, $this->publicKey, \OPENSSL_ALGO_SHA256);
         if ($result !== 1) {
             throw new \RuntimeException('JWT signature verification failed');
         }
