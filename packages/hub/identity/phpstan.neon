@@ -6,6 +6,5 @@ parameters:
     paths:
         - src
     reportUnmatchedIgnoredErrors: false
-    checkMissingIterableValueType: false
     ignoreErrors:
         - '#Constant OPENSSL_ALG_SHA256 not found#'
