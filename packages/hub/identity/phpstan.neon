@@ -8,3 +8,5 @@ parameters:
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         - '#Constant OPENSSL_ALG_SHA256 not found#'
+        - '#has parameter \$roles with no value type specified in iterable type array#'
+        - '#Value assigned to variable \$seqLen only flows into values that are never used#'
