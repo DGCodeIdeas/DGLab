@@ -117,7 +117,7 @@ jobs:
         with:
           php-version: '8.4'
           coverage: none
-          extensions: mbstring, xml, dom
+          extensions: mbstring, xml, dom, openssl
           tools: composer:v2
 
       - name: Configure Git identity (for tests that create commits)
