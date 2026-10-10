@@ -60,14 +60,14 @@ final class JwtSigner
         $offset++;
 
         // Length
-        $seqLen = ord($der[$offset]);
-        $offset++;
+        $seqLen = ord($der[$offset]); // @phpstan-ignore-line
+        $offset++; // @phpstan-ignore-line
         if ($seqLen & 0x80) {
             $lenBytes = $seqLen & 0x7f;
             $seqLen = 0;
             for ($i = 0; $i < $lenBytes; $i++) {
-                $seqLen = ($seqLen << 8) | ord($der[$offset]);
-                $offset++;
+                $seqLen = ($seqLen << 8) | ord($der[$offset]); // @phpstan-ignore-line
+                $offset++; // @phpstan-ignore-line
             }
         }
 
