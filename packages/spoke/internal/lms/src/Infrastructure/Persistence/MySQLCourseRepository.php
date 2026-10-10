@@ -34,6 +34,7 @@ final class MySQLCourseRepository implements CourseRepositoryInterface
             'SELECT * FROM lms_courses WHERE id = :id',
         );
         $stmt->execute(['id' => (string) $id]);
+        /** @var array<string, string|null>|false $row */
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return $row !== false ? $this->hydrate($row) : null;
@@ -45,6 +46,7 @@ final class MySQLCourseRepository implements CourseRepositoryInterface
             'SELECT * FROM lms_courses WHERE slug = :slug',
         );
         $stmt->execute(['slug' => (string) $slug]);
+        /** @var array<string, string|null>|false $row */
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return $row !== false ? $this->hydrate($row) : null;
@@ -86,7 +88,7 @@ final class MySQLCourseRepository implements CourseRepositoryInterface
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param array<string, string|null> $row
      */
     private function hydrate(array $row): Course
     {

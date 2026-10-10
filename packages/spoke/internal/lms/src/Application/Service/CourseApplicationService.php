@@ -134,6 +134,7 @@ final class CourseApplicationService implements CourseApplicationInterface
     }
 
     /** @param array<string> $roles */
+    /** @param array<string> $roles */
     private function requireAnyRole(UserId $userId, array $roles): void
     {
         $roleIds = array_map(fn (string $r) => RoleIdentifier::fromString($r), $roles);

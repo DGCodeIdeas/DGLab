@@ -31,6 +31,7 @@ final class MySQLModuleRepository implements ModuleRepositoryInterface
             'SELECT * FROM lms_modules WHERE id = :id',
         );
         $stmt->execute(['id' => (string) $id]);
+        /** @var array<string, string|int|null>|false $row */
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return $row !== false ? $this->hydrate($row) : null;
@@ -42,6 +43,7 @@ final class MySQLModuleRepository implements ModuleRepositoryInterface
             'SELECT * FROM lms_modules WHERE course_id = :course_id ORDER BY sort_order ASC',
         );
         $stmt->execute(['course_id' => (string) $courseId]);
+        /** @var array<int, array<string, string|int|null>> $rows */
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $modules = [];
@@ -95,7 +97,7 @@ final class MySQLModuleRepository implements ModuleRepositoryInterface
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param array<string, string|int|null> $row
      */
     private function hydrate(array $row): Module
     {
