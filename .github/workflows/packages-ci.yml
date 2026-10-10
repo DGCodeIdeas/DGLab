@@ -100,6 +100,8 @@ jobs:
             working-dir: packages/spoke/internal/codex
           - package: spoke/external/canvas
             working-dir: packages/spoke/external/canvas
+          - package: spoke/internal/lms
+            working-dir: packages/spoke/internal/lms
           - package: orchestrator
             working-dir: orchestrator
     steps:
