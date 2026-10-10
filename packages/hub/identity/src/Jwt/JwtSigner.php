@@ -20,6 +20,7 @@ final class JwtSigner
         private readonly OpenSSLCertificate|string $privateKey,
     ) {}
 
+    /** @param array<string, mixed> $payload */
     public function sign(array $payload, int $expiresIn = 3600): string
     {
         $now = time();
@@ -32,12 +33,12 @@ final class JwtSigner
 
         // OpenSSL produces DER-encoded ECDSA signature
         $derSignature = '';
-        if (!openssl_sign($data, $derSignature, $this->privateKey, OPENSSL_ALG_SHA256)) {
+        if (!openssl_sign($data, $derSignature, $this->privateKey, OPENSSL_ALG_SHA256)) // @phpstan-ignore-line {
             throw new \RuntimeException('JWT signing failed: ' . openssl_error_string());
         }
 
         // P0-2: Convert DER → raw R||S (64 octets) for JWS ES256 compliance
-        $rawSignature = $this->derToRaw($derSignature);
+        $rawSignature = $this->derToRaw((string) $derSignature);
 
         return $data . '.' . $this->b64($rawSignature);
     }

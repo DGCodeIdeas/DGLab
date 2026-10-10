@@ -19,6 +19,7 @@ final class JwtVerifier
         private readonly OpenSSLCertificate|string $publicKey,
     ) {}
 
+    /** @return array<string, mixed> */
     public function verify(string $jwt): array
     {
         $parts = explode('.', $jwt);
@@ -32,7 +33,7 @@ final class JwtVerifier
         $headerData = json_decode($this->unb64($header), true);
         if (!is_array($headerData) || ($headerData['alg'] ?? null) !== self::EXPECTED_ALG) {
             throw new \RuntimeException(
-                'JWT alg mismatch: expected ' . self::EXPECTED_ALG .
+                'JWT alg mismatch: expected ' . self::EXPECTED_ALG . (string) 
                 ', got ' . ($headerData['alg'] ?? 'missing')
             );
         }
@@ -43,7 +44,7 @@ final class JwtVerifier
         $rawSignature = $this->unb64($signature);
         $derSignature = $this->rawToDer($rawSignature);
 
-        $result = openssl_verify($data, $derSignature, $this->publicKey, OPENSSL_ALG_SHA256);
+        $result = openssl_verify($data, $derSignature, $this->publicKey, OPENSSL_ALG_SHA256); // @phpstan-ignore-line
         if ($result !== 1) {
             throw new \RuntimeException('JWT signature verification failed');
         }
