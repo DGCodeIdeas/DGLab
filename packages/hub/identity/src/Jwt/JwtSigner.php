@@ -33,7 +33,7 @@ final class JwtSigner
 
         // OpenSSL produces DER-encoded ECDSA signature
         $derSignature = '';
-        if (!openssl_sign($data, $derSignature, $this->privateKey, OPENSSL_ALG_SHA256)) { // @phpstan-ignore-line
+        if (!openssl_sign($data, $derSignature, $this->privateKey, OPENSSL_ALG_SHA256)) {
             throw new \RuntimeException('JWT signing failed: ' . openssl_error_string());
         }
 
@@ -60,13 +60,13 @@ final class JwtSigner
         $offset++;
 
         // Length
-        $seqLen = ord($der[$offset]); // @phpstan-ignore-line
+        $seqLen = ord($der[$offset]);
         $offset++;
         if ($seqLen & 0x80) {
             $lenBytes = $seqLen & 0x7f;
             $seqLen = 0;
             for ($i = 0; $i < $lenBytes; $i++) {
-                $seqLen = ($seqLen << 8) | ord($der[$offset]); // @phpstan-ignore-line
+                $seqLen = ($seqLen << 8) | ord($der[$offset]);
                 $offset++;
             }
         }
