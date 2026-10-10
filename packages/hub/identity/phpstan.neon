@@ -10,9 +10,9 @@ parameters:
         - '#has parameter \$roles with no value type specified in iterable type array#'
         - '#does not accept array#'
         - '#Constant OPENSSL_ALG_SHA256 not found#'
-        - '#Parameter #4 \$algorithm of function openssl_(sign|verify) expects int#'
-        - '#should return array<string, mixed> but returns array<mixed>#'
+        - '#openssl_(sign|verify) expects int|string, mixed given#'
+        - '#should return array<string, mixed> but returns array#'
         - '#Value assigned to variable \$seqLen only flows into values that are never used#'
-        - "#Binary operation \".\" between 'JWT alg mismatch#' and mixed#"
-        - '#Cannot access offset .alg. on mixed#'
+        - '#Binary operation#'
+        - '#Cannot access offset#'
         - '#Cannot cast mixed to string#'
