@@ -46,7 +46,7 @@ final class CourseApplicationServiceModuleTest extends TestCase
             $this->connection,
         );
 
-        $this->adminId = UserId::generate();
+        $this->adminId = new UserId("test-admin-id");
 
         // Default: identity always authorizes
         $this->identity->method('hasAnyRole')->willReturn(true);
@@ -175,7 +175,7 @@ final class CourseApplicationServiceModuleTest extends TestCase
 
     public function testAddModuleRejectsUnauthorizedUser(): void
     {
-        $learnerId = UserId::generate();
+        $learnerId = new UserId("test-admin-id");
 
         $this->identity = $this->createMock(IdentityInterface::class);
         $this->identity->method('hasAnyRole')->willReturn(false);
