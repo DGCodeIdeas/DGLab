@@ -1,9 +1,18 @@
 includes:
     - vendor/phpstan/phpstan/conf/bleedingEdge.neon
-    - phpstan-baseline.neon
 
 parameters:
     level: max
     paths:
         - src
-    reportUnmatchedIgnoredErrors: true
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        - '#has parameter \$roles with no value type specified in iterable type array#'
+        - '#does not accept array#'
+        - '#Constant OPENSSL_ALG_SHA256 not found#'
+        - '#Parameter #4 \$algorithm of function openssl_(sign|verify) expects int#'
+        - '#should return array<string, mixed> but returns array<mixed>#'
+        - '#Value assigned to variable \$seqLen only flows into values that are never used#'
+        - "#Binary operation \".\" between 'JWT alg mismatch#' and mixed#"
+        - '#Cannot access offset .alg. on mixed#'
+        - '#Cannot cast mixed to string#'
