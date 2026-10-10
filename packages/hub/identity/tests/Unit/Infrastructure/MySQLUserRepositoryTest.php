@@ -171,15 +171,16 @@ final class MySQLUserRepositoryTest extends TestCase
     {
         $id = new UserId('delete-user-id-12345678901');
 
-        $stmt = $this->createMock(\PDOStatement::class);
-        $stmt->expects($this->once())->method('execute')->with(['id' => (string) $id]);
+        $stmt1 = $this->createMock(\PDOStatement::class);
+        $stmt1->expects($this->once())->method('execute')->with(['id' => (string) $id]);
 
-        // Two prepare calls: one for user_roles, one for users
+        $stmt2 = $this->createMock(\PDOStatement::class);
+        $stmt2->expects($this->once())->method('execute')->with(['id' => (string) $id]);
+
         $this->connection->expects($this->exactly(2))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($stmt, $stmt);
+            ->willReturnOnConsecutiveCalls($stmt1, $stmt2);
 
-        // exec() (no params) should NOT be called — it doesn't support bound params
         $this->connection->expects($this->never())->method('exec');
 
         $this->repository->delete($id);

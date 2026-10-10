@@ -12,8 +12,8 @@ use SovereignStack\Hub\Identity\Jwt\JwtVerifier;
  */
 final class JwtDepth3Test extends TestCase
 {
-    private string $privateKey;
-    private string $publicKey;
+    private string $privateKey = '';
+    private string $publicKey = '';
 
     protected function setUp(): void
     {
