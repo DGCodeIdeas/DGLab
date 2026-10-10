@@ -24,8 +24,9 @@ final class Course
         private ?string $description,
         private CourseStatus $status = CourseStatus::Draft,
         private readonly DateTimeImmutable $createdAt = new DateTimeImmutable(),
+        ?DateTimeImmutable $updatedAt = null,
     ) {
-        $this->updatedAt = new DateTimeImmutable();
+        $this->updatedAt = $updatedAt ?? new DateTimeImmutable();
     }
 
     public static function create(CourseTitle $title, CourseSlug $slug, ?string $description = null): self

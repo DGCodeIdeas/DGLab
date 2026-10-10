@@ -91,13 +91,13 @@ final class MySQLCourseRepository implements CourseRepositoryInterface
     private function hydrate(array $row): Course
     {
         return Course::restoreFromPersistence(
-            id: new CourseId($row['id']),
-            title: CourseTitle::fromString($row['title']),
-            slug: CourseSlug::fromString($row['slug']),
-            description: $row['description'] ?? null,
-            status: CourseStatus::from($row['status']),
-            createdAt: new DateTimeImmutable($row['created_at']),
-            updatedAt: new DateTimeImmutable($row['updated_at'] ?? $row['created_at']),
+            id: new CourseId((string) $row['id']),
+            title: CourseTitle::fromString((string) $row['title']),
+            slug: CourseSlug::fromString((string) $row['slug']),
+            description: isset($row['description']) ? (string) $row['description'] : null,
+            status: CourseStatus::from((string) $row['status']),
+            createdAt: new DateTimeImmutable((string) $row['created_at']),
+            updatedAt: new DateTimeImmutable((string) ($row['updated_at'] ?? $row['created_at'])),
         );
     }
 }

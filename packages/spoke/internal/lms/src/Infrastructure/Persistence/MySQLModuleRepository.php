@@ -100,12 +100,12 @@ final class MySQLModuleRepository implements ModuleRepositoryInterface
     private function hydrate(array $row): Module
     {
         return Module::restoreFromPersistence(
-            id: new ModuleId($row['id']),
-            courseId: new CourseId($row['course_id']),
-            title: $row['title'],
+            id: new ModuleId((string) $row['id']),
+            courseId: new CourseId((string) $row['course_id']),
+            title: (string) $row['title'],
             sortOrder: (int) $row['sort_order'],
-            content: $row['content'] ?? null,
-            createdAt: new DateTimeImmutable($row['created_at']),
+            content: isset($row['content']) ? (string) $row['content'] : null,
+            createdAt: new DateTimeImmutable((string) $row['created_at']),
         );
     }
 }

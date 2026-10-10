@@ -53,7 +53,7 @@ final class CourseApplicationService implements CourseApplicationInterface
     {
         $this->requireAnyRole($publishedBy, ['lms:admin', 'lms:instructor', 'platform:admin']);
         $course = $this->courses->get($id)
-            ?? throw new CourseNotFoundException($id);
+            ?? throw CourseNotFoundException::forId($id);
 
         $this->connection->beginTransaction();
         try {
@@ -71,7 +71,7 @@ final class CourseApplicationService implements CourseApplicationInterface
         $this->requireAnyRole($cmd->addedBy, ['lms:admin', 'lms:instructor', 'platform:admin']);
 
         $course = $this->courses->get($cmd->courseId)
-            ?? throw new CourseNotFoundException($cmd->courseId);
+            ?? throw CourseNotFoundException::forId($cmd->courseId);
 
         // Determine the next sort order
         $existingModules = $this->modules->findByCourse($cmd->courseId);
@@ -118,7 +118,7 @@ final class CourseApplicationService implements CourseApplicationInterface
             ?? throw new \RuntimeException("Module not found: {$moduleId}");
 
         $course = $this->courses->get($module->courseId())
-            ?? throw new CourseNotFoundException($module->courseId());
+            ?? throw CourseNotFoundException::forId($module->courseId());
 
         $this->connection->beginTransaction();
         try {
@@ -133,9 +133,10 @@ final class CourseApplicationService implements CourseApplicationInterface
         }
     }
 
+    /** @param array<string> $roles */
     private function requireAnyRole(UserId $userId, array $roles): void
     {
-        $roleIds = array_map(fn ($r) => RoleIdentifier::fromString($r), $roles);
+        $roleIds = array_map(fn (string $r) => RoleIdentifier::fromString($r), $roles);
         if (!$this->identity->hasAnyRole($userId, ...$roleIds)) {
             throw new \RuntimeException('Not authorized', 403);
         }

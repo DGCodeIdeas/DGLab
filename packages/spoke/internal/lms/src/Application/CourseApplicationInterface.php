@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace SovereignStack\Spoke\Lms\Application;
 
 use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
-use SovereignStack\Spoke\Lms\Application\Command\AddModuleCommand;
+use SovereignStack\Spoke\Lms\Application\Command\{AddModuleCommand, CreateCourseCommand};
 use SovereignStack\Spoke\Lms\Domain\ValueObject\{CourseId, ModuleId};
 
 interface CourseApplicationInterface
