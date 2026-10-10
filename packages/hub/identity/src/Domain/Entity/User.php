@@ -7,7 +7,6 @@ use SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier;
 use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 final class User
 {
-    /** @var RoleIdentifier[] */
     /** @var array<array-key, RoleIdentifier> */
     private array $roles;
     private DateTimeImmutable $updatedAt;
