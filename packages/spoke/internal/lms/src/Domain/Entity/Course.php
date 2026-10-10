@@ -3,7 +3,6 @@ declare(strict_types=1);
 namespace SovereignStack\Spoke\Lms\Domain\Entity;
 use DateTimeImmutable;
 use SovereignStack\Spoke\Lms\Domain\ValueObject\{CourseId, CourseTitle, CourseSlug, ModuleId};
-use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 
 enum CourseStatus: string
 {
@@ -79,13 +78,40 @@ final class Course
         $this->updatedAt = new DateTimeImmutable();
     }
 
-    public function addModule(ModuleId $id, string $title, int $sortOrder = 0): void
+    /**
+     * Add a module to this course.
+     *
+     * Per SAAI Increment 2 directive: "Enforce that modules can only be changed
+     * while a course is in draft." Adding modules to Published or Archived
+     * courses is rejected.
+     */
+    public function addModule(ModuleId $id, string $title, int $sortOrder = 0, ?string $content = null): void
     {
-        if ($this->status === CourseStatus::Published) {
-            // Per module immutability rule: can ADD modules to published courses
-            // but cannot DELETE modules.
+        if ($this->status !== CourseStatus::Draft) {
+            throw new \RuntimeException(
+                "Cannot add modules to {$this->status->value} course: {$this->id}",
+            );
         }
-        $this->modules[] = new Module($id, $this->id, $title, $sortOrder);
+        $this->modules[] = new Module($id, $this->id, $title, $sortOrder, $content);
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    /**
+     * Remove a module from this course.
+     *
+     * Per SAAI Increment 2 directive: module removal is draft-only.
+     */
+    public function removeModule(ModuleId $moduleId): void
+    {
+        if ($this->status !== CourseStatus::Draft) {
+            throw new \RuntimeException(
+                "Cannot remove modules from {$this->status->value} course: {$this->id}",
+            );
+        }
+        $this->modules = array_values(array_filter(
+            $this->modules,
+            fn(Module $m) => !$m->id()->equals($moduleId),
+        ));
         $this->updatedAt = new DateTimeImmutable();
     }
 
