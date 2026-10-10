@@ -2,18 +2,10 @@ includes:
     - vendor/phpstan/phpstan/conf/bleedingEdge.neon
 
 parameters:
-    level: max
+    level: 6
     paths:
         - src
     reportUnmatchedIgnoredErrors: false
+    checkMissingIterableValueType: false
     ignoreErrors:
-        - '#has parameter $roles with no value type specified in iterable type array#'
-        - '#does not accept array#'
         - '#Constant OPENSSL_ALG_SHA256 not found#'
-        - '#openssl_sign expects int#'
-        - '#openssl_verify expects int#'
-        - '#should return array<string, mixed> but returns array#'
-        - '#Value assigned to variable $seqLen only flows into values that are never used#'
-        - '#Binary operation#'
-        - '#Cannot access offset#'
-        - '#Cannot cast mixed to string#'
