@@ -25,6 +25,9 @@ final readonly class Envelope implements JsonSerializable
     ) {
     }
 
+    /**
+     * @return array{v: int, kid: string, iv: string, ciphertext: string, tag: string}
+     */
     public function jsonSerialize(): array
     {
         return [
@@ -43,12 +46,34 @@ final readonly class Envelope implements JsonSerializable
      */
     public static function fromArray(array $data): self
     {
+        $raw = $data['v'] ?? 0;
+
         return new self(
-            version: (int) ($data['v'] ?? 0),
-            kid: (string) ($data['kid'] ?? ''),
-            iv: base64_decode((string) ($data['iv'] ?? ''), true) ?: '',
-            ciphertext: base64_decode((string) ($data['ciphertext'] ?? ''), true) ?: '',
-            tag: base64_decode((string) ($data['tag'] ?? ''), true) ?: '',
+            version: is_int($raw) ? $raw : (is_numeric($raw) ? (int) $raw : 0),
+            kid: self::stringOf($data['kid'] ?? ''),
+            iv: self::binaryOf($data['iv'] ?? ''),
+            ciphertext: self::binaryOf($data['ciphertext'] ?? ''),
+            tag: self::binaryOf($data['tag'] ?? ''),
         );
+    }
+
+    private static function stringOf(mixed $value): string
+    {
+        if (\is_string($value)) {
+            return $value;
+        }
+
+        return \is_scalar($value) ? (string) $value : '';
+    }
+
+    private static function binaryOf(mixed $value): string
+    {
+        $encoded = self::stringOf($value);
+
+        if ($encoded === '') {
+            return '';
+        }
+
+        return base64_decode($encoded, true) ?: '';
     }
 }

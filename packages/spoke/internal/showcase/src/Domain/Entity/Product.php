@@ -16,8 +16,9 @@ final class Product
         private Price $price,
         private ?string $description = null,
         private readonly DateTimeImmutable $createdAt = new DateTimeImmutable(),
+        ?DateTimeImmutable $updatedAt = null,
     ) {
-        $this->updatedAt = new DateTimeImmutable();
+        $this->updatedAt = $updatedAt ?? new DateTimeImmutable();
     }
     /**
      * P1-2 fix: Restore a Product from persisted state WITHOUT invoking domain behavior.
@@ -56,7 +57,7 @@ final class Product
     public function publish(): void
     {
         if ($this->status === ProductStatus::Archived) {
-            throw new \SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException($this->id);
+            throw \SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException::forId($this->id);
         }
         if ($this->status === ProductStatus::Published) return; // idempotent
         $this->status = ProductStatus::Published;

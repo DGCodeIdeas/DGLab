@@ -36,14 +36,17 @@ final class ProductApplicationService implements ProductApplicationInterface
     {
         $this->requireAnyRole($publishedBy, ['showcase:admin', 'showcase:editor', 'platform:admin']);
         $product = $this->products->get($id)
-            ?? throw new \SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException($id);
+            ?? throw \SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException::forId($id);
         $product->publish();
         $this->products->save($product);
     }
 
+    /**
+     * @param list<string> $roles
+     */
     private function requireAnyRole(UserId $userId, array $roles): void
     {
-        $roleIds = array_map(fn($r) => RoleIdentifier::fromString($r), $roles);
+        $roleIds = array_map(static fn (string $r): RoleIdentifier => RoleIdentifier::fromString($r), $roles);
         if (!$this->identity->hasAnyRole($userId, ...$roleIds)) {
             throw new \RuntimeException('Not authorized', 403);
         }
