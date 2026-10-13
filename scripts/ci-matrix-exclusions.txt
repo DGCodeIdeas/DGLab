@@ -1,0 +1,12 @@
+# Exclusions for the packages-ci matrix (enforced by
+# scripts/check-ci-matrix-completeness.py).
+#
+# Format:  <package/path>\t<one-line reason>
+# A reason is mandatory; a bare package name fails the check. Exclusions must
+# reference WHY the package is not run (e.g. "scaffold-only, no behavioral
+# contract yet"), not merely that someone did not add it. Entries are checked
+# for staleness: an exclusion whose package no longer exists/is no longer
+# eligible also fails, so this file cannot accumulate mute cruft.
+#
+# (Intentionally empty as of 2026-10-13: every eligible package is in the
+# matrix.)

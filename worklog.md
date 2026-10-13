@@ -1,5 +1,41 @@
 # DGLab Worklog
 
+## Task 57 — CI Coverage Repair: Omitted Packages, Orphaned Integration Test, Completeness Guard (SAAI Remediation Phase 2)
+
+**Date:** 2026-10-13
+**Branch:** `arena/b50a5637-dglab`
+**Base:** `main` @ `2ad5885` (merge of PR #360)
+**Packages touched:** none (their code is untouched; only CI routing changes)
+
+### Summary
+
+Three related repairs, per the audit-verified findings:
+
+1. **Matrix omissions**: `core/crypto`, `core/filesystem`, `spoke/internal/showcase` — packages with
+   `composer.json` + `src/` + `tests/` + `phpunit.xml.dist` that CI never ran — added to the
+   `packages-ci.yml` matrix. Their first-ever CI execution happens on this PR; if any suite or
+   PHPStan-level-max failure surfaces, it is fixed on merit (no check weakening).
+2. **Orphaned root integration test**: `tests/Integration/PublicIndexSmokeTest.php` (guards the
+   public/index.php ↔ ApplicationFactory divergence class from PRs #195/#197) had no runner anywhere —
+   no root phpunit config, no job. Added root `phpunit.xml.dist` + an `integration` job that runs
+   `composer install` at the repo root (path repos → vendor symlinks) and executes the suite.
+3. **Completeness guard**: `scripts/check-ci-matrix-completeness.py` + `scripts/ci-matrix-exclusions.txt`,
+   enforced as a step in the `gate` job (so it runs even on docs-only PRs). Contract: every eligible
+   package must be in the matrix or carry a **reasoned** exclusion line; stale exclusions fail; zero
+   eligible packages discovered fails as UNVERIFIED (vacuous-green impossible, same invariant as the
+   boundary lint). The script was validated red→green on this change: FAIL with exactly the 3 missing
+   packages before the matrix edit, PASS 20/20 after.
+
+Gate path-regex and push paths widened to `app/`, `public/`, `tests/`, `composer.json`,
+`phpunit.xml.dist` so entry-point composition changes can never again skip the smoke test.
+
+### Known limitations
+
+- The review sandbox has no PHP: the three newly-covered packages' first real run is this PR's CI —
+  deliberately visible, not hidden. The root `integration` job likewise self-validates here.
+- `composer install` at the root resolves from path repositories without a lock file (by design —
+  `composer.lock` is gitignored); the integration job therefore tests current-tree resolution.
+
 ## Task 56 — Tracked Secret Hygiene + Enforced Secret Scanning (SAAI Remediation Phase 1)
 
 **Date:** 2026-10-13

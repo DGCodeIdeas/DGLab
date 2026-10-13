@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Root (monorepo-level) PHPUnit configuration.
+
+  Existence reason (SAAI remediation Phase 2): tests/Integration/
+  PublicIndexSmokeTest.php guarded the public/index.php ↔ composition-root
+  divergence class (PRs #195/#197) but had NO runner anywhere — the repo has
+  per-package configs only. This file gives the root integration tests an
+  executable home; .github/workflows/packages-ci.yml's `integration` job runs
+  it after `composer install` at the repository root (the smoke test boots
+  public/index.php in-process via the root autoloader).
+
+  Add new cross-package tests under tests/Integration/ (or tests/Unit/).
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         testdox="true">
+    <testsuites>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+            <directory>public</directory>
+        </include>
+    </source>
+</phpunit>

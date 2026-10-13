@@ -21,6 +21,10 @@ on:
       - 'packages/**'
       - 'orchestrator/**'
       - 'anvil/**'
+      - 'app/**'
+      - 'public/**'
+      - 'tests/**'
+      - 'phpunit.xml.dist'
       - '.github/workflows/packages-ci.yml'
   pull_request: {}  # always trigger on PRs — gate job handles path detection
   workflow_dispatch: {}
@@ -47,7 +51,7 @@ jobs:
             echo "Base: $BASE"
             echo "Head: $HEAD"
             CHANGED=$(git diff --name-only "$BASE" "$HEAD" \
-              | grep -E '^(packages/|orchestrator/|anvil/|\.github/workflows/packages-ci\.yml)' \
+              | grep -E '^(packages/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/packages-ci\.yml)' \
               || true)
             if [ -n "$CHANGED" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
@@ -62,6 +66,14 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "::notice::Non-PR event — full CI matrix will run"
           fi
+
+      - name: CI matrix completeness (Phase 2 guard)
+        # Every eligible package (composer.json + src/ + tests/ + phpunit.xml.dist)
+        # MUST be in the matrix below or carry a reasoned line in
+        # scripts/ci-matrix-exclusions.txt. Also fails UNVERIFIED (0 packages
+        # discovered) and on stale exclusions — the control verifies actual state,
+        # and cannot report green vacuously.
+        run: python3 scripts/check-ci-matrix-completeness.py
 
   test:
     needs: gate
@@ -92,6 +104,12 @@ jobs:
             working-dir: packages/core/kernel
           - package: core/dbal
             working-dir: packages/core/dbal
+          - package: core/crypto
+            working-dir: packages/core/crypto
+          - package: core/filesystem
+            working-dir: packages/core/filesystem
+          - package: spoke/internal/showcase
+            working-dir: packages/spoke/internal/showcase
           - package: hub/config
             working-dir: packages/hub/config
           - package: hub/identity
@@ -157,3 +175,29 @@ jobs:
           php -v
           php bin/loom || echo "loom exited with $?"
           set +x
+
+  integration:
+    name: Root integration (public entry point smoke)
+    # Runs tests/Integration/ (root phpunit.xml.dist) — guards the historical
+    # public/index.php ↔ ApplicationFactory divergence class (PRs #195/#197).
+    # Previously the test file existed with NO runner; this job is that runner.
+    needs: gate
+    if: needs.gate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, xml, dom, openssl, fileinfo
+          tools: composer:v2
+
+      - name: Install root dependencies (path repos -> vendor symlinks)
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHPUnit — root integration suite
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=never --no-coverage
