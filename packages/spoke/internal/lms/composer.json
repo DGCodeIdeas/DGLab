@@ -2,7 +2,7 @@
     "name": "sovereign-stack/spoke-lms",
     "description": "LMS Spoke — course catalog + enrollment + progress app",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",

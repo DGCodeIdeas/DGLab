@@ -2,7 +2,7 @@
     "name": "sovereign-stack/core-kernel",
     "description": "CORE-18: The Sovereign Kernel \u2014 orchestrates the request lifecycle from boot to terminate, wiring all Core-tier components into the Pulse round-trip",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.4.0.0",
     "require": {
         "php": "^8.4",

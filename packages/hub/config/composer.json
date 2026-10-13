@@ -2,7 +2,7 @@
     "name": "sovereign-stack/hub-config",
     "description": "HUB-01: Sovereign Hub Config & Flags \u2014 tenant-aware configuration and feature flag evaluation with deterministic percentage rollouts",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",

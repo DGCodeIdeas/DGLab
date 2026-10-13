@@ -2,7 +2,7 @@
     "name": "sovereign-stack/hub-identity",
     "description": "HUB-04: Global Identity & Authentication — shared platform capability",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",

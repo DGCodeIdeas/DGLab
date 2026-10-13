@@ -464,7 +464,7 @@ The roadmap is **derived** from the build orders, not authored independently. Se
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE).
 
 ---
 

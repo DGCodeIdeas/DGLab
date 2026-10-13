@@ -2,7 +2,7 @@
     "name": "sovereign-stack/core-filesystem",
     "description": "CORE-14: Sovereign Filesystem \u2014 safe blob storage with atomic writes, path traversal protection, quarantine, and integrity verification",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",
