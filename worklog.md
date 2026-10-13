@@ -1,5 +1,55 @@
 # DGLab Worklog
 
+## Task 56 — Tracked Secret Hygiene + Enforced Secret Scanning (SAAI Remediation Phase 1)
+
+**Date:** 2026-10-13
+**Branch:** `arena/b50a5637-dglab`
+**Base:** `main` after license-alignment PR #359
+**Packages touched:** none
+
+### Summary
+
+Removes tracked dev-TLS artifacts and an anvil runtime log from the index:
+`anvil/docker/nginx/certs/DGHexa/{DGHexa.pem,DGHexa-key.pem}` and `anvil/.anvil-web.log`
+(`git rm --cached` — files are regenerated locally by the existing pipeline). Key/cert were never a
+production credential (mkcert dev CA, SAN `DGHexa.test`/`DGHexa`), and `anvil/lib/ssl.sh` idempotently
+skips cert generation when the files already exist — which is exactly why the committed pair persisted:
+provisioning found them and skipped. With them untracked, `anvil_ssl_project` (called by
+`lib/project.sh:40` and `anvilctl:249`) issues fresh certs on the next provisioning run.
+`anvil/docker/nginx/certs/*/` added to `.gitignore` (directory-level; `.gitkeep` remains tracked).
+
+Adds `.github/workflows/secret-scan.yml`: pinned gitleaks v8.24.3 (checksum-verified against the
+release's own `checksums.txt` at install, no third-party action), scanning the **working tree** at the
+checkout (`gitleaks dir`), with a mandatory **canary self-test** step — every run plants an inert fake
+AWS-style key and fails loudly if the scanner misses it, so a broken config cannot report green.
+`.gitleaks.toml` confines all suppressions to justified `allowlist.paths` (test fixtures, `*.env.example`
+placeholders, read-only `archive/` — each with inline rationale).
+
+### Deliberate policy choices (recorded so future contributors do not "improve" them away)
+
+- **Scope = tree, not history.** A history scan would flag the pre-existing public dev-pair permanently;
+  history action is a separate, unapproved decision per SAAI remediation plan §Phase 1. If history
+  scanning is ever enabled, an explicit baseline document (not inline mutes) must accompany it.
+- **`archive/` allowlisted** because the archive is read-only provenance (its own `ARCHIVED.md`: "do not
+  edit"); the gate protects forward state. This is an accepted, documented residual, not an oversight.
+
+### Verification
+
+- `git ls-files | grep -E '\.pem$|\.log$'` → only `archive/Legacy/storage/logs/*.log` (accepted above).
+- Canary: the workflow's self-test step is the permanent canary; first run's logs are the evidence that
+  enforcement works (CI link recorded on the PR).
+- `bash -n` not applicable (no shell script changed); workflow YAML reviewed against
+  `gitleaks dir --help` v8.24.3 flags (`--config`, `--redact`, `--no-banner`, `--exit-code`).
+- Scan of the current tree is expected to PASS because the only secret-shaped files (certs) are removed
+  in this same commit, and the fixture/env-example patterns exist precisely because gitleaks' generic
+  rules otherwise fire on test `.env.test` fixtures.
+
+### Known limitations
+
+- No PHP/gitleaks binary availability in the review sandbox: the config is validated by the workflow's
+  own canary + first real run rather than locally; iterate on this file (with rationale) if CI surfaces
+  unexpected hits instead of allowlisting blindly.
+
 ## Task 55 — License Alignment to Apache-2.0 (SAAI Remediation PR 2)
 
 **Date:** 2026-10-13

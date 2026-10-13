@@ -1,0 +1,26 @@
+# gitleaks configuration for DGLab (SAAI remediation Phase 1).
+#
+# Base rule set: gitleaks v8.24.3 defaults (extended = true below keeps them).
+# The ONLY suppressions are path-based, each with a written rationale. Adding a
+# path here without a one-line justification is a governance violation
+# (mirrors the BLIND-SPOT-DOCTRINE stance on silent closures).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented non-secret fixtures and read-only provenance trees"
+paths = '''(?x)
+    # Test fixtures by contract: values here exist so parser tests have input.
+    # They are not credentials; the fixtures directory is excluded from the
+    # package's shipped surface.
+    packages/.*/tests/Fixtures/
+  | # Example env files ship KEY names with empty/placeholder values, never
+    # real values — .env itself is gitignored.
+    (?:^|.*/)\.env\.example$
+  | # Read-only provenance archive (archive/Legacy/ARCHIVED.md: "Do not edit").
+  # Contents already public; this gate protects FORWARD state, it cannot amend
+  # the archive, and editing archived material is out of policy. Removal from
+  # HISTORY (if ever desired) is governed separately.
+  | ^archive/
+'''
