@@ -1,7 +1,7 @@
 # License Inventory and Proposed Dispositions (Decision Gate)
 
-**Status:** PROPOSED — inventory and proposal only. **No license declaration in this repository is changed by this document.**
-**Date:** 2026-10-13
+**Status:** **DECIDED (2026-10-13)** — ratification recorded in §0 below. Pre-decision status was PROPOSED; **no license declaration was changed by this document itself.** Alignment edits are executed as a separate follow-up change (§0.3).
+**Date:** 2026-10-13 (inventory); decision same day
 **Baseline:** `main` @ `a604241` (this document's commit parent)
 **Prepared for:** SAAI remediation plan, Phase 0 (licensing decision) — PR 1 of the remediation sequence
 **Audience:** tech lead (decision authority). Not legal advice; see §7.
@@ -11,6 +11,27 @@
 > **⚠️ Blind-Spot Awareness:** This inventory's claims are **mechanically derived, not exhaustively verified**. It enumerates license declarations and third-party trees discoverable from the tracked file set at the baseline commit. It does **not** scan Git history, untracked local files, or transitive dependency trees, and it cannot detect an unlicensed third-party file that omits both a LICENSE file and any license metadata. A third-party component whose headers were stripped will not appear here. **The number of findings found is not the number of findings that exist.** See `Architecture/CrossCutting/BLIND-SPOT-DOCTRINE.md` for the governance framework.
 
 ---
+
+## 0. Decision record (ratified 2026-10-13 by the tech lead)
+
+**D-1 — Project license:** **Apache-2.0** (Option A of §5). The root `LICENSE` file already carries the operative Apache-2.0 grant, so no retroactive rights conflict is created for prior public commits of original code. Alignment obligations follow in §0.3.
+
+**D-2 — `skills/` disposition:** **Relocate to a separate repository** (owner-side move to a private/personal workspace first), then a follow-up DGLab PR removes the tree from `main`. No DGLab-side deletion occurs before the relocation is confirmed, so no sole copy is destroyed.
+
+**Standing consequences of D-1/D-2, recorded explicitly:**
+
+1. **History retention caveat.** Removing `skills/` from the tree at HEAD does **not** retract material already contained in public history. Buckets M3 (Z.ai non-commercial, 5 skills) and M5/M4 (unknown provenance, 51 skills) remain present in historical commits unless a separate, explicitly-approved Git-history action is taken. Per the remediation plan, history rewriting is its own decision and is **not** approved by D-2; this caveat is registered until the owner decides. Recommended interim disposition: annotate the register with a finding whose closure condition is "history exposure for M3/M4/M5 either eliminated by approved history action or explicitly accepted with rationale."
+2. **Attribution follows the material.** The relocated skills repository must carry the M1/M2/N1 license files (MIT/Apache texts with their copyright notices — "Zara Zhang", "op7418 (歸藏)", "z-ai-web-dev-sdk Skills") with the tree. Relocation does not relicense anything; DGLab's Apache-2.0 choice does not extend to any of it.
+3. **`THIRD-PARTY-NOTICES.md`** is no longer needed in DGLab after the removal PR (the licensed material exits the tree), *provided* the archive tree is left untouched. No new notices are required for `archive/Legacy` (self-authored, Apache-2.0 file retained as provenance per its `ARCHIVED.md`).
+4. **`download/` posture.** The SPEC/report documents show no restrictive markings (§3) and are treated as project-original under D-1.
+
+**§0.3 — Alignment change surface (to execute after this PR merges, as the follow-up "license alignment" change; 21 edits, 0 file moves):**
+
+- `README.md:467` — "MIT — see LICENSE" → "Apache-2.0 — see LICENSE"
+- root `composer.json:5` — `"proprietary"` → `"Apache-2.0"`
+- 19 × `packages/**/composer.json` — `"MIT"` → `"Apache-2.0"`
+- `LICENSE` — **unchanged** (already correct)
+- No `skills/` file is touched by this surface; the removal PR is separate (D-2, gated on owner relocation)
 
 ## 1. Method and evidence base
 
@@ -133,7 +154,7 @@ Under all options, **D6 (`archive/Legacy` self-contradiction) is intentionally l
 
 ---
 
-## 6. Proposed dispositions (pending owner ratification)
+## 6. Proposed dispositions (superseded by §0 for M1–N1: RATIFIED via D-2)
 
 | Bucket | Proposed action | Rationale |
 |---|---|---|
@@ -160,6 +181,8 @@ Under all options, **D6 (`archive/Legacy` self-contradiction) is intentionally l
 3. The follow-up alignment PR's file list matches §5 exactly (22 declaration sites: `LICENSE` (Option B/C only), `README.md:467`, root + 19 `composer.json`).
 4. Any `skills/` removal PR lands with zero inbound-reference breakage (grep-verified; currently zero references exist, so this should be trivially satisfiable) and does **not** bundle history rewriting.
 5. New findings opened from this inventory are registered with evidence pointers into this document.
+
+**Status (2026-10-13):** criteria 1 and 2 **met** — decisions recorded in §0; all buckets carry dispositions (§6). Criterion 3 is defined by §0.3 (21 edits; `LICENSE` unchanged under Option A). Criteria 4–5 remain open and gate the follow-up PRs.
 
 ---
 

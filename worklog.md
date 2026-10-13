@@ -7,6 +7,17 @@
 **Base:** `main` @ `a604241`
 **Packages touched:** none (docs-only; no license declaration modified)
 
+### Decision addendum (same day)
+
+Owner ratified (recorded in `Architecture/Verification/LICENSE-INVENTORY.md` §0): project license =
+**Apache-2.0** (matches the operative root `LICENSE`; no retroactive conflict for original code);
+`skills/` disposition = **relocate to a separate repository** (owner-side move first), followed by a
+dedicated DGLab removal PR. Two follow-ups left open by the decision itself: (a) the 21-site alignment
+edit (README:467, root composer.json, 19 package manifests; `LICENSE` untouched), and (b) the history
+retention caveat — M3/M4/M5 material remains in public history until an explicitly-approved history
+action or a documented acceptance is recorded. Alignment PR prepared next; removal PR is gated on
+confirmed relocation.
+
 ### Summary
 
 Independent verification pass (initiated from an outside repository audit, triaged by SAAI) confirmed a
