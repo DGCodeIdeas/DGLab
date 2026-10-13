@@ -1,5 +1,55 @@
 # DGLab Worklog
 
+## Task 54 — License Inventory (SAAI Remediation Phase 0 / PR 1)
+
+**Date:** 2026-10-13
+**Branch:** `arena/b50a5637-dglab`
+**Base:** `main` @ `a604241`
+**Packages touched:** none (docs-only; no license declaration modified)
+
+### Decision addendum (same day)
+
+Owner ratified (recorded in `Architecture/Verification/LICENSE-INVENTORY.md` §0): project license =
+**Apache-2.0** (matches the operative root `LICENSE`; no retroactive conflict for original code);
+`skills/` disposition = **relocate to a separate repository** (owner-side move first), followed by a
+dedicated DGLab removal PR. Two follow-ups left open by the decision itself: (a) the 21-site alignment
+edit (README:467, root composer.json, 19 package manifests; `LICENSE` untouched), and (b) the history
+retention caveat — M3/M4/M5 material remains in public history until an explicitly-approved history
+action or a documented acceptance is recorded. Alignment PR prepared next; removal PR is gated on
+confirmed relocation.
+
+### Summary
+
+Independent verification pass (initiated from an outside repository audit, triaged by SAAI) confirmed a
+four-way license conflict: README says MIT, root `LICENSE` is Apache-2.0, root `composer.json` says
+proprietary, and all 19 package manifests say MIT. Deeper inventory found a fifth signal (GitHub derives
+Apache-2.0 from the LICENSE file) and an additional material exposure class: `skills/` (69 third-party
+AI-assistant skill directories, ~60 MB, zero inbound references) contains 5 skills with Z.ai "non-commercial
+use only" terms and 51 with no license metadata at all — none of which the current Apache grant lawfully
+conveys to recipients.
+
+Deliverable: `Architecture/Verification/LICENSE-INVENTORY.md` — declaration conflict matrix, bucketed
+third-party inventory (M1–M5, N1), per-option edit surfaces for the three license choices, and proposed
+dispositions. Deliberately **no** license file, manifest field, or third-party content is changed: the
+license choice is a governance decision reserved to the tech lead, and `skills/` removal is gated on it.
+
+### Observations recorded for future registers
+
+- Numbering note: this file's newest prior heading was Task 42 although prose references Tasks 43–53
+  (entries for those tasks are absent from `worklog.md` as merged — a worklog-completeness gap distinct
+  from the README drift findings). Task 54 assigned as the next unclaimed number.
+- `skills/pptx/SKILL.md` claims "Proprietary. LICENSE.txt has complete terms" but ships no LICENSE.txt —
+  proprietary terms asserted, terms absent.
+- `archive/Legacy/LICENSE` (Apache-2.0) contradicts `archive/Legacy/composer.json` ("MIT"). Left as-is per
+  the archive's read-only provenance rule; annotated in the inventory instead.
+
+### Verification
+
+- Markdown-only change; no PHP/Composer surface → packages-ci path gate will report no package changes.
+- Reference-existence check simulated for the new document (all CORE/HUB/BRIDGE/DEPLOY/ISPOKE/ESPOKE
+  tokens zero-padded and within `run.php`'s valid ranges); blind-spot awareness note included per
+  BLIND-SPOT-DOCTRINE rule 3.
+
 ## Task 42 — P2 Batch: Security & Correctness Fixes Across Core Packages
 
 **Date:** 2026-09-17
