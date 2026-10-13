@@ -157,19 +157,7 @@ jobs:
 
       - name: PHPUnit (full suite, testdox)
         working-directory: ${{ matrix.working-dir }}
-        # DEBUG(#361): log unavailable in this sandbox → surface failure tail via
-        # annotations. REMOVE once core/filesystem's first-run failures are triaged.
-        run: |
-          set +e
-          OUT=$(vendor/bin/phpunit --testdox --colors=never --no-coverage 2>&1)
-          RC=$?
-          printf '%s\n' "$OUT"
-          if [ $RC -ne 0 ]; then
-            printf '%s\n' "$OUT" | grep -E "^[0-9]+\\) |^Tests:|^ERRORS!|^FAILURES!|Failed asserting|Error:|Exception|expected|Actual" | head -n 22 | while IFS= read -r L; do
-              printf '::error::PUNIT| %s\n' "$(printf '%s' "$L" | tr -d '\r' | sed 's/%/%25/g')"
-            done
-          fi
-          exit $RC
+        run: vendor/bin/phpunit --testdox --colors=never --no-coverage
 
       - name: PHPUnit (PSR-11 conformance, named)
         if: matrix.package == 'core/container'
