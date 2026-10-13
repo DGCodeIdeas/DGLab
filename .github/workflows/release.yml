@@ -128,24 +128,48 @@ jobs:
           TIER="${{ matrix.tier }}"
           HIGHEST_INCREMENT="none"
           HIGHEST_VERSION=""
+          COUNT=0
           for PKG_DIR in packages/${TIER}/*/; do
+            [ -d "$PKG_DIR" ] || continue
             PKG=$(basename "$PKG_DIR")
-            OUTPUT=$(orchestrator/bin/loom version:bump "${TIER}/${PKG}" --format=json 2>&1) || {
-              echo "  $TIER/$PKG: no changes or error — skipping"
-              continue
-            }
-            INCREMENT=$(printf '%s\n' "$OUTPUT" | jq -r '.increment // empty')
-            NEW_VERSION=$(printf '%s\n' "$OUTPUT" | jq -r '.new_version // empty')
+            COUNT=$((COUNT+1))
+            # Error contract (SAAI Phase 3): loom failing, or answering with
+            # output that is not its documented JSON, is a hard failure. Only
+            # loom's own clean exit-0 "increment: none" is a legitimate skip.
+            # The old `|| { echo skipping; continue; }` swallowed EVERY error
+            # as a green no-op — which is why no tier ever released.
+            if ! OUTPUT=$(orchestrator/bin/loom version:bump "${TIER}/${PKG}" --format=json 2>&1); then
+              printf '%s\n' "$OUTPUT"
+              echo "::error::loom version:bump failed for ${TIER}/${PKG} — refusing to treat an error as a no-op skip"
+              exit 1
+            fi
+            if ! printf '%s\n' "$OUTPUT" | jq -e 'type=="object" and has("increment")' >/dev/null 2>&1; then
+              printf '%s\n' "$OUTPUT"
+              echo "::error::unparseable loom JSON for ${TIER}/${PKG}"
+              exit 1
+            fi
+            INCREMENT=$(printf '%s\n' "$OUTPUT" | jq -r '.increment')
+            NEW_VERSION=$(printf '%s\n' "$OUTPUT" | jq -r '.new_version // ""')
             echo "  $TIER/$PKG: $INCREMENT → $NEW_VERSION"
+            if [ "$INCREMENT" != "none" ] && [ -z "$NEW_VERSION" ]; then
+              echo "::error::loom reported increment '$INCREMENT' for ${TIER}/${PKG} without a new_version"
+              exit 1
+            fi
             # Take the highest bump level: major > minor > patch > none
             case "$INCREMENT" in
               major)  HIGHEST_INCREMENT="major";  HIGHEST_VERSION="$NEW_VERSION" ;;
               minor)  if [ "$HIGHEST_INCREMENT" != "major" ]; then HIGHEST_INCREMENT="minor"; HIGHEST_VERSION="$NEW_VERSION"; fi ;;
               patch)  if [ "$HIGHEST_INCREMENT" = "none" ]; then HIGHEST_INCREMENT="patch"; HIGHEST_VERSION="$NEW_VERSION"; fi ;;
+              none)   ;;
+              *)      echo "::error::unknown increment '$INCREMENT' from loom for ${TIER}/${PKG}"; exit 1 ;;
             esac
           done
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::no package directories found under packages/${TIER}/ — refusing a vacuous skip"
+            exit 1
+          fi
           if [ -z "$HIGHEST_VERSION" ]; then
-            echo "No version change for $TIER tier. Skipping."
+            echo "No version change for $TIER tier (all $COUNT package(s) computed 'none'). Skipping."
             echo "has_bump=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -205,7 +229,13 @@ jobs:
           # Bump ALL packages in the tier to the same version.
           for PKG_DIR in packages/${TIER}/*/; do
             PKG=$(basename "$PKG_DIR")
-            orchestrator/bin/loom version:release "${TIER}/${PKG}" \
+            # Error contract (SAAI Phase 3): the trailing `|| true` here turned
+            # every failed release — refused CI gate, tag conflict, push reject,
+            # unknown package — into a green "Bumped" line while nothing was
+            # released. A non-zero loom exit now aborts the job loudly; a partial
+            # tier bump stays recoverable because every step before this loop
+            # ran against origin's main (no rewrites).
+            if ! orchestrator/bin/loom version:release "${TIER}/${PKG}" \
               --message "$TAG_MESSAGE" \
               --remote "$TOKEN_URL" \
               --require-ci-green \
@@ -213,7 +243,10 @@ jobs:
               --ci-branch main \
               --ci-repo ${{ github.repository }} \
               --ci-timeout 60 \
-              --allow-untracked orchestrator/repos.json || true
+              --allow-untracked orchestrator/repos.json; then
+              echo "::error::loom version:release FAILED for ${TIER}/${PKG} — aborting the ${TIER} tier release (packages bumped before this one were released successfully)"
+              exit 1
+            fi
             echo "  Bumped ${TIER}/${PKG} to ${NEW_VERSION}"
           done
 

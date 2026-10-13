@@ -1,5 +1,53 @@
 # DGLab Worklog
 
+## Task 58 — Release Error Contract: No More Errors Disguised as Green No-Ops (SAAI Remediation Phase 3)
+
+**Date:** 2026-10-13
+**Branch:** `arena/b50a5637-dglab`
+**Base:** `main` after #361 merge
+**Packages touched:** `orchestrator` (bin/loom + one new test) — release tooling, not package runtime code
+
+### Summary
+
+The audit's Phase-3 finding: `release.yml` could never release because every failure mode was
+rewritten into a green skip. Three error-swallow sites corrected, none by loosening a check:
+
+1. **`orchestrator/bin/loom`** — `getRepoDir()` silently returned
+   `orchestrator/repos/<name>` for names matching nothing, so an unresolvable package produced an
+   empty `git log` and a vacuous `increment: "none"`. New `resolveLegacyRepoDir()` (applied at all
+   three silent-resolution sites: shared bump helper, `tag:create`, `tag:push`) throws
+   `RuntimeException` — which `version:bump`/`version:release` already catch into `Error: …` +
+   exit 1. The legitimate clean no-op (exit 0 with `"increment": "none"`) is unchanged semantics.
+2. **`release.yml` bump step** — `|| { echo skipping; continue; }` replaced with a hard contract:
+   loom non-zero → `::error::` + exit 1; output not parseable as an object with `increment` →
+   error; `increment` ∈ {major,minor,patch,none} enforced; non-none increment without
+   `new_version` → error; zero package directories under the tier → error (no vacuous skip);
+   all-none remains an honest `has_bump=false` exit 0.
+3. **`release.yml` release loop** — `loom version:release … || true` printed "Bumped" even when
+   the release (tag, push, CI gate) failed. Now any package failure aborts the tier step with a
+   `::error::` naming the package; `|| true`/`|| continue` survivors elsewhere (token-restore
+   cleanup, first-release empty-tag probes, tag-health listing) were reviewed and are load-bearing.
+
+**`orchestrator/tests/LoomVersionBumpContractTest.php`** pins the CLI surface at the boundary the
+workflow consumes (black-box `proc_open` of the real `bin/loom`): unknown package ⇒ non-zero +
+STDERR message + no JSON; resolvable package ⇒ exit 0 + strict JSON with all eight documented keys.
+
+### Verification
+
+- Orchestrator matrix job runs PHPStan(level max, src/) + the full suite including the new contract
+  test; results recorded on the PR before merge (27+ checks; first CI review of this exact suite).
+- `release.yml` itself only executes via `workflow_dispatch`, so its steps are validated by
+  `actionlint`-equivalent YAML parse + step-level reasoning; the dry_run input still exists for a
+  controlled live check after merge.
+
+### Limitations
+
+- No live release is performed by this PR (dispatching one post-merge is the owner's call; the
+  dry-run path makes it observable).
+- `handleTagCreate`/`handleTagPush` surface the guard as an uncaught fatal (exit 255) rather than
+  a caught `Error:` line — still non-zero and informative; normalizing every handler's catch is
+  deferred to the Loom CLI polish task.
+
 ## Task 57 — CI Coverage Repair: Omitted Packages, Orphaned Integration Test, Completeness Guard (SAAI Remediation Phase 2)
 
 **Date:** 2026-10-13

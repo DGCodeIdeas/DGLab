@@ -178,7 +178,7 @@ function computeVersionBump(string $repoName): array
         $pkgPath = $package->path;
         $pkgPrefix = $package->tagPrefix;
     } else {
-        $repoDir = getRepoDir($repoName);
+        $repoDir = resolveLegacyRepoDir($repoName);
         $manager = new RepoManager($repoDir);
         $displayName = $repoName;
         $pkgPath = $repoDir;
@@ -627,7 +627,7 @@ function handleTagCreate(array $subArgs): void
     if ($package !== null) {
         $manager = $package->createRepoManager($repoRoot);
     } else {
-        $repoDir = getRepoDir($repoName);
+        $repoDir = resolveLegacyRepoDir($repoName);
         $manager = new RepoManager($repoDir);
     }
 
@@ -691,7 +691,7 @@ function handleTagPush(array $subArgs): void
     if ($package !== null) {
         $manager = $package->createRepoManager($repoRoot);
     } else {
-        $repoDir = getRepoDir($repoName);
+        $repoDir = resolveLegacyRepoDir($repoName);
         $manager = new RepoManager($repoDir);
     }
 
@@ -913,6 +913,29 @@ function getDefaultConfig(): array
             'depends_on' => [],
         ],
     ];
+}
+
+/**
+ * SAAI Phase 3 error contract: a package name that resolves neither to a
+ * monorepo package nor to a legacy checkout must fail loudly. Previously the
+ * code proceeded against a non-existent directory, git log came back empty,
+ * and every consumer (release.yml especially) read a vacuous increment "none"
+ * as a legitimate green skip — the failure mode that kept the monorepo from
+ * ever releasing. version:bump, version:release and the tag-push path all
+ * resolve through this single choke point now.
+ */
+function resolveLegacyRepoDir(string $repoName): string
+{
+    $repoDir = getRepoDir($repoName);
+
+    if (!\is_dir($repoDir)) {
+        throw new \RuntimeException(
+            "Unknown package '{$repoName}': not a monorepo package "
+            . "(packages/*/*/composer.json) and no legacy checkout at '{$repoDir}'"
+        );
+    }
+
+    return $repoDir;
 }
 
 function getRepoDir(string $repoName): string
