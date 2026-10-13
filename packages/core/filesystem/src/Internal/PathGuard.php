@@ -21,9 +21,13 @@ final readonly class PathGuard
 {
     private string $rootWithSeparator;
 
-    public function __construct(
-        private string $rootPath,
-    ) {
+    private string $rootPath;
+
+    public function __construct(string $rootPath)
+    {
+        // NOT a promoted property: the constructor normalizes (realpath) the value,
+        // and assigning over an already-promoted readonly property throws at runtime.
+        // PHPStan level max caught this while the package had no CI coverage.
         $real = realpath($rootPath) ?: $rootPath;
         $this->rootPath = $real;
         // Boundary-aware: /tmp/data/ not /tmp/data (prevents /tmp/database matching)

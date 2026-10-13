@@ -63,6 +63,7 @@ final class AtomicWriter
      * Per Lap 2 P1-4: treats fread() === false as an error (not silent truncation),
      * verifies fwrite() wrote the complete chunk, and cleans up on any failure.
      *
+     * @param resource $stream readable stream resource (contract enforced at runtime via is_resource)
      * @return int Bytes written
      */
     public function writeStream(string $absolutePath, $stream, int $byteLimit = 0): int

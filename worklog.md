@@ -29,10 +29,19 @@ Three related repairs, per the audit-verified findings:
 Gate path-regex and push paths widened to `app/`, `public/`, `tests/`, `composer.json`,
 `phpunit.xml.dist` so entry-point composition changes can never again skip the smoke test.
 
-### Known limitations
+### First-run results (same PR) — the predicted debt, fixed on merit
 
-- The review sandbox has no PHP: the three newly-covered packages' first real run is this PR's CI —
-  deliberately visible, not hidden. The root `integration` job likewise self-validates here.
+CI's first-ever run of the three packages found exactly what the audit predicted untested code hides:
+(1) `core/crypto/phpstan.neon` carried an invalid `strictRules:` block — not a PHPStan parameter — so
+PHPStan aborted with a schema error before analyzing (fixed: config now matches the green packages'
+shape). (2) `core/filesystem` PathGuard re-assigned a **promoted readonly property** in the constructor
+body — a runtime `Cannot modify readonly property` fatal latent since introduction, caught by
+PHPStan level max (fixed: property declared without promotion; normalization preserved).
+`AtomicWriter::writeStream()` gained its missing `@param resource` docblock (contract was already
+runtime-enforced via is_resource). (3) `spoke/internal/showcase` failed `composer install`: unlike its
+sibling `lms`, its `composer.json` lacked the `repositories` path blocks needed to resolve sibling
+sovereign-stack packages (fixed: blocks copied verbatim from `lms`). Root `integration` job **passed**
+on first run — the orphaned smoke test is now a live guard.
 - `composer install` at the root resolves from path repositories without a lock file (by design —
   `composer.lock` is gitignored); the integration job therefore tests current-tree resolution.
 
