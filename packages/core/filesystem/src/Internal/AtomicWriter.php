@@ -106,10 +106,11 @@ final class AtomicWriter
                 $chunkLen = strlen($chunk);
                 $bytesWritten += $chunkLen;
 
-                // Check byte limit before writing
+                // Check byte limit before writing.
+                // Cleanup (fclose + unlink) is centralized in the catch block;
+                // closing here as well made the catch's fclose() throw a
+                // TypeError that swallowed the StreamByteLimitExceededException.
                 if ($byteLimit > 0 && $bytesWritten > $byteLimit) {
-                    fclose($out);
-                    @unlink($tempPath);
                     throw new StreamByteLimitExceededException(
                         "Stream exceeded byte limit of {$byteLimit} bytes"
                     );

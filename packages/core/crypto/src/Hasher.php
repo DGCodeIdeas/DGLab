@@ -28,6 +28,11 @@ final class Hasher
      */
     public function deriveKey(string $masterKey, string $info, int $length = 32): string
     {
+        // RFC 5869 bounds: 1 .. hashlen*255 = 8160 bytes for SHA-256.
+        if ($length < 1 || $length > 8160) {
+            throw new CryptoException('HKDF_LENGTH', "deriveKey length must be between 1 and 8160 bytes, got {$length}");
+        }
+
         return \hash_hkdf('sha256', $masterKey, $length, $info);
     }
 }
