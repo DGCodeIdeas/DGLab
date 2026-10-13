@@ -2,7 +2,7 @@
     "name": "sovereign-stack/spoke-canvas",
     "description": "ESPOKE-01: Sovereign Canvas \u2014 public-facing CMS and delivery engine. Renders pages from content fetched via BRIDGE-01, with SEO validation and stale-while-revalidate caching.",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",

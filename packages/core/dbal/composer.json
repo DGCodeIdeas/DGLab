@@ -2,7 +2,7 @@
     "name": "sovereign-stack/core-dbal",
     "description": "CORE-19: Database Abstraction Layer \u2014 thin PDO wrapper with fluent QueryBuilder, nested transactions, and tenant scoping",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.4.0.0",
     "require": {
         "php": "^8.4",

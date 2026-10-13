@@ -2,7 +2,7 @@
     "name": "sovereign-stack/bridge-vanguard",
     "description": "BRIDGE-01: The Vanguard \u2014 PSR-15 boundary middleware enforcing default-deny contract routing, WAF inspection, and DTO transformation at the SovereignStack tier boundary",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",

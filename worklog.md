@@ -1,5 +1,31 @@
 # DGLab Worklog
 
+## Task 55 — License Alignment to Apache-2.0 (SAAI Remediation PR 2)
+
+**Date:** 2026-10-13
+**Branch:** `arena/b50a5637-dglab`
+**Base:** `main` @ `78b698c` (merge of PR #358)
+**Packages touched:** all 19 (`composer.json` `license` field only — no code, no constraints, no autoload)
+
+### Summary
+
+Executed the change surface defined in `Architecture/Verification/LICENSE-INVENTORY.md` §0.3 after the
+tech lead ratified Apache-2.0 (recorded in §0 of that document, PR #358). 21 edits: README license line
+("MIT" → "Apache-2.0"), root `composer.json` ("proprietary" → "Apache-2.0"), and all 19 package manifests
+("MIT" → "Apache-2.0"). Root `LICENSE` untouched — it already carried the operative Apache-2.0 text. No
+other license mentions exist in root docs (verified by sweep before editing).
+
+### Verification
+
+- Acceptance: `grep -h '"license"' composer.json packages/**/composer.json | sort -u` → exactly one line: `"license": "Apache-2.0",`. `grep -c '\bMIT\b'` across all composer manifests → 0.
+- All 20 touched `composer.json` files re-parsed as valid JSON (PHP not available in the executing environment; `composer validate` deferred to CI, which runs it per-package in the matrix).
+- Diff scope check: 21 files × 1 line each + this worklog entry; `git diff --stat` shows zero changes under `skills/`, `archive/`, `Architecture/` and to `LICENSE`.
+
+### Known limitations
+
+- CI for this PR runs the full package matrix because `packages/**` manifests changed; the matrix result is the authoritative `composer validate` evidence.
+- The `skills/` removal PR (relocate-then-remove, D-2) and the history-retention caveat (§0.1.1) remain open and are deliberately NOT part of this change.
+
 ## Task 54 — License Inventory (SAAI Remediation Phase 0 / PR 1)
 
 **Date:** 2026-10-13

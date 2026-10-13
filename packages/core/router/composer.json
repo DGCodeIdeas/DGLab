@@ -2,7 +2,7 @@
     "name": "sovereign-stack/core-router",
     "description": "CORE-06: Attribute-Based Router with PCRE compilation and method-indexed matching",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.4.0.0",
     "require": {
         "php": "^8.4",

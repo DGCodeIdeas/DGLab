@@ -2,7 +2,7 @@
     "name": "sovereign-stack/spoke-showcase",
     "description": "Showcase Spoke — product catalog + asset management app",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.1.0.0",
     "require": {
         "php": "^8.4",

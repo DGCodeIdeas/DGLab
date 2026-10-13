@@ -2,7 +2,7 @@
     "name": "sovereign-stack/dglab",
     "description": "Sovereign Stack \u2014 DGLab monorepo",
     "type": "project",
-    "license": "proprietary",
+    "license": "Apache-2.0",
     "require": {
         "php": "^8.4",
         "ext-mbstring": "*",

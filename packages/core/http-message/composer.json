@@ -2,7 +2,7 @@
     "name": "sovereign-stack/core-http-message",
     "description": "CORE-04: PSR-7 HTTP Message & PSR-17 Factory implementations",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "version": "0.4.0.0",
     "require": {
         "php": "^8.4",
