@@ -46,10 +46,16 @@ final class KeyRegistry implements KeyRegistryInterface
         if (!$this->active[$kid] && $this->activeKid !== $kid) {
             // Key exists but is RETAINED — still retrievable for decrypt.
         }
-        return $this->keys[$kid]->value;
+        $value = $this->keys[$kid]->getValue();
+
+        if (!\is_string($value)) {
+            throw new CryptoException('KEY_TYPE', "Key '{$kid}' does not wrap a string");
+        }
+
+        return $value;
     }
 
-    public function addKey(string $kid, string $key): void
+    public function addKey(string $kid, #[\SensitiveParameter] string $key): void
     {
         if (isset($this->keys[$kid])) {
             throw new CryptoException('DUPLICATE_KID', "Key id '{$kid}' already exists");

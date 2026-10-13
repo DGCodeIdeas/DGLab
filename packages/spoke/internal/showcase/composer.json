@@ -29,5 +29,15 @@
         "psr-4": {
             "SovereignStack\\Spoke\\Showcase\\Tests\\": "tests/"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../../../packages/*/*"
+        },
+        {
+            "type": "path",
+            "url": "../../../../packages/*/*/*"
+        }
+    ]
 }

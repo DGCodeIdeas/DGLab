@@ -21,9 +21,13 @@ final readonly class PathGuard
 {
     private string $rootWithSeparator;
 
-    public function __construct(
-        private string $rootPath,
-    ) {
+    private string $rootPath;
+
+    public function __construct(string $rootPath)
+    {
+        // NOT a promoted property: the constructor normalizes (realpath) the value,
+        // and assigning over an already-promoted readonly property throws at runtime.
+        // PHPStan level max caught this while the package had no CI coverage.
         $real = realpath($rootPath) ?: $rootPath;
         $this->rootPath = $real;
         // Boundary-aware: /tmp/data/ not /tmp/data (prevents /tmp/database matching)
@@ -56,16 +60,30 @@ final readonly class PathGuard
         $fullPath = $this->rootPath . '/' . $relativePath;
         $resolved = realpath($fullPath);
 
-        // For non-existent files (write target), resolve the parent directory
+        // For non-existent paths (write targets), walk up to the DEEPEST
+        // existing ancestor — not just dirname() one level: creating a
+        // fresh nested tree (a/b/c/new.txt) has no existing parent, and the
+        // one-level check rejected exactly the writes the package contract
+        // promises to auto-create (mkdir -p semantics in AtomicWriter).
+        // Traversal attempts still land on the containment check below,
+        // because the resolved ancestor of an escaping path is outside root.
         if ($resolved === false) {
-            $parentDir = dirname($fullPath);
-            $resolvedParent = realpath($parentDir);
-            if ($resolvedParent === false || !$this->isWithinRoot($resolvedParent)) {
+            $segments = [];
+            $walker = $fullPath;
+            $ancestor = realpath($walker);
+            while ($ancestor === false) {
+                $segments[] = basename($walker);
+                $walker = dirname($walker);
+                $ancestor = realpath($walker);
+            }
+
+            if (!$this->isWithinRoot($ancestor)) {
                 throw new PathTraversalRefusedException(
                     "Path escapes root: {$relativePath}"
                 );
             }
-            return $resolvedParent . '/' . basename($fullPath);
+
+            return $ancestor . '/' . implode('/', array_reverse($segments));
         }
 
         // For existing files (read target), verify within root

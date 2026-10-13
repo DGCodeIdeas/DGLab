@@ -97,7 +97,10 @@ final class Filesystem implements FilesystemInterface
         if (!file_exists($absolutePath)) {
             return null;
         }
-        return file_get_contents($absolutePath) ?: null;
+        // `?: null` would silently rewrite the contents of an EMPTY file
+        // ('') as null — only a failed read (false) means "not readable".
+        $contents = @file_get_contents($absolutePath);
+        return $contents === false ? null : $contents;
     }
 
     public function readStream(string $path)

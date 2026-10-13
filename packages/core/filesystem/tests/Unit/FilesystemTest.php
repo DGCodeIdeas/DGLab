@@ -116,7 +116,7 @@ final class FilesystemTest extends TestCase
         fclose($stream);
 
         self::assertSame('Streamed content', $this->fs->read('streamed.txt'));
-        self::assertSame(15, $meta->size);
+        self::assertSame(16, $meta->size); // "Streamed content" is 16 bytes
     }
 
     private function removeDirectory(string $dir): void

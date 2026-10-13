@@ -127,7 +127,7 @@ final class FilesystemDepth3Test extends TestCase
         fclose($stream);
 
         self::assertSame('streamed content', $this->fs->read('streamed.txt'));
-        self::assertSame(15, $meta->size);
+        self::assertSame(16, $meta->size); // "Streamed content" is 16 bytes
     }
 
     /**

@@ -1,5 +1,99 @@
 # DGLab Worklog
 
+## Task 57 — CI Coverage Repair: Omitted Packages, Orphaned Integration Test, Completeness Guard (SAAI Remediation Phase 2)
+
+**Date:** 2026-10-13
+**Branch:** `arena/b50a5637-dglab`
+**Base:** `main` @ `2ad5885` (merge of PR #360)
+**Packages touched:** `core/crypto`, `core/filesystem`, `spoke/internal/showcase` — source code was
+repaired in-PR (see "results" sections); CI routing widening is the trigger, the repairs are the
+documented cost of coverage.
+
+### Summary
+
+Three related repairs, per the audit-verified findings:
+
+1. **Matrix omissions**: `core/crypto`, `core/filesystem`, `spoke/internal/showcase` — packages with
+   `composer.json` + `src/` + `tests/` + `phpunit.xml.dist` that CI never ran — added to the
+   `packages-ci.yml` matrix. Their first-ever CI execution happens on this PR; if any suite or
+   PHPStan-level-max failure surfaces, it is fixed on merit (no check weakening).
+2. **Orphaned root integration test**: `tests/Integration/PublicIndexSmokeTest.php` (guards the
+   public/index.php ↔ ApplicationFactory divergence class from PRs #195/#197) had no runner anywhere —
+   no root phpunit config, no job. Added root `phpunit.xml.dist` + an `integration` job that runs
+   `composer install` at the repo root (path repos → vendor symlinks) and executes the suite.
+3. **Completeness guard**: `scripts/check-ci-matrix-completeness.py` + `scripts/ci-matrix-exclusions.txt`,
+   enforced as a step in the `gate` job (so it runs even on docs-only PRs). Contract: every eligible
+   package must be in the matrix or carry a **reasoned** exclusion line; stale exclusions fail; zero
+   eligible packages discovered fails as UNVERIFIED (vacuous-green impossible, same invariant as the
+   boundary lint). The script was validated red→green on this change: FAIL with exactly the 3 missing
+   packages before the matrix edit, PASS 20/20 after.
+
+Gate path-regex and push paths widened to `app/`, `public/`, `tests/`, `composer.json`,
+`phpunit.xml.dist` so entry-point composition changes can never again skip the smoke test.
+
+### First-run results (same PR) — the predicted debt, fixed on merit
+
+CI's first-ever run of the three packages found exactly what the audit predicted untested code hides:
+(1) `core/crypto/phpstan.neon` carried an invalid `strictRules:` block — not a PHPStan parameter — so
+PHPStan aborted with a schema error before analyzing (fixed: config now matches the green packages'
+shape). (2) `core/filesystem` PathGuard re-assigned a **promoted readonly property** in the constructor
+body — a runtime `Cannot modify readonly property` fatal latent since introduction, caught by
+PHPStan level max (fixed: property declared without promotion; normalization preserved).
+`AtomicWriter::writeStream()` gained its missing `@param resource` docblock (contract was already
+runtime-enforced via is_resource). (3) `spoke/internal/showcase` failed `composer install`: unlike its
+sibling `lms`, its `composer.json` lacked the `repositories` path blocks needed to resolve sibling
+sovereign-stack packages (fixed: blocks copied verbatim from `lms`). Root `integration` job **passed**
+on first run — the orphaned smoke test is now a live guard.
+- `composer install` at the root resolves from path repositories without a lock file (by design —
+  `composer.lock` is gitignored); the integration job therefore tests current-tree resolution.
+
+### Second/third-run results — the long tail, likewise fixed on merit
+
+Subsequent coverage-cycle runs exposed the layer *behind* the config crashes — code that had been
+unanalyzable (and therefore untested) since introduction. Every fix is a repair, none a weakening:
+
+1. **`core/crypto` PHPStan (10 findings → 0):** `Envelope::jsonSerialize()` got its exact array
+   shape; `Envelope::fromArray()` replaced `(int)/(string)` casts of `mixed` with typed
+   scalar/binary coercion helpers; `Encrypter::decrypt()` now validates envelope version (`int`),
+   `kid` and iv/ciphertext/tag (`string`) before use instead of casting `mixed`; `strlen()` result
+   is captured **before** `sodium_memzero()` nulls the buffer by reference (PHPStan models this);
+   `KeyRegistry::getKey()` reads `SensitiveParameterValue::getValue()` (the core class' `$value`
+   property is private — the direct access was never valid) with a string guard; `addKey()`
+   marks its secret `#[\SensitiveParameter]`; `Hasher::deriveKey()` enforces the RFC 5869 length
+   bound (which also fixes the `int<0,max>` violation); `PasswordHasher`'s dead
+   `password_hash() === false` branch removed (signature can't return false on 8.2+).
+2. **`core/filesystem` PHPStan (2 → 0) + PHPUnit (25 tests, 3 failures → 0):** `AtomicWriter::writeStream()`
+   closed the temp handle and unlinked the temp file **inside** `try{}` on the byte-limit path, so
+   `catch` double-closed and its `TypeError` swallowed `StreamByteLimitExceededException` — cleanup is
+   centralized in `catch`/`finally` now. `PathGuard::resolve()` realpath'ed only `dirname()` one level
+   up for non-existent targets, so **every write into a new nested tree** (`a/b/c/x.txt`) failed
+   "Path escapes root" — it now walks up to the deepest existing ancestor, containment-checks that,
+   and re-joins the missing segments (traversal payloads still fail closed; the `../../escape.txt`
+   tests prove it). `Filesystem::read()`'s `?: null` rewrote an empty file's `''` to `null` —
+   only a failed read now yields `null`. The two `assertSame(15, …)` size expectations on the
+   16-byte string `'Streamed content'` were arithmetic errors in the never-executed tests and were
+   corrected to 16.
+3. **`spoke/internal/showcase` (10 findings → 0):** `MySQLProductRepository` called
+   `ConnectionInterface::fetchOne()`/`execute()` — methods that do not exist on that contract (same
+   DBAL contract-drift class the LMS package fixed in #355); rewritten to the green lms idiom
+   (`prepare()` → `execute($params)` → `fetch(PDO::FETCH_ASSOC)`, typed `array<string,string|null>`
+   hydrate rows). `Product::restoreFromPersistence()` invoked the constructor with 8 parameters
+   while it accepted 5–7 — a guaranteed runtime fatal, fixed by giving `__construct` an optional
+   `$updatedAt` (mirroring lms `Course`). `ProductNotFoundException` was constructed with a
+   `ProductId` though its ctor takes `string` — call sites now use the existing `forId()` factory.
+   `ProductApplicationInterface` referenced `CreateProductCommand` without importing it (invalid
+   type resolved in the interface's own namespace). `requireAnyRole()` got `list<string>` typing.
+4. **Config hygiene found along the way:** filesystem/showcase `phpunit.xml.dist` bootstrapped
+   `../../../vendor/autoload.php` (a repo-root vendor that no job installs) — now `vendor/autoload.php`
+   like every green package; crypto/filesystem configs declared an `Integration` suite whose
+   directory does not exist, which sank whole runs (fatal under filesystem's `failOnWarning`) —
+   removed.
+
+Method note: CI logs are not retrievable from this sandbox, so a temporary failure-tail-to-`::error`
+annotation wrapper on the phpunit step supplied the three filesystem failures verbatim; it was
+removed in the same PR after triage (the packages-ci.yml diff against `main` is coverage-only).
+**Final state: 27/27 checks pass, all three newly-covered packages green on their first real runs.**
+
 ## Task 56 — Tracked Secret Hygiene + Enforced Secret Scanning (SAAI Remediation Phase 1)
 
 **Date:** 2026-10-13

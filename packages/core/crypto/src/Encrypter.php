@@ -97,21 +97,41 @@ final class Encrypter implements EncrypterInterface
             throw CryptoException::invalidEnvelope('missing required fields');
         }
 
-        if ((int) $data['v'] !== self::ENVELOPE_VERSION) {
-            throw CryptoException::invalidEnvelope('unsupported envelope version: ' . $data['v']);
+        $version = $data['v'];
+        if (!\is_int($version)) {
+            throw CryptoException::invalidEnvelope(
+                'unsupported envelope version: '
+                . (\is_scalar($version) ? (string) $version : \get_debug_type($version))
+            );
         }
 
-        $kid = (string) $data['kid'];
+        if ($version !== self::ENVELOPE_VERSION) {
+            throw CryptoException::invalidEnvelope('unsupported envelope version: ' . $version);
+        }
+
+        $kid = $data['kid'];
+        if (!\is_string($kid)) {
+            throw CryptoException::invalidEnvelope('kid must be a string');
+        }
+
         $key = $this->registry->getKey($kid);
 
         if (\strlen($key) !== self::KEY_LENGTH) {
+            $actual = \strlen($key);
             \sodium_memzero($key);
-            throw CryptoException::invalidKeyLength($kid, \strlen($key));
+            throw CryptoException::invalidKeyLength($kid, $actual);
         }
 
-        $iv = \base64_decode((string) $data['iv'], true);
-        $ciphertext = \base64_decode((string) $data['ciphertext'], true);
-        $tag = \base64_decode((string) $data['tag'], true);
+        $ivRaw = $data['iv'];
+        $ciphertextRaw = $data['ciphertext'];
+        $tagRaw = $data['tag'];
+        if (!\is_string($ivRaw) || !\is_string($ciphertextRaw) || !\is_string($tagRaw)) {
+            throw CryptoException::invalidEnvelope('iv, ciphertext and tag must be base64 strings');
+        }
+
+        $iv = \base64_decode($ivRaw, true);
+        $ciphertext = \base64_decode($ciphertextRaw, true);
+        $tag = \base64_decode($tagRaw, true);
 
         if ($iv === false || $ciphertext === false || $tag === false) {
             \sodium_memzero($key);

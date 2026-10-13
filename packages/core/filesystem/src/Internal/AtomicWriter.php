@@ -63,6 +63,7 @@ final class AtomicWriter
      * Per Lap 2 P1-4: treats fread() === false as an error (not silent truncation),
      * verifies fwrite() wrote the complete chunk, and cleans up on any failure.
      *
+     * @param resource $stream readable stream resource (contract enforced at runtime via is_resource)
      * @return int Bytes written
      */
     public function writeStream(string $absolutePath, $stream, int $byteLimit = 0): int
@@ -105,10 +106,11 @@ final class AtomicWriter
                 $chunkLen = strlen($chunk);
                 $bytesWritten += $chunkLen;
 
-                // Check byte limit before writing
+                // Check byte limit before writing.
+                // Cleanup (fclose + unlink) is centralized in the catch block;
+                // closing here as well made the catch's fclose() throw a
+                // TypeError that swallowed the StreamByteLimitExceededException.
                 if ($byteLimit > 0 && $bytesWritten > $byteLimit) {
-                    fclose($out);
-                    @unlink($tempPath);
                     throw new StreamByteLimitExceededException(
                         "Stream exceeded byte limit of {$byteLimit} bytes"
                     );

@@ -56,11 +56,7 @@ final class PasswordHasher
 
     public function hash(string $plaintext): string
     {
-        $hash = \password_hash($plaintext, \PASSWORD_ARGON2ID, $this->options);
-        if ($hash === false) {
-            throw new CryptoException('HASH_FAILED', 'password_hash returned false — Argon2id not available');
-        }
-        return $hash;
+        return \password_hash($plaintext, \PASSWORD_ARGON2ID, $this->options);
     }
 
     public function verify(string $plaintext, string $hash): bool
