@@ -163,9 +163,11 @@ jobs:
           set +e
           OUT=$(vendor/bin/phpunit --testdox --colors=never --no-coverage 2>&1)
           RC=$?
+          printf '%s\n' "$OUT"
           if [ $RC -ne 0 ]; then
-            printf '%s\n' "$OUT" | sed 's/\r//g' | grep -vE '^[[:space:]]*$' | tail -n 26 \
-              | sed 's/[][:\\]/\\&/g' | awk '{print "::error::phpunit| "$0}'
+            printf '%s\n' "$OUT" | grep -E "^[0-9]+\\) |^Tests:|^ERRORS!|^FAILURES!|Failed asserting|Error:|Exception|expected|Actual" | head -n 22 | while IFS= read -r L; do
+              printf '::error::PUNIT| %s\n' "$(printf '%s' "$L" | tr -d '\r' | sed 's/%/%25/g')"
+            done
           fi
           exit $RC
 
