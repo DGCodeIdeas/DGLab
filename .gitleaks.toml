@@ -11,9 +11,19 @@ useDefault = true
 [allowlist]
 description = "Documented non-secret fixtures and read-only provenance trees"
 paths = [
-  # Test fixtures by contract: values here exist so parser tests have input.
-  # They are not credentials; the fixtures dir is excluded from the shipped surface.
-  '''packages/.*/tests/Fixtures/''',
+  # Test code (all of it, not just Fixtures/): inputs here exist so tests have
+  # shape (e.g. RedactingFormatterTest fake 'api_key', ConfigBenchTest dot-path
+  # keys). They are not credentials, and packages/*/**/src/ remains fully
+  # scanned. Review basis: gitleaks 8.24.3 findings, triaged manually
+  # file-by-file before this entry was written.
+  '''packages/.*/tests/''',
+  # Known FALSE POSITIVE, reviewed 2026-10-13: the gitleaks 8.24.3 binary's
+  # sidekiq-secret rule matches the ASCII tier diagram (the box-drawing '│'
+  # UTF-8 bytes at the end of a space-padded line, e.g. "Provisioning,
+  # multi-environment promotion, developer CLI.      │"). No credential-shaped
+  # content on any README line (manually reviewed). REMOVE THIS ENTRY if the
+  # diagram is restyled or the README grows real config examples.
+  '''^README\.md$''',
   # Example env files ship KEY names with empty/placeholder values, never
   # real values — the actual .env is gitignored.
   '''(?:^|.*/)\.env\.example$''',

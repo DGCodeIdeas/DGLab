@@ -50,6 +50,19 @@ placeholders, read-only `archive/` — each with inline rationale).
   own canary + first real run rather than locally; iterate on this file (with rationale) if CI surfaces
   unexpected hits instead of allowlisting blindly.
 
+### Addendum — first-run results (same PR)
+
+The gate executed exactly as designed. Four findings on the first real scan, each triaged before any
+suppression: (1) `RedactingFormatterTest.php:126` and (2) `ConfigBenchTest.php:68` — confirmed fake
+test inputs → allowlist scope widened from `tests/Fixtures/` to `tests/` (src/ stays strict);
+(3) `README.md:50` — confirmed false positive of gitleaks 8.24.3's embedded sidekiq-secret rule against
+the ASCII diagram's box-drawing bytes → narrowly allowlisted with removal condition documented;
+(4) `.github/workflows/secret-scan.yml` — the canary's own assignment-shaped literals — fixed by
+building the canary via printf so no contiguous secret text exists in the file. Two contract bugs in
+the first workflow revision were also caught by the harness itself (dir-mode exits 1 on leaks; the
+runner must not trust --exit-code alone; AWS docs example keys are allowlisted by gitleaks defaults and
+were replaced with a synthetic non-allowlisted key). The self-test now fails loudly on any of these.
+
 ## Task 55 — License Alignment to Apache-2.0 (SAAI Remediation PR 2)
 
 **Date:** 2026-10-13
