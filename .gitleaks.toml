@@ -1,0 +1,34 @@
+# gitleaks configuration for DGLab (SAAI remediation Phase 1).
+#
+# Base rule set: gitleaks v8.24.3 defaults (extended = true below keeps them).
+# The ONLY suppressions are path-based, each with a written rationale. Adding a
+# path here without a one-line justification is a governance violation
+# (mirrors the BLIND-SPOT-DOCTRINE stance on silent closures).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented non-secret fixtures and read-only provenance trees"
+paths = [
+  # Test code (all of it, not just Fixtures/): inputs here exist so tests have
+  # shape (e.g. RedactingFormatterTest fake 'api_key', ConfigBenchTest dot-path
+  # keys). They are not credentials, and packages/*/**/src/ remains fully
+  # scanned. Review basis: gitleaks 8.24.3 findings, triaged manually
+  # file-by-file before this entry was written.
+  '''packages/.*/tests/''',
+  # Known FALSE POSITIVE, reviewed 2026-10-13: the gitleaks 8.24.3 binary's
+  # sidekiq-secret rule matches the ASCII tier diagram (the box-drawing '│'
+  # UTF-8 bytes at the end of a space-padded line, e.g. "Provisioning,
+  # multi-environment promotion, developer CLI.      │"). No credential-shaped
+  # content on any README line (manually reviewed). REMOVE THIS ENTRY if the
+  # diagram is restyled or the README grows real config examples.
+  '''^README\.md$''',
+  # Example env files ship KEY names with empty/placeholder values, never
+  # real values — the actual .env is gitignored.
+  '''(?:^|.*/)\.env\.example$''',
+  # Read-only provenance archive (archive/Legacy/ARCHIVED.md: "Do not edit").
+  # This gate protects FORWARD state; it cannot amend the archive and editing
+  # archived material is out of policy. History action is governed separately.
+  '''^archive/''',
+]
