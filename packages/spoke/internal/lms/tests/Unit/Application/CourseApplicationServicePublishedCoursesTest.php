@@ -125,29 +125,58 @@ final class CourseApplicationServicePublishedCoursesTest extends TestCase
         // otherwise transform the repository's result. If the repository
         // returns 3 Course objects in a specific order, the application
         // service returns exactly those 3 Course objects in that order.
+        //
+        // Fixture titles are deliberately NON-alphabetical ('Zebra', 'Apple',
+        // 'Mango') and inserted in that order. This makes the test sensitive
+        // to alphabetical-reordering transformations: if the service sorted
+        // the result by title, the order would become [Apple, Mango, Zebra]
+        // and assertSame would fail because $expected[0] (Zebra) is a
+        // different object reference than $result[0] would be (Apple).
+        //
+        // Note on assertSame semantics for arrays: PHPUnit's assertSame on
+        // arrays checks same keys in same order with === for each value.
+        // For objects, === checks reference identity. So this assertion
+        // verifies: (a) same count, (b) same object references in same
+        // position. It does NOT strictly verify array reference identity
+        // (two distinct array instances with the same === elements would
+        // also pass). For this use case, that is acceptable — the test
+        // goal is to catch projection, filtering, cloning, and reordering,
+        // all of which would either change the count, break === on
+        // elements, or change the order.
         $c1 = Course::create(
-            title: CourseTitle::fromString('Course 1'),
-            slug: CourseSlug::fromString('course-1'),
+            title: CourseTitle::fromString('Zebra Course'),
+            slug: CourseSlug::fromString('zebra-course'),
         );
         $c1->publish();
         $c2 = Course::create(
-            title: CourseTitle::fromString('Course 2'),
-            slug: CourseSlug::fromString('course-2'),
+            title: CourseTitle::fromString('Apple Course'),
+            slug: CourseSlug::fromString('apple-course'),
         );
         $c2->publish();
         $c3 = Course::create(
-            title: CourseTitle::fromString('Course 3'),
-            slug: CourseSlug::fromString('course-3'),
+            title: CourseTitle::fromString('Mango Course'),
+            slug: CourseSlug::fromString('mango-course'),
         );
         $c3->publish();
 
+        // Intentional insertion order: [Zebra, Apple, Mango] — NOT alphabetical.
+        // A service that sorts by title would return [Apple, Mango, Zebra].
         $expected = [$c1, $c2, $c3];
         $this->courses->method('findPublished')->willReturn($expected);
 
         $result = $this->service->listPublishedCourses();
 
-        self::assertSame($expected, $result, 'must return the exact array reference');
+        // Verifies: same count, same object references in same order.
+        // Catches: filtering (count change), cloning (=== failure on
+        // cloned objects), alphabetical/any reordering (position mismatch).
+        self::assertSame($expected, $result, 'service must return repository result without projection, filtering, cloning, or reordering');
         self::assertCount(3, $result);
+
+        // Additional position assertions to make the ordering check explicit
+        // and produce a clearer failure message if reordering occurs.
+        self::assertSame($c1, $result[0], 'first element must be Zebra Course (repository insertion order preserved)');
+        self::assertSame($c2, $result[1], 'second element must be Apple Course (repository insertion order preserved)');
+        self::assertSame($c3, $result[2], 'third element must be Mango Course (repository insertion order preserved)');
     }
 
     public function testListPublishedCoursesReturnsEmptyArrayWhenNoCoursesPublished(): void
