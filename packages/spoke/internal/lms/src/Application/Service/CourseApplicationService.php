@@ -133,7 +133,20 @@ final class CourseApplicationService implements CourseApplicationInterface
         }
     }
 
-    /** @param array<string> $roles */
+    public function listPublishedCourses(int $limit = 20, int $offset = 0): array
+    {
+        // Per SAAI Increment 3 directive: published-course discovery is a
+        // PUBLIC operation. No authorization check — unauthenticated visitors
+        // may discover what courses have been published. The application
+        // service deliberately does not consult IdentityInterface here.
+        //
+        // If a future requirement demands "only show courses the caller is
+        // enrolled in" or "hide courses the caller is banned from", that is
+        // a SEPARATE method (e.g. listVisibleCoursesFor(UserId)) — not a
+        // modification of this public-surface method.
+        return $this->courses->findPublished($limit, $offset);
+    }
+
     /** @param array<string> $roles */
     private function requireAnyRole(UserId $userId, array $roles): void
     {
