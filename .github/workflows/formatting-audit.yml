@@ -1,0 +1,276 @@
+name: Formatting Audit (read-only, temporary)
+
+# =============================================================================
+# TEMPORARY, NON-GATING, READ-ONLY formatting audit for DGLab.
+#
+# Question it answers: "How much formatting drift exists, and where?"
+# It answers that question by MEASURING, never by changing files.
+#
+# Authority: one-off audit. Intended to be deleted once its evidence is
+# reviewed. It is explicitly NOT a permanent CI gate; enforcing formatting is a
+# separate decision requiring separate approval.
+#
+# Safety properties -- each one enforced, not merely asserted:
+#   * permissions: contents read only ....... no write scope is granted at all
+#   * persist-credentials: false ............ `git push` from the job is impossible
+#   * --dry-run ............................ the fixer applies nothing
+#   * --using-cache=no ..................... no .php-cs-fixer.cache is written.
+#                                            (.php-cs-fixer.cache is gitignored,
+#                                            so `git status` alone would MISS it)
+#   * --allow-risky=no ..................... risky fixers cannot run
+#   * config written to $RUNNER_TEMP ....... outside the checkout entirely
+#   * a dedicated guard step asserts the tracked worktree is byte-identical
+# =============================================================================
+
+on:
+  # push-only. `workflow_dispatch` is deliberately absent: GitHub only exposes a
+  # dispatch trigger for workflows that already exist on the default branch, and
+  # this file is intentionally not on `main`. The push itself is the trigger.
+  push:
+    branches:
+      - arena/4b903fb6-dglab
+
+permissions:
+  contents: read
+
+jobs:
+  php-cs-fixer-dry-run:
+    name: PHP-CS-Fixer dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (no persisted credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install pinned PHP-CS-Fixer from its release asset
+        # Pinned release asset rather than a Composer resolve: deterministic,
+        # needs no composer.json change, and cannot drift mid-audit.
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/php-cs-fixer.phar" \
+            "https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/releases/download/v3.95.27/php-cs-fixer.phar"
+          php "$RUNNER_TEMP/php-cs-fixer.phar" --version | tee "$RUNNER_TEMP/fixer-version.txt"
+
+      - name: Record provenance
+        run: |
+          set -euo pipefail
+          {
+            echo "## Formatting audit (read-only dry-run)"
+            echo ""
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| commit | \`$GITHUB_SHA\` |"
+            echo "| ref | \`$GITHUB_REF\` |"
+            echo "| PHP | \`$(php -r 'echo PHP_VERSION;')\` |"
+            echo "| PHP-CS-Fixer | \`$(php "$RUNNER_TEMP/php-cs-fixer.phar" --version)\` |"
+            echo "| runner | \`$RUNNER_OS\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Snapshot worktree BEFORE
+        run: |
+          set -euo pipefail
+          git status --porcelain=v1 --untracked-files=all > "$RUNNER_TEMP/git-before.txt"
+
+      - name: Write audit config outside the repository
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/php-cs-fixer.audit.php" <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          /*
+           * TEMPORARY audit configuration -- dry-run only.
+           *
+           * Written to $RUNNER_TEMP so the tracked worktree is never touched.
+           * Rules mirror the common ground of the three existing in-repo
+           * .php-cs-fixer.dist.php configs (orchestrator, core/container,
+           * core/event-dispatcher). Risky rules are refused.
+           */
+
+          $root = getenv('GITHUB_WORKSPACE');
+
+          return (new PhpCsFixer\Config())
+              ->setRiskyAllowed(false)
+              ->setUsingCache(false)
+              ->setRules([
+                  '@PSR12'            => true,
+                  'array_syntax'      => ['syntax' => 'short'],
+                  'ordered_imports'   => ['sort_algorithm' => 'alpha'],
+                  'no_unused_imports' => true,
+              ])
+              ->setFinder(
+                  (new PhpCsFixer\Finder())
+                      ->in([
+                          $root . '/app',
+                          $root . '/packages',
+                          $root . '/orchestrator',
+                          $root . '/public',
+                          $root . '/tests',
+                      ])
+                      ->name('*.php')
+                      ->notPath('migrations')
+                      ->exclude([
+                          'vendor',
+                          'node_modules',
+                          'archive',
+                          'skills',
+                          'download',
+                          'anvil',
+                          'scripts',
+                          'reports',
+                          'ci/cache',
+                      ])
+              );
+          PHP
+          php -l "$RUNNER_TEMP/php-cs-fixer.audit.php"
+
+      - name: PHP-CS-Fixer dry-run (applies nothing)
+        id: fixer
+        run: |
+          set +e
+          php "$RUNNER_TEMP/php-cs-fixer.phar" fix \
+            --config="$RUNNER_TEMP/php-cs-fixer.audit.php" \
+            --dry-run \
+            --diff \
+            --format=json \
+            --using-cache=no \
+            --allow-risky=no \
+            --show-progress=none \
+            > "$RUNNER_TEMP/report.json" \
+            2> "$RUNNER_TEMP/stderr.txt"
+          code=$?
+          set -euo pipefail
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          echo "PHP-CS-Fixer exit code: $code"
+
+      - name: Classify exit code
+        run: |
+          set -euo pipefail
+          code="${{ steps.fixer.outputs.exit_code }}"
+          case "$code" in
+            0)
+              echo "::notice::exit 0 -- no formatting changes are required"
+              ;;
+            8)
+              echo "::warning::exit 8 -- formatting drift detected. This IS the audit finding; exit 8 in dry-run means 'files WOULD change'. Nothing was changed."
+              ;;
+            1|4|16|32|64)
+              echo "::error::PHP-CS-Fixer could not complete the audit (exit $code)"
+              echo "----- stderr -----"
+              cat "$RUNNER_TEMP/stderr.txt" || true
+              exit 1
+              ;;
+            *)
+              echo "::error::unexpected PHP-CS-Fixer exit code: $code"
+              cat "$RUNNER_TEMP/stderr.txt" || true
+              exit 1
+              ;;
+          esac
+
+      - name: Verify the repository was NOT modified
+        if: always()
+        run: |
+          set -euo pipefail
+          git status --porcelain=v1 --untracked-files=all > "$RUNNER_TEMP/git-after.txt"
+          if ! diff -u "$RUNNER_TEMP/git-before.txt" "$RUNNER_TEMP/git-after.txt"; then
+            echo "::error::worktree changed during the audit -- this was not read-only"
+            exit 1
+          fi
+          if [ -e "$GITHUB_WORKSPACE/.php-cs-fixer.cache" ]; then
+            echo "::error::a formatter cache file was written -- this was not read-only"
+            exit 1
+          fi
+          if ! git diff --quiet --exit-code; then
+            echo "::error::tracked files were modified -- this was not read-only"
+            exit 1
+          fi
+          echo "OK: worktree byte-identical, no cache artifact, no tracked file modified."
+
+      - name: Summarize into the job summary
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/report.json" "${{ steps.fixer.outputs.exit_code }}" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import sys
+
+          path, code = sys.argv[1], sys.argv[2]
+
+          try:
+              with open(path, encoding="utf-8") as handle:
+                  data = json.load(handle)
+          except Exception as exc:  # noqa: BLE001
+              print(f"### Report\n\nCould not parse the fixer report: {exc}")
+              raise SystemExit(0)
+
+          files = data.get("files", [])
+
+          print("### Result\n")
+          print(f"- formatter exit code: `{code}`")
+          print(f"- files that WOULD change: **{len(files)}**")
+          print(f"- runtime: {data.get('time', {}).get('total')} s")
+          print(f"- peak memory: {data.get('memory')} MB\n")
+
+          if not files:
+              print("Clean: no file would be modified under this ruleset.")
+              raise SystemExit(0)
+
+          by_rule = {}
+          for entry in files:
+              for rule in entry.get("appliedFixers") or []:
+                  by_rule[rule] = by_rule.get(rule, 0) + 1
+
+          print("### Files per applied rule\n")
+          print("| rule | files |")
+          print("| --- | --- |")
+          for rule, count in sorted(by_rule.items(), key=lambda kv: (-kv[1], kv[0])):
+              print(f"| `{rule}` | {count} |")
+
+          print("\n### Affected files\n")
+          for entry in files:
+              rules = ", ".join(entry.get("appliedFixers") or [])
+              print(f"- `{entry['name']}` -- {rules}")
+          PY
+
+      - name: Print per-file diffs to the run log
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/report.json" <<'PY'
+          import json
+          import sys
+
+          try:
+              with open(sys.argv[1], encoding="utf-8") as handle:
+                  data = json.load(handle)
+          except Exception as exc:  # noqa: BLE001
+              print(f"Could not parse report: {exc}")
+              raise SystemExit(0)
+
+          for entry in data.get("files", []):
+              print("=" * 78)
+              print(f"FILE: {entry['name']}")
+              print("=" * 78)
+              print(entry.get("diff", "(no diff emitted)"))
+          PY
+
+      - name: Upload raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-cs-fixer-dry-run-evidence
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/report.json
+            ${{ runner.temp }}/stderr.txt
+            ${{ runner.temp }}/fixer-version.txt
