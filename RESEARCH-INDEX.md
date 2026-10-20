@@ -18,7 +18,8 @@
 | 6 | **Track 3: Half Exceptions** | Embedded in `RESEARCH-AGENDA.md` Track 3 | Draft | 4 formulations enumerated. Web research confirms no SE term exists (only hardware/SIMD). |
 | 7 | **Track 4: Cancel-Anytime paradox** | Embedded in `RESEARCH-AGENDA.md` Track 4 | Draft | Empirical evidence found: Bryant study, FTC Uber complaint, UX dark patterns, consumer surveys. |
 | 8 | **Track 5: Connecting principles** | Embedded in `RESEARCH-AGENDA.md` Track 5 | Draft | 3 variants now presented side-by-side (updated 2026-10-20). Reconciliation recommendation provided. |
-| 9 | **SuperPHP naming investigation** | Embedded in `RESEARCH-AGENDA.md` + standalone `SPX-NAMING-COLLISION-REPORT.md` | Draft | Internal collision audit (5 candidates). External audit: Foundry (`coderstm/foundry`), SPX (`noisebynorthwest/php-spx`). |
+| 11 | **Vue SFC & Component-Format Research** | `VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` (root) | Draft — complete | 21 sources. Key finding: sectioned SFC is proven pattern; Marko's dual modes validate syntax drivers; DSDS audience tagging is emerging standard; HTML-first viable but hits reusability limits. |
+| 10 | **SPX/SuperPHP ease-of-use & human/AI comprehension** | `SPX-EASE-OF-USE-RESEARCH.md` (root) | Draft — complete | Web research across 9 query themes: LLM-native markup (LLMON, POML), simplified PHP templates (Smarty/Latte/Twig), human-AI collaborative languages (Moss, DualCode), accessibility (SUS, W3C), LLM-friendly PL design (Anka, SynCode, MoonBit), AI-friendly syntax, engine simplicity comparisons, Markdown/YAML templates, varying-expertise principles (Kölling/Wirth). TOON comprehension benchmark data. |
 
 ---
 
