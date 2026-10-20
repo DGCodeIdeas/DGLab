@@ -112,6 +112,17 @@ Which ownership structures, governance mechanisms, and commercial incentives pro
 
 The term "Half Exceptions" originated in a discussion about personal preferences and is **not an established software-engineering term**. SAAI's directive is explicit: *"Do not assume 'Half Exceptions' is an established software-engineering term. Research the underlying concept before introducing a pattern, abstraction, or ADR."* The track therefore begins from terminology research, not from design.
 
+**Four formulations to investigate (per Prompt 1, FRESH-SESSION-PROMPTS.md):**
+
+| # | Formulation | Origin | Status |
+|---|-------------|--------|--------|
+| 1 | "Partial exceptions to general preferences/rules" — a rule is in force except under bounded conditions | Owner-originated (V1) | Working hypothesis |
+| 2 | "Partially negotiable preferences" — the question of whether a preference is in force is itself negotiable | Owner-originated (V1) | Working hypothesis |
+| 3 | "Half of a general exception" — an exception that applies to only part of a rule's scope (e.g., exception for 50% of users) | Agent interpretation (Z.ai) | Agent interpretation — not owner-confirmed |
+| 4 | "Exception that is half-committed" — an exception that is provisionally granted and subject to full ratification | Agent interpretation (Kilo) | Agent interpretation — not owner-confirmed |
+
+**Owner Decision Required:** Confirm whether formulations 3 and 4 are valid interpretations or whether only 1 and 2 represent the owner's intent.
+
 - **Partial exceptions.** What is the right shape for a general preference or rule that has bounded exceptions under specific circumstances? When is an exception a first-class construct versus an ordinary conditional?
 - **Partially negotiable preferences.** When some preferences in a system are flexible and others are non-negotiable, how is the boundary between them expressed, enforced, and made visible to operators and users?
 - **Software analogies.** What existing patterns map onto these ideas? Candidate analogies include: configuration defaults with override hierarchies; authorization policies with bounded exception grants; architectural invariants versus soft constraints; fault tolerance with bounded degradation; feature flags with explicit scope, expiry, and reviewability.
@@ -200,9 +211,27 @@ What is the difference between **offering** someone the freedom to leave and **d
 
 ### Research questions
 
-The four tracks above share a common question:
+The four tracks above share a common question. **Three variants of this question have been reported** (per AGENTS.md §79–82, Handoff §110–115). They are **not interchangeable** and must be presented side-by-side:
 
-> **How do we design systems in which stated rights, rules, and principles can be exercised fairly in practice?**
+**Variant A (owner-attributed — SAAI briefing §862–865):**
+> "The difference between a right that exists on paper and a right that a person can exercise in practice."
+
+**Variant B (agent-reported — AGENTS.md §79, Handoff §111):**
+> "How do we design systems in which stated rights, rules, and principles can be exercised fairly in practice?"
+
+**Variant C (agent-reported — AGENTS.md §81, Handoff §112):**
+> "A procedural formulation about identifying shared concepts and potential DGLab implications without prematurely creating abstractions."
+
+| Dimension | Variant A | Variant B | Variant C |
+|-----------|-----------|-----------|-----------|
+| **Type** | Substantive thesis (diagnosis) | Research question (design) | Research method (investigation) |
+| **Attributed to owner?** | Yes (SAAI briefing) | No (agent-reported) | No (agent-reported) |
+| **Focus** | Gap between formal rights and practice | Fair exercise of rights in design | How to investigate without premature abstraction |
+| **Risk if used alone** | Doesn't guide methodology | May conflate authority and cost | Doesn't pose a substantive question |
+
+**Reconciliation recommendation (for owner review — NOT a decision):** Use Variant B as the primary research question, Variant A as the substantive thesis that motivates it, and Variant C as the method statement. This preserves all three without conflating their distinct roles.
+
+**Owner Decision Required:** Which variant (or combination) to use as the canonical connecting-theme question. Do not attribute a wording to the owner unless the original record verifies that attribution.
 
 This track investigates the shared implications without prematurely creating abstractions. Specifically:
 
