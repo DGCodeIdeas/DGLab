@@ -94,7 +94,7 @@ final class MySQLProgressRepository implements ProgressRepositoryInterface
             'enrollment_id' => (string) $enrollmentId,
             'module_id'     => (string) $progress->moduleId(),
             'status'        => $progress->status()->value,
-            'started_at'    => $progress->startedAt()?->format('Y-m-d H:i:s.u'),
+            'started_at'    => $progress->startedAt()->format('Y-m-d H:i:s.u'),
             'completed_at'  => $progress->completedAt()?->format('Y-m-d H:i:s.u'),
         ];
 
