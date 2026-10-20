@@ -7,7 +7,7 @@ namespace SovereignStack\Spoke\Lms\Tests\Unit\Application;
 use PHPUnit\Framework\TestCase;
 use SovereignStack\Core\Database\ConnectionInterface;
 use SovereignStack\Hub\Identity\Application\IdentityInterface;
-use SovereignStack\Hub\Identity\Domain\ValueObject\{RoleIdentifier, UserId};
+use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 use SovereignStack\Spoke\Lms\Application\Command\{CancelEnrollmentCommand, EnrollCommand};
 use SovereignStack\Spoke\Lms\Application\Service\EnrollmentApplicationService;
 use SovereignStack\Spoke\Lms\Domain\Entity\{Course, CourseStatus, Enrollment};
