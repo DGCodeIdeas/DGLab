@@ -143,7 +143,7 @@ final class MySQLProgressRepository implements ProgressRepositoryInterface
         // (it returns early before save()). So a NULL started_at in the DB
         // represents a data inconsistency — the row should not exist.
         // We throw rather than manufacturing a timestamp.
-        if (!isset($row['started_at']) || $row['started_at'] === null) {
+        if (!isset($row['started_at'])) {
             throw new \RuntimeException(
                 "Data inconsistency: lms_progress row has NULL started_at "
                 . "(enrollment_id={$row['enrollment_id']}, module_id={$row['module_id']}). "
