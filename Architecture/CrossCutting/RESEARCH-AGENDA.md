@@ -237,61 +237,19 @@ This track investigates the shared implications without prematurely creating abs
 
 ---
 
-## SuperPHP Naming Investigation
+## SuperPHP Naming Investigation — Extracted to Standalone Report
 
 **Status:** Research — Not an Implementation Requirement. **No rename is approved.**
 
-### Background
+The SuperPHP naming investigation has been **extracted to a standalone research report** at [`RESEARCH-SuperPHP-NAMING.md`](./RESEARCH-SuperPHP-NAMING.md) per the handoff requirement (Kilo analysis 2026-10-20: "Extract SuperPHP naming investigation into standalone report"). The agenda proper records the five product-research tracks + connecting-principles track; the naming investigation is referenced from here but maintained separately so it can be reviewed, referenced, and resolved independently.
 
-SuperPHP is currently the planned template-language capability encompassing `CORE-07` (Lexer), `CORE-11` (Parser), and `CORE-12` (Compiler), per `Architecture/INDEX.md` §1 (lines 109, 113, 114 — all three 📝 Not started). It is referenced in `ADR-005-superphp-vs-blade-twig.md` and in `OPEN-DECISIONS.md` §OD-09 (DGLab SCSS framework authoring model).
+**Summary of findings** (full content in the standalone report):
 
-SAAI's directive (2026-10-13) records five candidate replacement names: **Forge, Foundry, Nexus, SPX, Sovereign**. The directive is explicit: *"No rename is approved. Preserve the current name until its responsibilities and architectural boundaries are documented and the proposed alternatives have been evaluated for collisions."*
+- **Five candidates recorded** by SAAI's 2026-10-13 directive: Forge, Foundry, Nexus, SPX, Sovereign.
+- **Collision audit result**: Only **Foundry** and **SPX** are lexically clean inside the project. **Forge** (❌ CORE-20 "Sovereign Forge"), **Nexus** (❌ HUB-17 + HUB-21), and **Sovereign** (❌ universal Hub-tier prefix + project namespace) all collide with existing canonical component names.
+- **Placement divergence**: V5 added SuperPHP to the agenda; V6 said "Handle SuperPHP separately" (removed it); V7 re-included it as a 6th section. V8 (this rendition) resolves the divergence by extracting to a standalone file — satisfying V6's "handle separately" instruction while preserving V7's research content. See Appendix D for the full placement-divergence history.
 
-### Why a separate section instead of an OD entry
-
-SAAI's directive required that, before editing `OPEN-DECISIONS.md`, the exact scope and title of OD-09 be inspected and confirmed as the correct home for the naming question. OD-09 is titled *"DGLab SCSS framework: scope, inspirations, SuperPHP authoring model"* and is scoped to the **SCSS framework's authoring model** (Tailwind vs. custom, four-layer model, `<dg:style>` block support in CORE-12). SuperPHP appears in OD-09 only as the *authoring layer for SCSS components* — not as a naming decision. **OD-09 is therefore not the correct home for the naming question.** Recording the candidates in this research agenda (rather than creating a new OD entry) preserves the distinction: the naming question is still in research, not yet a decision-fork awaiting resolution. When the research matures into a fork, a new OD entry (candidate: OD-13) should be opened and this section should reference it.
-
-### Candidate name collision audit (performed 2026-10-13 against `Architecture/INDEX.md` §1 and §2.3, `Architecture/CrossCutting/*.md`, and `Architecture/ADRs/*.md`)
-
-| Candidate | Collision status | Evidence |
-|---|---|---|
-| **Forge** | ❌ **COLLISION** | `CORE-20` is canonically named *"Sovereign Forge"* (Developer CLI Toolchain), namespace `SovereignStack\Forge`, per `INDEX.md` §1 line 122. Also referenced in `CrossCutting/DGLAB-AS-OS.md` line 244 as `bin/forge` and line 255 as "gcc + make" build toolchain equivalent. The historical collision was resolved 2026-08-12 in `OPEN-DECISIONS.md` §OD-05 by assigning `Forge` to CORE-20 (the other three contenders — ISPOKE-02, ISPOKE-11, ESPOKE-12 — were renamed to A1 Atlas, B1 Penumbra, C1 Pulsar). Reusing `Forge` for SuperPHP would re-open this resolved collision and create a 4-way ambiguity with the developer CLI toolchain. |
-| **Foundry** | ✅ **No collisions found.** No matches for `\bFoundry\b` across `Architecture/` or `docs/`. Lexically clean. Caveat: not yet audited against PHP-ecosystem package names on Packagist; this is a future research item if Foundry becomes a serious candidate. |
-| **Nexus** | ❌ **COLLISION (2-way)** | `HUB-17` is *"Sovereign Webhook Nexus"* and `HUB-21` is *"Sovereign Nexus (Tenancy)"* per `INDEX.md` §2.3 lines 146, 149. Two existing Hub-tier components already use `Nexus` as their noun. Reusing it for the template engine would create cross-tier ambiguity. |
-| **SPX** | ✅ **No internal collisions found.** No matches for `\bSPX\b` across `Architecture/` or `docs/`. Caveat: `SPX` is also an acronym used in the broader PHP ecosystem (Simple PHp Aggregate eXtension — a profiling extension), which is a *lexical* rather than *architectural* collision risk but worth noting if SPX becomes a serious candidate. |
-| **Sovereign** | ❌ **MASSIVE COLLISION (Hub-tier naming prefix).** Every Hub-tier component is prefixed with `Sovereign` — `Sovereign Identity` (HUB-04), `Sovereign Cache` (HUB-02), `Sovereign Auditor` (HUB-06), `Sovereign Ledger` (HUB-22), `Sovereign Nexus` (HUB-21), `Sovereign Forge` (CORE-20), and 26+ more. The word `Sovereign` is also the project's own naming-convention prefix (per `INDEX.md` §1, §2.3, and the `SovereignStack\` namespace). Renaming SuperPHP to `Sovereign` would create total namespace confusion with the Hub tier. |
-
-### Working hypothesis
-
-Of the five candidates SAAI recorded, only **Foundry** and **SPX** are lexically clean inside the project. **Forge**, **Nexus**, and **Sovereign** all collide with existing canonical component names. This audit does not recommend either Foundry or SPX — it only establishes that the other three carry collision risk that should rule them out unless SAAI explicitly accepts the collision and the cost of resolving it (renaming the colliding component or accepting the ambiguity).
-
-### Research questions for the naming investigation
-
-- What are SuperPHP's *actual* responsibilities and architectural boundaries? Until these are documented, a rename is premature — naming should follow function, not lead it.
-- Are there external collisions (Packagist, npm, GitHub org names, PHP-FIG proposals) for any of the candidates?
-- What is the cost of renaming the 100+ references to "SuperPHP" across `Architecture/`, `ADR-005`, `OPEN-DECISIONS.md` §OD-09, and the future-implementation blueprints `CORE-07`, `CORE-11`, `CORE-12`?
-- Should the template engine be named for its *function* (template, view, render) or for its *character* (forge, foundry, etc.)? This is a naming-philosophy question, not a collision question.
-
-### Deliverables
-
-- A **responsibilities and boundaries document** for SuperPHP, covering Lexer / Parser / Compiler responsibilities and the seams between them.
-- An **external collision audit** for Foundry and SPX against Packagist, npm, and the broader PHP ecosystem.
-- A **rename-cost estimate** for the existing `Architecture/` references.
-- A **naming-philosophy note** distinguishing function-names from character-names, with SAAI's directive as input.
-
-### Related doctrines and contracts
-
-- `Architecture/ADRs/ADR-005-superphp-vs-blade-twig.md` — the existing ADR that ratified SuperPHP over Blade/Twig. Any rename requires amending this ADR.
-- `Architecture/OPEN-DECISIONS.md` §OD-09 — the SCSS-framework authoring-model OD that mentions SuperPHP. Verified 2026-10-13: OD-09 is scoped to SCSS framework, not to naming.
-- `Architecture/INDEX.md` §1, §2.3 — the canonical component-name registry and the collision target for any candidate.
-- `Architecture/CrossCutting/DGLAB-AS-OS.md` — uses `bin/forge` and "Sovereign Forge" terminology; relevant to the Forge collision.
-- `Architecture/CrossCutting/GLOSSARY.md` — defines "Sovereign Forge" as the codename for CORE-20.
-
-### Out of scope
-
-- Any rename of SuperPHP. **Not authorized.**
-- Any amendment to ADR-005. **Not authorized.**
-- Any new blueprint, namespace, or package rename. **Not authorized.**
+**Authorization state**: No rename is approved. ADR-005 is not amended. New OD entry (candidate: OD-13) to be opened when the research matures into a decision-fork.
 
 ---
 
@@ -302,3 +260,203 @@ Of the five candidates SAAI recorded, only **Foundry** and **SPX** are lexically
 - **Closing a track** requires SAAI or tech-lead approval and a closing note explaining why the research is no longer pursued. The track is retained in the agenda with a *Closed — reason* status line.
 - **No silent merge with `OPEN-DECISIONS.md`.** A track's research question may mature into a fork recorded in `OPEN-DECISIONS.md`; when it does, the OD entry cites this agenda and the agenda entry's status is updated. The two files remain distinct.
 - **No silent merge with `Verification/SHORTCOMINGS-REGISTER.md`.** A research track is not a shortcoming; a shortcoming is not a research track.
+
+---
+
+## Appendix A — V1–V7 Reconciliation Matrix
+
+**Purpose.** This appendix reconstructs the seven renditions of the research agenda (V1–V7) that existed in conversation prior to this file's repository creation. Per Kilo's analysis (2026-10-20) and A.ai Compact Sync #4 §5.5, the handoff requirements explicitly call for a reconciliation matrix showing what changed and why across renditions, so any reader can see the agenda's evolution rather than treating any single rendition as canonical.
+
+**Source.** Reconstructed from A.ai Compact Sync #4 §5.5 (which cites line numbers in the original ChatGPT session transcript). Z.ai does not have direct access to `AGENTS.md`, `DGLab-FRESH-SESSION-HANDOFF.md`, or `SAAI-to-A.ai-DGLab-Briefing.md` referenced by Kilo; the line-number citations below are as reported by A.ai and not independently verified by Z.ai.
+
+**Authorization note.** The matrix below documents what was written in chat, NOT what was authorized. No rendition was authorized for repository publication until PR #365 (owner authorization 2026-10-20: "push latest to PR so i can review"). V8 (this rendition) is the first to address all gaps identified by A.ai §5.5 and Kilo's analysis.
+
+### A.1 Rendition-by-rendition evolution
+
+| Version | Location (per A.ai §5.5) | Tracks | Key change from prior version |
+|---|---|---|---|
+| **V1** | lines 28847–28937 | 3 | Initial: Platform Integrity + Copyright + Half Exceptions. Raises Half Exceptions as unknown term; asks owner where the term came from. |
+| **V2** | lines 28943–28976 | 3 | Half Exceptions only — adds "brother context" (term originated from owner's brother) and a "design principle" hypothesis. Adds explicit caveat. |
+| **V3** | lines 29011–29075 | 3 | Owner answers "Both" → two interpretations of Half Exceptions formalized (partial exceptions + partially negotiable preferences). |
+| **V4** | lines 29081–29130 | **4** | **Cancel-Anytime added** (quote supplied by owner: *"Cancel anytime is the most repeated promise in the history of commerce. It is also the one most rarely acted upon."*). |
+| **V5** | lines 29136–29297 | 4 (+SuperPHP) | SAAI→Z.ai sync brief — formalizes as 7 numbered sections. Adds "Record this statement verbatim" instruction. Adds SuperPHP naming as a track. |
+| **V6** | lines 29298–29586 | **4 + 1** | **"Handle SuperPHP separately"** — SuperPHP leaves the research agenda. Adds "Required outcome" column. Adds binding rule: every track marked "Research — Not an Implementation Requirement." Adds BLIND-SPOT-DOCTRINE.md as anchor (rather than duplicating it). |
+| **V7** | lines 31829–31940 | **5** | Final agenda draft written for `RESEARCH-AGENDA.md` (commit `581945d`). Five prose tracks. Re-includes SuperPHP as a 6th section (diverges from V6's "handle separately" instruction). |
+
+### A.2 Track count evolution
+
+| Version | Platform Integrity | YouTube Model | Half Exceptions | Cancel-Anytime | Connecting Principles | SuperPHP |
+|---|---|---|---|---|---|---|
+| V1 | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ |
+| V2 | (implicit) | (implicit) | ✓ | ✗ | ✗ | ✗ |
+| V3 | (implicit) | (implicit) | ✓ | ✗ | ✗ | ✗ |
+| V4 | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| V5 | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ (in-agenda) |
+| V6 | ✓ | ✓ | ✓ | ✓ | ✓ (connecting-theme track) | ✗ (removed — "handle separately") |
+| V7 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (re-included — diverges from V6) |
+| **V8 (this rendition)** | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (extracted to standalone `RESEARCH-SuperPHP-NAMING.md`) |
+
+### A.3 What's confirmed by owner text vs. agent interpretation vs. unresolved
+
+| Element | Source | Status |
+|---|---|---|
+| Cancel-Anytime verbatim quote ("Cancel anytime is the most repeated promise...") | Owner-supplied in V4 | **Confirmed by owner text** |
+| "Half Exceptions" term originated from owner's brother | Owner-supplied in V2 | **Confirmed by owner text** |
+| Owner answered "Both" (re: Half Exceptions interpretations) | Owner-supplied in V3 | **Confirmed by owner text** |
+| Five SuperPHP candidate names (Forge, Foundry, Nexus, SPX, Sovereign) | SAAI's directive (V5) | **SAAI interpretation of owner intent** — not directly owner-quoted |
+| "Forge = preferred initial candidate" | SAAI's V5 brief | **SAAI interpretation** — later reversed by Z.ai's collision audit (V6/V7) |
+| "Handle SuperPHP separately" (V6) | SAAI's V6 brief | **SAAI directive** — owner did not explicitly say this; SAAI's interpretation of owner intent |
+| Connecting-theme Variant 3 attribution to owner | V7 track 5 | **UNRESOLVED** — Kilo's analysis warns: "Do not attribute a wording to the owner unless the original record verifies that attribution." Z.ai could not independently verify this attribution from the conversation history available; it may have been SAAI's interpretation of owner intent rather than direct owner text. See Appendix B for the three variants side-by-side. |
+| BLIND-SPOT-DOCTRINE.md principle as anchor | V6 | **SAAI directive** — Z.ai verified the doctrine does NOT contain SAAI's hypothesis verbatim (corrected in V7/V8: cited as related, not as source) |
+
+### A.4 Items requiring owner review before V8 can be considered canonical
+
+1. **Connecting-theme variant selection** — owner must confirm which of the three variants (Appendix B) represents their actual intent. Until confirmed, the agenda uses Variant 1 as primary with Variants 2 & 3 documented side-by-side.
+2. **Half Exceptions formulation** — owner must confirm which of the four formulations (Appendix C) is canonical. Until confirmed, the agenda tracks all four.
+3. **SuperPHP placement** — owner must confirm V8's extraction (standalone file) is acceptable, OR request re-inclusion in the agenda proper (reverting to V7's structure), OR confirm V6's "handle separately" instruction (V8's approach).
+4. **V8 adoption** — owner must explicitly adopt V8 (or request a V9 that resolves remaining items) before this file is merged from PR #365 to `main`.
+
+---
+
+## Appendix B — Three Connecting-Theme Variants Side-by-Side
+
+**Purpose.** Per Kilo's analysis: "Present them side-by-side, explain differences, and propose a reconciliation for owner review." V7 contained only Variant 1; Variants 2 and 3 were absent. This appendix restores all three for owner review.
+
+**Source.** Variants 1 and 2 are quoted from A.ai Compact Sync #4 §5.5 (which cites V5 and V6 of the original ChatGPT session). Variant 3 is quoted from V7 track 5 (the file you are reading). All three are presented verbatim; commentary is separate from the quoted text.
+
+### B.1 The three variants
+
+| # | Variant (verbatim) | Source | Type |
+|---|---|---|---|
+| **1** | "How do we design systems in which stated rights, rules, and principles can be exercised fairly in practice?" | SAAI Briefing §7 (V5) → V7 Track 5 primary question | **Substantive** — asks a design question |
+| **2** | "Connecting architectural principles — identify shared concepts and potential implications for DGLab without prematurely creating abstractions." | V6 table (per A.ai §5.5) | **Procedural** — describes a process (identify, don't create) |
+| **3** | "The difference between a right that exists on paper and a right that a person can exercise in practice." | V7 Track 5 (attributed to owner) | **Substantive** — names a distinction |
+
+### B.2 What's different
+
+- **Variant 1** asks *how to design* — a forward-looking design question.
+- **Variant 2** describes *how to investigate* — a process instruction (identify, don't prematurely create).
+- **Variant 3** names *what the distinction is* — a definition/diagnosis of the problem.
+
+Variants 1 and 3 are both substantive but ask different questions: V1 asks how to design; V3 names the gap the design must close. Variant 2 is procedural and tells investigators how to approach the analysis.
+
+### B.3 Attribution caveat
+
+Kilo's analysis warns: *"Do not attribute a wording to the owner unless the original record verifies that attribution."* Variant 3 was attributed to the owner in V7, but Z.ai could not independently verify this attribution from the conversation history available. It may have been SAAI's interpretation of owner intent rather than direct owner text. The owner should confirm or correct the attribution before V8 is adopted as canonical.
+
+### B.4 Proposed reconciliation
+
+Three options for the owner:
+
+1. **Adopt Variant 1 as canonical** — V7's current primary question. Substantive, design-oriented, broadly applicable across Tracks 1–4.
+2. **Adopt Variant 3 as canonical** — more specific, names the gap directly. Requires owner to confirm attribution.
+3. **Keep all three** — V8's current approach. Variant 1 as Track 5's primary question; Variant 2 as Track 5's procedural instruction; Variant 3 as a documented framing. Avoids forcing a choice before owner review.
+
+**V8 default (this rendition):** Option 3 — keep all three with side-by-side documentation. The owner can collapse to a single variant after review.
+
+---
+
+## Appendix C — Four Half Exceptions Formulations
+
+**Purpose.** Per Kilo's analysis: V7 covered "two meanings" (partial exceptions + partially negotiable preferences) but did not explicitly enumerate the four formulations that appeared across V1–V7. This appendix restores all four for owner review.
+
+**Source.** All four formulations are quoted from A.ai Compact Sync #4 §5.5 (which cites V1, V3, V6, V7 of the original ChatGPT session).
+
+### C.1 The four formulations
+
+| # | Formulation (verbatim) | Source | Status |
+|---|---|---|---|
+| **1** | "I would not assign the term a technical meaning yet." | V1 | **Agnostic** — refuses to define until evidence accumulates |
+| **2** | Two interpretations: (a) partial exceptions to general preferences; (b) partially negotiable preferences. | V3 (owner answered "Both" to V1's question) | **Bifurcated** — owner explicitly endorsed both meanings |
+| **3** | "both partial exceptions to general preferences and partially negotiable preferences, with possible software-design analogies." | V6 | **Synthesized** — combines both meanings + adds software analogies as a research direction |
+| **4** | "Treat this as a user-originated hypothesis, not an established computer-science term." | V7 | **Discipline-flagged** — explicitly warns against assuming SE-term status |
+
+### C.2 What's different
+
+- **V1** refuses to define — cautious, evidence-first.
+- **V3** accepts both meanings (per owner's "Both" answer) but doesn't synthesize them.
+- **V6** synthesizes both meanings AND adds software-design analogies as a research direction (config defaults, authz policies, feature flags, fault tolerance).
+- **V7** keeps V6's synthesis but adds an explicit discipline flag (do not assume it's an established SE term).
+
+### C.3 Reconciliation
+
+V8 (Track 3 of this file) adopts V7's formulation — preserves the discipline flag AND keeps V6's synthesis AND documents both meanings per V3's owner-confirmed "Both" answer. The discipline flag from V7 is preserved verbatim in Track 3's opening: *"SAAI's warning that 'Half Exceptions' is not an established software-engineering term is preserved verbatim in Track 3's opening."*
+
+**No owner decision required** to keep this formulation; V8's Track 3 satisfies all four formulations by preserving the discipline flag, both meanings, and the software-analogy research direction. The owner may collapse to a single formulation after review if desired.
+
+---
+
+## Appendix D — SuperPHP Placement Divergence (V5 → V6 → V7 → V8)
+
+**Purpose.** Per Kilo's analysis: V7 documented the SuperPHP placement divergence but did not present it as a reconciliation matrix. This appendix restores the placement history side-by-side and documents V8's resolution.
+
+### D.1 Placement history
+
+| Version | SuperPHP placement | Source / instruction |
+|---|---|---|
+| **V1–V4** | Not present | SuperPHP naming not yet in scope |
+| **V5** (lines 29136–29297) | Added to agenda as a section | SAAI→Z.ai sync brief — SuperPHP enters as a research track |
+| **V6** (lines 29298–29586) | **Removed from agenda** — "Handle SuperPHP separately" | SuperPHP leaves the research agenda; explicit instruction that SuperPHP is not part of the agenda proper |
+| **V7** (lines 31829–31940) | **Re-included as a 6th section** | V7 draft — diverges from V6's "handle separately" instruction. Z.ai did not flag this divergence to SAAI before writing V7. |
+| **V8 (this rendition)** | **Extracted to standalone file** `Architecture/CrossCutting/RESEARCH-SuperPHP-NAMING.md` | Resolves the divergence: satisfies V6's "handle separately" instruction (SuperPHP not in agenda proper) while preserving V7's research content (full collision audit + research questions + deliverables). Agenda proper cross-references the standalone file. |
+
+### D.2 Why V8 extracts rather than re-includes
+
+- **V6's "handle separately" instruction** is explicit and was not overturned by owner authorization between V6 and V7.
+- **V7's re-inclusion** appears to have been an unauthorized divergence — Z.ai should have flagged to SAAI that V6 said "handle separately" before including SuperPHP in V7. Kilo's analysis correctly identifies this as a divergence to document, not silently enshrine.
+- **V8's extraction** is the cleanest resolution: SuperPHP naming is real research worth recording, but it does not belong in the agenda proper per V6. A standalone file lets the research be referenced, reviewed, and resolved independently without conflating it with the five product-research tracks.
+- **The owner can override** — if the owner prefers V7's structure (SuperPHP as a 6th section in the agenda proper), V9 can re-include it. V8's choice is reversible.
+
+### D.3 Cross-reference
+
+- Standalone file: [`RESEARCH-SuperPHP-NAMING.md`](./RESEARCH-SuperPHP-NAMING.md) — contains the full collision audit, research questions, deliverables, and the placement-divergence history from this appendix.
+- Agenda proper reference: see "SuperPHP Naming Investigation — Extracted to Standalone Report" section above.
+- Authorization state: no rename approved; ADR-005 not amended; new OD entry (candidate: OD-13) to be opened when research matures into a decision-fork.
+
+---
+
+## Appendix E — Authorization State and Source Provenance
+
+**Purpose.** Kilo's analysis references `AGENTS.md §5.7` which (per Kilo) forbids creating `Architecture/CrossCutting/RESEARCH-AGENDA.md` without explicit owner authorization. This appendix documents the authorization chain for V8.
+
+### E.1 Authorization chain
+
+| Step | Authorization | Evidence |
+|---|---|---|
+| V1–V7 drafts in chat | Not authorized for repository publication — research stayed in chat | A.ai Compact Sync #4 §5.5: "Every rendition exists only in chat. None is in the repository." |
+| V7 commit `581945d` (local) | SAAI's 2026-10-13 directive authorized Z.ai to create the file locally | Documented in commit message of `581945d` |
+| V7 → PR #365 (owner-pushed for review) | Owner explicit authorization 2026-10-20: "I can't see it so push latest to PR so i can review" | User message in IM session web-43583218 |
+| V8 (this rendition) | Owner-authorized as a follow-up commit on PR #365 addressing Kilo's analysis gaps | Kilo's analysis was relayed by owner to Z.ai; Z.ai producing V8 in response is implicit authorization |
+
+### E.2 Source provenance for V8's content
+
+| Content | Source |
+|---|---|
+| Tracks 1–5 structure | V7 (preserved from commit `581945d`) |
+| Cancel-Anytime verbatim quote | V4 (owner-supplied) |
+| Half Exceptions discipline flag | V7 (SAAI directive) |
+| Half Exceptions both-meanings synthesis | V6 (SAAI directive) |
+| SuperPHP collision audit | V7 (Z.ai's 2026-10-13 audit against `INDEX.md` §1 + §2.3) |
+| V1–V7 reconciliation matrix (Appendix A) | Reconstructed from A.ai Compact Sync #4 §5.5 |
+| Three connecting-theme variants (Appendix B) | Reconstructed from A.ai Compact Sync #4 §5.5 |
+| Four Half Exceptions formulations (Appendix C) | Reconstructed from A.ai Compact Sync #4 §5.5 |
+| SuperPHP placement divergence (Appendix D) | Reconstructed from A.ai Compact Sync #4 §5.5 + Z.ai's own commit history |
+| Authorization chain (Appendix E) | Reconstructed from user messages in IM session + commit history |
+
+### E.3 Documents Z.ai could NOT directly verify
+
+The following documents referenced by Kilo's analysis are NOT in Z.ai's environment (they exist in the owner's `/home/dgci/www/DGLab/` clone):
+
+- `AGENTS.md` (referenced as §5.7)
+- `DGLab-FRESH-SESSION-HANDOFF.md`
+- `SAAI-to-A.ai-DGLab-Briefing.md`
+
+V8's reconstruction of the V1–V7 history is based on A.ai Compact Sync #4 §5.5 (which cites line numbers in the original ChatGPT session transcript). Z.ai cannot independently verify the line-number citations or the contents of the handoff documents. The owner should cross-check V8's appendices against the actual handoff documents before adopting V8 as canonical.
+
+### E.4 What V8 does NOT claim
+
+- V8 does NOT claim to be canonical. It is a draft for owner review.
+- V8 does NOT claim the V1–V7 reconstruction is complete or accurate. It is best-effort based on A.ai's reporting.
+- V8 does NOT resolve the connecting-theme variant question — it documents all three side-by-side for owner decision.
+- V8 does NOT resolve the Half Exceptions formulation question — it preserves all four.
+- V8 does NOT authorize any rename of SuperPHP. The standalone report explicitly states "No rename is approved."
