@@ -25,7 +25,7 @@ Use this authority order:
 
 Never describe a chat statement, local-only commit, draft, open PR, or agent report as a merged repository fact. Label important statements **Verified**, **Reported**, **Proposed**, or **Owner decision required**. Include the commit SHA, path, command, test, or link that supports verification where possible.
 
-The baseline at the time of this document's last refresh is `origin/main` at `ee361d81a7de575c14d7f1f7b45b65e9ac81ec19 (refreshed 2026-10-20; was ae410ea, 11 commits behind)`. This is a refreshed baseline — prior handoffs referenced the older SHA. At session start, fetch/read the actual current state and report any divergence before work. `lms-status-baseline` was reported to be a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
+The current baseline is `origin/main` at `ee361d81a7de575c14d7f1f7b45b65e9ac81ec19` (verified 2026-10-20). Prior handoffs referenced `ae410ea`, which is now 11 commits behind — always fetch/read the actual remote state at session start and report divergence before work. `lms-status-baseline` was a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
 
 ## 3. Architecture principles
 
