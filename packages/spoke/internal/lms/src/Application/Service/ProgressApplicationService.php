@@ -11,7 +11,7 @@ use SovereignStack\Hub\Identity\Domain\ValueObject\{RoleIdentifier, UserId};
 use SovereignStack\Spoke\Lms\Application\Command\RecordProgressCommand;
 use SovereignStack\Spoke\Lms\Application\ProgressApplicationInterface;
 use SovereignStack\Spoke\Lms\Domain\Entity\{CourseStatus, Progress};
-use SovereignStack\Spoke\Lms\Domain\Exception\{CannotRevertCompletedModuleException, CourseNotFoundException, EnrollmentNotFoundException};
+use SovereignStack\Spoke\Lms\Domain\Exception\{CourseNotFoundException, EnrollmentNotFoundException};
 use SovereignStack\Spoke\Lms\Domain\Repository\{CourseRepositoryInterface, EnrollmentRepositoryInterface, ModuleRepositoryInterface, ProgressRepositoryInterface};
 use SovereignStack\Spoke\Lms\Domain\ValueObject\{EnrollmentId, EnrollmentStatus, ModuleId, ModuleStatus};
 
@@ -73,12 +73,14 @@ final class ProgressApplicationService implements ProgressApplicationInterface
             );
         }
 
-        // === Step 4: Load course + verify Published (not Archived) ===
+        // === Step 4: Load course + verify Published (not just "not Archived") ===
+        // Per SAAI Finding 1: must require CourseStatus::Published explicitly.
+        // A Draft course must NOT pass this validation.
         $course = $this->courses->get($enrollment->courseId())
             ?? throw CourseNotFoundException::forId($enrollment->courseId());
-        if ($course->status() === CourseStatus::Archived) {
+        if ($course->status() !== CourseStatus::Published) {
             throw new \RuntimeException(
-                "Cannot record progress on archived course: {$enrollment->courseId()}",
+                "Cannot record progress on {$course->status()->value} course: {$enrollment->courseId()}",
                 409,
             );
         }
@@ -96,52 +98,45 @@ final class ProgressApplicationService implements ProgressApplicationInterface
         // === Step 6: Load existing progress (for state-machine validation) ===
         $existing = $this->progress->get($cmd->enrollmentId, $cmd->moduleId);
 
-        // === Step 7: Validate state transition (forward-only) ===
-        if ($existing !== null && $existing->status() === ModuleStatus::Completed) {
-            if ($cmd->newStatus === ModuleStatus::InProgress) {
-                // FORBIDDEN: completed → in_progress
-                throw CannotRevertCompletedModuleException::forModule($cmd->moduleId);
-            }
-            // Idempotent: completed → completed is no-op
-            if ($cmd->newStatus === ModuleStatus::Completed) {
-                return;
-            }
-            // Note: completed → not_started is also forward-violating but not
-            // explicitly caught by CannotRevertCompletedModuleException.
-            // The domain's forward-only contract implies this is invalid;
-            // we throw a generic exception here.
-            throw new \RuntimeException(
-                "Cannot revert completed module to {$cmd->newStatus->value}: {$cmd->moduleId}",
-                409,
-            );
+        // Per SAAI Finding 3: NotStarted is the ABSENCE of a progress record.
+        // Recording NotStarted is a no-op — no DB row should be created or updated.
+        if ($cmd->newStatus === ModuleStatus::NotStarted) {
+            return; // No-op: not_started is the default state (no row needed)
         }
 
-        // Idempotent: same-status transition is no-op (no DB write)
-        if ($existing !== null && $existing->status() === $cmd->newStatus) {
-            return;
+        // === Step 7: Validate + apply transition via Progress::transition() ===
+        // Per SAAI Finding 2: use ONE authoritative domain transition operation.
+        // Progress::transition() handles ALL state-machine validation:
+        //   - forward-only (not_started → in_progress → completed)
+        //   - idempotent (same-status = no-op)
+        //   - forbidden (completed → anything = CannotRevertCompletedModuleException)
+        //   - backward (in_progress → not_started = RuntimeException)
+        if ($existing !== null) {
+            $existing->transition($cmd->newStatus, new DateTimeImmutable());
+            // If transition() returned without throwing, it either:
+            // (a) applied the transition (status changed) → need to save
+            // (b) was idempotent (same-status = no-op) → save is still safe
+            //     (the atomic upsert will write the same values — no harm)
         }
 
-        // === Step 8: Apply transition + persist (transaction-wrapped) ===
+        // === Step 8: Persist (transaction-wrapped) ===
         $this->connection->beginTransaction();
         try {
-            $now = new DateTimeImmutable();
-
-            if ($existing === null) {
-                // New progress record
+            if ($existing !== null) {
+                // Update existing progress — transition() already mutated the entity
+                $this->progress->save($existing, $cmd->enrollmentId);
+            } else {
+                // New progress record — construct directly with the new status
+                // (NotStarted was already returned early above)
+                $now = new DateTimeImmutable();
                 $progressEntity = new Progress(
                     moduleId: $cmd->moduleId,
                     status: $cmd->newStatus,
                     startedAt: $now,
                     completedAt: $cmd->newStatus === ModuleStatus::Completed ? $now : null,
                 );
-            } else {
-                // Update existing — use the entity's update() method
-                // which handles status + completedAt mutation
-                $existing->update($cmd->newStatus, $now);
-                $progressEntity = $existing;
+                $this->progress->save($progressEntity, $cmd->enrollmentId);
             }
-
-            $this->progress->save($progressEntity, $cmd->enrollmentId);
             $this->connection->commit();
         } catch (\Throwable $e) {
             $this->connection->rollBack();
