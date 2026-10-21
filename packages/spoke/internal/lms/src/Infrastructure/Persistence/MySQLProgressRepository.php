@@ -69,6 +69,30 @@ final class MySQLProgressRepository implements ProgressRepositoryInterface
         return $row !== false ? $this->hydrate($row) : null;
     }
 
+    /**
+     * Get progress with a row-level lock (SELECT ... FOR UPDATE).
+     *
+     * Per SAAI Finding 2: MUST be called inside a transaction for the lock
+     * to take effect. Without a transaction, FOR UPDATE is a no-op in MySQL
+     * (since autocommit mode doesn't hold locks across statements).
+     */
+    public function getForUpdate(EnrollmentId $enrollmentId, ModuleId $moduleId): ?Progress
+    {
+        $stmt = $this->connection->prepare(
+            'SELECT * FROM lms_progress '
+            . 'WHERE enrollment_id = :enrollment_id AND module_id = :module_id '
+            . 'FOR UPDATE',
+        );
+        $stmt->execute([
+            'enrollment_id' => (string) $enrollmentId,
+            'module_id'      => (string) $moduleId,
+        ]);
+        /** @var array<string, string|null>|false $row */
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        return $row !== false ? $this->hydrate($row) : null;
+    }
+
     public function findByEnrollment(EnrollmentId $enrollmentId): array
     {
         $stmt = $this->connection->prepare(

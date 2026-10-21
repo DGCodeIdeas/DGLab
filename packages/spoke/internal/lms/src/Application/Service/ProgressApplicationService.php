@@ -95,39 +95,38 @@ final class ProgressApplicationService implements ProgressApplicationInterface
             );
         }
 
-        // === Step 6: Load existing progress (for state-machine validation) ===
-        $existing = $this->progress->get($cmd->enrollmentId, $cmd->moduleId);
-
-        // Per SAAI Finding 3: NotStarted is the ABSENCE of a progress record.
-        // Recording NotStarted is a no-op — no DB row should be created or updated.
-        if ($cmd->newStatus === ModuleStatus::NotStarted) {
-            return; // No-op: not_started is the default state (no row needed)
-        }
-
-        // === Step 7: Validate + apply transition via Progress::transition() ===
-        // Per SAAI Finding 2: use ONE authoritative domain transition operation.
-        // Progress::transition() handles ALL state-machine validation:
-        //   - forward-only (not_started → in_progress → completed)
-        //   - idempotent (same-status = no-op)
-        //   - forbidden (completed → anything = CannotRevertCompletedModuleException)
-        //   - backward (in_progress → not_started = RuntimeException)
-        if ($existing !== null) {
-            $existing->transition($cmd->newStatus, new DateTimeImmutable());
-            // If transition() returned without throwing, it either:
-            // (a) applied the transition (status changed) → need to save
-            // (b) was idempotent (same-status = no-op) → save is still safe
-            //     (the atomic upsert will write the same values — no harm)
-        }
-
-        // === Step 8: Persist (transaction-wrapped) ===
+        // === Step 6: Begin transaction + read WITH LOCK ===
+        // Per SAAI Finding 2 (concurrent regression): the read-validate-write
+        // sequence must be concurrency-safe. The read is INSIDE the transaction
+        // with SELECT ... FOR UPDATE, preventing the stale-read regression where
+        // Request A writes `completed` and Request B's stale read of `in_progress`
+        // leads to a regression write. Concurrent requests for the same
+        // (enrollment_id, module_id) pair block until the first request commits.
         $this->connection->beginTransaction();
         try {
+            $existing = $this->progress->getForUpdate($cmd->enrollmentId, $cmd->moduleId);
+
+            // Per SAAI Finding 1 (NotStarted bypass): NotStarted is a no-op ONLY
+            // when no existing record exists (absence = not_started). If a record
+            // EXISTS, route through Progress::transition() to catch prohibited
+            // regressions (completed→not_started, in_progress→not_started).
+            if ($existing === null && $cmd->newStatus === ModuleStatus::NotStarted) {
+                $this->connection->commit();
+                return;
+            }
+
+            // Per SAAI Finding 2 (centralized transition): use ONE authoritative
+            // domain transition operation for ALL transitions. Runs INSIDE the
+            // transaction with the row locked. If forbidden, transition() throws
+            // and the catch block rolls back.
             if ($existing !== null) {
-                // Update existing progress — transition() already mutated the entity
+                $existing->transition($cmd->newStatus, new DateTimeImmutable());
+            }
+
+            // Persist (atomic upsert, still inside transaction)
+            if ($existing !== null) {
                 $this->progress->save($existing, $cmd->enrollmentId);
             } else {
-                // New progress record — construct directly with the new status
-                // (NotStarted was already returned early above)
                 $now = new DateTimeImmutable();
                 $progressEntity = new Progress(
                     moduleId: $cmd->moduleId,
@@ -137,6 +136,7 @@ final class ProgressApplicationService implements ProgressApplicationInterface
                 );
                 $this->progress->save($progressEntity, $cmd->enrollmentId);
             }
+
             $this->connection->commit();
         } catch (\Throwable $e) {
             $this->connection->rollBack();

@@ -39,6 +39,22 @@ interface ProgressRepositoryInterface
     public function get(EnrollmentId $enrollmentId, ModuleId $moduleId): ?Progress;
 
     /**
+     * Get progress with a row-level lock (SELECT ... FOR UPDATE).
+     *
+     * MUST be called inside a transaction. Locks the row so concurrent
+     * requests block until the transaction commits or rolls back. Prevents
+     * the stale-read regression where Request A writes `completed` and
+     * Request B's stale read of `in_progress` leads to a regression write.
+     *
+     * Added in Increment 3 PR-A2 (SemVer-minor). Per SAAI Finding 2
+     * (concurrent regression): the read-validate-write sequence must be
+     * concurrency-safe. FOR UPDATE serializes access to the progress row.
+     *
+     * @return Progress|null Null if no progress record exists for this pair.
+     */
+    public function getForUpdate(EnrollmentId $enrollmentId, ModuleId $moduleId): ?Progress;
+
+    /**
      * Find all progress records for an enrollment, ordered by module_id ASC.
      *
      * Used by EnrollmentApplicationService to derive enrollment-level

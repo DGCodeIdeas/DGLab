@@ -1,9 +1,6 @@
 <?php
-
 declare(strict_types=1);
-
 namespace SovereignStack\Spoke\Lms\Tests\Unit\Application;
-
 use PHPUnit\Framework\TestCase;
 use SovereignStack\Core\Database\ConnectionInterface;
 use SovereignStack\Hub\Identity\Application\IdentityInterface;
@@ -15,15 +12,6 @@ use SovereignStack\Spoke\Lms\Domain\Exception\{CannotRevertCompletedModuleExcept
 use SovereignStack\Spoke\Lms\Domain\Repository\{CourseRepositoryInterface, EnrollmentRepositoryInterface, ModuleRepositoryInterface, ProgressRepositoryInterface};
 use SovereignStack\Spoke\Lms\Domain\ValueObject\{CourseId, CourseSlug, CourseTitle, EnrollmentId, ModuleId, ModuleStatus};
 
-/**
- * Tests for ProgressApplicationService (Increment 3 PR-A2, revised per SAAI review).
- *
- * Revised per SAAI Findings 1-4:
- *   - Finding 1: require CourseStatus::Published (rejects Draft AND Archived)
- *   - Finding 2: use Progress::transition() for all state-machine validation
- *   - Finding 3: NotStarted is a no-op (no DB row created)
- *   - Finding 4: save() uses atomic upsert (service always wraps in transaction)
- */
 final class ProgressApplicationServiceTest extends TestCase
 {
     private ProgressRepositoryInterface $progress;
@@ -34,7 +22,6 @@ final class ProgressApplicationServiceTest extends TestCase
     private ConnectionInterface $connection;
     private ProgressApplicationService $service;
     private UserId $learnerId;
-
     protected function setUp(): void
     {
         $this->progress = $this->createMock(ProgressRepositoryInterface::class);
@@ -45,8 +32,7 @@ final class ProgressApplicationServiceTest extends TestCase
         $this->connection = $this->createMock(ConnectionInterface::class);
         $this->service = new ProgressApplicationService(
             $this->progress, $this->enrollments, $this->courses, $this->modules,
-            $this->identity, $this->connection,
-        );
+            $this->identity, $this->connection);
         $this->learnerId = new UserId('test-learner-id-1234567890123');
         $this->identity->method('hasAnyRole')->willReturn(true);
     }
@@ -54,385 +40,281 @@ final class ProgressApplicationServiceTest extends TestCase
     // --- recordProgress: happy path ---
     public function testRecordProgressWithValidActiveEnrollmentSucceeds(): void
     {
-        $course = $this->buildPublishedCourse();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->courses->method('get')->willReturn($course);
         $this->modules->method('get')->willReturn($module);
-        $this->progress->method('get')->willReturn(null);
-
+        $this->progress->method('getForUpdate')->willReturn(null);
         $this->connection->expects($this->once())->method('beginTransaction');
         $this->connection->expects($this->once())->method('commit');
         $this->progress->expects($this->once())->method('save');
-
         $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+            new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
 
-    // --- Finding 1: require Published (rejects Draft) ---
+    // --- Finding 1: require Published ---
     public function testRecordProgressRejectsDraftCourse(): void
     {
-        $course = Course::create(CourseTitle::fromString('Draft'), CourseSlug::fromString('draft-' . bin2hex(random_bytes(3))));
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = Course::create(CourseTitle::fromString('D'), CourseSlug::fromString('d-'.bin2hex(random_bytes(3))));
+        $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->courses->method('get')->willReturn($course);
-
         $this->connection->expects($this->never())->method('beginTransaction');
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Cannot record progress on draft course');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
-
-    // --- Finding 1: require Published (rejects Archived) ---
     public function testRecordProgressRejectsArchivedCourse(): void
     {
-        $course = $this->buildPublishedCourse();
-        $course->archive();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = $this->pub(); $course->archive(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->courses->method('get')->willReturn($course);
-
         $this->connection->expects($this->never())->method('beginTransaction');
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Cannot record progress on archived course');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
-
-    // --- Finding 1: rejects module not in course ---
     public function testRecordProgressRejectsModuleNotInCourse(): void
     {
-        $course = $this->buildPublishedCourse();
-        $otherCourse = $this->buildPublishedCourse();
-        $module = $this->buildModule($otherCourse->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = $this->pub(); $other = $this->pub(); $module = $this->mod($other->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->courses->method('get')->willReturn($course);
         $this->modules->method('get')->willReturn($module);
-
         $this->connection->expects($this->never())->method('beginTransaction');
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('does not belong to enrollment');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
-
     public function testRecordProgressThrowsForUnknownEnrollment(): void
     {
         $this->enrollments->method('get')->willReturn(null);
         $this->connection->expects($this->never())->method('beginTransaction');
-
         $this->expectException(EnrollmentNotFoundException::class);
-
-        $this->service->recordProgress(
-            new RecordProgressCommand(EnrollmentId::generate(), ModuleId::generate(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->service->recordProgress(new RecordProgressCommand(EnrollmentId::generate(), ModuleId::generate(), ModuleStatus::InProgress), $this->learnerId);
     }
-
     public function testRecordProgressRejectsCancelledEnrollment(): void
     {
-        $course = $this->buildPublishedCourse();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-        $enrollment->cancel();
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id()); $enr->cancel();
+        $this->enrollments->method('get')->willReturn($enr);
         $this->connection->expects($this->never())->method('beginTransaction');
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Cannot record progress on cancelled enrollment');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
-
     public function testRecordProgressRejectsUnauthorizedCaller(): void
     {
-        $course = $this->buildPublishedCourse();
-        $enrollment = $this->buildActiveEnrollment($course->id());
-        $this->enrollments->method('get')->willReturn($enrollment);
-
+        $course = $this->pub(); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->identity = $this->createMock(IdentityInterface::class);
         $this->identity->method('hasAnyRole')->willReturn(false);
-        $this->service = new ProgressApplicationService(
-            $this->progress, $this->enrollments, $this->courses, $this->modules,
-            $this->identity, $this->connection,
-        );
-
+        $this->service = new ProgressApplicationService($this->progress, $this->enrollments, $this->courses, $this->modules, $this->identity, $this->connection);
         $this->connection->expects($this->never())->method('beginTransaction');
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Not authorized to record progress');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), ModuleId::generate(), ModuleStatus::InProgress),
-            new UserId('other-user-id-123456789012345'),
-        );
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), ModuleId::generate(), ModuleStatus::InProgress), new UserId('other-user-id-123456789012345'));
     }
 
-    // --- Finding 3: NotStarted is a no-op ---
-    public function testRecordProgressNotStartedIsNoOp(): void
+    // --- SAAI Finding 1: NotStarted bypass fix ---
+    public function testRecordProgressNotStartedIsNoOpWhenNoExistingRecord(): void
     {
-        $course = $this->buildPublishedCourse();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->courses->method('get')->willReturn($course);
         $this->modules->method('get')->willReturn($module);
-
-        // NotStarted must NOT open a transaction or save
-        $this->connection->expects($this->never())->method('beginTransaction');
-        $this->progress->expects($this->never())->method('save');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::NotStarted),
-            $this->learnerId,
-        );
-    }
-
-    // --- Finding 2: idempotent same-status (transition() is no-op, but save still runs) ---
-    public function testRecordProgressIdempotentSameStatusStillSaves(): void
-    {
-        $course = $this->buildPublishedCourse();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-        $existing = new Progress($module->id(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
-
-        $this->enrollments->method('get')->willReturn($enrollment);
-        $this->courses->method('get')->willReturn($course);
-        $this->modules->method('get')->willReturn($module);
-        $this->progress->method('get')->willReturn($existing);
-
-        // Even for idempotent transitions, the service saves (atomic upsert writes same values)
+        $this->progress->method('getForUpdate')->willReturn(null); // No existing record
+        // Transaction begins + commits (empty) but NO save
         $this->connection->expects($this->once())->method('beginTransaction');
         $this->connection->expects($this->once())->method('commit');
-        $this->progress->expects($this->once())->method('save');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->progress->expects($this->never())->method('save');
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::NotStarted), $this->learnerId);
     }
 
-    // --- Finding 2: full transition matrix via Progress::transition() ---
-
-    public function testTransitionNotStartedToInProgressSucceeds(): void
+    // SAAI Finding 1: NotStarted with existing InProgress record must throw (regression)
+    public function testRecordProgressNotStartedWithExistingInProgressThrows(): void
     {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::NotStarted, new \DateTimeImmutable(), null);
-        $progress->transition(ModuleStatus::InProgress, new \DateTimeImmutable());
-        self::assertSame(ModuleStatus::InProgress, $progress->status());
-    }
-
-    public function testTransitionNotStartedToCompletedSucceeds(): void
-    {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::NotStarted, new \DateTimeImmutable(), null);
-        $progress->transition(ModuleStatus::Completed, new \DateTimeImmutable());
-        self::assertSame(ModuleStatus::Completed, $progress->status());
-        self::assertNotNull($progress->completedAt());
-    }
-
-    public function testTransitionInProgressToCompletedSucceeds(): void
-    {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
-        $progress->transition(ModuleStatus::Completed, new \DateTimeImmutable());
-        self::assertSame(ModuleStatus::Completed, $progress->status());
-    }
-
-    public function testTransitionSameStatusIsIdempotent(): void
-    {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
-        $progress->transition(ModuleStatus::InProgress, new \DateTimeImmutable());
-        self::assertSame(ModuleStatus::InProgress, $progress->status());
-    }
-
-    public function testTransitionCompletedToInProgressThrows(): void
-    {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
-        $this->expectException(CannotRevertCompletedModuleException::class);
-        $progress->transition(ModuleStatus::InProgress, new \DateTimeImmutable());
-    }
-
-    public function testTransitionCompletedToNotStartedThrows(): void
-    {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
-        $this->expectException(CannotRevertCompletedModuleException::class);
-        $progress->transition(ModuleStatus::NotStarted, new \DateTimeImmutable());
-    }
-
-    public function testTransitionInProgressToNotStartedThrows(): void
-    {
-        $progress = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $existing = new Progress($module->id(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturn($existing); // Existing InProgress
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('rollBack'); // Rolls back on exception
+        $this->connection->expects($this->never())->method('commit');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Cannot revert in_progress module to not_started');
-        $progress->transition(ModuleStatus::NotStarted, new \DateTimeImmutable());
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::NotStarted), $this->learnerId);
     }
 
-    // --- recordProgress: forbidden regression via service ---
-    public function testRecordProgressThrowsOnRevertingCompletedModule(): void
+    // SAAI Finding 1: NotStarted with existing Completed record must throw (regression)
+    public function testRecordProgressNotStartedWithExistingCompletedThrows(): void
     {
-        $course = $this->buildPublishedCourse();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-        $completed = new Progress($module->id(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $existing = new Progress($module->id(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->courses->method('get')->willReturn($course);
         $this->modules->method('get')->willReturn($module);
-        $this->progress->method('get')->willReturn($completed);
-
-        $this->connection->expects($this->never())->method('beginTransaction');
-
-        $this->expectException(CannotRevertCompletedModuleException::class);
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
-    }
-
-    public function testRecordProgressRollsBackOnFailure(): void
-    {
-        $course = $this->buildPublishedCourse();
-        $module = $this->buildModule($course->id());
-        $enrollment = $this->buildActiveEnrollment($course->id());
-
-        $this->enrollments->method('get')->willReturn($enrollment);
-        $this->courses->method('get')->willReturn($course);
-        $this->modules->method('get')->willReturn($module);
-        $this->progress->method('get')->willReturn(null);
-        $this->progress->method('save')->willThrowException(new \RuntimeException('DB error'));
-
+        $this->progress->method('getForUpdate')->willReturn($existing); // Existing Completed
         $this->connection->expects($this->once())->method('beginTransaction');
         $this->connection->expects($this->once())->method('rollBack');
         $this->connection->expects($this->never())->method('commit');
+        $this->expectException(CannotRevertCompletedModuleException::class);
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::NotStarted), $this->learnerId);
+    }
 
+    // --- Idempotent same-status (inside transaction with locked row) ---
+    public function testRecordProgressIdempotentSameStatusStillSaves(): void
+    {
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $existing = new Progress($module->id(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturn($existing);
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('commit');
+        $this->progress->expects($this->once())->method('save');
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
+    }
+
+    // --- Full transition matrix (Progress::transition) ---
+    public function testTransitionNotStartedToInProgressSucceeds(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::NotStarted, new \DateTimeImmutable(), null);
+        $p->transition(ModuleStatus::InProgress, new \DateTimeImmutable());
+        self::assertSame(ModuleStatus::InProgress, $p->status());
+    }
+    public function testTransitionNotStartedToCompletedSucceeds(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::NotStarted, new \DateTimeImmutable(), null);
+        $p->transition(ModuleStatus::Completed, new \DateTimeImmutable());
+        self::assertSame(ModuleStatus::Completed, $p->status());
+        self::assertNotNull($p->completedAt());
+    }
+    public function testTransitionInProgressToCompletedSucceeds(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $p->transition(ModuleStatus::Completed, new \DateTimeImmutable());
+        self::assertSame(ModuleStatus::Completed, $p->status());
+    }
+    public function testTransitionSameStatusIsIdempotent(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $p->transition(ModuleStatus::InProgress, new \DateTimeImmutable());
+        self::assertSame(ModuleStatus::InProgress, $p->status());
+    }
+    public function testTransitionCompletedToInProgressThrows(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
+        $this->expectException(CannotRevertCompletedModuleException::class);
+        $p->transition(ModuleStatus::InProgress, new \DateTimeImmutable());
+    }
+    public function testTransitionCompletedToNotStartedThrows(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
+        $this->expectException(CannotRevertCompletedModuleException::class);
+        $p->transition(ModuleStatus::NotStarted, new \DateTimeImmutable());
+    }
+    public function testTransitionInProgressToNotStartedThrows(): void
+    {
+        $p = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot revert in_progress module to not_started');
+        $p->transition(ModuleStatus::NotStarted, new \DateTimeImmutable());
+    }
+
+    // --- Forbidden regression via service (inside transaction with locked row) ---
+    public function testRecordProgressThrowsOnRevertingCompletedModule(): void
+    {
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $existing = new Progress($module->id(), ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturn($existing);
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('rollBack');
+        $this->connection->expects($this->never())->method('commit');
+        $this->expectException(CannotRevertCompletedModuleException::class);
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
+    }
+    public function testRecordProgressRollsBackOnFailure(): void
+    {
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturn(null);
+        $this->progress->method('save')->willThrowException(new \RuntimeException('DB error'));
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('rollBack');
+        $this->connection->expects($this->never())->method('commit');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('DB error');
-
-        $this->service->recordProgress(
-            new RecordProgressCommand($enrollment->id(), $module->id(), ModuleStatus::InProgress),
-            $this->learnerId,
-        );
+        $this->service->recordProgress(new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
 
-    // --- getProgress ---
+    // --- getProgress (uses get(), not getForUpdate()) ---
     public function testGetProgressReturnsProgressForSelf(): void
     {
-        $enrollment = $this->buildActiveEnrollment(CourseId::generate());
-        $moduleId = ModuleId::generate();
-        $progressEntity = new Progress($moduleId, ModuleStatus::InProgress, new \DateTimeImmutable(), null);
-
-        $this->enrollments->method('get')->willReturn($enrollment);
-        $this->progress->method('get')->willReturn($progressEntity);
-
-        $result = $this->service->getProgress($enrollment->id(), $moduleId, $this->learnerId);
-        self::assertNotNull($result);
-        self::assertSame(ModuleStatus::InProgress, $result->status());
+        $enr = $this->enr(CourseId::generate()); $mId = ModuleId::generate();
+        $p = new Progress($mId, ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->progress->method('get')->willReturn($p);
+        $r = $this->service->getProgress($enr->id(), $mId, $this->learnerId);
+        self::assertNotNull($r);
+        self::assertSame(ModuleStatus::InProgress, $r->status());
     }
-
     public function testGetProgressReturnsNullForUnauthorized(): void
     {
-        $enrollment = $this->buildActiveEnrollment(CourseId::generate());
-        $this->enrollments->method('get')->willReturn($enrollment);
-
+        $enr = $this->enr(CourseId::generate());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->identity = $this->createMock(IdentityInterface::class);
         $this->identity->method('hasAnyRole')->willReturn(false);
-        $this->service = new ProgressApplicationService(
-            $this->progress, $this->enrollments, $this->courses, $this->modules,
-            $this->identity, $this->connection,
-        );
-
-        $result = $this->service->getProgress($enrollment->id(), ModuleId::generate(), new UserId('other-user-id-123456789012345'));
-        self::assertNull($result);
+        $this->service = new ProgressApplicationService($this->progress, $this->enrollments, $this->courses, $this->modules, $this->identity, $this->connection);
+        self::assertNull($this->service->getProgress($enr->id(), ModuleId::generate(), new UserId('other-user-id-123456789012345')));
     }
-
     public function testGetProgressReturnsNullForNotFound(): void
     {
         $this->enrollments->method('get')->willReturn(null);
-        $result = $this->service->getProgress(EnrollmentId::generate(), ModuleId::generate(), $this->learnerId);
-        self::assertNull($result);
+        self::assertNull($this->service->getProgress(EnrollmentId::generate(), ModuleId::generate(), $this->learnerId));
     }
 
     // --- listProgressForEnrollment ---
     public function testListProgressForEnrollmentSelfSucceeds(): void
     {
-        $enrollment = $this->buildActiveEnrollment(CourseId::generate());
-        $progressEntity = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
-
-        $this->enrollments->method('get')->willReturn($enrollment);
-        $this->progress->method('findByEnrollment')->willReturn([$progressEntity]);
-
-        $result = $this->service->listProgressForEnrollment($enrollment->id(), $this->learnerId);
-        self::assertCount(1, $result);
+        $enr = $this->enr(CourseId::generate());
+        $p = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->progress->method('findByEnrollment')->willReturn([$p]);
+        $r = $this->service->listProgressForEnrollment($enr->id(), $this->learnerId);
+        self::assertCount(1, $r);
     }
-
     public function testListProgressForEnrollmentRejectsNonSelfNonAdmin(): void
     {
-        $enrollment = $this->buildActiveEnrollment(CourseId::generate());
-        $this->enrollments->method('get')->willReturn($enrollment);
-
+        $enr = $this->enr(CourseId::generate());
+        $this->enrollments->method('get')->willReturn($enr);
         $this->identity = $this->createMock(IdentityInterface::class);
         $this->identity->method('hasAnyRole')->willReturn(false);
-        $this->service = new ProgressApplicationService(
-            $this->progress, $this->enrollments, $this->courses, $this->modules,
-            $this->identity, $this->connection,
-        );
-
+        $this->service = new ProgressApplicationService($this->progress, $this->enrollments, $this->courses, $this->modules, $this->identity, $this->connection);
         $this->progress->expects($this->never())->method('findByEnrollment');
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Not authorized to list progress');
-
-        $this->service->listProgressForEnrollment($enrollment->id(), new UserId('other-user-id-123456789012345'));
+        $this->service->listProgressForEnrollment($enr->id(), new UserId('other-user-id-123456789012345'));
     }
 
     // --- Helpers ---
-    private function buildPublishedCourse(): Course
+    private function pub(): Course
     {
-        $course = Course::create(
-            CourseTitle::fromString('Test Course'),
-            CourseSlug::fromString('test-course-' . bin2hex(random_bytes(4))),
-        );
-        $course->publish();
-        return $course;
+        $c = Course::create(CourseTitle::fromString('T'), CourseSlug::fromString('t-'.bin2hex(random_bytes(4))));
+        $c->publish(); return $c;
     }
-
-    private function buildModule(CourseId $courseId): Module
+    private function mod(CourseId $cid): Module
     {
-        return Module::restoreFromPersistence(
-            id: ModuleId::generate(), courseId: $courseId, title: 'Test Module',
-            sortOrder: 0, content: null, createdAt: new \DateTimeImmutable(),
-        );
+        return Module::restoreFromPersistence(ModuleId::generate(), $cid, 'M', 0, null, new \DateTimeImmutable());
     }
-
-    private function buildActiveEnrollment(CourseId $courseId): Enrollment
+    private function enr(CourseId $cid): Enrollment
     {
-        return Enrollment::create(courseId: $courseId, learnerId: $this->learnerId);
+        return Enrollment::create(courseId: $cid, learnerId: $this->learnerId);
     }
 }
