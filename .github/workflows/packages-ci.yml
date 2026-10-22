@@ -80,6 +80,21 @@ jobs:
     if: needs.gate.outputs.changed == 'true'
     name: PHPUnit + PHPStan (${{ matrix.package }})
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: dglab_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -ptest"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     strategy:
       fail-fast: false
       matrix:
@@ -135,13 +150,33 @@ jobs:
         with:
           php-version: '8.4'
           coverage: none
-          extensions: mbstring, xml, dom, openssl
+          extensions: mbstring, xml, dom, openssl, pdo_mysql, pcntl, posix
           tools: composer:v2
 
       - name: Configure Git identity (for tests that create commits)
         run: |
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u root -ptest --silent; then
+              echo "MySQL is ready"
+              exit 0
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+          echo "MySQL failed to start"
+          exit 1
+
+      - name: Run MySQL migrations
+        run: |
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/001_create_courses_table.sql
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/002_create_modules_table.sql
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/003_create_enrollments_table.sql
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/004_create_progress_table.sql
 
       - name: Validate composer.json
         working-directory: ${{ matrix.working-dir }}
@@ -184,6 +219,21 @@ jobs:
     needs: gate
     if: needs.gate.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: dglab_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -ptest"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -193,11 +243,35 @@ jobs:
         with:
           php-version: '8.4'
           coverage: none
-          extensions: mbstring, xml, dom, openssl, fileinfo
+          extensions: mbstring, xml, dom, openssl, fileinfo, pdo_mysql, pcntl, posix
           tools: composer:v2
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u root -ptest --silent; then
+              echo "MySQL is ready"
+              exit 0
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+          echo "MySQL failed to start"
+          exit 1
+
+      - name: Run MySQL migrations
+        run: |
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/001_create_courses_table.sql
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/002_create_modules_table.sql
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/003_create_enrollments_table.sql
+          mysql -h 127.0.0.1 -u root -ptest dglab_test < packages/spoke/internal/lms/migrations/004_create_progress_table.sql
 
       - name: Install root dependencies (path repos -> vendor symlinks)
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: PHPUnit — root integration suite
+        env:
+          MYSQL_DSN: mysql:host=127.0.0.1;port=3306;dbname=dglab_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
         run: vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=never --no-coverage
