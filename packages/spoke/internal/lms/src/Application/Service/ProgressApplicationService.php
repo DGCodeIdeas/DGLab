@@ -115,29 +115,46 @@ final class ProgressApplicationService implements ProgressApplicationInterface
                 return;
             }
 
-            // Per SAAI Finding 2 (centralized transition): use ONE authoritative
-            // domain transition operation for ALL transitions. Runs INSIDE the
-            // transaction with the row locked. If forbidden, transition() throws
-            // and the catch block rolls back.
+            // If a row already exists, transition + upsert update.
             if ($existing !== null) {
                 $existing->transition($cmd->newStatus, new DateTimeImmutable());
-            }
-
-            // Persist (atomic upsert, still inside transaction)
-            if ($existing !== null) {
                 $this->progress->save($existing, $cmd->enrollmentId);
-            } else {
-                $now = new DateTimeImmutable();
-                $progressEntity = new Progress(
-                    moduleId: $cmd->moduleId,
-                    status: $cmd->newStatus,
-                    startedAt: $now,
-                    completedAt: $cmd->newStatus === ModuleStatus::Completed ? $now : null,
-                );
-                $this->progress->save($progressEntity, $cmd->enrollmentId);
+                $this->connection->commit();
+                return;
             }
 
-            $this->connection->commit();
+            // No existing row: attempt a plain INSERT for concurrent-safe creation.
+            $now = new DateTimeImmutable();
+            $progressEntity = new Progress(
+                moduleId: $cmd->moduleId,
+                status: $cmd->newStatus,
+                startedAt: $now,
+                completedAt: $cmd->newStatus === ModuleStatus::Completed ? $now : null,
+            );
+
+            try {
+                $this->progress->insert($progressEntity, $cmd->enrollmentId);
+                $this->connection->commit();
+                return;
+            } catch (\PDOException $e) {
+                $isDuplicate = $e->getCode() === '23000'
+                    || $e->getCode() === 23000
+                    || (isset($e->errorInfo[1]) && is_int($e->errorInfo[1]) && $e->errorInfo[1] === 1062);
+
+                if (!$isDuplicate) {
+                    throw $e;
+                }
+
+                // Duplicate key: another transaction won the race. Re-read under lock.
+                $reloaded = $this->progress->getForUpdate($cmd->enrollmentId, $cmd->moduleId);
+                if ($reloaded === null) {
+                    throw $e;
+                }
+                $reloaded->transition($cmd->newStatus, new DateTimeImmutable());
+                $this->progress->save($reloaded, $cmd->enrollmentId);
+                $this->connection->commit();
+                return;
+            }
         } catch (\Throwable $e) {
             $this->connection->rollBack();
             throw $e;

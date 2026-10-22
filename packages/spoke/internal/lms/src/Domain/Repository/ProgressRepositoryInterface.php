@@ -72,6 +72,14 @@ interface ProgressRepositoryInterface
      *                                   (needed because the Progress entity
      *                                   doesn't carry its enrollment_id).
      */
+    /**
+     * Insert a new progress record (plain INSERT, not upsert).
+     *
+     * Throws a \PDOException on duplicate key (MySQL error 1062).
+     * Used by the concurrent-creation path in ProgressApplicationService.
+     */
+    public function insert(Progress $progress, EnrollmentId $enrollmentId): void;
+
     public function save(Progress $progress, EnrollmentId $enrollmentId): void;
 
     /**

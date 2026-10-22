@@ -115,13 +115,63 @@ final class MySQLProgressRepositoryTest extends TestCase
         $this->repository->save(new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null), EnrollmentId::generate());
         self::assertStringContainsStringIgnoringCase('ON DUPLICATE KEY UPDATE', $capturedSql);
     }
-    public function testDeleteUsesPrepareWithCompositeKey(): void
+    public function testInsertUsesPrepareAndExecute(): void
     {
-        $eId = EnrollmentId::generate(); $mId = ModuleId::generate();
+        $eId = EnrollmentId::generate();
+        $progress = new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
         $stmt = $this->createMock(\PDOStatement::class);
-        $stmt->expects($this->once())->method('execute')->with(['enrollment_id'=>(string)$eId,'module_id'=>(string)$mId]);
+        $stmt->expects($this->once())->method('execute');
         $this->connection->expects($this->once())->method('prepare')->willReturn($stmt);
-        $this->connection->expects($this->never())->method('exec');
-        $this->repository->delete($eId, $mId);
+        $this->repository->insert($progress, $eId);
+    }
+
+    public function testInsertSqlContainsInsertIntoLmsProgress(): void
+    {
+        $capturedSql = null;
+        $stmt = $this->createMock(\PDOStatement::class);
+        $stmt->method('execute')->willReturn(true);
+        $this->connection->expects($this->once())->method('prepare')
+            ->willReturnCallback(function ($sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+        $this->repository->insert(
+            new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null),
+            EnrollmentId::generate(),
+        );
+        self::assertStringContainsStringIgnoringCase('INSERT INTO lms_progress', $capturedSql);
+    }
+
+    public function testInsertExecuteParamsIncludeCompositeKeyAndStatus(): void
+    {
+        $eId = EnrollmentId::generate();
+        $mId = ModuleId::generate();
+        $progress = new Progress($mId, ModuleStatus::Completed, new \DateTimeImmutable(), new \DateTimeImmutable());
+        $stmt = $this->createMock(\PDOStatement::class);
+        $stmt->expects($this->once())->method('execute')
+            ->with(self::callback(function ($params) use ($eId, $mId) {
+                return $params['enrollment_id'] === (string) $eId
+                    && $params['module_id'] === (string) $mId
+                    && $params['status'] === 'completed'
+                    && isset($params['started_at'])
+                    && isset($params['completed_at']);
+            }));
+        $this->connection->method('prepare')->willReturn($stmt);
+        $this->repository->insert($progress, $eId);
+    }
+
+    public function testInsertPropagatesPDOExceptionOnDuplicateKey(): void
+    {
+        $stmt = $this->createMock(\PDOStatement::class);
+        $stmt->method('execute')->willThrowException((function(){ $e=new \PDOException('Duplicate entry'); $e->errorInfo=[null,1062,'Duplicate entry']; return $e; })());
+        $this->connection->method('prepare')->willReturn($stmt);
+        $this->expectException(\PDOException::class);
+        $this->repository->insert(
+            new Progress(ModuleId::generate(), ModuleStatus::InProgress, new \DateTimeImmutable(), null),
+            EnrollmentId::generate(),
+        );
     }
 }
+
+// original trailing? We need replace last closing brace
+

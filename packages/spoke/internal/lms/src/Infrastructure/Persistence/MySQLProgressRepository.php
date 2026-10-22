@@ -111,6 +111,23 @@ final class MySQLProgressRepository implements ProgressRepositoryInterface
         return $progress;
     }
 
+    public function insert(Progress $progress, EnrollmentId $enrollmentId): void
+    {
+        // Plain INSERT (not upsert). Throws PDOException on duplicate key
+        // (MySQL error 1062 / SQLSTATE 23000) — caller handles the race.
+        $stmt = $this->connection->prepare(
+            'INSERT INTO lms_progress (enrollment_id, module_id, status, started_at, completed_at) '
+            . 'VALUES (:enrollment_id, :module_id, :status, :started_at, :completed_at)',
+        );
+        $stmt->execute([
+            'enrollment_id' => (string) $enrollmentId,
+            'module_id'     => (string) $progress->moduleId(),
+            'status'        => $progress->status()->value,
+            'started_at'    => $progress->startedAt()->format('Y-m-d H:i:s.u'),
+            'completed_at'  => $progress->completedAt()?->format('Y-m-d H:i:s.u'),
+        ]);
+    }
+
     public function save(Progress $progress, EnrollmentId $enrollmentId): void
     {
         // Per SAAI Finding 4: use atomic MySQL upsert (INSERT ... ON DUPLICATE KEY UPDATE)
@@ -176,9 +193,9 @@ final class MySQLProgressRepository implements ProgressRepositoryInterface
             );
         }
 
-        $startedAt = new DateTimeImmutable((string) $row['started_at']);
+        $startedAt = new DateTimeImmutable($row['started_at']);
         $completedAt = isset($row['completed_at'])
-            ? new DateTimeImmutable((string) $row['completed_at'])
+            ? new DateTimeImmutable($row['completed_at'])
             : null;
 
         return new Progress(

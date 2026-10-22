@@ -47,7 +47,7 @@ final class ProgressApplicationServiceTest extends TestCase
         $this->progress->method('getForUpdate')->willReturn(null);
         $this->connection->expects($this->once())->method('beginTransaction');
         $this->connection->expects($this->once())->method('commit');
-        $this->progress->expects($this->once())->method('save');
+        $this->progress->expects($this->once())->method('insert');
         $this->service->recordProgress(
             new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
@@ -245,7 +245,7 @@ final class ProgressApplicationServiceTest extends TestCase
         $this->courses->method('get')->willReturn($course);
         $this->modules->method('get')->willReturn($module);
         $this->progress->method('getForUpdate')->willReturn(null);
-        $this->progress->method('save')->willThrowException(new \RuntimeException('DB error'));
+        $this->progress->method('insert')->willThrowException(new \RuntimeException('DB error'));
         $this->connection->expects($this->once())->method('beginTransaction');
         $this->connection->expects($this->once())->method('rollBack');
         $this->connection->expects($this->never())->method('commit');
@@ -301,6 +301,55 @@ final class ProgressApplicationServiceTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Not authorized to list progress');
         $this->service->listProgressForEnrollment($enr->id(), new UserId('other-user-id-123456789012345'));
+    }
+
+    // --- Concurrency: duplicate-key race on insert (new row path) ---
+    public function testRecordProgressHandlesDuplicateKeyRaceByReReadingUnderLock(): void
+    {
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $reloaded = new Progress($module->id(), ModuleStatus::InProgress, new \DateTimeImmutable(), null);
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturnOnConsecutiveCalls(null, $reloaded);
+        $this->progress->method('insert')->willThrowException((function(){ $e=new \PDOException('Duplicate entry'); $e->errorInfo=[null,1062,'Duplicate entry']; return $e; })());
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('commit');
+        $this->progress->expects($this->once())->method('save');
+        $this->service->recordProgress(
+            new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::Completed), $this->learnerId);
+    }
+
+    public function testRecordProgressRethrowsNonDuplicatePDOExceptionAndRollsBack(): void
+    {
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturn(null);
+        $this->progress->method('insert')->willThrowException((function(){ $e=new \PDOException('DB failure'); $e->errorInfo=[null,9999,'DB failure']; return $e; })());
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('rollBack');
+        $this->connection->expects($this->never())->method('commit');
+        $this->expectException(\PDOException::class);
+        $this->service->recordProgress(
+            new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
+    }
+
+    public function testRecordProgressDuplicateRaceRethrowsWhenReloadedMissing(): void
+    {
+        $course = $this->pub(); $module = $this->mod($course->id()); $enr = $this->enr($course->id());
+        $this->enrollments->method('get')->willReturn($enr);
+        $this->courses->method('get')->willReturn($course);
+        $this->modules->method('get')->willReturn($module);
+        $this->progress->method('getForUpdate')->willReturn(null);
+        $this->progress->method('insert')->willThrowException((function(){ $e=new \PDOException('Duplicate entry'); $e->errorInfo=[null,1062,'Duplicate entry']; return $e; })());
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('rollBack');
+        $this->connection->expects($this->never())->method('commit');
+        $this->expectException(\PDOException::class);
+        $this->service->recordProgress(
+            new RecordProgressCommand($enr->id(), $module->id(), ModuleStatus::InProgress), $this->learnerId);
     }
 
     // --- Helpers ---
