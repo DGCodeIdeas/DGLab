@@ -49,6 +49,9 @@ use SovereignStack\Spoke\Lms\Infrastructure\Persistence\{
  * progress row so that Request A's write of 'completed' blocks Request B's
  * stale read of 'in_progress', preventing a regression write.
  *
+ * Uses pcntl_fork() for genuine process-based concurrency. Each child process
+ * gets its own PDO connection to simulate real concurrent database access.
+ *
  * Requires a MySQL database (CI MySQL service or local dev DB).
  * Configured via environment variables:
  *   - MYSQL_DSN (default: mysql:host=127.0.0.1;port=3306;dbname=dglab_test)
@@ -57,6 +60,8 @@ use SovereignStack\Spoke\Lms\Infrastructure\Persistence\{
  *
  * @group integration
  * @requires extension pdo_mysql
+ * @requires extension pcntl
+ * @requires extension posix
  */
 final class ProgressConcurrencyTest extends TestCase
 {
@@ -76,7 +81,10 @@ final class ProgressConcurrencyTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        // Skip if no MySQL available
+        if (!extension_loaded('pcntl') || !extension_loaded('posix')) {
+            self::markTestSkipped('pcntl or posix extension not available - required for fork-based concurrency tests');
+        }
+
         $dsn = $_ENV['MYSQL_DSN'] ?? 'mysql:host=127.0.0.1;port=3306;dbname=dglab_test';
         $user = $_ENV['MYSQL_USER'] ?? 'test';
         $pass = $_ENV['MYSQL_PASSWORD'] ?? 'test';
@@ -106,7 +114,6 @@ final class ProgressConcurrencyTest extends TestCase
             connection: self::$connection,
         );
 
-        // Create test data
         self::$testCourseId = '01H00000000000000000000001';
         self::$testModuleId = '01H00000000000000000000002';
         self::$testEnrollmentId = '01H00000000000000000000003';
@@ -118,7 +125,6 @@ final class ProgressConcurrencyTest extends TestCase
     public static function tearDownAfterClass(): void
     {
         if (self::$pdo !== null) {
-            // Clean up test data
             self::$pdo->exec("DELETE FROM lms_progress WHERE enrollment_id = '01H00000000000000000000003'");
             self::$pdo->exec("DELETE FROM lms_enrollments WHERE id = '01H00000000000000000000003'");
             self::$pdo->exec("DELETE FROM lms_modules WHERE id = '01H00000000000000000000002'");
@@ -129,7 +135,6 @@ final class ProgressConcurrencyTest extends TestCase
 
     private static function seedTestData(): void
     {
-        // Insert test course
         $stmt = self::$pdo->prepare(
             'INSERT IGNORE INTO lms_courses (id, title, description, status, created_at, updated_at) '
             . 'VALUES (:id, :title, :desc, :status, NOW(6), NOW(6))'
@@ -141,7 +146,6 @@ final class ProgressConcurrencyTest extends TestCase
             'status' => CourseStatus::Published->value,
         ]);
 
-        // Insert test module
         $stmt = self::$pdo->prepare(
             'INSERT IGNORE INTO lms_modules (id, course_id, title, position, created_at, updated_at) '
             . 'VALUES (:id, :course_id, :title, :position, NOW(6), NOW(6))'
@@ -153,7 +157,6 @@ final class ProgressConcurrencyTest extends TestCase
             'position' => 1,
         ]);
 
-        // Insert test enrollment
         $stmt = self::$pdo->prepare(
             'INSERT IGNORE INTO lms_enrollments (id, course_id, learner_id, status, enrolled_at, created_at, updated_at) '
             . 'VALUES (:id, :course_id, :learner_id, :status, NOW(6), NOW(6), NOW(6))'
@@ -168,10 +171,114 @@ final class ProgressConcurrencyTest extends TestCase
 
     protected function tearDown(): void
     {
-        // Clean up progress records between tests
         if (self::$pdo !== null) {
             self::$pdo->exec("DELETE FROM lms_progress WHERE enrollment_id = '{$this->testEnrollmentId}'");
         }
+    }
+
+    /**
+     * Create a child process that runs a callable and returns its exit code.
+     * The child gets a fresh PDO connection to the database.
+     */
+    private function forkChild(callable $task): int
+    {
+        $pid = pcntl_fork();
+
+        if ($pid === -1) {
+            throw new \RuntimeException('Failed to fork process');
+        }
+
+        if ($pid === 0) {
+            // Child process
+            try {
+                $task();
+                exit(0);
+            } catch (\Throwable $e) {
+                // Write error to a temp file for parent to read
+                $errorFile = sys_get_temp_dir() . '/progress_concurrency_error_' . getmypid() . '.txt';
+                file_put_contents($errorFile, $e->getMessage() . "\n" . $e->getTraceAsString());
+                exit(1);
+            }
+        }
+
+        // Parent process - wait for child
+        $status = 0;
+        pcntl_waitpid($pid, $status);
+
+        if (pcntl_wifexited($status)) {
+            $exitCode = pcntl_wexitstatus($status);
+            if ($exitCode !== 0) {
+                $errorFile = sys_get_temp_dir() . '/progress_concurrency_error_' . $pid . '.txt';
+                if (file_exists($errorFile)) {
+                    $error = file_get_contents($errorFile);
+                    unlink($errorFile);
+                    throw new \RuntimeException("Child process $pid failed: $error");
+                }
+            }
+            return $exitCode;
+        }
+
+        throw new \RuntimeException("Child process $pid terminated abnormally");
+    }
+
+    /**
+     * Run multiple child processes concurrently and wait for all to complete.
+     * Returns array of exit codes.
+     */
+    private function runConcurrent(array $tasks): array
+    {
+        $pids = [];
+        foreach ($tasks as $task) {
+            $pid = pcntl_fork();
+            if ($pid === -1) {
+                throw new \RuntimeException('Failed to fork process');
+            }
+            if ($pid === 0) {
+                // Child
+                try {
+                    $task();
+                    exit(0);
+                } catch (\Throwable $e) {
+                    $errorFile = sys_get_temp_dir() . '/progress_concurrency_error_' . getmypid() . '.txt';
+                    file_put_contents($errorFile, $e->getMessage() . "\n" . $e->getTraceAsString());
+                    exit(1);
+                }
+            }
+            $pids[] = $pid;
+        }
+
+        $results = [];
+        foreach ($pids as $pid) {
+            $status = 0;
+            pcntl_waitpid($pid, $status);
+            if (pcntl_wifexited($status)) {
+                $exitCode = pcntl_wexitstatus($status);
+                if ($exitCode !== 0) {
+                    $errorFile = sys_get_temp_dir() . '/progress_concurrency_error_' . $pid . '.txt';
+                    if (file_exists($errorFile)) {
+                        $error = file_get_contents($errorFile);
+                        unlink($errorFile);
+                        throw new \RuntimeException("Child process $pid failed: $error");
+                    }
+                }
+                $results[] = $exitCode;
+            } else {
+                throw new \RuntimeException("Child process $pid terminated abnormally");
+            }
+        }
+
+        return $results;
+    }
+
+    private function createTestDbConnection(): PDO
+    {
+        $dsn = $_ENV['MYSQL_DSN'] ?? 'mysql:host=127.0.0.1;port=3306;dbname=dglab_test';
+        $user = $_ENV['MYSQL_USER'] ?? 'test';
+        $pass = $_ENV['MYSQL_PASSWORD'] ?? 'test';
+        return new PDO($dsn, $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
     }
 
     /**
@@ -185,27 +292,81 @@ final class ProgressConcurrencyTest extends TestCase
      */
     public function testConcurrentProgressRecordingIsSerialized(): void
     {
-        $enrollmentId = new EnrollmentId(self::$testEnrollmentId);
-        $moduleId = new ModuleId(self::$testModuleId);
-        $actor = new UserId(self::$testUserId);
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
+        $actorId = self::$testUserId;
 
-        // Request 1: Record progress to in_progress
-        $cmd1 = new RecordProgressCommand($enrollmentId, $moduleId, ModuleStatus::InProgress);
-        self::$progressService->recordProgress($cmd1, $actor);
+        // Pre-create progress at InProgress status
+        $stmt = self::$pdo->prepare(
+            'INSERT INTO lms_progress (enrollment_id, module_id, status, started_at, completed_at) '
+            . 'VALUES (:enrollment_id, :module_id, :status, NOW(6), NULL)'
+        );
+        $stmt->execute([
+            'enrollment_id' => $enrollmentId,
+            'module_id' => $moduleId,
+            'status' => ModuleStatus::InProgress->value,
+        ]);
 
-        $progress1 = self::$progressRepo->get($enrollmentId, $moduleId);
-        $this->assertNotNull($progress1);
-        $this->assertEquals(ModuleStatus::InProgress, $progress1->status());
+        // Child 1: Record progress to Completed
+        // Child 2: Record progress to Completed (same status = idempotent)
+        $results = $this->runConcurrent([
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
 
-        // Request 2 (simulated concurrent): Record progress to completed
-        // This should block on the FOR UPDATE lock until Request 1 commits
-        $cmd2 = new RecordProgressCommand($enrollmentId, $moduleId, ModuleStatus::Completed);
-        self::$progressService->recordProgress($cmd2, $actor);
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::Completed
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
 
-        $progress2 = self::$progressRepo->get($enrollmentId, $moduleId);
-        $this->assertNotNull($progress2);
-        $this->assertEquals(ModuleStatus::Completed, $progress2->status());
-        $this->assertNotNull($progress2->completedAt());
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::Completed
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+        ]);
+
+        $this->assertEquals([0, 0], $results, 'Both concurrent requests should succeed');
+
+        // Verify final state is Completed
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+        $this->assertNotNull($progress);
+        $this->assertEquals(ModuleStatus::Completed, $progress->status());
+        $this->assertNotNull($progress->completedAt());
     }
 
     /**
@@ -218,22 +379,70 @@ final class ProgressConcurrencyTest extends TestCase
      */
     public function testConcurrentInsertRaceIsHandled(): void
     {
-        $enrollmentId = new EnrollmentId(self::$testEnrollmentId);
-        $moduleId = new ModuleId(self::$testModuleId);
-        $actor = new UserId(self::$testUserId);
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
+        $actorId = self::$testUserId;
 
         // Both requests try to insert InProgress for the same (enrollment, module)
         // First one wins the INSERT, second gets duplicate key and retries
-        $cmd1 = new RecordProgressCommand($enrollmentId, $moduleId, ModuleStatus::InProgress);
-        $cmd2 = new RecordProgressCommand($enrollmentId, $moduleId, ModuleStatus::InProgress);
+        $results = $this->runConcurrent([
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
 
-        // Execute sequentially to simulate the race (real concurrency would need threads)
-        self::$progressService->recordProgress($cmd1, $actor);
-        self::$progressService->recordProgress($cmd2, $actor); // Same status = idempotent
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::InProgress
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
 
-        $progress = self::$progressRepo->get($enrollmentId, $moduleId);
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::InProgress
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+        ]);
+
+        $this->assertEquals([0, 0], $results, 'Both concurrent requests should succeed (one wins INSERT, other retries)');
+
+        // Verify final state is InProgress
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
         $this->assertNotNull($progress);
         $this->assertEquals(ModuleStatus::InProgress, $progress->status());
+        $this->assertNotNull($progress->startedAt());
     }
 
     /**
@@ -244,115 +453,439 @@ final class ProgressConcurrencyTest extends TestCase
      */
     public function testCompletedStatusCannotBeRevertedUnderConcurrency(): void
     {
-        $enrollmentId = new EnrollmentId(self::$testEnrollmentId);
-        $moduleId = new ModuleId(self::$testModuleId);
-        $actor = new UserId(self::$testUserId);
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
+        $actorId = self::$testUserId;
 
-        // First, complete the module
-        $cmdComplete = new RecordProgressCommand($enrollmentId, $moduleId, ModuleStatus::Completed);
-        self::$progressService->recordProgress($cmdComplete, $actor);
+        // First, complete the module (sequential setup)
+        $stmt = self::$pdo->prepare(
+            'INSERT INTO lms_progress (enrollment_id, module_id, status, started_at, completed_at) '
+            . 'VALUES (:enrollment_id, :module_id, :status, NOW(6), NOW(6))'
+        );
+        $stmt->execute([
+            'enrollment_id' => $enrollmentId,
+            'module_id' => $moduleId,
+            'status' => ModuleStatus::Completed->value,
+        ]);
 
-        $progress = self::$progressRepo->get($enrollmentId, $moduleId);
+        // Concurrent attempt to revert to InProgress - should fail
+        $results = $this->runConcurrent([
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
+
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::InProgress
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
+
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::NotStarted
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+        ]);
+
+        // Both should fail with CannotRevertCompletedModuleException (exit code 1)
+        $this->assertEquals([1, 1], $results, 'Both concurrent revert attempts should fail');
+
+        // Verify state remains Completed
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+        $this->assertNotNull($progress);
         $this->assertEquals(ModuleStatus::Completed, $progress->status());
-
-        // Attempt to revert to in_progress (should fail)
-        $cmdRevert = new RecordProgressCommand($enrollmentId, $moduleId, ModuleStatus::InProgress);
-        $this->expectException(CannotRevertCompletedModuleException::class);
-        self::$progressService->recordProgress($cmdRevert, $actor);
     }
 
     /**
-     * Test that getForUpdate acquires a row lock within a transaction.
+     * Test FOR UPDATE blocking with forked processes.
      *
-     * This verifies the repository-level locking primitive that the
-     * application service uses for concurrency safety.
+     * Connection 1 begins a transaction and acquires a row lock via getForUpdate.
+     * Connection 2 attempts getForUpdate on the same row and should block
+     * until Connection 1 commits.
      */
-    public function testGetForUpdateAcquiresRowLock(): void
+    public function testForUpdateBlockingWithForkedProcesses(): void
     {
-        $enrollmentId = new EnrollmentId(self::$testEnrollmentId);
-        $moduleId = new ModuleId(self::$testModuleId);
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
 
         // Insert initial progress
-        $now = new DateTimeImmutable();
-        $progress = new Progress(
-            moduleId: $moduleId,
-            status: ModuleStatus::InProgress,
-            startedAt: $now,
-            completedAt: null,
+        $stmt = self::$pdo->prepare(
+            'INSERT INTO lms_progress (enrollment_id, module_id, status, started_at, completed_at) '
+            . 'VALUES (:enrollment_id, :module_id, :status, NOW(6), NULL)'
         );
-        self::$progressRepo->insert($progress, $enrollmentId);
+        $stmt->execute([
+            'enrollment_id' => $enrollmentId,
+            'module_id' => $moduleId,
+            'status' => ModuleStatus::InProgress->value,
+        ]);
 
-        // Begin transaction and get with lock
-        self::$connection->beginTransaction();
-        try {
-            $locked = self::$progressRepo->getForUpdate($enrollmentId, $moduleId);
-            $this->assertNotNull($locked);
-            $this->assertEquals(ModuleStatus::InProgress, $locked->status());
+        $blockedFlagFile = sys_get_temp_dir() . '/progress_concurrency_blocked_' . getmypid() . '.txt';
+        $releaseFlagFile = sys_get_temp_dir() . '/progress_concurrency_release_' . getmypid() . '.txt';
 
-            // Update within the same transaction
-            $locked->transition(ModuleStatus::Completed, new DateTimeImmutable());
-            self::$progressRepo->save($locked, $enrollmentId);
+        // Clean up any leftover flag files
+        @unlink($blockedFlagFile);
+        @unlink($releaseFlagFile);
 
-            self::$connection->commit();
-        } catch (\Throwable $e) {
-            self::$connection->rollBack();
-            throw $e;
-        }
+        $results = $this->runConcurrent([
+            // Child 1: Hold lock for a bit, then update and commit
+            function () use ($enrollmentId, $moduleId, $blockedFlagFile, $releaseFlagFile) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
 
-        // Verify the update was persisted
-        $updated = self::$progressRepo->get($enrollmentId, $moduleId);
-        $this->assertEquals(ModuleStatus::Completed, $updated->status());
+                $conn->beginTransaction();
+                try {
+                    $locked = $repo->getForUpdate(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+                    if ($locked === null) {
+                        throw new \RuntimeException('Expected progress row to exist');
+                    }
+
+                    // Signal that we have the lock
+                    file_put_contents($blockedFlagFile, 'locked');
+
+                    // Wait for release signal (parent will create this file)
+                    $waitStart = microtime(true);
+                    while (!file_exists($releaseFlagFile)) {
+                        usleep(10000); // 10ms
+                        if (microtime(true) - $waitStart > 10) {
+                            throw new \RuntimeException('Timeout waiting for release signal');
+                        }
+                    }
+                    @unlink($releaseFlagFile);
+
+                    // Update within the same transaction
+                    $locked->transition(ModuleStatus::Completed, new DateTimeImmutable());
+                    $repo->save($locked, new EnrollmentId($enrollmentId));
+
+                    $conn->commit();
+                } catch (\Throwable $e) {
+                    $conn->rollBack();
+                    throw $e;
+                }
+            },
+            // Child 2: Attempt getForUpdate - should block until Child 1 commits
+            function () use ($enrollmentId, $moduleId, $blockedFlagFile, $releaseFlagFile) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+
+                // Wait for Child 1 to acquire lock
+                $waitStart = microtime(true);
+                while (!file_exists($blockedFlagFile)) {
+                    usleep(10000);
+                    if (microtime(true) - $waitStart > 5) {
+                        throw new \RuntimeException('Timeout waiting for lock signal');
+                    }
+                }
+
+                // Now attempt getForUpdate - this should block until Child 1 commits
+                $startWait = microtime(true);
+                $conn->beginTransaction();
+                try {
+                    $locked = $repo->getForUpdate(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+                    if ($locked === null) {
+                        throw new \RuntimeException('Expected progress row to exist');
+                    }
+
+                    // If we get here, we acquired the lock after Child 1 released it
+                    $waitTime = microtime(true) - $startWait;
+                    // Should have waited at least some time for the lock
+                    if ($waitTime < 0.1) {
+                        throw new \RuntimeException('Lock was not held - expected blocking behavior');
+                    }
+
+                    $this->assertEquals(ModuleStatus::Completed, $locked->status());
+                    $conn->commit();
+                } catch (\Throwable $e) {
+                    $conn->rollBack();
+                    throw $e;
+                }
+            },
+        ]);
+
+        $this->assertEquals([0, 0], $results, 'Both processes should complete successfully');
+
+        @unlink($blockedFlagFile);
+        @unlink($releaseFlagFile);
+
+        // Verify final state is Completed
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+        $this->assertNotNull($progress);
+        $this->assertEquals(ModuleStatus::Completed, $progress->status());
+        $this->assertNotNull($progress->completedAt());
     }
 
     /**
-     * Test that concurrent getForUpdate calls block until transaction commits.
+     * Test competing status updates under real concurrency.
      *
-     * This test simulates the blocking behavior by attempting a second
-     * getForUpdate in a separate connection while the first transaction
-     * holds the lock. In a real concurrent scenario, the second call would
-     * block until the first commits.
+     * Multiple concurrent requests with different target statuses:
+     * - One tries InProgress
+     * - One tries Completed
+     * Both should succeed, final state depends on execution order but
+     * must be a valid forward transition.
+     */
+    public function testCompetingStatusUpdatesUnderRealConcurrency(): void
+    {
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
+        $actorId = self::$testUserId;
+
+        // Start with no progress record
+
+        $results = $this->runConcurrent([
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
+
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::InProgress
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+            function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
+
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::Completed
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            },
+        ]);
+
+        $this->assertEquals([0, 0], $results, 'Both concurrent requests should succeed');
+
+        // Verify final state is either InProgress or Completed (forward-only)
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+        $this->assertNotNull($progress);
+        $this->assertContains($progress->status(), [ModuleStatus::InProgress, ModuleStatus::Completed]);
+    }
+
+    /**
+     * Test concurrent getForUpdate calls block until transaction commits.
+     *
+     * This test uses forked processes to verify the blocking behavior
+     * of SELECT ... FOR UPDATE in a real concurrent scenario.
      */
     public function testConcurrentGetForUpdateBlocks(): void
     {
-        $enrollmentId = new EnrollmentId(self::$testEnrollmentId);
-        $moduleId = new ModuleId(self::$testModuleId);
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
 
         // Insert initial progress
-        $now = new DateTimeImmutable();
-        $progress = new Progress(
-            moduleId: $moduleId,
-            status: ModuleStatus::NotStarted,
-            startedAt: $now,
-            completedAt: null,
+        $stmt = self::$pdo->prepare(
+            'INSERT INTO lms_progress (enrollment_id, module_id, status, started_at, completed_at) '
+            . 'VALUES (:enrollment_id, :module_id, :status, NOW(6), NULL)'
         );
-        self::$progressRepo->insert($progress, $enrollmentId);
+        $stmt->execute([
+            'enrollment_id' => $enrollmentId,
+            'module_id' => $moduleId,
+            'status' => ModuleStatus::NotStarted->value,
+        ]);
 
-        // Create a second connection to simulate concurrent access
-        $dsn = $_ENV['MYSQL_DSN'] ?? 'mysql:host=127.0.0.1;port=3306;dbname=dglab_test';
-        $user = $_ENV['MYSQL_USER'] ?? 'test';
-        $pass = $_ENV['MYSQL_PASSWORD'] ?? 'test';
-        $pdo2 = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $conn2 = new MySQLConnection($pdo2);
-        $repo2 = new MySQLProgressRepository($conn2);
+        $blockedFlagFile = sys_get_temp_dir() . '/progress_concurrency_blocked_' . getmypid() . '.txt';
+        $releaseFlagFile = sys_get_temp_dir() . '/progress_concurrency_release_' . getmypid() . '.txt';
+        @unlink($blockedFlagFile);
+        @unlink($releaseFlagFile);
 
-        // Connection 1: begin transaction and getForUpdate (holds lock)
-        self::$connection->beginTransaction();
-        $locked1 = self::$progressRepo->getForUpdate($enrollmentId, $moduleId);
-        $this->assertNotNull($locked1);
+        $results = $this->runConcurrent([
+            // Child 1: Begin transaction, getForUpdate, hold lock, update, commit
+            function () use ($enrollmentId, $moduleId, $blockedFlagFile, $releaseFlagFile) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
 
-        // Connection 2: attempt getForUpdate (should block in real concurrency)
-        // In this sequential test, we verify the lock is held by checking
-        // that the first connection can update and the second sees the update after commit
-        $locked1->transition(ModuleStatus::InProgress, new DateTimeImmutable());
-        self::$progressRepo->save($locked1, $enrollmentId);
-        self::$connection->commit();
+                $conn->beginTransaction();
+                try {
+                    $locked = $repo->getForUpdate(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+                    if ($locked === null) {
+                        throw new \RuntimeException('Expected progress row to exist');
+                    }
 
-        // Connection 2: now get the updated record
-        $locked2 = $repo2->getForUpdate($enrollmentId, $moduleId);
-        $this->assertEquals(ModuleStatus::InProgress, $locked2->status());
+                    // Signal that we have the lock
+                    file_put_contents($blockedFlagFile, 'locked');
 
-        $conn2->rollBack(); // Clean up second connection
-        $pdo2 = null;
+                    // Wait for release signal
+                    $waitStart = microtime(true);
+                    while (!file_exists($releaseFlagFile)) {
+                        usleep(10000);
+                        if (microtime(true) - $waitStart > 10) {
+                            throw new \RuntimeException('Timeout waiting for release signal');
+                        }
+                    }
+                    @unlink($releaseFlagFile);
+
+                    // Update within the same transaction
+                    $locked->transition(ModuleStatus::InProgress, new DateTimeImmutable());
+                    $repo->save($locked, new EnrollmentId($enrollmentId));
+
+                    $conn->commit();
+                } catch (\Throwable $e) {
+                    $conn->rollBack();
+                    throw $e;
+                }
+            },
+            // Child 2: Attempt getForUpdate - should block until Child 1 commits
+            function () use ($enrollmentId, $moduleId, $blockedFlagFile, $releaseFlagFile) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+
+                // Wait for Child 1 to acquire lock
+                $waitStart = microtime(true);
+                while (!file_exists($blockedFlagFile)) {
+                    usleep(10000);
+                    if (microtime(true) - $waitStart > 5) {
+                        throw new \RuntimeException('Timeout waiting for lock signal');
+                    }
+                }
+
+                // Now attempt getForUpdate - this should block until Child 1 commits
+                $startWait = microtime(true);
+                $conn->beginTransaction();
+                try {
+                    $locked = $repo->getForUpdate(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+                    if ($locked === null) {
+                        throw new \RuntimeException('Expected progress row to exist');
+                    }
+
+                    $waitTime = microtime(true) - $startWait;
+                    // Should have waited for the lock
+                    if ($waitTime < 0.1) {
+                        throw new \RuntimeException('Lock was not held - expected blocking behavior, waited ' . $waitTime . 's');
+                    }
+
+                    // Should see the updated status from Child 1
+                    $this->assertEquals(ModuleStatus::InProgress, $locked->status());
+                    $conn->commit();
+                } catch (\Throwable $e) {
+                    $conn->rollBack();
+                    throw $e;
+                }
+            },
+        ]);
+
+        $this->assertEquals([0, 0], $results, 'Both processes should complete successfully');
+
+        @unlink($blockedFlagFile);
+        @unlink($releaseFlagFile);
+
+        // Verify final state is InProgress
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+        $this->assertNotNull($progress);
+        $this->assertEquals(ModuleStatus::InProgress, $progress->status());
+    }
+
+    /**
+     * Test multiple concurrent requests (3+) for the same (enrollment, module).
+     */
+    public function testMultipleConcurrentRequests(): void
+    {
+        $enrollmentId = self::$testEnrollmentId;
+        $moduleId = self::$testModuleId;
+        $actorId = self::$testUserId;
+
+        // 5 concurrent requests all trying to set to Completed
+        $tasks = [];
+        for ($i = 0; $i < 5; $i++) {
+            $tasks[] = function () use ($enrollmentId, $moduleId, $actorId) {
+                $pdo = $this->createTestDbConnection();
+                $conn = new MySQLConnection($pdo);
+                $repo = new MySQLProgressRepository($conn);
+                $enrollmentRepo = new MySQLEnrollmentRepository($conn);
+                $courseRepo = new MySQLCourseRepository($conn);
+                $moduleRepo = new MySQLModuleRepository($conn);
+                $identity = new TestIdentityService();
+                $service = new ProgressApplicationService(
+                    progress: $repo,
+                    enrollments: $enrollmentRepo,
+                    courses: $courseRepo,
+                    modules: $moduleRepo,
+                    identity: $identity,
+                    connection: $conn,
+                );
+
+                $cmd = new RecordProgressCommand(
+                    new EnrollmentId($enrollmentId),
+                    new ModuleId($moduleId),
+                    ModuleStatus::Completed
+                );
+                $service->recordProgress($cmd, new UserId($actorId));
+            };
+        }
+
+        $results = $this->runConcurrent($tasks);
+
+        // All should succeed (idempotent after first)
+        $this->assertEquals(array_fill(0, 5, 0), $results, 'All 5 concurrent requests should succeed');
+
+        // Verify final state is Completed
+        $progress = self::$progressRepo->get(new EnrollmentId($enrollmentId), new ModuleId($moduleId));
+        $this->assertNotNull($progress);
+        $this->assertEquals(ModuleStatus::Completed, $progress->status());
     }
 }
 
