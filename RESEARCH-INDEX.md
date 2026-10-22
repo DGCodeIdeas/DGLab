@@ -17,9 +17,14 @@
 | 5 | **Track 2: Avoiding YouTube model** | Embedded in `RESEARCH-AGENDA.md` Track 2 | Draft | Hypotheses + deliverables defined. Web research: complementor governance, creator power asymmetry, advertising as governance. |
 | 6 | **Track 3: Half Exceptions** | Embedded in `RESEARCH-AGENDA.md` Track 3 | Draft | 4 formulations enumerated. Web research confirms no SE term exists (only hardware/SIMD). |
 | 7 | **Track 4: Cancel-Anytime paradox** | Embedded in `RESEARCH-AGENDA.md` Track 4 | Draft | Empirical evidence found: Bryant study, FTC Uber complaint, UX dark patterns, consumer surveys. |
-| 8 | **Track 5: Connecting principles** | Embedded in `RESEARCH-AGENDA.md` Track 5 | Draft | 3 variants now presented side-by-side (updated 2026-10-20). Reconciliation recommendation provided. |
+| 8 | **Track 5: Connecting principles** | Embedded in `RESEARCH-AGENDA.md` Track 5 | Draft | 3 variants now presented side-by-side. Reconciliation recommendation provided. |
+| 9 | **SuperPHP naming investigation** | Embedded in `RESEARCH-AGENDA.md` + standalone `SPX-NAMING-COLLISION-REPORT.md` | Draft | Internal collision audit (5 candidates). External audit: Foundry (`coderstm/foundry`), SPX (`noisebynorthwest/php-spx`). |
+| 10 | **SPX Ease-of-Use & Human/AI Comprehension** | `SPX-EASE-OF-USE-RESEARCH.md` (root) | Draft — complete | 44 sources. Key finding: dual-audience design requires verbose keywords (Anka) + PHP expressions (Latte) + dual surface (LLMON) + formal grammar (SynCode) + measured benchmarks (TOON/SUS). |
 | 11 | **Vue SFC & Component-Format Research** | `VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` (root) | Draft — complete | 21 sources. Key finding: sectioned SFC is proven pattern; Marko's dual modes validate syntax drivers; DSDS audience tagging is emerging standard; HTML-first viable but hits reusability limits. |
-| 10 | **SPX/SuperPHP ease-of-use & human/AI comprehension** | `SPX-EASE-OF-USE-RESEARCH.md` (root) | Draft — complete | Web research across 9 query themes: LLM-native markup (LLMON, POML), simplified PHP templates (Smarty/Latte/Twig), human-AI collaborative languages (Moss, DualCode), accessibility (SUS, W3C), LLM-friendly PL design (Anka, SynCode, MoonBit), AI-friendly syntax, engine simplicity comparisons, Markdown/YAML templates, varying-expertise principles (Kölling/Wirth). TOON comprehension benchmark data. |
+| 12 | **Framework Structure, DI, DX & Accessibility** | `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` (root) | Draft — complete | 70 sources. Key finding: feature-sliced beats layer-based for change locality; PSR-11 standardizes fetching only; frameworks don't make apps accessible; power-vs-simplicity via Kay/Norman/Maeda. |
+| 13 | **SPX / SuperPHP Compiler Construction Principles** | `SPX-COMPILER-CONSTRUCTION-RESEARCH.md` (root) | Draft — complete | Source: CIT 316 course guide (NOUN). Maps Chomsky hierarchy, regex→NFA→DFA, recursive descent, CFG formalism, codegen phases, error handling, symbol tables to CORE-07/11/12. |
+| 13 | **SPX Compiler Construction Principles** | `SPX-COMPILER-CONSTRUCTION-RESEARCH.md` (root) | Draft — complete | 12 sections. Maps CIT 316 compiler theory (Chomsky hierarchy, regex→NFA→DFA, CFG/recursive descent, codegen phases, error handling, symbol tables) to SuperPHP's CORE-07/11/12 pipeline per ADR-005. |
+| 14 | **This Index** | `RESEARCH-INDEX.md` (root) | Draft — complete | Links all 13 reports + separates evidence from recommendations. |
 
 ---
 
@@ -67,6 +72,9 @@
 | Three connecting-theme variants side-by-side | ✅ Updated in `RESEARCH-AGENDA.md` Track 5 |
 | Standalone SPX naming/collision report | ✅ `SPX-NAMING-COLLISION-REPORT.md` |
 | Research index linking all reports | ✅ This document |
+| SPX ease-of-use & Human/AI research | ✅ `SPX-EASE-OF-USE-RESEARCH.md` |
+| Vue SFC & component-format research | ✅ `VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` |
+| Framework structure, DI, DX & accessibility research | ✅ `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` |
 | Owner approves canonical agenda wording | ❌ **Pending** |
 | Owner authorizes publication | ❌ **Pending** |
 | No research deliverables in LMS PRs | ✅ Compliant |

@@ -395,6 +395,44 @@ Vue SFC, Svelte 5, Astro, SolidJS, Qwik, Marko, Lit, HTMX, Alpine.js, phpsfc —
 
 ---
 
+## 13. Framework Structure, DI, DX & Accessibility Research
+
+### Key Findings
+
+| Finding | Source | Relevance to DGLab/SuperPHP |
+|---------|--------|----------------------------|
+| Feature-sliced beats layer-based for change locality | pragmatic-franken, FSD, FFCA | Publish within-ring file convention |
+| PSR-11 standardizes fetching only; config is implementation-specific | PSR-11 META | DGLab's custom container (ADR-002) is compliant |
+| Constructor injection is default; service locator discouraged | Spring, Symfony, NestJS, PHP-DI | Aligns with DGLab's reported gaps |
+| Structured frameworks reduce hidden architecture costs | BSWEN 2026-03-24 | Publish conventions before LMS increments |
+| Frameworks don't make apps accessible (95.9% failure rate) | WebAIM Million 2024 | a11y must be encoded in primitives + linting + CI |
+| Template-level fixes yield 17–39% a11y improvement | W3C 2011 symposium | SuperPHP component tags should carry a11y defaults |
+| Power vs. simplicity: "simple tasks simple, complex ones possible" | Alan Kay | Core design principle for SuperPHP |
+| Complexity ≠ confusion (Norman); subtract obvious, add meaningful (Maeda) | Norman, Maeda | Design philosophy for both DGLab and SuperPHP |
+| Onboarding: quickstart + working samples + SUS ≥68/100 | Sendbird, IEEE | Target for DGLab developer onboarding |
+| Monorepo: apps/ + packages/, one purpose per package, strong boundaries | Turborepo, monorepo.guide | Aligns with DGLab's existing structure |
+
+### Research Scope (70 sources)
+- Framework directory structures: Laravel, Symfony, Django, Rails, Spring Boot, Express, NestJS, FastAPI
+- DI patterns: PSR-11, Laravel, Symfony, NestJS, Spring Boot, FastAPI
+- DX: 16 facets (JSS 2025), UEMs, learnability, API learning obstacles, onboarding
+- Accessibility: WebAIM Million, template-level fixes, design systems as enforcement, Lion, WCAG
+- "Easy to use" principles: Kay, Norman, Maeda, BetterExplained, Firefox
+- File organization: vertical slices, feature-sliced, domain-driven, atomic design, component-focused
+- Onboarding: structured vs freedom, OSS newcomer, LLM-assisted, new-hire comprehension
+- Component organization: co-location, scoped folders, no barrels, 300-line threshold
+- Module/package structure: Turborepo, Nx, ABP, hexagonal, Bun monorepo
+
+### 4 Tensions Requiring Owner Decision
+| Tension | Structured side | Flexible side | Proposed Resolution |
+|---------|-----------------|---------------|---------------------|
+| Convention vs. freedom | Enforced layers (Spring/NestJS) | Freedom (FastAPI/Express) | Publish convention but allow opt-out per ring with ADR |
+| Feature-slice vs. layer | Vertical slices (one folder/feature) | Technical layers | Feature-sliced within rings; shared kernel in Core |
+| Hand-wired vs. container | Miragon style (server.ts) | Symfony-style compiled container | Hand-wired composition root (matches DGLab gaps) |
+| a11y default vs. freedom | Enforced primitives | Developer responsibility | Defaults + opt-out + linting |
+
+---
+
 ## 13. Research Deliverables Inventory
 
 ### Files Created/Updated in This Session
@@ -405,7 +443,9 @@ Vue SFC, Svelte 5, Astro, SolidJS, Qwik, Marko, Lit, HTMX, Alpine.js, phpsfc —
 | `SPX-NAMING-COLLISION-REPORT.md` | New | ~280 | Draft — standalone SPX report with collision audit |
 | `SPX-EASE-OF-USE-RESEARCH.md` | New | ~368 | Draft — ease-of-use & Human/AI comprehension (44 sources) |
 | `VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` | New | ~320 | Draft — Vue SFC & component-format comparative analysis (21 sources) |
-| `RESEARCH-INDEX.md` | New | ~120 | Draft — research index linking 11 reports |
+| `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` | New | ~361 | Draft — framework structures, DI, DX, accessibility (70 sources) |
+| `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` | New | ~361 | Draft — framework structures, DI, DX, accessibility (70 sources) |
+| `RESEARCH-INDEX.md` | New | ~120 | Draft — research index linking 12 reports |
 | `RESEARCH-AGENDA.md` | Updated | 304+ | Added 4 Half Exceptions formulations + 3 connecting-theme variants |
 | `.kilo/plans/1792466263304-research-first-lms-backend-plan.md` | Updated | 195+ | Updated for merged PR #366, enrollment done |
 
@@ -417,9 +457,10 @@ Vue SFC, Svelte 5, Astro, SolidJS, Qwik, Marko, Lit, HTMX, Alpine.js, phpsfc —
 | V1–V7 reconciliation matrix | ✅ Created |
 | Three connecting-theme variants side-by-side | ✅ Updated in agenda |
 | Standalone SPX naming/collision report | ✅ Created |
-| Research index linking all reports | ✅ Created |
+| Research index linking all reports | ✅ Created (13 reports) |
 | SPX ease-of-use & Human/AI research | ✅ Created |
 | Vue SFC & component-format research | ✅ Created |
+| Framework structure, DI, DX & accessibility research | ✅ Created |
 | Owner approves canonical agenda wording | ❌ Pending |
 | Owner authorizes publication | ❌ Pending |
 
