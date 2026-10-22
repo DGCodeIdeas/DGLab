@@ -1,6 +1,6 @@
 # DGLab — Instructions for AI Coding and Research Agents
 
-> Status: proposed handoff draft, prepared from owner-supplied conversation summaries and agent reports on 2026-10-20. It has **not** been added to the repository. Verify current repository state before treating reported facts as current.
+> Active repository instructions for DGLab. These govern all agents working in this repository. Reported facts are point-in-time; verify current repository state before relying on them.
 
 ## 1. Mission and immediate priority
 
@@ -25,7 +25,7 @@ Use this authority order:
 
 Never describe a chat statement, local-only commit, draft, open PR, or agent report as a merged repository fact. Label important statements **Verified**, **Reported**, **Proposed**, or **Owner decision required**. Include the commit SHA, path, command, test, or link that supports verification where possible.
 
-The baseline supplied in the current handoff is `origin/main` at `ae410ea09fcd7a4c0c2c77cc980ff7d3e4984ac3`. This is a historical reported baseline, not an assumption that remote `main` is still there. At session start, fetch/read the actual current state and report any divergence before work. `lms-status-baseline` was reported to be a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
+The current baseline is `origin/main` at `ee361d81a7de575c14d7f1f7b45b65e9ac81ec19` (verified 2026-10-20). Prior handoffs referenced `ae410ea`, which is now 11 commits behind. **Requirement:** fetch and verify the actual remote `origin/main` at session start; report any divergence before work. `lms-status-baseline` was a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
 
 ## 3. Architecture principles
 
@@ -94,6 +94,8 @@ Research must remain independent of LMS implementation PRs.
 
 ## 6. LMS backend direction (after research handoff)
 
+> Transient progress markers (DONE/merged/in-progress notes) below are point-in-time; verify against current `main`.
+
 The deliverable is a complete backend, not a page-ready UI. Target capabilities include:
 - Identity/authentication and role-based authorization.
 - Course create/read/update/publish and published-course discovery/detail.
@@ -105,23 +107,23 @@ The deliverable is a complete backend, not a page-ready UI. Target capabilities 
 - End-to-end test of a complete journey once the pieces exist.
 - A founder handoff with API/OpenAPI documentation, setup instructions, schema/migrations, auth behavior, examples, and known limitations.
 
-Reported state from agent summaries (must re-verify):
-- PR #364 adds published-course discovery at repository/application layers (`findPublished(limit, offset)` and a service method). It is open, not merged, and its tests were reported to be mock-based; do not call it real-DB evidence or duplicate its implementation.
+Reported state from agent summaries (transient snapshot — verify against current `main` before relying; do not treat as current fact):
+- PR #364 (published-course discovery) was MERGED at `b03306c` on 2026-10-20. `findPublished(int $limit=20, int $offset=0): array` + `listPublishedCourses()` are on `main`. 14 mock-based unit tests; real-DB verification still pending MySQL integration-test contract.
 - No LMS/identity HTTP routes were reported in `ApplicationFactory` beyond `/` and `/health`.
-- Enrollment entity/value objects/interface/migration exist, but `MySQLEnrollmentRepository` and `EnrollmentApplicationService` were reported missing.
+- Enrollment persistence + application service were MERGED via PR #366 at `a18a3e8` on 2026-10-20. `MySQLEnrollmentRepository`, `EnrollmentApplicationService`, `EnrollmentApplicationInterface`, `EnrollCommand`, `CancelEnrollmentCommand`, `EnrollmentNotFoundException` are on `main`. 28 mock-based unit tests; real-DB verification still pending.
 - Progress entity/migration exist, but `ProgressRepositoryInterface`, MySQL repository, and application service were reported missing.
 - `AuthMiddleware` exists but was reported not wired into the request pipeline.
 - No MySQL service in CI was reported.
-- PR #363 is an open temporary formatting-audit workflow + dangling `external/ELQ` gitlink removal; it is not a clean feature PR and requires an owner decision about separation/merge route.
+- PR #363 was CLOSED on 2026-10-20 — `external/ELQ` gitlink was already deleted from `main` by commit `14dd396` (the codebase refactor). The temporary formatting-audit workflow portion is moot.
 - PR #310 (CORE-15 cache) is parked.
 - D-01/D-09, ADR-011, register corrections, formatting/readability, SKILL.md provenance, and MySQL test contract remain reported open items. Revalidate before scheduling.
 
 ### LMS build order
-1. Review current main, frozen contracts, ADRs, PR #364 and its CI/test evidence.
+1. Review current main, frozen contracts, ADRs. PR #364 and #366 are merged — review the actual `main` source for current state.
 2. Agree and record auth transport, API versioning, role/permission matrix, error format, pagination, and same-origin/separate-origin assumptions. Do not assume PHP sessions or JWT are approved.
 3. Approve the MySQL integration-test contract: env var/DSN, migration runner, test command, isolation/reset strategy, CI MySQL service.
-4. Complete missing enrollment persistence and application service.
-5. Complete progress port, MySQL persistence, and application service.
+4. ~~Complete missing enrollment persistence and application service.~~ DONE (PR #366 merged at `a18a3e8`).
+5. Complete progress port, MySQL persistence, and application service. (PR-A2 in progress — refined per SAAI design review: single source of truth via `lms_progress` table, no `recordedBy` in command, full validation chain, transaction-wrapped.)
 6. Complete course/module/detail read models and use cases, without duplicating PR #364.
 7. Implement composition-root registration, HTTP controllers/routes, validation/serialization, authentication middleware, and authorization enforcement.
 8. Add real-MySQL integration tests and a complete end-to-end learner/admin flow.
@@ -132,11 +134,13 @@ Keep increments reviewable. Do not promise a calendar duration until the current
 
 ## 7. Pending decisions and repository risks
 
+> Transient progress markers (DONE lines) below are point-in-time; verify against current `main`.
+
 Track these explicitly; do not resolve them by assumption:
 - Authentication transport and authorization to create ADR-022.
 - MySQL integration-test contract.
-- PR #364 review/acceptance/merge.
-- PR #363 route for separating or retaining the temporary workflow and gitlink fix.
+- ~~PR #364 review/acceptance/merge.~~ DONE (merged at `b03306c` 2026-10-20).
+- ~~PR #363 route for separating or retaining the temporary workflow and gitlink fix.~~ DONE (closed; `external/ELQ` deleted by `14dd396`).
 - D-01: re-scope S-003 closure condition or commission the missing `PulseFiberIsolationTest.php`.
 - D-09 reported PSR-4 namespace collision versus findings-register corrections and ADR-011 priority.
 - Research agenda wording/placement and authorization to publish.
@@ -151,7 +155,7 @@ A stale credential-bearing Git remote was reported in a pre-existing branch conf
 
 ## 8. Repository operating rules
 
-- At session start: inspect `git status`, current branch, `git log -5 --oneline`, remotes, current `origin/main`, nested `AGENTS.md`/tool rules, frozen contracts, ADR index, CI workflows, and relevant package manifests.
+- At session start: **fetch origin and verify the current remote baseline** (`origin/main` SHA) against any recorded baseline, reporting divergence before work. Then inspect `git status`, current branch, `git log -5 --oneline`, remotes, nested `AGENTS.md`/tool rules, frozen contracts, ADR index, CI workflows, and relevant package manifests.
 - Preserve uncommitted and local-only work. Do not reset, clean, rebase, cherry-pick, or overwrite another agent’s work without explicit authorization.
 - Never assume local branch names or SHAs exist remotely.
 - Do not run formatters repository-wide unless explicitly authorized.
