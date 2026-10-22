@@ -147,6 +147,10 @@ jobs:
         working-directory: ${{ matrix.working-dir }}
         run: composer validate --no-check-publish --no-check-version
 
+      - name: Clean vendor directory
+        working-directory: ${{ matrix.working-dir }}
+        run: rm -rf vendor
+
       - name: Install dependencies
         working-directory: ${{ matrix.working-dir }}
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -195,6 +199,9 @@ jobs:
           coverage: none
           extensions: mbstring, xml, dom, openssl, fileinfo
           tools: composer:v2
+
+      - name: Clean vendor directory
+        run: rm -rf vendor
 
       - name: Install root dependencies (path repos -> vendor symlinks)
         run: composer install --no-interaction --prefer-dist --no-progress
