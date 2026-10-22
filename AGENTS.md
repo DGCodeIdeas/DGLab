@@ -1,6 +1,6 @@
 # DGLab — Instructions for AI Coding and Research Agents
 
-> Status: proposed handoff draft, prepared from owner-supplied conversation summaries and agent reports on 2026-10-20. It has **not** been added to the repository. Verify current repository state before treating reported facts as current.
+> Active repository instructions for DGLab. These govern all agents working in this repository. Reported facts are point-in-time; verify current repository state before relying on them.
 
 ## 1. Mission and immediate priority
 
@@ -25,7 +25,7 @@ Use this authority order:
 
 Never describe a chat statement, local-only commit, draft, open PR, or agent report as a merged repository fact. Label important statements **Verified**, **Reported**, **Proposed**, or **Owner decision required**. Include the commit SHA, path, command, test, or link that supports verification where possible.
 
-The current baseline is `origin/main` at `ee361d81a7de575c14d7f1f7b45b65e9ac81ec19` (verified 2026-10-20). Prior handoffs referenced `ae410ea`, which is now 11 commits behind — always fetch/read the actual remote state at session start and report divergence before work. `lms-status-baseline` was a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
+The current baseline is `origin/main` at `ee361d81a7de575c14d7f1f7b45b65e9ac81ec19` (verified 2026-10-20). Prior handoffs referenced `ae410ea`, which is now 11 commits behind. **Requirement:** fetch and verify the actual remote `origin/main` at session start; report any divergence before work. `lms-status-baseline` was a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
 
 ## 3. Architecture principles
 
@@ -94,6 +94,8 @@ Research must remain independent of LMS implementation PRs.
 
 ## 6. LMS backend direction (after research handoff)
 
+> Transient progress markers (DONE/merged/in-progress notes) below are point-in-time; verify against current `main`.
+
 The deliverable is a complete backend, not a page-ready UI. Target capabilities include:
 - Identity/authentication and role-based authorization.
 - Course create/read/update/publish and published-course discovery/detail.
@@ -105,7 +107,7 @@ The deliverable is a complete backend, not a page-ready UI. Target capabilities 
 - End-to-end test of a complete journey once the pieces exist.
 - A founder handoff with API/OpenAPI documentation, setup instructions, schema/migrations, auth behavior, examples, and known limitations.
 
-Reported state from agent summaries (must re-verify):
+Reported state from agent summaries (transient snapshot — verify against current `main` before relying; do not treat as current fact):
 - PR #364 (published-course discovery) was MERGED at `b03306c` on 2026-10-20. `findPublished(int $limit=20, int $offset=0): array` + `listPublishedCourses()` are on `main`. 14 mock-based unit tests; real-DB verification still pending MySQL integration-test contract.
 - No LMS/identity HTTP routes were reported in `ApplicationFactory` beyond `/` and `/health`.
 - Enrollment persistence + application service were MERGED via PR #366 at `a18a3e8` on 2026-10-20. `MySQLEnrollmentRepository`, `EnrollmentApplicationService`, `EnrollmentApplicationInterface`, `EnrollCommand`, `CancelEnrollmentCommand`, `EnrollmentNotFoundException` are on `main`. 28 mock-based unit tests; real-DB verification still pending.
@@ -132,6 +134,8 @@ Keep increments reviewable. Do not promise a calendar duration until the current
 
 ## 7. Pending decisions and repository risks
 
+> Transient progress markers (DONE lines) below are point-in-time; verify against current `main`.
+
 Track these explicitly; do not resolve them by assumption:
 - Authentication transport and authorization to create ADR-022.
 - MySQL integration-test contract.
@@ -151,7 +155,7 @@ A stale credential-bearing Git remote was reported in a pre-existing branch conf
 
 ## 8. Repository operating rules
 
-- At session start: inspect `git status`, current branch, `git log -5 --oneline`, remotes, current `origin/main`, nested `AGENTS.md`/tool rules, frozen contracts, ADR index, CI workflows, and relevant package manifests.
+- At session start: **fetch origin and verify the current remote baseline** (`origin/main` SHA) against any recorded baseline, reporting divergence before work. Then inspect `git status`, current branch, `git log -5 --oneline`, remotes, nested `AGENTS.md`/tool rules, frozen contracts, ADR index, CI workflows, and relevant package manifests.
 - Preserve uncommitted and local-only work. Do not reset, clean, rebase, cherry-pick, or overwrite another agent’s work without explicit authorization.
 - Never assume local branch names or SHAs exist remotely.
 - Do not run formatters repository-wide unless explicitly authorized.
