@@ -23,8 +23,8 @@
 | 11 | **Vue SFC & Component-Format Research** | `VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` (root) | Draft — complete | 21 sources. Key finding: sectioned SFC is proven pattern; Marko's dual modes validate syntax drivers; DSDS audience tagging is emerging standard; HTML-first viable but hits reusability limits. |
 | 12 | **Framework Structure, DI, DX & Accessibility** | `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` (root) | Draft — complete | 70 sources. Key finding: feature-sliced beats layer-based for change locality; PSR-11 standardizes fetching only; frameworks don't make apps accessible; power-vs-simplicity via Kay/Norman/Maeda. |
 | 13 | **SPX / SuperPHP Compiler Construction Principles** | `SPX-COMPILER-CONSTRUCTION-RESEARCH.md` (root) | Draft — complete | Source: CIT 316 course guide (NOUN). Maps Chomsky hierarchy, regex→NFA→DFA, recursive descent, CFG formalism, codegen phases, error handling, symbol tables to CORE-07/11/12. |
-| 13 | **SPX Compiler Construction Principles** | `SPX-COMPILER-CONSTRUCTION-RESEARCH.md` (root) | Draft — complete | 12 sections. Maps CIT 316 compiler theory (Chomsky hierarchy, regex→NFA→DFA, CFG/recursive descent, codegen phases, error handling, symbol tables) to SuperPHP's CORE-07/11/12 pipeline per ADR-005. |
-| 14 | **This Index** | `RESEARCH-INDEX.md` (root) | Draft — complete | Links all 13 reports + separates evidence from recommendations. |
+| 14 | **Component-Based Template Formats (Vue SFC & peers)** | `COMPONENT-TEMPLATE-FORMATS-RESEARCH.md` (root) | Draft — complete | 10+ formats (Vue, Svelte, Astro, Solid, Qwik, Marko, Lit, Web Components, HTMX/Alpine, meta-frameworks). Key finding: HTML-superset surface + PHP expressions + verbose keyword directives + tagged structure + dual surface. |
+| 15 | **This Index** | `RESEARCH-INDEX.md` (root) | Draft — complete | Links all 14 reports + separates evidence from recommendations. |
 
 ---
 
