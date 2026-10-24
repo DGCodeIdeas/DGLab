@@ -1,0 +1,1 @@
+{"version":2,"defects":{"Tests\\Integration\\PublicIndexSmokeTest::testPublicIndexServesHelloWorld":5,"Tests\\Integration\\PublicIndexSmokeTest::testPublicIndexServesHealthEndpoint":5},"times":{"Tests\\Integration\\PublicIndexSmokeTest::testPublicIndexServesHelloWorld":0.026,"Tests\\Integration\\PublicIndexSmokeTest::testPublicIndexServesHealthEndpoint":0.003}}
