@@ -1,4 +1,4 @@
-# CORE-12: SuperPHP Compiler
+# CORE-12: NeoSPX Compiler
 
 
 <!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
@@ -10,28 +10,28 @@
 Core (Template Engine — Stage 3 of 3)
 
 ## Resolves
-- **Finding 2** — `docs/evaluation/BLUEPRINT_RANKINGS.md` row 49 scores CORE-12 as a "Schema Migration" blueprint (90/100). Wrong: the canonical mapping per `01_MASTER_INDEX.md` §2 is **SuperPHP Compiler** (the database / schema layer is CORE-19, not CORE-12). This blueprint is written to the canonical mapping and explicitly rejects the stale evaluation-layer name. The build-sequence row in `01_MASTER_INDEX.md` §5 (Step 6: CORE-07 → CORE-11 → CORE-12) confirms CORE-12 is the final stage of the SuperPHP template-engine triplet.
+- **Finding 2** — `docs/evaluation/BLUEPRINT_RANKINGS.md` row 49 scores CORE-12 as a "Schema Migration" blueprint (90/100). Wrong: the canonical mapping per `01_MASTER_INDEX.md` §2 is **NeoSPX Compiler** (the database / schema layer is CORE-19, not CORE-12). This blueprint is written to the canonical mapping and explicitly rejects the stale evaluation-layer name. The build-sequence row in `01_MASTER_INDEX.md` §5 (Step 6: CORE-07 → CORE-11 → CORE-12) confirms CORE-12 is the final stage of the NeoSPX template-engine triplet.
 - **Finding 4** — The approved `docs/blueprints/Core/CORE-12.md` is 1,388 bytes of prose with no `CompilerInterface`, no `CompiledTemplate` value object, no `NodeVisitor` contract, no reference implementation, no benchmark methodology, and only two bullet-point CI criteria ("Execution Speed < 1ms" and "State Integrity"). This blueprint replaces it with real PHP 8.4 interface contracts, a complete `Compiler::compile()` reference implementation backed by an AST visitor walk, two Mermaid diagrams (sequence + state), a named-harness benchmark methodology on 10/100/1000-node ASTs, six explicit CI verification criteria, and five explicit security invariants including the load-bearing XSS-prevention rule.
 - **Finding 10** — The approved file asserts "Compiled views must render in < 1ms" with no harness, baseline, or load model. This blueprint replaces that bare-millisecond target with a PHPUnit `--group performance` methodology on GitHub Actions `ubuntu-latest` / PHP 8.4 / opcache against synthetic ASTs of 10, 100, and 1,000 nodes plus a 10,000-render throughput loop on a cached template, with all absolute numbers marked **"provisional, unverified"** and only the scaling relationship (compile time grows linearly in node count; render time is constant in iteration count after cache hit) asserted on first run.
 
 ## Component Name
-SuperPHP Compiler — `SovereignStack\Core\SuperPHP\Compiler` (PSR-4: `packages/core/superphp-compiler/src/`).
+NeoSPX Compiler — `SovereignStack\Core\NeoSPX\Compiler` (PSR-4: `packages/core/neospx-compiler/src/`).
 
 ## Description
 
-CORE-12 is the third and final stage of the SuperPHP template engine: it accepts the abstract syntax tree produced by CORE-11 (SuperPHP Parser) and walks it with an AST visitor to emit a string of native, executable PHP source code. The emitted PHP is then loaded as a closure and wrapped in a `CompiledTemplate` value object that carries both the render callable and the metadata downstream consumers need (source hash, compile timestamp, node count, cache key). Where CORE-07 recognises lexical atoms and CORE-11 enforces structural well-formedness, CORE-12 translates the well-formed AST into the runtime contract every Hub and Spoke template renders against. Every `.super.php` file compiled by the stack is, at execution time, a `CompiledTemplate::render(array $variables): string` invocation — nothing more.
+CORE-12 is the third and final stage of the NeoSPX template engine: it accepts the abstract syntax tree produced by CORE-11 (NeoSPX Parser) and walks it with an AST visitor to emit a string of native, executable PHP source code. The emitted PHP is then loaded as a closure and wrapped in a `CompiledTemplate` value object that carries both the render callable and the metadata downstream consumers need (source hash, compile timestamp, node count, cache key). Where CORE-07 recognises lexical atoms and CORE-11 enforces structural well-formedness, CORE-12 translates the well-formed AST into the runtime contract every Hub and Spoke template renders against. Every `.neospx` file compiled by the stack is, at execution time, a `CompiledTemplate::render(array $variables): string` invocation — nothing more.
 
 The compiler is structured as a **visitor walk over the AST**: `Compiler::compile()` constructs a `NodeVisitor` (default `EchoVisitor`, which HTML-escapes every variable output), hands it the AST root, and concatenates the per-node PHP fragments the visitor emits into one body string. That body is wrapped in a `function (array $variables): string { ... }` signature, written to `storage/framework/views/<hash>.php` keyed by the SHA-256 of the source, and `include`d once to materialise the closure. The closure is then captured inside a `CompiledTemplate`. On every subsequent compile request for the same source hash, `CompilerCache` short-circuits the entire walk and returns the cached `CompiledTemplate` directly. The emitted PHP uses **only** `$variables` (an array) and the standard library (`htmlspecialchars`, `trim`, `strtoupper`, `is_array`, `count`) — no `eval()`, no `Closure::fromCallable` on attacker-controlled names, no file `include` outside the canonical cache directory, no `extract()` of arbitrary keys into scope.
 
-What CORE-12 is **not**: not a template engine in its own right (it cannot consume raw source — it requires an AST from CORE-11, which requires a `TokenStream` from CORE-07), not a runtime renderer (the `CompiledTemplate` it returns is the renderer; the compiler is offline once `compile()` returns), not a sandbox (the generated PHP is structurally safe because every variable output goes through `htmlspecialchars()` by default — there is no expression the visitor emits that bypasses escaping without an explicit `{! !}` raw block), and not a Blade-style preprocessor (no string substitution on source; the compiler operates on the AST, never on the original `.super.php` text). Per ADR-005, this is the deliberate build-over-adopt choice that gives the Sovereign Stack AST-level `@persist` directive support and OPcache-preloadable flat-PHP output that no off-the-shelf engine (Blade, Twig, Plates, Latte) offers without forking.
+What CORE-12 is **not**: not a template engine in its own right (it cannot consume raw source — it requires an AST from CORE-11, which requires a `TokenStream` from CORE-07), not a runtime renderer (the `CompiledTemplate` it returns is the renderer; the compiler is offline once `compile()` returns), not a sandbox (the generated PHP is structurally safe because every variable output goes through `htmlspecialchars()` by default — there is no expression the visitor emits that bypasses escaping without an explicit `{! !}` raw block), and not a Blade-style preprocessor (no string substitution on source; the compiler operates on the AST, never on the original `.neospx` text). Per ADR-005, this is the deliberate build-over-adopt choice that gives the Sovereign Stack AST-level `@persist` directive support and OPcache-preloadable flat-PHP output that no off-the-shelf engine (Blade, Twig, Plates, Latte) offers without forking.
 
 ## Build Status
-📝 **Not started.** 🔴 **Blocked on CORE-07 (SuperPHP Lexer)** and **CORE-11 (SuperPHP Parser)**: CORE-12 consumes CORE-11's `Node` AST contract, which in turn consumes CORE-07's `TokenStream`. Both upstream packages must land before `Compiler::compile()` can compile against real AST input. The package's `composer.json` will declare `sovereign-stack/core-superphp-lexer: ^1.0` and `sovereign-stack/core-superphp-parser: ^1.0` as `require` entries; until those packages are tagged, CORE-12's test suite cannot execute end-to-end compile tests against real fixtures (it can only run unit tests against synthetic ASTs hand-constructed in test code). Until CORE-18 (Core Kernel) lands, there is no integration point that bootstraps the compiler at request time — CORE-12's tests run standalone in PHPUnit.
+📝 **Not started.** 🔴 **Blocked on CORE-07 (NeoSPX Lexer)** and **CORE-11 (NeoSPX Parser)**: CORE-12 consumes CORE-11's `Node` AST contract, which in turn consumes CORE-07's `TokenStream`. Both upstream packages must land before `Compiler::compile()` can compile against real AST input. The package's `composer.json` will declare `sovereign-stack/core-neospx-lexer: ^1.0` and `sovereign-stack/core-neospx-parser: ^1.0` as `require` entries; until those packages are tagged, CORE-12's test suite cannot execute end-to-end compile tests against real fixtures (it can only run unit tests against synthetic ASTs hand-constructed in test code). Until CORE-18 (Core Kernel) lands, there is no integration point that bootstraps the compiler at request time — CORE-12's tests run standalone in PHPUnit.
 
 ## Dependency Status
-- **Upward:** CORE-07 (SuperPHP Lexer — referenced indirectly via CORE-11's `Node` types, which carry source-position metadata drawn from `Token`); CORE-11 (SuperPHP Parser — produces the `Node` AST consumed by `compile()`); PHP 8.4 (for `readonly` classes, backed enums, `array_is_list`, first-class callable syntax, `sha256` via `hash()`); `ext-hash` (always present in PHP 8.4 builds — used for source-hash cache keys).
-- **Downward:** CORE-18 (Core Kernel — bootstraps the compiler as a singleton service registered in CORE-02's container, invoked on cache-miss template renders); HUB-tier template-rendering services (consume `CompiledTemplate::render()` indirectly through a view factory); CORE-20 (Sovereign Forge CLI — calls `Compiler::compile()` from the `superphp:compile` artisanal command during pre-deploy warm-up so the first production request hits a warm cache).
-- **Runtime:** `php: ^8.4`, `ext-hash: *`. No Composer runtime dependencies beyond the two upstream SuperPHP packages. No external services. The `storage/framework/views/` directory must exist and be writable by the PHP-FPM user (per ADR-005 and DEPLOY-01) — that is a deploy-time filesystem concern, not a runtime dependency.
+- **Upward:** CORE-07 (NeoSPX Lexer — referenced indirectly via CORE-11's `Node` types, which carry source-position metadata drawn from `Token`); CORE-11 (NeoSPX Parser — produces the `Node` AST consumed by `compile()`); PHP 8.4 (for `readonly` classes, backed enums, `array_is_list`, first-class callable syntax, `sha256` via `hash()`); `ext-hash` (always present in PHP 8.4 builds — used for source-hash cache keys).
+- **Downward:** CORE-18 (Core Kernel — bootstraps the compiler as a singleton service registered in CORE-02's container, invoked on cache-miss template renders); HUB-tier template-rendering services (consume `CompiledTemplate::render()` indirectly through a view factory); CORE-20 (Sovereign Forge CLI — calls `Compiler::compile()` from the `neospx:compile` artisanal command during pre-deploy warm-up so the first production request hits a warm cache).
+- **Runtime:** `php: ^8.4`, `ext-hash: *`. No Composer runtime dependencies beyond the two upstream NeoSPX packages. No external services. The `storage/framework/views/` directory must exist and be writable by the PHP-FPM user (per ADR-005 and DEPLOY-01) — that is a deploy-time filesystem concern, not a runtime dependency.
 
 ## Architectural Design
 
@@ -41,7 +41,7 @@ CORE-12 separates five concerns into five distinct classes: (1) the **entry poin
 
 | Class | Responsibility |
 |---|---|
-| `Compiler` | The entry point. Single public method `compile(\SovereignStack\Core\SuperPHP\Parser\Node $ast): CompiledTemplate`. Computes the source hash, asks `CompilerCache` for a cached hit, and on miss walks the AST with the configured `NodeVisitor` to emit a PHP body, wraps the body in a closure signature, writes it to `storage/framework/views/<hash>.php`, `include`s the file to materialise the closure, and constructs a `CompiledTemplate` from it. The closure's signature is always `function (array $variables): string`. |
+| `Compiler` | The entry point. Single public method `compile(\SovereignStack\Core\NeoSPX\Parser\Node $ast): CompiledTemplate`. Computes the source hash, asks `CompilerCache` for a cached hit, and on miss walks the AST with the configured `NodeVisitor` to emit a PHP body, wraps the body in a closure signature, writes it to `storage/framework/views/<hash>.php`, `include`s the file to materialise the closure, and constructs a `CompiledTemplate` from it. The closure's signature is always `function (array $variables): string`. |
 | `CompiledTemplate` | Readonly value object: `closure: \Closure`, `sourceHash: string` (64-char SHA-256 hex), `compiledAt: int` (Unix timestamp), `nodeCount: int`, `cacheKey: string` (the file path under `storage/framework/views/`). Exposes `render(array $variables): string` which delegates to `$this->closure`. Equality is structural on `sourceHash` (two templates compiled from the same source are interchangeable). |
 | `NodeVisitor` | Interface. Three methods: `visitText(TextNode $node): string`, `visitVariable(VariableNode $node): string`, `visitPipe(PipeNode $node): string`, `visitDirective(DirectiveNode $node): string`, plus a `leaveNode(Node $node): string` post-order hook for closing tags. Implementations MUST be stateless (no instance fields mutated per call) so a single visitor instance is safe to reuse across concurrent compiles. |
 | `EchoVisitor` | Default visitor. Implements `NodeVisitor`. Every variable-emitting method wraps the expression in `htmlspecialchars(..., ENT_QUOTES|ENT_SUBSTITUTE|ENT_HTML5, 'UTF-8')`. The escape is non-negotiable: this is the XSS-prevention invariant. `visitText` returns the raw text (literal HTML in the source is emitted as-is, by design — the template author wrote that HTML intentionally). |
@@ -54,12 +54,12 @@ CORE-12 separates five concerns into five distinct classes: (1) the **entry poin
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Compiler;
+namespace SovereignStack\Core\NeoSPX\Compiler;
 
-use SovereignStack\Core\SuperPHP\Parser\Node;
+use SovereignStack\Core\NeoSPX\Parser\Node;
 
 /**
- * Compiles a SuperPHP AST (produced by CORE-11) into a CompiledTemplate
+ * Compiles a NeoSPX AST (produced by CORE-11) into a CompiledTemplate
  * whose render() callable executes native PHP and returns the rendered
  * string for a given $variables array.
  *
@@ -108,9 +108,9 @@ interface CompilerInterface
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Compiler;
+namespace SovereignStack\Core\NeoSPX\Compiler;
 
-use SovereignStack\Core\SuperPHP\Parser\Node;
+use SovereignStack\Core\NeoSPX\Parser\Node;
 
 /**
  * AST visitor contract. One method per concrete Node type CORE-11 emits.
@@ -126,11 +126,11 @@ use SovereignStack\Core\SuperPHP\Parser\Node;
  */
 interface NodeVisitor
 {
-    public function visitText(\SovereignStack\Core\SuperPHP\Parser\TextNode $node): string;
-    public function visitVariable(\SovereignStack\Core\SuperPHP\Parser\VariableNode $node): string;
-    public function visitPipe(\SovereignStack\Core\SuperPHP\Parser\PipeNode $node): string;
-    public function visitDirective(\SovereignStack\Core\SuperPHP\Parser\DirectiveNode $node): string;
-    public function visitRaw(\SovereignStack\Core\SuperPHP\Parser\RawNode $node): string;
+    public function visitText(\SovereignStack\Core\NeoSPX\Parser\TextNode $node): string;
+    public function visitVariable(\SovereignStack\Core\NeoSPX\Parser\VariableNode $node): string;
+    public function visitPipe(\SovereignStack\Core\NeoSPX\Parser\PipeNode $node): string;
+    public function visitDirective(\SovereignStack\Core\NeoSPX\Parser\DirectiveNode $node): string;
+    public function visitRaw(\SovereignStack\Core\NeoSPX\Parser\RawNode $node): string;
     public function leaveNode(Node $node): string;
 }
 ```
@@ -139,10 +139,10 @@ interface NodeVisitor
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Compiler;
+namespace SovereignStack\Core\NeoSPX\Compiler;
 
 /**
- * Immutable value object: a compiled SuperPHP template.
+ * Immutable value object: a compiled NeoSPX template.
  * Carries the render closure plus metadata for cache management,
  * debug bars, and opcache preload (ADR-010).
  */
@@ -191,25 +191,25 @@ The complete `Compiler` class. Compiles against PHP 8.4 with only `ext-hash`. Th
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Compiler;
+namespace SovereignStack\Core\NeoSPX\Compiler;
 
-use SovereignStack\Core\SuperPHP\Parser\Node;
-use SovereignStack\Core\SuperPHP\Parser\RootNode;
-use SovereignStack\Core\SuperPHP\Parser\TextNode;
-use SovereignStack\Core\SuperPHP\Parser\VariableNode;
-use SovereignStack\Core\SuperPHP\Parser\PipeNode;
-use SovereignStack\Core\SuperPHP\Parser\DirectiveNode;
-use SovereignStack\Core\SuperPHP\Parser\RawNode;
+use SovereignStack\Core\NeoSPX\Parser\Node;
+use SovereignStack\Core\NeoSPX\Parser\RootNode;
+use SovereignStack\Core\NeoSPX\Parser\TextNode;
+use SovereignStack\Core\NeoSPX\Parser\VariableNode;
+use SovereignStack\Core\NeoSPX\Parser\PipeNode;
+use SovereignStack\Core\NeoSPX\Parser\DirectiveNode;
+use SovereignStack\Core\NeoSPX\Parser\RawNode;
 
 /**
- * SuperPHP AST compiler. Walks the AST with a NodeVisitor, concatenates
+ * NeoSPX AST compiler. Walks the AST with a NodeVisitor, concatenates
  * the emitted PHP fragments, wraps them in a closure signature, writes
  * the result to storage/framework/views/<hash>.php, and returns a
  * CompiledTemplate whose closure is the include'd file's return value.
  */
 final class Compiler implements CompilerInterface
 {
-    private const HEADER = "<?php\n// SuperPHP compiled template. Do not edit.\n";
+    private const HEADER = "<?php\n// NeoSPX compiled template. Do not edit.\n";
     private const FOOTER = "\n";
 
     public function __construct(
@@ -346,20 +346,20 @@ The default `EchoVisitor` — the load-bearing XSS-prevention class:
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Compiler;
+namespace SovereignStack\Core\NeoSPX\Compiler;
 
-use SovereignStack\Core\SuperPHP\Parser\TextNode;
-use SovereignStack\Core\SuperPHP\Parser\VariableNode;
-use SovereignStack\Core\SuperPHP\Parser\PipeNode;
-use SovereignStack\Core\SuperPHP\Parser\DirectiveNode;
-use SovereignStack\Core\SuperPHP\Parser\RawNode;
-use SovereignStack\Core\SuperPHP\Parser\Node;
+use SovereignStack\Core\NeoSPX\Parser\TextNode;
+use SovereignStack\Core\NeoSPX\Parser\VariableNode;
+use SovereignStack\Core\NeoSPX\Parser\PipeNode;
+use SovereignStack\Core\NeoSPX\Parser\DirectiveNode;
+use SovereignStack\Core\NeoSPX\Parser\RawNode;
+use SovereignStack\Core\NeoSPX\Parser\Node;
 
 /**
  * Default NodeVisitor. HTML-escapes every variable output via
  * htmlspecialchars() with ENT_QUOTES|ENT_SUBSTITUTE|ENT_HTML5 and
  * UTF-8. This is the single load-bearing XSS-prevention invariant
- * of the SuperPHP stack: no EchoVisitor output bypasses escaping.
+ * of the NeoSPX stack: no EchoVisitor output bypasses escaping.
  */
 final class EchoVisitor implements NodeVisitor
 {
@@ -517,7 +517,7 @@ stateDiagram-v2
     end note
 ```
 
-The cache-hit short-circuit is the steady state in production: after the first request that compiles a given template, every subsequent request skips the `Compiling` state entirely and goes directly from `Uncached` to `Cached` to `render()`. A deploy that touches the source file invalidates automatically (different SHA-256 → different cache key → different `.php` file path → fresh compile); a deploy that does not touch the source file inherits the previous compile's cached `.php` file verbatim. The `invalidate(hash)` transition is reserved for the CORE-20 `superphp:cache:clear` CLI command and is never invoked by the request hot path.
+The cache-hit short-circuit is the steady state in production: after the first request that compiles a given template, every subsequent request skips the `Compiling` state entirely and goes directly from `Uncached` to `Cached` to `render()`. A deploy that touches the source file invalidates automatically (different SHA-256 → different cache key → different `.php` file path → fresh compile); a deploy that does not touch the source file inherits the previous compile's cached `.php` file verbatim. The `invalidate(hash)` transition is reserved for the CORE-20 `neospx:cache:clear` CLI command and is never invoked by the request hot path.
 
 ## Integration Strategy
 
@@ -529,7 +529,7 @@ $this->container->singleton(CompilerInterface::class, function (Container $c): C
     return new Compiler(
         visitor: new EchoVisitor(),
         cache:   $c->get(CompilerCache::class),
-        cacheDir: $c->get('config')['superphp']['cache_dir'],
+        cacheDir: $c->get('config')['neospx']['cache_dir'],
     );
 });
 ```
@@ -546,7 +546,7 @@ public function render(string $templateSource, array $variables = []): string
 }
 ```
 
-**Pre-deploy warm-up** (CORE-20 `superphp:compile` CLI command): walks the `templates/` directory, parses and compiles every `.super.php` file, and primes `storage/framework/views/` so the first production request after deploy hits a fully warm cache. This is the same pattern Laravel's `view:cache` uses, applied to SuperPHP.
+**Pre-deploy warm-up** (CORE-20 `neospx:compile` CLI command): walks the `templates/` directory, parses and compiles every `.neospx` file, and primes `storage/framework/views/` so the first production request after deploy hits a fully warm cache. This is the same pattern Laravel's `view:cache` uses, applied to NeoSPX.
 
 ## Benchmark & Verification Methodology
 
@@ -569,30 +569,30 @@ public function render(string $templateSource, array $variables = []): string
 - **Cache test:** `CompilerCacheTest` compiles the same AST twice and asserts (a) the two returned `CompiledTemplate` instances have the same `sourceHash`, (b) the second call did NOT write a new `.php` file (asserted by checking the file's mtime is unchanged), (c) the two `render()` outputs are byte-identical for the same `$variables`. Catches regressions where the cache key derivation accidentally produces different keys for the same source.
 - **Raw block test:** `CompilerRawBlockTest` compiles an AST containing a `RawNode` whose body is a `VariableNode` with value `<b>bold</b>`, renders, and asserts the output is the literal `<b>bold</b>` (NOT `&lt;b&gt;bold&lt;/b&gt;`). Confirms the `{! !}` escape bypass works — and that the `RawVisitor` swap in `Compiler::walk()` correctly restores the `EchoVisitor` after the `RawNode` subtree is processed (a subsequent non-raw `VariableNode` in the same template MUST still be escaped).
 - **Render determinism test:** `CompiledTemplateRenderDeterminismTest` renders the same cached template 1,000 times with the same `$variables` and asserts all 1,000 outputs are byte-identical. Catches accidental state leakage in the closure body (e.g. a `$counter++` a future maintainer might add).
-- **Dependency hygiene:** the package's `composer.json` declares only `php: ^8.4`, `ext-hash: *`, `sovereign-stack/core-superphp-lexer: ^1.0`, and `sovereign-stack/core-superphp-parser: ^1.0` as `require` entries. A CI check (`composer require --dry-run` against an arbitrary third-party package) must fail because the compiler has no transitive dependencies to add beyond the SuperPHP triplet. Adding a new runtime dependency requires an ADR per Governance Rule 7.
+- **Dependency hygiene:** the package's `composer.json` declares only `php: ^8.4`, `ext-hash: *`, `sovereign-stack/core-neospx-lexer: ^1.0`, and `sovereign-stack/core-neospx-parser: ^1.0` as `require` entries. A CI check (`composer require --dry-run` against an arbitrary third-party package) must fail because the compiler has no transitive dependencies to add beyond the NeoSPX triplet. Adding a new runtime dependency requires an ADR per Governance Rule 7.
 
 ## Security Properties
 
 - **ALL variable output is HTML-escaped by default.** `EchoVisitor::visitVariable()` and `EchoVisitor::visitPipe()` wrap every variable expression in `htmlspecialchars(..., ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8')`. This is the load-bearing XSS-prevention invariant: a template author who writes `@{$userInput}@` cannot produce unescaped output. The flags are non-default: `ENT_QUOTES` escapes both single and double quotes (defense against attribute-context XSS), `ENT_SUBSTITUTE` replaces invalid byte sequences with U+FFFD rather than returning an empty string (defense against truncation-based XSS), `ENT_HTML5` uses the HTML5 entity table (defense against the `&colon;` injection that bit older `ENT_COMPAT` code). The XSS prevention test (see CI Verification Criteria) guards this invariant.
 - **Raw output requires explicit `{! !}` syntax.** The only way to bypass escaping is to wrap the expression in a `{! ... !}` raw block, which CORE-11 parses into a `RawNode`. The `Compiler::walk()` method detects `RawNode` and swaps `EchoVisitor` for `RawVisitor` for the duration of that subtree's walk, then restores the original visitor. The raw block is therefore **auditable**: a code reviewer can `rg '{!' templates/` and review every site that intentionally bypasses escaping. The `RawBlockTest` confirms the bypass works AND that the swap is correctly restored — a `VariableNode` immediately after a `RawNode` MUST still be escaped.
-- **Generated PHP is sandboxed to `$variables`.** The emitted closure body uses ONLY `$variables` (an array parameter) and the standard library (`htmlspecialchars`, `trim`, `strtoupper`, `is_array`, `count`). No `extract()`, no `compact()`, no `get_defined_vars()`, no `$GLOBALS`, no `$_GET`/`$_POST`/`$_SERVER`. A template author cannot reach the request superglobals from inside a SuperPHP template — they must be passed in via `$variables` by the caller (typically the Hub-tier ViewFactory, which sanitises them at the boundary). The `CompilerDependencyHygieneTest` greps the emitted PHP source for forbidden tokens (`extract`, `$GLOBALS`, `$_GET`, `$_POST`, `$_SERVER`, `eval`, `system`, `exec`, `passthru`, `shell_exec`, `proc_open`) and fails if any appear.
+- **Generated PHP is sandboxed to `$variables`.** The emitted closure body uses ONLY `$variables` (an array parameter) and the standard library (`htmlspecialchars`, `trim`, `strtoupper`, `is_array`, `count`). No `extract()`, no `compact()`, no `get_defined_vars()`, no `$GLOBALS`, no `$_GET`/`$_POST`/`$_SERVER`. A template author cannot reach the request superglobals from inside a NeoSPX template — they must be passed in via `$variables` by the caller (typically the Hub-tier ViewFactory, which sanitises them at the boundary). The `CompilerDependencyHygieneTest` greps the emitted PHP source for forbidden tokens (`extract`, `$GLOBALS`, `$_GET`, `$_POST`, `$_SERVER`, `eval`, `system`, `exec`, `passthru`, `shell_exec`, `proc_open`) and fails if any appear.
 - **Compiled templates are cached by source hash; no stale renders after source edit.** The cache key is `hash('sha256', serialize($ast))`, where `$ast` is the parsed representation of the source. Editing the source produces a different AST → different SHA-256 → different cache key → different `.php` file path → fresh compile. There is no "stale cache" failure mode where a template edit fails to invalidate the cache. The Cache test (see CI Verification Criteria) guards this invariant by verifying the same source produces the same hash and an edited source produces a different hash.
 - **No `eval()` in production.** The emitted PHP is written to `storage/framework/views/<hash>.php` and `include`d — never `eval()`'d. This means (a) OPcache can preload the file (ADR-010), (b) a code reviewer can read the exact PHP that will execute (transparency), (c) an attacker who gains the ability to inject a string into the compiler cannot execute arbitrary PHP via `eval()` — they can only inject *AST nodes*, which the visitor translates into a constrained PHP subset. The `CompilerNoEvalTest` greps the reference implementation source for the literal `eval(` token and fails if it appears in any file under `src/`.
 - **File writes are atomic.** The compiled `.php` file is written to a `.tmp.<random>` path and `rename()`'d into place, so a concurrent worker that `include`s the file mid-write cannot see a partial PHP file. The `rename()` is atomic on POSIX filesystems (per `rename(2)`); on Windows it is non-atomic but Windows is not a supported production platform for the Sovereign Stack.
 
 ## Migration Notes
 
-CORE-12 is **new** — no prior implementation to migrate from. It lands as the Composer package `sovereign-stack/core-superphp-compiler` at path `packages/core/superphp-compiler/`. The `composer.json` declares `php: ^8.4`, `ext-hash: *`, `sovereign-stack/core-superphp-lexer: ^1.0`, and `sovereign-stack/core-superphp-parser: ^1.0` as runtime requirements; `require-dev` carries `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `infection/infection ^0.27`, `friendsofphp/php-cs-fixer ^3.48`. PSR-4 autoload maps `SovereignStack\Core\SuperPHP\Compiler\` to `src/`. The `src/` directory contains exactly the files itemised in the Class Map (`Compiler.php`, `CompilerInterface.php`, `CompiledTemplate.php`, `NodeVisitor.php`, `EchoVisitor.php`, `RawVisitor.php`, `CompilerCache.php`, `CompilerException.php`); `tests/` carries `CompilerTest`, `CompilerXssPreventionTest`, `CompilerDirectiveTest`, `CompilerCacheTest`, `CompilerRawBlockTest`, `CompiledTemplateRenderDeterminismTest`, `CompilerNoEvalTest`, `CompilerDependencyHygieneTest`, a `performance/` subdirectory for the four bench tests, and a `fixtures/superphp/` directory shared with CORE-07 / CORE-11.
+CORE-12 is **new** — no prior implementation to migrate from. It lands as the Composer package `sovereign-stack/core-neospx-compiler` at path `packages/core/neospx-compiler/`. The `composer.json` declares `php: ^8.4`, `ext-hash: *`, `sovereign-stack/core-neospx-lexer: ^1.0`, and `sovereign-stack/core-neospx-parser: ^1.0` as runtime requirements; `require-dev` carries `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `infection/infection ^0.27`, `friendsofphp/php-cs-fixer ^3.48`. PSR-4 autoload maps `SovereignStack\Core\NeoSPX\Compiler\` to `src/`. The `src/` directory contains exactly the files itemised in the Class Map (`Compiler.php`, `CompilerInterface.php`, `CompiledTemplate.php`, `NodeVisitor.php`, `EchoVisitor.php`, `RawVisitor.php`, `CompilerCache.php`, `CompilerException.php`); `tests/` carries `CompilerTest`, `CompilerXssPreventionTest`, `CompilerDirectiveTest`, `CompilerCacheTest`, `CompilerRawBlockTest`, `CompiledTemplateRenderDeterminismTest`, `CompilerNoEvalTest`, `CompilerDependencyHygieneTest`, a `performance/` subdirectory for the four bench tests, and a `fixtures/neospx/` directory shared with CORE-07 / CORE-11.
 
-**Landing sequence (per `01_MASTER_INDEX.md` §5 Step 6):** CORE-12 lands LAST in the SuperPHP triplet (CORE-07 → CORE-11 → CORE-12). It is blocked on CORE-11 (which is itself blocked on CORE-07). The exit criterion for Step 6 Stage 3 — and for the entire SuperPHP triplet — is an end-to-end `Lexer → Parser → Compiler → render()` test that takes a `.super.php` fixture, lexes it (CORE-07), parses the `TokenStream` to an AST (CORE-11), compiles the AST to a `CompiledTemplate` (CORE-12), and renders it with a fixed `$variables` array, asserting the output matches a hand-verified expected string. Until that test passes, the SuperPHP triplet is not 1.0.0.
+**Landing sequence (per `01_MASTER_INDEX.md` §5 Step 6):** CORE-12 lands LAST in the NeoSPX triplet (CORE-07 → CORE-11 → CORE-12). It is blocked on CORE-11 (which is itself blocked on CORE-07). The exit criterion for Step 6 Stage 3 — and for the entire NeoSPX triplet — is an end-to-end `Lexer → Parser → Compiler → render()` test that takes a `.neospx` fixture, lexes it (CORE-07), parses the `TokenStream` to an AST (CORE-11), compiles the AST to a `CompiledTemplate` (CORE-12), and renders it with a fixed `$variables` array, asserting the output matches a hand-verified expected string. Until that test passes, the NeoSPX triplet is not 1.0.0.
 
-**Rollback procedure:** CORE-12 is a leaf in the runtime dependency graph at landing time (only CORE-18 and CORE-20 depend on it; both gracefully fall back to "template not compiled, render raw error page" if the compiler is unavailable). Rollback is `git rm -r packages/core/superphp-compiler/ && composer remove sovereign-stack/core-superphp-compiler`. If CORE-18 has already landed and imports `SovereignStack\Core\SuperPHP\Compiler\{CompilerInterface, CompiledTemplate}`, rollback CORE-18's template-engine bootstrap first. Tag the broken commit `core-12-rollback-<date>`. Because compiled templates live under `storage/framework/views/` (a deploy-time cache directory, not source), rollback does not require a data migration — the next deploy that re-installs CORE-12 will re-compile from source on cache miss. The `storage/framework/views/` directory SHOULD be cleared on rollback (`rm -rf storage/framework/views/*.php`) to prevent a half-compiled template from being `include`d by a stale CORE-18 bootstrap.
+**Rollback procedure:** CORE-12 is a leaf in the runtime dependency graph at landing time (only CORE-18 and CORE-20 depend on it; both gracefully fall back to "template not compiled, render raw error page" if the compiler is unavailable). Rollback is `git rm -r packages/core/neospx-compiler/ && composer remove sovereign-stack/core-neospx-compiler`. If CORE-18 has already landed and imports `SovereignStack\Core\NeoSPX\Compiler\{CompilerInterface, CompiledTemplate}`, rollback CORE-18's template-engine bootstrap first. Tag the broken commit `core-12-rollback-<date>`. Because compiled templates live under `storage/framework/views/` (a deploy-time cache directory, not source), rollback does not require a data migration — the next deploy that re-installs CORE-12 will re-compile from source on cache miss. The `storage/framework/views/` directory SHOULD be cleared on rollback (`rm -rf storage/framework/views/*.php`) to prevent a half-compiled template from being `include`d by a stale CORE-18 bootstrap.
 
 **Forward-compatibility:** the `NodeVisitor` interface is the contract every AST-walking strategy must implement. Adding a new `visit*` method (e.g. `visitComponent` for `<s:ui:button />` component tags) is SemVer-major for CORE-12 (every existing visitor must implement the new method). Adding a new `Node` type to CORE-11 that CORE-12 does not yet know about is SemVer-minor for CORE-11 but triggers a `CompilerException::unknownNode()` at runtime in CORE-12 — a forward-compatibility hazard mitigated by the landing order (CORE-11 cannot ship a new node type without a paired CORE-12 release). The `CompiledTemplate` value object's fields are part of the 1.0.0 contract: adding a field is SemVer-minor (it's `readonly`, so callers cannot construct one without the new field anyway); removing or renaming a field is SemVer-major.
 
 ## SemVer Impact
 
-**Major** (1.0.0 at first stable release). Per ADR-005, CORE-12 "completes the template engine, which is a core value proposition of the stack" — the SuperPHP triplet's first end-to-end compile is the `1.0.0` release of all three packages (CORE-07, CORE-11, CORE-12) simultaneously. The package's first release is `0.1.0` while the SuperPHP triplet is under development (end-to-end compile test not yet passing); the `1.0.0` release coincides with the exit criterion for `01_MASTER_INDEX.md` §5 Step 6. Subsequent minor bumps add `NodeVisitor` methods (paired with new CORE-11 `Node` types) or new visitor implementations (e.g. a future `JsonVisitor` that emits JSON instead of HTML for API responses); a major bump is required only if `CompilerInterface::compile()`'s signature changes (e.g. to accept a `CompilerOptions` value object for cache-directory override), if `CompiledTemplate`'s constructor signature changes, or if `NodeVisitor`'s method set changes incompatibly. The closure signature `function (array $variables): string` is part of the 1.0.0 contract: changing it (e.g. to accept a `ViewContext` value object instead of a bare array) is SemVer-major because every Hub-tier `ViewFactory` that calls `render()` will break.
+**Major** (1.0.0 at first stable release). Per ADR-005, CORE-12 "completes the template engine, which is a core value proposition of the stack" — the NeoSPX triplet's first end-to-end compile is the `1.0.0` release of all three packages (CORE-07, CORE-11, CORE-12) simultaneously. The package's first release is `0.1.0` while the NeoSPX triplet is under development (end-to-end compile test not yet passing); the `1.0.0` release coincides with the exit criterion for `01_MASTER_INDEX.md` §5 Step 6. Subsequent minor bumps add `NodeVisitor` methods (paired with new CORE-11 `Node` types) or new visitor implementations (e.g. a future `JsonVisitor` that emits JSON instead of HTML for API responses); a major bump is required only if `CompilerInterface::compile()`'s signature changes (e.g. to accept a `CompilerOptions` value object for cache-directory override), if `CompiledTemplate`'s constructor signature changes, or if `NodeVisitor`'s method set changes incompatibly. The closure signature `function (array $variables): string` is part of the 1.0.0 contract: changing it (e.g. to accept a `ViewContext` value object instead of a bare array) is SemVer-major because every Hub-tier `ViewFactory` that calls `render()` will break.
 
 
 ---
@@ -616,12 +616,12 @@ This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SD
 - **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
 - **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
 - **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
-- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-12 — SuperPHP Compiler — shipped per the verified DAG).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-12 — NeoSPX Compiler — shipped per the verified DAG).
 
 ### What Was NOT Changed in PR #323
 
 - **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
-- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/superphp-compiler/src/` and is verified by the architecture-boundary-lint.
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/neospx-compiler/src/` and is verified by the architecture-boundary-lint.
 - **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
 - **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
 

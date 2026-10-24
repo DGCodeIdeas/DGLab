@@ -11,14 +11,14 @@ You are starting a fresh DGLab session. Read the root `AGENTS.md` and `DGLab-FRE
 Then begin the research-first work package. Your first research deliverable is a reconciliation matrix for agenda renditions V1–V7, including:
 - three connecting-theme wordings and how they differ;
 - four Half Exceptions formulations and their status as user-originated hypotheses;
-- SuperPHP/SPX's placement divergence (“handle separately” versus inclusion as a sixth section);
+- NeoSPX/SPX's placement divergence (“handle separately” versus inclusion as a sixth section);
 - what is confirmed by original owner text, what is only an agent interpretation, and what cannot be resolved without owner input.
 
-Next, research SPX/SuperPHP architecture and naming as a standalone track. Evaluate the proposed pipeline (authoring syntax → syntax driver → public language-neutral component document → AST → validation/semantic analysis/compilation), format-neutral information model, JSON-first versus JSON+YAML, schema/semantic validation, provenance/source preservation, diagnostics, versioning, extension rules, security, and third-party interoperability. Use primary sources and existing comparable systems; cite dates/versions and limitations. Re-check candidate naming collisions in the actual current repository.
+Next, research SPX/NeoSPX architecture and naming as a standalone track. Evaluate the proposed pipeline (authoring syntax → syntax driver → public language-neutral component document → AST → validation/semantic analysis/compilation), format-neutral information model, JSON-first versus JSON+YAML, schema/semantic validation, provenance/source preservation, diagnostics, versioning, extension rules, security, and third-party interoperability. Use primary sources and existing comparable systems; cite dates/versions and limitations. Re-check candidate naming collisions in the actual current repository.
 
 Then produce the four product-research reports: platform integrity/copyright/fair disputes; avoiding the YouTube model; Half Exceptions; Cancel-Anytime paradox. Separate facts, claims, hypotheses, analogies, implications, and recommendations. The supplied Cancel-Anytime sentence is a hypothesis, not a verified empirical fact. Do not portray Half Exceptions as established engineering terminology.
 
-Deliver reports and a proposed canonical agenda for owner review. Do not create or modify `Architecture/CrossCutting/RESEARCH-AGENDA.md`, ADRs, code, or governance records without explicit authorization. Do not implement the SuperPHP runtime or rename it. Keep research out of LMS implementation PRs. End with a decision register and the next single owner decision needed.
+Deliver reports and a proposed canonical agenda for owner review. Do not create or modify `Architecture/CrossCutting/RESEARCH-AGENDA.md`, ADRs, code, or governance records without explicit authorization. Do not implement the NeoSPX runtime or rename it. Keep research out of LMS implementation PRs. End with a decision register and the next single owner decision needed.
 
 ## Prompt 2 — Kilo Code: independent research and source verification
 

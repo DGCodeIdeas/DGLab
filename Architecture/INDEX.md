@@ -106,12 +106,12 @@ copied from them into `Architecture/` without re-verifying it against this index
 | CORE-04 | PSR-7 HTTP Message & Factory | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-http-message-v1.0.0 (PR #127) |
 | CORE-05 | PSR-15 Middleware & Request Handler | `SovereignStack\Core\Http` | — | ✅ Depth 2 — Tagged core-middleware-v1.0.0 (PR #140) |
 | CORE-06 | Attribute-Based Router | `SovereignStack\Core\Router` | — | ✅ Depth 2 — Tagged core-router-v1.0.0 (PR #141) |
-| CORE-07 | SuperPHP Lexer | `SovereignStack\Core\SuperPHP\Lexer` | — | 📝 Not started |
+| CORE-07 | NeoSPX Lexer | `SovereignStack\Core\NeoSPX\Lexer` | — | 📝 Not started |
 | CORE-08 | Global Error & Exception Handler | `SovereignStack\Core\ErrorHandler` | `packages/core/error-handler/` | ✅ Implemented |
 | CORE-09 | **PSR-3 Logging Service** | `SovereignStack\Core\Logger` | `packages/core/logger/` | ✅ Implemented |
 | CORE-10 | Configuration & Environment Loader | `SovereignStack\Core\Config` | `packages/core/config/` | ✅ Implemented |
-| CORE-11 | SuperPHP Parser | `SovereignStack\Core\SuperPHP\Parser` | — | 📝 Not started |
-| CORE-12 | SuperPHP Compiler | `SovereignStack\Core\SuperPHP\Compiler` | — | 📝 Not started |
+| CORE-11 | NeoSPX Parser | `SovereignStack\Core\NeoSPX\Parser` | — | 📝 Not started |
+| CORE-12 | NeoSPX Compiler | `SovereignStack\Core\NeoSPX\Compiler` | — | 📝 Not started |
 | CORE-13 | CLI Engine (Console) | `SovereignStack\Core\Console` | — | 📝 Not started |
 | CORE-14 | Filesystem Abstraction | `SovereignStack\Core\Filesystem` | — | 📝 Not started |
 | CORE-15 | Cache Abstraction (PSR-6/16) | `SovereignStack\Core\Cache` | — | 📝 Not started |
@@ -200,7 +200,7 @@ single correction reference for all of them.
 | **C** | Queue attributed to `HUB-11` or `HUB-14` | `HUB-10: Sovereign Queue` (`HUB-11` is Cloud Storage) | `SOLUTIONS_TO_WEAKNESSES.md`, `ISPOKE-07`,`09`, `ESPOKE-06`,`13` |
 | **D** | `HUB-12` used for Event Bus / pub-sub | `HUB-09: Sovereign Signal (Event Bus)` (`HUB-12` is Notify) | `ISPOKE-07`,`08`,`15`, `ESPOKE-06` |
 | **E** | `HUB-13`/`HUB-14` swapped for Search/Media | `HUB-14` = Search; Media is `HUB-18`; `HUB-13` is Translator | `ISPOKE-09`,`14`, `ESPOKE-04` |
-| **F** | `CORE-07` used for Event Dispatcher or HTTP Message | `CORE-07` is SuperPHP Lexer; Event Dispatcher is `CORE-03`; HTTP Message is `CORE-04` | `ESPOKE-02`,`13`,`15` |
+| **F** | `CORE-07` used for Event Dispatcher or HTTP Message | `CORE-07` is NeoSPX Lexer; Event Dispatcher is `CORE-03`; HTTP Message is `CORE-04` | `ESPOKE-02`,`13`,`15` |
 | **G** | Reference to a Core "phase" that was never real | No mapping exists — dropped, not redirected | `ESPOKE-02` (`CORE-08` as HTTP Client), `ESPOKE-15` (`CORE-15` as Process Management) |
 | **H** | Wrong Internal Spoke ID referenced from External Spokes | `ISPOKE-05`=Insight, `ISPOKE-13`=Ledger (Billing), `ISPOKE-14`=Nexus (Tenancy) | `ESPOKE-09`,`10`, `ESPOKE-14` |
 
@@ -304,9 +304,9 @@ graph TD
     C15[CORE-15 Cache Abstraction]
     C14[CORE-14 Filesystem]
     C16[CORE-16 Encryption]
-    C07[CORE-07 SuperPHP Lexer]
-    C11[CORE-11 SuperPHP Parser]
-    C12[CORE-12 SuperPHP Compiler]
+    C07[CORE-07 NeoSPX Lexer]
+    C11[CORE-11 NeoSPX Parser]
+    C12[CORE-12 NeoSPX Compiler]
     C13[CORE-13 CLI Engine]
     C17[CORE-17 Service Providers]
     C20[CORE-20 Dev CLI/Forge]
@@ -438,7 +438,7 @@ figure (§5 of that document). This table's *step order* is still a correct DAG 
 | 3 | **CORE-18** (Kernel) | Steps 1–2 land | Kernel boots, runs boot-phase events via CORE-03, terminates cleanly | 1 week |
 | 4 | **CORE-04 → CORE-05 → CORE-06** — sequential | Step 3 lands | A "Hello World" request completes the full pipeline | 2 weeks |
 | 5 | **CORE-19, CORE-15, CORE-14, CORE-16** — parallelizable | Step 1 lands (Kernel not required) | Each passes CI; DBAL targets **MySQL 8 (InnoDB)** (ADR-013); Cache is PSR-6/16 over **Redis 7** (ADR-006); Filesystem abstracts local + S3; Encryption is AES-256-GCM + Argon2id (ADR-008) | 3 weeks |
-| 6 | **CORE-07 → CORE-11 → CORE-12** (SuperPHP) — sequential | None | SuperPHP renders a template with variables and conditionals (ADR-005: Blade/Twig are rejected) | 3 weeks |
+| 6 | **CORE-07 → CORE-11 → CORE-12** (NeoSPX) — sequential | None | NeoSPX renders a template with variables and conditionals (ADR-005: Blade/Twig are rejected) | 3 weeks |
 | 7 | **CORE-13, CORE-17, CORE-20** — parallelizable | Steps 1–3 land | CLI runs commands; providers register bindings; Forge scaffolds a new Hub service | 2 weeks |
 | 8 | **Hub tier** (30 blueprints) | Steps 1–7 land | All 30 pass CI; HUB-15 reports all Hub services healthy | 12 weeks |
 | 9 | **BRIDGE-01** (Vanguard) | Step 8 lands (minimum HUB-04, HUB-06, HUB-08, HUB-15) | Default-deny enforced; DTO transformation works; zero-exposure test passes | 2 weeks |

@@ -1,4 +1,4 @@
-# CORE-11: SuperPHP Parser
+# CORE-11: NeoSPX Parser
 
 
 <!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
@@ -10,29 +10,29 @@
 Core (Template Engine — Stage 2 of 3)
 
 ## Resolves
-- **Finding 2** — `docs/evaluation/BLUEPRINT_RANKINGS.md` line 53–72 scores CORE-11 as "ORM & Query Builder" (one of the stale evaluation-layer names). Wrong: the canonical mapping per `01_MASTER_INDEX.md` §2 is **SuperPHP Parser** (ORM/DBAL is CORE-19). The build-sequence row in `01_MASTER_INDEX.md` §5 (Step 6: CORE-07 → CORE-11 → CORE-12) confirms CORE-11 is the second stage of the SuperPHP template-engine triplet, consuming the `TokenStream` emitted by CORE-07 and producing an AST consumed by CORE-12. This blueprint is written to the canonical mapping and explicitly rejects the stale evaluation-layer name.
+- **Finding 2** — `docs/evaluation/BLUEPRINT_RANKINGS.md` line 53–72 scores CORE-11 as "ORM & Query Builder" (one of the stale evaluation-layer names). Wrong: the canonical mapping per `01_MASTER_INDEX.md` §2 is **NeoSPX Parser** (ORM/DBAL is CORE-19). The build-sequence row in `01_MASTER_INDEX.md` §5 (Step 6: CORE-07 → CORE-11 → CORE-12) confirms CORE-11 is the second stage of the NeoSPX template-engine triplet, consuming the `TokenStream` emitted by CORE-07 and producing an AST consumed by CORE-12. This blueprint is written to the canonical mapping and explicitly rejects the stale evaluation-layer name.
 - **Finding 4** — The approved `docs/blueprints/Core/CORE-11.md` (1,169 bytes) is four prose sections and a single "Context7 Research" bullet list — no `ParserInterface`, no `Node` hierarchy, no `NodeVisitor` contract, no recursive-descent reference implementation, no sequence or state diagram, no benchmark methodology, no security properties. This blueprint replaces it with real PHP 8.4 interface contracts, a complete recursive-descent `Parser::parse()` reference implementation, eight AST node classes, an `AstPrinter` debug visitor, two Mermaid diagrams, a named-harness benchmark methodology, and five explicit security invariants.
 - **Finding 10** — The approved file asserts "Must correctly parse a 5-level deep nested component structure" and "Must provide the exact line and column number of syntax errors" with no harness, baseline, or load model. This blueprint replaces those bare assertions with a PHPUnit `--group performance` methodology on GitHub Actions `ubuntu-latest` / PHP 8.4 / opcache against templates of 10 / 100 / 1,000 expressions, with all absolute throughput numbers marked **"provisional, unverified"** and only the O(n) scaling assertion asserted on first run.
 
 ## Component Name
-SuperPHP Parser — `SovereignStack\Core\SuperPHP\Parser` (PSR-4: `packages/core/superphp-parser/src/`).
+NeoSPX Parser — `SovereignStack\Core\NeoSPX\Parser` (PSR-4: `packages/core/neospx-parser/src/`).
 
 ## Description
 
-CORE-11 is the second stage of the SuperPHP template engine: a recursive-descent parser that consumes the `TokenStream` produced by CORE-07 (Lexer) and emits an Abstract Syntax Tree (AST) of immutable `Node` value objects consumed by CORE-12 (Compiler). The parser is the only stage in the SuperPHP triplet that has a notion of *structure*: the lexer emits flat tokens, the compiler walks the AST and emits flat PHP, but the parser is where the language's grammar lives — where `@{ @if (cond) }@ ... @{ @else }@ ... @{ @end }@` becomes a `DirectiveNode` with a condition expression, body, and alternative body, and where `@{ $user->name | upper | trim }@` becomes a left-nested `PipeNode` wrapping a `VariableNode`. Every later stage operates on the AST, never on raw tokens; this is what makes CORE-12's codegen a pure tree-walk and what makes parse errors pointable — a malformed template raises `ParserException` carrying the exact `(line, column)` of the offending token.
+CORE-11 is the second stage of the NeoSPX template engine: a recursive-descent parser that consumes the `TokenStream` produced by CORE-07 (Lexer) and emits an Abstract Syntax Tree (AST) of immutable `Node` value objects consumed by CORE-12 (Compiler). The parser is the only stage in the NeoSPX triplet that has a notion of *structure*: the lexer emits flat tokens, the compiler walks the AST and emits flat PHP, but the parser is where the language's grammar lives — where `@{ @if (cond) }@ ... @{ @else }@ ... @{ @end }@` becomes a `DirectiveNode` with a condition expression, body, and alternative body, and where `@{ $user->name | upper | trim }@` becomes a left-nested `PipeNode` wrapping a `VariableNode`. Every later stage operates on the AST, never on raw tokens; this is what makes CORE-12's codegen a pure tree-walk and what makes parse errors pointable — a malformed template raises `ParserException` carrying the exact `(line, column)` of the offending token.
 
 The parser is a **single-pass recursive-descent parser with an explicit directive stack**. The top-level `parseDocument()` loop alternates between `parseText()` (accumulating `TokenType::Text` runs into `TextNode`s) and `parseExpression()` (dispatching on the first token inside `@{ ... }@`). `parseExpression()` switches on `TokenType`: `Variable` enters `parseVariable()` which builds the pipe chain; `Keyword` enters `parseDirective()` if it is control-flow (`if` / `foreach` / `while`) or `parseSigilDirective()` if sigil-prefixed (`@persist` / `@global` / `~setup`); `Integer` / `Float` / `String` enter `parseLiteral()`. Control-flow directives recurse into `parseBlock(['else', 'end'])`, which parses the directive body until it sees the matching terminator — this is the recursive-descent stack that lets `@if` nest inside `@foreach` nest inside `@if` to the configured depth limit.
 
 What CORE-11 is **not**: not the lexer (the parser never inspects raw source text, only `Token`s), not the compiler (CORE-12 turns ASTs into PHP; the parser never emits a line of PHP and never `eval`s anything), and not a sandbox — the parser produces a *structural* AST and validates pipe filters against an allowlist, but data-flow rules (escaping, scope isolation) are CORE-12's responsibility. It is also **not** a Blade-style preprocessor: directives are AST-level constructs, not string substitutions, and every `Node` preserves the originating `Token`'s position so CORE-12 compile errors can point back to source.
 
 ## Build Status
-📝 **Not started.** 🔴 **Blocked on CORE-07 (SuperPHP Lexer)** — the parser imports `SovereignStack\Core\SuperPHP\Lexer\{LexerInterface, Token, TokenType, TokenStream}` from the lexer package; until CORE-07 lands as `sovereign-stack/core-superphp-lexer` at `packages/core/superphp-lexer/`, CORE-11 cannot compile. Once CORE-07 lands, CORE-11 has no further Core-tier blockers (only PHP 8.4, which is already in the runtime baseline declared by ADR-010). Per `01_MASTER_INDEX.md` §5 Step 6, CORE-07 → CORE-11 → CORE-12 is a strictly sequential three-stage build; CORE-11 cannot start until CORE-07's `LexerRoundTripTest` exit criterion is met.
+📝 **Not started.** 🔴 **Blocked on CORE-07 (NeoSPX Lexer)** — the parser imports `SovereignStack\Core\NeoSPX\Lexer\{LexerInterface, Token, TokenType, TokenStream}` from the lexer package; until CORE-07 lands as `sovereign-stack/core-neospx-lexer` at `packages/core/neospx-lexer/`, CORE-11 cannot compile. Once CORE-07 lands, CORE-11 has no further Core-tier blockers (only PHP 8.4, which is already in the runtime baseline declared by ADR-010). Per `01_MASTER_INDEX.md` §5 Step 6, CORE-07 → CORE-11 → CORE-12 is a strictly sequential three-stage build; CORE-11 cannot start until CORE-07's `LexerRoundTripTest` exit criterion is met.
 
 ## Dependency Status
 
-- **Upward:** CORE-07 (SuperPHP Lexer) — imports `LexerInterface`, `Token`, `TokenType`, `TokenStream`, `LexerException` from `SovereignStack\Core\SuperPHP\Lexer`. The lexer's `TokenType` enum is the cross-stage type contract: CORE-11 dispatches on its cases, so any change to the enum is a SemVer event for CORE-07 that CORE-11 must absorb.
-- **Downward:** CORE-12 (SuperPHP Compiler — consumes the AST `Node` hierarchy and `NodeVisitor` contract; walks the AST emitting flat PHP for OPcache preload per ADR-010); CORE-18 (Core Kernel — bootstraps the parser once at boot and injects it into the template-engine service registered in CORE-02 alongside the lexer).
-- **Runtime:** `php: ^8.4`, `ext-mbstring: *` (inherited transitively via CORE-07 for token position alignment), and the composer package `sovereign-stack/core-superphp-lexer: ^0.1` as the single `require` entry. No other Composer packages. No external services. The package is a pure-PHP consumer of CORE-07 with no other dependency-graph leaves.
+- **Upward:** CORE-07 (NeoSPX Lexer) — imports `LexerInterface`, `Token`, `TokenType`, `TokenStream`, `LexerException` from `SovereignStack\Core\NeoSPX\Lexer`. The lexer's `TokenType` enum is the cross-stage type contract: CORE-11 dispatches on its cases, so any change to the enum is a SemVer event for CORE-07 that CORE-11 must absorb.
+- **Downward:** CORE-12 (NeoSPX Compiler — consumes the AST `Node` hierarchy and `NodeVisitor` contract; walks the AST emitting flat PHP for OPcache preload per ADR-010); CORE-18 (Core Kernel — bootstraps the parser once at boot and injects it into the template-engine service registered in CORE-02 alongside the lexer).
+- **Runtime:** `php: ^8.4`, `ext-mbstring: *` (inherited transitively via CORE-07 for token position alignment), and the composer package `sovereign-stack/core-neospx-lexer: ^0.1` as the single `require` entry. No other Composer packages. No external services. The package is a pure-PHP consumer of CORE-07 with no other dependency-graph leaves.
 
 ## Architectural Design
 
@@ -61,13 +61,13 @@ CORE-11 separates four concerns: (1) the *parser driver* (`Parser` — the recur
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Parser;
+namespace SovereignStack\Core\NeoSPX\Parser;
 
-use SovereignStack\Core\SuperPHP\Lexer\TokenStream;
-use SovereignStack\Core\SuperPHP\Lexer\Token;
+use SovereignStack\Core\NeoSPX\Lexer\TokenStream;
+use SovereignStack\Core\NeoSPX\Lexer\Token;
 
 /**
- * A SuperPHP source parser: consumes the TokenStream emitted by CORE-07 and
+ * A NeoSPX source parser: consumes the TokenStream emitted by CORE-07 and
  * produces an Abstract Syntax Tree (AST) consumable by CORE-12 (Compiler).
  *
  * Implementations MUST be deterministic: the same TokenStream MUST produce
@@ -90,7 +90,7 @@ use SovereignStack\Core\SuperPHP\Lexer\Token;
 interface ParserInterface
 {
     /**
-     * Parse a SuperPHP TokenStream into an AST.
+     * Parse a NeoSPX TokenStream into an AST.
      *
      * @param TokenStream $tokens The output of CORE-07's Lexer::tokenize().
      *                            The stream MUST end with a TokenType::EOF
@@ -110,7 +110,7 @@ interface ParserInterface
 }
 
 /**
- * Visitor over the SuperPHP AST. One visit*() method per concrete Node
+ * Visitor over the NeoSPX AST. One visit*() method per concrete Node
  * subclass; CORE-12's CodegenVisitor and this package's AstPrinter are the
  * two reference implementations. New Node subclasses require a new method
  * here and a SemVer-minor bump on this package (CORE-12 must implement the
@@ -149,7 +149,7 @@ The seven concrete `Node` subclasses are short enough to declare inline in the s
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Parser;
+namespace SovereignStack\Core\NeoSPX\Parser;
 
 final class DocumentNode extends Node
 {
@@ -290,11 +290,11 @@ The complete `Parser` class. Compiles against PHP 8.4 with only `ext-mbstring` (
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Parser;
+namespace SovereignStack\Core\NeoSPX\Parser;
 
-use SovereignStack\Core\SuperPHP\Lexer\Token;
-use SovereignStack\Core\SuperPHP\Lexer\TokenStream;
-use SovereignStack\Core\SuperPHP\Lexer\TokenType;
+use SovereignStack\Core\NeoSPX\Lexer\Token;
+use SovereignStack\Core\NeoSPX\Lexer\TokenStream;
+use SovereignStack\Core\NeoSPX\Lexer\TokenType;
 
 final class Parser implements ParserInterface
 {
@@ -702,9 +702,9 @@ The `ParserException` and `AstPrinter` companions:
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Parser;
+namespace SovereignStack\Core\NeoSPX\Parser;
 
-use SovereignStack\Core\SuperPHP\Lexer\Token;
+use SovereignStack\Core\NeoSPX\Lexer\Token;
 
 final class ParserException extends \RuntimeException
 {
@@ -938,7 +938,7 @@ The diagram captures the six parser states and the four error transitions to `Do
 
 ## Integration Strategy
 
-**Upward (consumed):** CORE-11 imports `LexerInterface`, `Token`, `TokenType`, `TokenStream`, and `LexerException` from `SovereignStack\Core\SuperPHP\Lexer` (CORE-07). The parser does not call the lexer itself — CORE-18 (Kernel) constructs the lexer once at boot, calls `Lexer::tokenize($source)` to produce a `TokenStream`, then calls `Parser::parse($stream)` to produce the AST, then passes the AST to CORE-12. This separation keeps each stage independently testable: CORE-07 has fixture `.super.php` sources and asserts on token sequences; CORE-11 has fixture `TokenStream`s (built by hand or by the lexer) and asserts on AST structure; CORE-12 has fixture ASTs (built by hand or by the parser) and asserts on emitted PHP.
+**Upward (consumed):** CORE-11 imports `LexerInterface`, `Token`, `TokenType`, `TokenStream`, and `LexerException` from `SovereignStack\Core\NeoSPX\Lexer` (CORE-07). The parser does not call the lexer itself — CORE-18 (Kernel) constructs the lexer once at boot, calls `Lexer::tokenize($source)` to produce a `TokenStream`, then calls `Parser::parse($stream)` to produce the AST, then passes the AST to CORE-12. This separation keeps each stage independently testable: CORE-07 has fixture `.neospx` sources and asserts on token sequences; CORE-11 has fixture `TokenStream`s (built by hand or by the lexer) and asserts on AST structure; CORE-12 has fixture ASTs (built by hand or by the parser) and asserts on emitted PHP.
 
 **Downward (consumers):**
 
@@ -971,7 +971,7 @@ CORE-12's `CodegenVisitor` implements `NodeVisitor` directly — the same visito
 |---|---|
 | Parse is O(n) in token count | **Harness:** PHPUnit `--group performance`, `ParserLinearityBenchTest`. **Baseline:** GitHub Actions `ubuntu-latest` runner, PHP 8.4 with opcache enabled and no Xdebug (per ADR-010 baseline; JIT disabled to isolate interpreter cost). **Load model:** synthetic templates containing 10 / 100 / 1,000 / 10,000 expressions (mix of `@{ $var }@`, `@{ $var \| upper \| trim }@`, `@{ @if (cond) }@ ... @{ @end }@` in fixed 4:3:3 ratio). Each size is parsed 1,000 times in a tight loop after a 100-iteration warm-up; wall-clock measured via `microtime(true)`; the median of 5 runs is recorded. **Assertion:** Pearson correlation r ≥ 0.99 between token count and parse wall-clock across the four sizes. An O(n²) implementation (e.g. one that re-scanned the stream on every directive) would have r ≥ 0.99 against the square curve instead. **Absolute throughput numbers — provisional, unverified — will be recorded in `docs/perf/CORE-11-baselines.md` on first CI run**; no bare millisecond claim is made in this blueprint. |
 | Directive nesting depth handling | **Harness:** PHPUnit `--group performance`, `ParserDepthBenchTest`. **Load model:** synthetic templates with directive nesting depths of 1 / 4 / 16 / 64 (the configured `MAX_DIRECTIVE_DEPTH`); each parsed 100 times. **Assertion:** parse wall-clock scales linearly in depth (r ≥ 0.99 against a linear curve), not exponentially — catches any future regression that introduces backtracking. Templates exceeding `MAX_DIRECTIVE_DEPTH` (e.g. depth 65) must throw `ParserException::depthExceeded()` — the limit is enforced before recursion, so the throw is O(1) (provisional, unverified as an absolute latency). |
-| AST structural correctness | **Harness:** PHPUnit `--group default`, `ParserStructureTest`. **Load model:** 30 fixture templates drawn from `tests/fixtures/superphp/` (covering pipe chains, member access, nested `@if` / `@foreach`, `@else` branches, `@persist` / `@global` / `~setup` sigil directives, literals, comments). Each fixture is parsed; the resulting AST is dumped via `AstPrinter::print()`; the dump is compared against a hand-verified `*.expected.txt` snapshot. **Assertion:** 100% snapshot match across all 30 fixtures. The single most important correctness test — any drift between the parser's grammar and the expected AST shape rules surfaces here. |
+| AST structural correctness | **Harness:** PHPUnit `--group default`, `ParserStructureTest`. **Load model:** 30 fixture templates drawn from `tests/fixtures/neospx/` (covering pipe chains, member access, nested `@if` / `@foreach`, `@else` branches, `@persist` / `@global` / `~setup` sigil directives, literals, comments). Each fixture is parsed; the resulting AST is dumped via `AstPrinter::print()`; the dump is compared against a hand-verified `*.expected.txt` snapshot. **Assertion:** 100% snapshot match across all 30 fixtures. The single most important correctness test — any drift between the parser's grammar and the expected AST shape rules surfaces here. |
 | Memory ceiling | **Harness:** PHPUnit `--group performance`, `ParserMemoryTest`. **Load model:** parse the 10,000-expression template; measure peak memory via `memory_get_peak_usage(true)` before and after the call. **Assertion:** peak delta ≤ 12× the source length (the AST carries more payload per token than a `Token` does — line+column+class header+payload — so the ceiling is higher than CORE-07's 8×). **Provisional, unverified** as an absolute number; the ratio is asserted on first run. |
 
 **Iron rule (per `01_MASTER_INDEX.md` §7 Rule 2 and `AUTHORING_GUIDE.md` §"Benchmark & Verification Methodology"):** No bare millisecond targets. Every target names its harness, baseline, and load model as above. Absolute throughput numbers are marked "provisional, unverified" until the first measured run on CI; the only assertions in the test suite are the *scaling relationships* (linear in token count, linear in nesting depth) and the *memory ratio ceiling*, all of which are measurable on first run.
@@ -986,11 +986,11 @@ CORE-12's `CodegenVisitor` implements `NodeVisitor` directly — the same visito
 - **Immutability test:** `NodeImmutabilityTest` asserts every concrete `Node` subclass is declared `final readonly`; asserts the same `Parser` instance produces identical ASTs (compared by `AstPrinter` output) when called twice with the same `TokenStream`.
 - **Depth-limit test:** `ParserDepthLimitTest` parses a synthetic 65-level-deep `@if`-nested template and asserts `ParserException::depthExceeded()` is thrown before recursion causes a PHP stack overflow. Symmetric test on a 33-deep pipe chain.
 - **Pipe allowlist test:** `PipeAllowlistTest` parses templates using every filter in `Parser::ALLOWED_FILTERS` (must succeed) and a randomly-chosen non-allowlist name (must throw `ParserException::unknownFilter()`). Guards against a future maintainer adding a filter to CORE-12 without updating the parser's allowlist.
-- **Dependency hygiene:** the package's `composer.json` declares only `php: ^8.4`, `ext-mbstring: *`, and `sovereign-stack/core-superphp-lexer: ^0.1` as `require` entries. A CI check (`composer require --dry-run` against an arbitrary third-party package) must fail — the parser has no transitive dependencies to add beyond CORE-07. New runtime dependencies require an ADR per Governance Rule 7.
+- **Dependency hygiene:** the package's `composer.json` declares only `php: ^8.4`, `ext-mbstring: *`, and `sovereign-stack/core-neospx-lexer: ^0.1` as `require` entries. A CI check (`composer require --dry-run` against an arbitrary third-party package) must fail — the parser has no transitive dependencies to add beyond CORE-07. New runtime dependencies require an ADR per Governance Rule 7.
 
 ## Security Properties
 
-- **The parser never evaluates code.** `parse()` performs pure structural analysis: it never calls `eval()`, never `include`s a file, never invokes `Closure::fromCallable` or `create_function`, never instantiates a class named in the source. A `.super.php` source file containing `@{ system('rm -rf /') }@` is lexed into `OpenTag` / `Keyword(system)` / `ParenOpen` / `String('rm -rf /')` / `ParenClose` / `CloseTag` tokens; the parser then either builds a `DirectiveNode` (if `system` were a control-flow directive, which it is not) or throws `unexpectedToken` on the `ParenOpen` after a non-control keyword. Either way, no code runs. The parser is safe to run on untrusted template input; output sandboxing (escaping, scope isolation) is CORE-12's responsibility, not the parser's.
+- **The parser never evaluates code.** `parse()` performs pure structural analysis: it never calls `eval()`, never `include`s a file, never invokes `Closure::fromCallable` or `create_function`, never instantiates a class named in the source. A `.neospx` source file containing `@{ system('rm -rf /') }@` is lexed into `OpenTag` / `Keyword(system)` / `ParenOpen` / `String('rm -rf /')` / `ParenClose` / `CloseTag` tokens; the parser then either builds a `DirectiveNode` (if `system` were a control-flow directive, which it is not) or throws `unexpectedToken` on the `ParenOpen` after a non-control keyword. Either way, no code runs. The parser is safe to run on untrusted template input; output sandboxing (escaping, scope isolation) is CORE-12's responsibility, not the parser's.
 - **Directive nesting is structurally validated.** Every `@if` / `@foreach` / `@while` must be closed by a matching `@end`; every `@else` must be preceded by an `@if`. The `parseBlock()` loop's only exit conditions are (a) encountering a terminator keyword, (b) `TokenType::EOF` (which throws `unclosedDirective()`), or (c) an unexpected token (which throws `unexpectedToken()`). There is no code path that returns a `DirectiveNode` with an unclosed body — the type system enforces it (the throw on EOF is unconditional). This is the structural protection against template-injection attacks that rely on unmatched directives to confuse downstream compilation.
 - **Expression depth is bounded.** Two independent depth limits prevent stack-overflow DoS on adversarial input. `MAX_PIPE_DEPTH = 32` caps a single pipe chain (`$x | a | b | c | ...`); a 33rd `Pipe` token throws `depthExceeded()` before the left-nested `PipeNode` tree grows further. `MAX_DIRECTIVE_DEPTH = 64` caps nesting of control-flow directives (`@if` inside `@foreach` inside `@if` ...); the 65th nested directive throws `depthExceeded()` before the recursive `parseDirective()` call grows the PHP call stack. Both limits are enforced at the *start* of the relevant parse step, so the throw is O(1), not O(depth). The values (32, 64) are well above any legitimate template's structural depth and well below PHP 8.4's default `zend.max_allowed_stack_size` (default 2 MB ≈ 20,000+ frames).
 - **Pipe filter names are validated against an allowlist.** `Parser::ALLOWED_FILTERS` is a `const` array of 11 string filter names (`upper`, `lower`, `trim`, `length`, `default`, `escape`, `raw`, `date`, `number`, `first`, `last`). Any `Keyword` token after a `Pipe` that is not in this list throws `unknownFilter()` immediately. This prevents a template author from invoking arbitrary PHP functions via the pipe syntax — `@{ $x | system }@` throws at parse time, not at compile or render time. Adding a new filter requires modifying the `const` array (a code change, not a config change) and is therefore a SemVer event reviewed in code review; it is not a runtime-writable surface.
@@ -998,17 +998,17 @@ CORE-12's `CodegenVisitor` implements `NodeVisitor` directly — the same visito
 
 ## Migration Notes
 
-CORE-11 is **new** — no prior implementation to migrate from. It lands as the Composer package `sovereign-stack/core-superphp-parser` at path `packages/core/superphp-parser/`. The `composer.json` declares `php: ^8.4`, `ext-mbstring: *`, and `sovereign-stack/core-superphp-lexer: ^0.1` as the only runtime requirements (one Composer dependency: CORE-07); `require-dev` carries `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `infection/infection ^0.27`, `friendsofphp/php-cs-fixer ^3.48`. PSR-4 autoload maps `SovereignStack\Core\SuperPHP\Parser\` to `src/`. The `src/` directory contains exactly the files itemised in the Class Map: `Parser.php`, `ParserInterface.php`, `Node.php` (with the seven concrete subclasses in a `Node/` subdirectory or co-located per project convention), `NodeVisitor.php`, `ParserException.php`, `AstPrinter.php`. The `tests/` directory carries `ParserTest`, `ParserStructureTest`, `ParserErrorPositionTest`, `ParserDepthLimitTest`, `PipeAllowlistTest`, `AstPrinterTest`, `NodeImmutabilityTest`, a `performance/` subdirectory for `ParserLinearityBenchTest`, `ParserDepthBenchTest`, and `ParserMemoryTest`, and a `fixtures/superphp/` directory of 30 `.super.php` fixtures paired with `*.expected.txt` AST-dump snapshots.
+CORE-11 is **new** — no prior implementation to migrate from. It lands as the Composer package `sovereign-stack/core-neospx-parser` at path `packages/core/neospx-parser/`. The `composer.json` declares `php: ^8.4`, `ext-mbstring: *`, and `sovereign-stack/core-neospx-lexer: ^0.1` as the only runtime requirements (one Composer dependency: CORE-07); `require-dev` carries `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `infection/infection ^0.27`, `friendsofphp/php-cs-fixer ^3.48`. PSR-4 autoload maps `SovereignStack\Core\NeoSPX\Parser\` to `src/`. The `src/` directory contains exactly the files itemised in the Class Map: `Parser.php`, `ParserInterface.php`, `Node.php` (with the seven concrete subclasses in a `Node/` subdirectory or co-located per project convention), `NodeVisitor.php`, `ParserException.php`, `AstPrinter.php`. The `tests/` directory carries `ParserTest`, `ParserStructureTest`, `ParserErrorPositionTest`, `ParserDepthLimitTest`, `PipeAllowlistTest`, `AstPrinterTest`, `NodeImmutabilityTest`, a `performance/` subdirectory for `ParserLinearityBenchTest`, `ParserDepthBenchTest`, and `ParserMemoryTest`, and a `fixtures/neospx/` directory of 30 `.neospx` fixtures paired with `*.expected.txt` AST-dump snapshots.
 
-**Landing sequence (per `01_MASTER_INDEX.md` §5 Step 6):** CORE-11 lands second in the SuperPHP triplet (CORE-07 → CORE-11 → CORE-12). It cannot start until CORE-07's `LexerRoundTripTest` exit criterion (tokenize → reconstruct → re-tokenize → assert element-wise equality across 50 fixtures) is met, because CORE-11 imports `TokenType` and `TokenStream` from CORE-07's package and the parser cannot compile until those types exist as concrete classes. Once CORE-07 is landed, CORE-11 has no further Core-tier blockers — it does not depend on the HTTP / Kernel / Container pipeline (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18) and can be built in parallel with those components. The exit criterion for Step 6 Stage 2 is a `ParserStructureTest` that parses a fixture template exercising every `Node` subclass and asserts the `AstPrinter` output matches a hand-verified snapshot.
+**Landing sequence (per `01_MASTER_INDEX.md` §5 Step 6):** CORE-11 lands second in the NeoSPX triplet (CORE-07 → CORE-11 → CORE-12). It cannot start until CORE-07's `LexerRoundTripTest` exit criterion (tokenize → reconstruct → re-tokenize → assert element-wise equality across 50 fixtures) is met, because CORE-11 imports `TokenType` and `TokenStream` from CORE-07's package and the parser cannot compile until those types exist as concrete classes. Once CORE-07 is landed, CORE-11 has no further Core-tier blockers — it does not depend on the HTTP / Kernel / Container pipeline (CORE-02, CORE-04, CORE-05, CORE-06, CORE-18) and can be built in parallel with those components. The exit criterion for Step 6 Stage 2 is a `ParserStructureTest` that parses a fixture template exercising every `Node` subclass and asserts the `AstPrinter` output matches a hand-verified snapshot.
 
-**Rollback procedure:** CORE-11 is the middle of the SuperPHP triplet at landing time — CORE-07 (upstream) has already landed, CORE-12 (downstream) has not. Rollback is `git rm -r packages/core/superphp-parser/ && composer remove sovereign-stack/core-superphp-parser`. CORE-07 is unaffected (it does not import from CORE-11). If CORE-12 has already landed and imports the parser's `Node` hierarchy and `NodeVisitor` contract, rollback CORE-12 first. Tag the broken commit `core-11-rollback-<date>`. Because the parser is stateless and produces no persisted artefact (no DB rows, no cache entries, no compiled view files — those are CORE-12's responsibility), there is no data migration or schema change to undo.
+**Rollback procedure:** CORE-11 is the middle of the NeoSPX triplet at landing time — CORE-07 (upstream) has already landed, CORE-12 (downstream) has not. Rollback is `git rm -r packages/core/neospx-parser/ && composer remove sovereign-stack/core-neospx-parser`. CORE-07 is unaffected (it does not import from CORE-11). If CORE-12 has already landed and imports the parser's `Node` hierarchy and `NodeVisitor` contract, rollback CORE-12 first. Tag the broken commit `core-11-rollback-<date>`. Because the parser is stateless and produces no persisted artefact (no DB rows, no cache entries, no compiled view files — those are CORE-12's responsibility), there is no data migration or schema change to undo.
 
 **Forward-compatibility:** `NodeVisitor` is the cross-stage type contract between CORE-11 and CORE-12. Adding a new `Node` subclass (e.g. a future `MatchNode` for pattern matching) is SemVer-minor for CORE-11 (new class + new `NodeVisitor::visitMatch()` method) and SemVer-minor for CORE-12 (must implement the new method); both packages bump together. Removing or renaming a `Node` subclass or `NodeVisitor` method is SemVer-major. The `Parser::ALLOWED_FILTERS` const is also cross-stage — CORE-12 must implement every filter in the list, so adding to the list is SemVer-minor for CORE-11 but requires a matching CORE-12 release; removing from the list is SemVer-major.
 
 ## SemVer Impact
 
-**Minor** (0.1.0 → 0.2.0 at first stable release). The package's first release is `0.1.0` while the SuperPHP triplet is under development (CORE-07 must land first; CORE-12 not yet landed); the first `1.0.0` release coincides with the SuperPHP triplet's first end-to-end template compile (the exit criterion for `01_MASTER_INDEX.md` §5 Step 6). Subsequent minor bumps add `Node` subclasses (e.g. `MatchNode` for pattern matching, `SwitchNode` for switch/case) without changing `ParserInterface::parse()`'s signature; downstream CORE-12 compilers must add the matching `visit*()` method to remain compliant. A major bump is required only if `parse()`'s signature changes (e.g. to accept a `ParserOptions` value object for configurable depth limits), if a `Node` subclass or `NodeVisitor` method is removed, or if `Parser::ALLOWED_FILTERS` loses entries. The seven `Node` subclasses (`DocumentNode`, `TextNode`, `VariableNode`, `LiteralNode`, `PipeNode`, `BinaryOpNode`, `DirectiveNode`), the `NodeVisitor` method set, and the recursive-descent grammar (`@{ ... }@` for expressions; `@if ... @else ... @end` / `@foreach ... @end` / `@while ... @end` for control flow; `@persist` / `@global` / `~setup` for sigil directives; `| filter` for pipes) are part of the 1.0.0 contract and cannot change without a major bump — they define the SuperPHP language surface, not an implementation detail.
+**Minor** (0.1.0 → 0.2.0 at first stable release). The package's first release is `0.1.0` while the NeoSPX triplet is under development (CORE-07 must land first; CORE-12 not yet landed); the first `1.0.0` release coincides with the NeoSPX triplet's first end-to-end template compile (the exit criterion for `01_MASTER_INDEX.md` §5 Step 6). Subsequent minor bumps add `Node` subclasses (e.g. `MatchNode` for pattern matching, `SwitchNode` for switch/case) without changing `ParserInterface::parse()`'s signature; downstream CORE-12 compilers must add the matching `visit*()` method to remain compliant. A major bump is required only if `parse()`'s signature changes (e.g. to accept a `ParserOptions` value object for configurable depth limits), if a `Node` subclass or `NodeVisitor` method is removed, or if `Parser::ALLOWED_FILTERS` loses entries. The seven `Node` subclasses (`DocumentNode`, `TextNode`, `VariableNode`, `LiteralNode`, `PipeNode`, `BinaryOpNode`, `DirectiveNode`), the `NodeVisitor` method set, and the recursive-descent grammar (`@{ ... }@` for expressions; `@if ... @else ... @end` / `@foreach ... @end` / `@while ... @end` for control flow; `@persist` / `@global` / `~setup` for sigil directives; `| filter` for pipes) are part of the 1.0.0 contract and cannot change without a major bump — they define the NeoSPX language surface, not an implementation detail.
 
 
 ---
@@ -1032,12 +1032,12 @@ This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SD
 - **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
 - **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
 - **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
-- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-11 — SuperPHP Parser — shipped per the verified DAG).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-11 — NeoSPX Parser — shipped per the verified DAG).
 
 ### What Was NOT Changed in PR #323
 
 - **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
-- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/superphp-parser/src/` and is verified by the architecture-boundary-lint.
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/neospx-parser/src/` and is verified by the architecture-boundary-lint.
 - **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
 - **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
 

@@ -1,4 +1,4 @@
-# CORE-07: SuperPHP Lexer
+# CORE-07: NeoSPX Lexer
 
 
 <!-- Blind-Spot Awareness (per BLIND-SPOT-DOCTRINE.md) -->
@@ -10,28 +10,28 @@
 Core (Template Engine — Stage 1 of 3)
 
 ## Resolves
-- **Finding 2** — `docs/evaluation/BLUEPRINT_RANKINGS.md` line 47 scores CORE-07 as "Middleware Pipeline" (90/100). Wrong: the canonical mapping per `01_MASTER_INDEX.md` §2 is **SuperPHP Lexer** (middleware is CORE-05). This blueprint is written to the canonical mapping and explicitly rejects the stale evaluation-layer name. The build sequence row in `01_MASTER_INDEX.md` §5 (Step 6: CORE-07 → CORE-11 → CORE-12) confirms SuperPHP Lexer is the first stage of the template engine triplet.
+- **Finding 2** — `docs/evaluation/BLUEPRINT_RANKINGS.md` line 47 scores CORE-07 as "Middleware Pipeline" (90/100). Wrong: the canonical mapping per `01_MASTER_INDEX.md` §2 is **NeoSPX Lexer** (middleware is CORE-05). This blueprint is written to the canonical mapping and explicitly rejects the stale evaluation-layer name. The build sequence row in `01_MASTER_INDEX.md` §5 (Step 6: CORE-07 → CORE-11 → CORE-12) confirms NeoSPX Lexer is the first stage of the template engine triplet.
 - **Finding 4** — The approved `docs/blueprints/Core/CORE-07.md` is 1,554 bytes of prose with a single Mermaid `graph LR`, no `LexerInterface`, no `Token` value object, no state machine, no benchmark methodology, no security properties. This blueprint replaces it with real PHP 8.4 interface contracts, a complete character-by-character `Lexer::tokenize()` reference implementation backed by an explicit DFA, two Mermaid diagrams, a named-harness benchmark methodology, and four explicit security invariants.
 - **Finding 10** — The approved file asserts "Must lex 1MB of template source in < 10ms" with no harness, baseline, or load model. This blueprint replaces that bare-millisecond target with a PHPUnit `--group performance` methodology on GitHub Actions `ubuntu-latest` / PHP 8.4 / opcache against templates of 100 B / 1 KB / 10 KB / 100 KB / 1 MB, with all absolute throughput numbers marked **"provisional, unverified"** and only the O(n) scaling assertion measured on first run.
 
 ## Component Name
-SuperPHP Lexer — `SovereignStack\Core\SuperPHP\Lexer` (PSR-4: `packages/core/superphp-lexer/src/`).
+NeoSPX Lexer — `SovereignStack\Core\NeoSPX\Lexer` (PSR-4: `packages/core/neospx-lexer/src/`).
 
 ## Description
 
-CORE-07 is the first stage of the SuperPHP template engine: a single-pass, character-by-character lexer that consumes the raw text of a `.super.php` source file and emits an ordered `TokenStream` consumed by CORE-11 (SuperPHP Parser). The lexer does **not** parse syntax — it has no notion of "balanced tags" or "valid expression" — it only recognises lexical atoms (text runs, the `@{` / `}@` tag delimiters, variables, string literals, integers, floats, pipes, parentheses, brackets, commas, colons, arrows, and keywords) and tags each atom with its source position (line, column). Every later stage operates on tokens, never on raw source text; this is what makes error reporting in CORE-11 and CORE-12 precise (the parser can blame an exact line/column rather than a substring) and what makes the compiled output of CORE-12 deterministic (the same source file always produces the same token stream; whitespace inside `Text` runs is preserved verbatim).
+CORE-07 is the first stage of the NeoSPX template engine: a single-pass, character-by-character lexer that consumes the raw text of a `.neospx` source file and emits an ordered `TokenStream` consumed by CORE-11 (NeoSPX Parser). The lexer does **not** parse syntax — it has no notion of "balanced tags" or "valid expression" — it only recognises lexical atoms (text runs, the `@{` / `}@` tag delimiters, variables, string literals, integers, floats, pipes, parentheses, brackets, commas, colons, arrows, and keywords) and tags each atom with its source position (line, column). Every later stage operates on tokens, never on raw source text; this is what makes error reporting in CORE-11 and CORE-12 precise (the parser can blame an exact line/column rather than a substring) and what makes the compiled output of CORE-12 deterministic (the same source file always produces the same token stream; whitespace inside `Text` runs is preserved verbatim).
 
 The lexer is a **deterministic finite automaton (DFA) with four states**: `Text` (default — accumulating raw HTML / template prose), `Expression` (inside `@{ ... }@` — emitting structured tokens), `String` (inside `"..."` / `'...'` — emitting a single `String` token whose body may include `@{` / `}@` as literal characters), and `Comment` (inside `// ...` until the next newline or `}@`). The state machine is driven by direct character inspection — `if ($char === '@' && $next === '{')` — rather than by `preg_match`, because (a) regex-based lexers cannot easily report accurate line/column on failure without a separate offset-accounting pass, and (b) character-by-character inspection is invulnerable to PCRE catastrophic backtracking on adversarial input (see Security Properties). The reference implementation is pure PHP 8.4 with only `ext-mbstring` for UTF-8 codepoint alignment; performance is O(n) in source length.
 
 What CORE-07 is **not**: not the parser (CORE-11 builds the AST; the lexer has no notion of nesting depth, directive arity, or scope), not the compiler (CORE-12 turns ASTs into PHP; the lexer never emits a line of PHP), and not a template engine in its own right (a `TokenStream` is not executable). It is also **not** a Blade-style preprocessor — no string substitution, no `@verbatim` block, no `@stack` / `@push` machinery. The lexer's output is a pure, immutable data structure that downstream stages consume.
 
 ## Build Status
-📝 **Not started.** No upstream Core-tier blockers: the lexer depends only on PHP 8.4 and `ext-mbstring`, both already available in the runtime baseline declared by ADR-010. CORE-07 is the first stage of the SuperPHP triplet (CORE-07 → CORE-11 → CORE-12 per `01_MASTER_INDEX.md` §5 Step 6); it must land before CORE-11 can compile, but is otherwise independent of the HTTP / Kernel / Container pipeline and can be built in parallel with CORE-04 / 05 / 06.
+📝 **Not started.** No upstream Core-tier blockers: the lexer depends only on PHP 8.4 and `ext-mbstring`, both already available in the runtime baseline declared by ADR-010. CORE-07 is the first stage of the NeoSPX triplet (CORE-07 → CORE-11 → CORE-12 per `01_MASTER_INDEX.md` §5 Step 6); it must land before CORE-11 can compile, but is otherwise independent of the HTTP / Kernel / Container pipeline and can be built in parallel with CORE-04 / 05 / 06.
 
 ## Dependency Status
 
 - **Upward:** PHP 8.4 (for `readonly` classes, backed enums, `mb_substr`); `ext-mbstring` (for UTF-8 byte/character index alignment in error positions). No Core-tier dependencies.
-- **Downward:** CORE-11 (SuperPHP Parser — consumes `TokenStream` and `Token` / `TokenType`); CORE-12 (SuperPHP Compiler — references `TokenType` for directive-class detection; does not consume tokens directly); CORE-18 (Core Kernel — bootstraps the lexer once at boot and injects it into the template-engine service registered in CORE-02).
+- **Downward:** CORE-11 (NeoSPX Parser — consumes `TokenStream` and `Token` / `TokenType`); CORE-12 (NeoSPX Compiler — references `TokenType` for directive-class detection; does not consume tokens directly); CORE-18 (Core Kernel — bootstraps the lexer once at boot and injects it into the template-engine service registered in CORE-02).
 - **Runtime:** `php: ^8.4`, `ext-mbstring: *`. No Composer packages. No external services. The package's `composer.json` declares zero `require` entries beyond PHP itself — the lexer is a pure-PHP leaf in the dependency graph.
 
 ## Architectural Design
@@ -54,11 +54,11 @@ CORE-07 is a single-pass scanner with a strict separation between (1) the *lexic
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Lexer;
+namespace SovereignStack\Core\NeoSPX\Lexer;
 
 /**
- * A SuperPHP source lexer: converts the raw text of a .super.php file into an
- * ordered TokenStream consumable by CORE-11 (SuperPHP Parser).
+ * A NeoSPX source lexer: converts the raw text of a .neospx file into an
+ * ordered TokenStream consumable by CORE-11 (NeoSPX Parser).
  *
  * Implementations MUST be deterministic: the same input string MUST produce
  * the same token stream on every call, on every host, in every PHP 8.4
@@ -78,9 +78,9 @@ namespace SovereignStack\Core\SuperPHP\Lexer;
 interface LexerInterface
 {
     /**
-     * Tokenise a SuperPHP source string.
+     * Tokenise a NeoSPX source string.
      *
-     * @param string $source The raw text of a .super.php file, in UTF-8.
+     * @param string $source The raw text of a .neospx file, in UTF-8.
      *                       Multi-byte characters are counted as single
      *                       column units for line/column reporting.
      *
@@ -105,10 +105,10 @@ The complete `Lexer` class. Compiles against PHP 8.4 with only `ext-mbstring`. T
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Lexer;
+namespace SovereignStack\Core\NeoSPX\Lexer;
 
 /**
- * SuperPHP source lexer. Single-pass DFA over four states: Text, Expression,
+ * NeoSPX source lexer. Single-pass DFA over four states: Text, Expression,
  * String, Comment. Pure: no instance state survives a tokenize() call.
  */
 final class Lexer implements LexerInterface
@@ -452,7 +452,7 @@ The `Token`, `TokenType`, `TokenStream`, and `LexerException` companions are sho
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\SuperPHP\Lexer;
+namespace SovereignStack\Core\NeoSPX\Lexer;
 
 /**
  * Backed string enum. The backing value is the canonical lexeme name used
@@ -653,7 +653,7 @@ public function parse(string $source): RootNode
 }
 ```
 
-CORE-12 (Compiler) does not consume the `TokenStream` directly — it consumes the AST produced by CORE-11 — but it does reference `TokenType::Keyword` to recognise sigil-prefixed directives (`@persist`, `@global`, `~setup`) at AST-walk time, because AST nodes carry their originating token for error reporting. This is the only cross-stage type coupling inside the SuperPHP triplet, and it is intentional: keeping `TokenType` in the lexer package means CORE-11 and CORE-12 both import from CORE-07, so any change to the token set is a SemVer event for CORE-07.
+CORE-12 (Compiler) does not consume the `TokenStream` directly — it consumes the AST produced by CORE-11 — but it does reference `TokenType::Keyword` to recognise sigil-prefixed directives (`@persist`, `@global`, `~setup`) at AST-walk time, because AST nodes carry their originating token for error reporting. This is the only cross-stage type coupling inside the NeoSPX triplet, and it is intentional: keeping `TokenType` in the lexer package means CORE-11 and CORE-12 both import from CORE-07, so any change to the token set is a SemVer event for CORE-07.
 
 **Concrete wiring detail:** the kernel exposes the lexer under `LexerInterface` so a Hub-tier service provider (CORE-17) can swap a profiling subclass in dev/test environments by rebinding the alias. Production keeps the stock `Lexer` because it is already allocation-light (one array of `Token` readonly objects per call) and profiled to be O(n).
 
@@ -663,7 +663,7 @@ CORE-12 (Compiler) does not consume the `TokenStream` directly — it consumes t
 |---|---|
 | Tokenization is O(n) in source length | **Harness:** PHPUnit `--group performance`, `LexerLinearityBenchTest`. **Baseline:** GitHub Actions `ubuntu-latest` runner, PHP 8.4 with opcache enabled and no Xdebug (per ADR-010 baseline; JIT disabled to isolate interpreter cost). **Load model:** synthetic templates of 100 B, 1 KB, 10 KB, 100 KB, and 1 MB (mixed Text / Expression / String / Comment in fixed ratio 7:2:0.5:0.5). Each size is tokenised 1,000 times in a tight loop after a 100-iteration warm-up; wall-clock measured via `hrtime(true)`; the median of 5 runs is recorded. **Assertion:** Pearson correlation r ≥ 0.99 between source length and tokenization wall-clock across the five sizes. An O(n²) implementation would have r ≥ 0.99 against the square curve instead. **Absolute throughput numbers — provisional, unverified — will be recorded in `docs/perf/CORE-07-baselines.md` on first CI run**; no bare millisecond claim is made in this blueprint. |
 | Multi-byte position accuracy | **Harness:** PHPUnit `--group performance`, `LexerMbPositionTest`. **Load model:** a fixed 2 KB source containing a mix of ASCII, CJK (3-byte UTF-8), and emoji (4-byte UTF-8) characters; assert that the `line` and `column` of every emitted `Token` match a hand-computed reference. **Assertion:** 100% match across 1,000 token positions. Catches regressions where a `substr`-based scanner reports byte offsets instead of codepoint offsets. |
-| Token round-trip stability | **Harness:** PHPUnit `--group default`, `LexerRoundTripTest`. **Load model:** 50 fixture templates drawn from `tests/fixtures/superphp/` covering nested components, sigil directives, multi-line strings, comments, and adversarial inputs (deeply nested `@{ ... }@`, many small tokens). Each fixture is tokenised; the `Token` sequence is reconstructed by concatenating `value` fields; the reconstructed source is re-tokenised; the two streams are compared element-wise. **Assertion:** streams are identical (same count, same `TokenType` sequence, same `value` sequence) for every fixture. Catches drift between the lexer's emission and re-emission. |
+| Token round-trip stability | **Harness:** PHPUnit `--group default`, `LexerRoundTripTest`. **Load model:** 50 fixture templates drawn from `tests/fixtures/neospx/` covering nested components, sigil directives, multi-line strings, comments, and adversarial inputs (deeply nested `@{ ... }@`, many small tokens). Each fixture is tokenised; the `Token` sequence is reconstructed by concatenating `value` fields; the reconstructed source is re-tokenised; the two streams are compared element-wise. **Assertion:** streams are identical (same count, same `TokenType` sequence, same `value` sequence) for every fixture. Catches drift between the lexer's emission and re-emission. |
 | Memory ceiling | **Harness:** PHPUnit `--group performance`, `LexerMemoryTest`. **Load model:** tokenise a 1 MB template; measure peak memory via `memory_get_peak_usage(true)` before and after the call. **Assertion:** peak delta ≤ 8× source length (i.e. ≤ 8 MB for a 1 MB source). The `list<Token>` array plus the underlying string values are the only allocations; an 8× ceiling allows for PHP's array overhead and readonly-object headers without hiding a leak. **Provisional, unverified** as an absolute number; the ratio is asserted on first run. |
 
 **Iron rule (per `01_MASTER_INDEX.md` §7 Rule 2 and `AUTHORING_GUIDE.md` §"Benchmark & Verification Methodology"):** No bare millisecond targets. Every target names its harness, baseline, and load model as above. Absolute throughput numbers are marked "provisional, unverified" until the first measured run on CI; the only assertions in the test suite are the *scaling relationships* (linear in source length, multi-byte position accuracy, round-trip stability) and the *memory ratio ceiling*, all of which are measurable on first run.
@@ -681,24 +681,24 @@ CORE-12 (Compiler) does not consume the `TokenStream` directly — it consumes t
 
 ## Security Properties
 
-- **The lexer never evaluates code.** `tokenize()` performs pure string analysis: it never calls `eval()`, never `include`s a file, never invokes `Closure::fromCallable` or `create_function`, never instantiates a class named in the source. The DFA emits `Token` value objects and nothing else. A `.super.php` source file containing `@{ system('rm -rf /') }@` produces a sequence of `OpenTag`, `Keyword(system)`, `ParenOpen`, `String('rm -rf /')`, `ParenClose`, `CloseTag`, `EOF` tokens — none executed. The lexer is safe to run on untrusted template input; sandboxing (if any) is CORE-12's responsibility, not the lexer's.
+- **The lexer never evaluates code.** `tokenize()` performs pure string analysis: it never calls `eval()`, never `include`s a file, never invokes `Closure::fromCallable` or `create_function`, never instantiates a class named in the source. The DFA emits `Token` value objects and nothing else. A `.neospx` source file containing `@{ system('rm -rf /') }@` produces a sequence of `OpenTag`, `Keyword(system)`, `ParenOpen`, `String('rm -rf /')`, `ParenClose`, `CloseTag`, `EOF` tokens — none executed. The lexer is safe to run on untrusted template input; sandboxing (if any) is CORE-12's responsibility, not the lexer's.
 - **No regex, no catastrophic backtracking.** The lexer uses character-by-character `if` / `elseif` dispatch and a single `match` on punctuation, not `preg_match`. PCRE catastrophic backtracking (a DoS where a crafted input takes exponential time on a particular regex) is structurally impossible. The Adversarial Input test verifies linear time on 10 KB of `"@{}@|@$"` repeated 1,000 times. A future maintainer who reintroduces `preg_match` for any token type must re-justify against this invariant.
 - **Token positions are accurate to the codepoint, not the byte.** Line/column counters advance by `mb_substr` codepoint, not by raw byte length, so error messages on multi-byte UTF-8 sources (CJK, emoji) point at the correct character. Position-tracking bugs are the single most common lexer regression and the single most user-visible (every CORE-11 parse error cites the lexer's line / column); the Multi-byte Position test guards it.
 - **Lexer instances are pure.** `tokenize()` resets every per-call field at entry (`source`, `length`, `offset`, `line`, `column`, `state`, `stringQuote`, `tokens`, `textBuffer`). No state survives the call, so a singleton `Lexer` shared across concurrent template compiles on a long-lived worker (RoadRunner, FrankenPHP) cannot leak one request's source into another's token stream. Same immutability invariant CORE-02 and CORE-05 enforce on their hot-path singletons.
 
 ## Migration Notes
 
-CORE-07 is **new** — no prior implementation to migrate from. It lands as the Composer package `sovereign-stack/core-superphp-lexer` at path `packages/core/superphp-lexer/`. The `composer.json` declares `php: ^8.4` and `ext-mbstring: *` as the only runtime requirements (zero Composer dependencies); `require-dev` carries `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `infection/infection ^0.27`, `friendsofphp/php-cs-fixer ^3.48`. PSR-4 autoload maps `SovereignStack\Core\SuperPHP\Lexer\` to `src/`. The `src/` directory contains exactly the six files itemised in the Class Map (`Lexer.php`, `LexerInterface.php`, `Token.php`, `TokenType.php`, `TokenStream.php`, `LexerException.php`); `tests/` carries `LexerTest`, `LexerRoundTripTest`, `LexerErrorPositionTest`, `LexerMbPositionTest`, `LexerAdversarialInputTest`, `TokenStreamImmutabilityTest`, a `performance/` subdirectory for `LexerLinearityBenchTest` and `LexerMemoryTest`, and a `fixtures/superphp/` directory of 50 `.super.php` fixtures. `phpstan.neon` runs at level 8 with `bleedingEdge: true`; `phpunit.xml.dist` declares a single testsuite over `tests/` with coverage over `src/`.
+CORE-07 is **new** — no prior implementation to migrate from. It lands as the Composer package `sovereign-stack/core-neospx-lexer` at path `packages/core/neospx-lexer/`. The `composer.json` declares `php: ^8.4` and `ext-mbstring: *` as the only runtime requirements (zero Composer dependencies); `require-dev` carries `phpunit/phpunit ^10.5`, `phpstan/phpstan ^1.10`, `infection/infection ^0.27`, `friendsofphp/php-cs-fixer ^3.48`. PSR-4 autoload maps `SovereignStack\Core\NeoSPX\Lexer\` to `src/`. The `src/` directory contains exactly the six files itemised in the Class Map (`Lexer.php`, `LexerInterface.php`, `Token.php`, `TokenType.php`, `TokenStream.php`, `LexerException.php`); `tests/` carries `LexerTest`, `LexerRoundTripTest`, `LexerErrorPositionTest`, `LexerMbPositionTest`, `LexerAdversarialInputTest`, `TokenStreamImmutabilityTest`, a `performance/` subdirectory for `LexerLinearityBenchTest` and `LexerMemoryTest`, and a `fixtures/neospx/` directory of 50 `.neospx` fixtures. `phpstan.neon` runs at level 8 with `bleedingEdge: true`; `phpunit.xml.dist` declares a single testsuite over `tests/` with coverage over `src/`.
 
-**Landing sequence (per `01_MASTER_INDEX.md` §5 Step 6):** CORE-07 lands first in the SuperPHP triplet (CORE-07 → CORE-11 → CORE-12). No upstream Core-tier blockers — only PHP 8.4 + `ext-mbstring` — so it can be built in parallel with the HTTP / Kernel / Container pipeline (CORE-04 / 05 / 06, CORE-02, CORE-18). The exit criterion for Step 6 Stage 1 is a `LexerRoundTripTest` that tokenises a fixture template exercising every `TokenType` case and asserts the round-trip reconstruction equals the original source.
+**Landing sequence (per `01_MASTER_INDEX.md` §5 Step 6):** CORE-07 lands first in the NeoSPX triplet (CORE-07 → CORE-11 → CORE-12). No upstream Core-tier blockers — only PHP 8.4 + `ext-mbstring` — so it can be built in parallel with the HTTP / Kernel / Container pipeline (CORE-04 / 05 / 06, CORE-02, CORE-18). The exit criterion for Step 6 Stage 1 is a `LexerRoundTripTest` that tokenises a fixture template exercising every `TokenType` case and asserts the round-trip reconstruction equals the original source.
 
-**Rollback procedure:** CORE-07 is a leaf in the runtime dependency graph at landing time (nothing depends on it until CORE-11 lands in Stage 2). Rollback is `git rm -r packages/core/superphp-lexer/ && composer remove sovereign-stack/core-superphp-lexer`. If CORE-11 has already landed and imports `SovereignStack\Core\SuperPHP\Lexer\{LexerInterface, Token, TokenType, TokenStream, LexerException}`, rollback CORE-11 first. Tag the broken commit `core-07-rollback-<date>`. Because the lexer is stateless and produces no persisted artefact (no DB rows, no cache entries, no compiled view files — those are CORE-12's responsibility), there is no data migration or schema change to undo.
+**Rollback procedure:** CORE-07 is a leaf in the runtime dependency graph at landing time (nothing depends on it until CORE-11 lands in Stage 2). Rollback is `git rm -r packages/core/neospx-lexer/ && composer remove sovereign-stack/core-neospx-lexer`. If CORE-11 has already landed and imports `SovereignStack\Core\NeoSPX\Lexer\{LexerInterface, Token, TokenType, TokenStream, LexerException}`, rollback CORE-11 first. Tag the broken commit `core-07-rollback-<date>`. Because the lexer is stateless and produces no persisted artefact (no DB rows, no cache entries, no compiled view files — those are CORE-12's responsibility), there is no data migration or schema change to undo.
 
-**Forward-compatibility:** `TokenType` is the only cross-stage type contract inside the SuperPHP triplet; CORE-11 and CORE-12 both import it from this package. Adding a new case (e.g. a future `Heredoc` token) is SemVer-minor for CORE-07 but SemVer-major for CORE-11 (which must add a new `switch` arm); removing or renaming a case is SemVer-major for CORE-07. The lexer commits to never removing a `TokenType` case without a deprecation cycle of at least one minor release.
+**Forward-compatibility:** `TokenType` is the only cross-stage type contract inside the NeoSPX triplet; CORE-11 and CORE-12 both import it from this package. Adding a new case (e.g. a future `Heredoc` token) is SemVer-minor for CORE-07 but SemVer-major for CORE-11 (which must add a new `switch` arm); removing or renaming a case is SemVer-major for CORE-07. The lexer commits to never removing a `TokenType` case without a deprecation cycle of at least one minor release.
 
 ## SemVer Impact
 
-**Minor** (0.1.0 → 0.2.0 at first stable release). The package's first release is `0.1.0` while the SuperPHP triplet is under development (CORE-11 and CORE-12 not yet landed); the first `1.0.0` release coincides with the SuperPHP triplet's first end-to-end template compile (the exit criterion for `01_MASTER_INDEX.md` §5 Step 6). Subsequent minor bumps add `TokenType` cases (e.g. `Heredoc`, `Nullsafe` for `?->`) without changing `LexerInterface::tokenize()`'s signature; downstream CORE-11 parsers must add a default arm to their `switch` statements to remain forward-compatible. A major bump is required only if `tokenize()`'s signature changes (e.g. to accept a `LexerOptions` value object for case-sensitivity control) or if a `TokenType` case is removed. The four-state DFA (`Text` / `Expression` / `String` / `Comment`) and the `@{` / `}@` delimiter syntax are part of the 1.0.0 contract and cannot be changed without a major bump — they define the SuperPHP language surface, not an implementation detail.
+**Minor** (0.1.0 → 0.2.0 at first stable release). The package's first release is `0.1.0` while the NeoSPX triplet is under development (CORE-11 and CORE-12 not yet landed); the first `1.0.0` release coincides with the NeoSPX triplet's first end-to-end template compile (the exit criterion for `01_MASTER_INDEX.md` §5 Step 6). Subsequent minor bumps add `TokenType` cases (e.g. `Heredoc`, `Nullsafe` for `?->`) without changing `LexerInterface::tokenize()`'s signature; downstream CORE-11 parsers must add a default arm to their `switch` statements to remain forward-compatible. A major bump is required only if `tokenize()`'s signature changes (e.g. to accept a `LexerOptions` value object for case-sensitivity control) or if a `TokenType` case is removed. The four-state DFA (`Text` / `Expression` / `String` / `Comment`) and the `@{` / `}@` delimiter syntax are part of the 1.0.0 contract and cannot be changed without a major bump — they define the NeoSPX language surface, not an implementation detail.
 
 
 ---
@@ -722,12 +722,12 @@ This blueprint is bound by the following doctrines (per [SDLC-01 §9](../SDLC/SD
 - **PHP version**: bulk-updated all references from `PHP 8.3` → `PHP 8.4` (the package `composer.json` files already require `^8.4`; the blueprint references were stale). This includes version strings in interface contracts, reference implementation notes, benchmark methodology baselines, and runtime requirements.
 - **Cross-references**: added references to the new SDLC documents ([`SDLC-01`](../SDLC/SDLC-01-Foundations.md), [`SDLC-02`](../SDLC/SDLC-02-Governance.md), [`SDLC-03`](../SDLC/SDLC-03-InterfaceFreeze.md), [`SDLC-04`](../SDLC/SDLC-04-CooldownMechanics.md), [`SDLC-05`](../SDLC/SDLC-05-AI-Assisted-Development-Protocol.md), [`SDLC-06`](../SDLC/SDLC-06-Generator-Specifications.md)) which replaced the original `SDLC-AGRD.md` (now a redirect at [`../CrossCutting/SDLC-AGRD.md`](../CrossCutting/SDLC-AGRD.md)).
 - **Doctrine layer**: added this "Doctrines Applied + Rewrite Notes" section per the new SDLC convention (SDLC-01 §9 Provenance).
-- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-07 — SuperPHP Lexer — shipped per the verified DAG).
+- **Build Status**: verified current shipped state (depth 2 for this blueprint — CORE-07 — NeoSPX Lexer — shipped per the verified DAG).
 
 ### What Was NOT Changed in PR #323
 
 - **Interface contracts** — the PHP interface definitions, class maps, and behavior contracts were NOT modified. They remain as declared. Any change to these would require an ADR (per [SDLC-03 §3.1](../SDLC/SDLC-03-InterfaceFreeze.md)).
-- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/superphp-lexer/src/` and is verified by the architecture-boundary-lint.
+- **Reference implementations** — the compilable class code was NOT modified. The implementation lives in `packages/core/neospx-lexer/src/` and is verified by the architecture-boundary-lint.
 - **Sequence diagrams** — the Mermaid sequence diagrams were NOT modified.
 - **Benchmark methodology** — the harness specs were NOT modified (only the PHP version in the baseline was updated from 8.3 to 8.4 to match the actual CI runner).
 

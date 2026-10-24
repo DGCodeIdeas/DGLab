@@ -1,17 +1,17 @@
-# SPX / SuperPHP — Compiler Construction Principles Research
+# SPX / NeoSPX — Compiler Construction Principles Research
 
 **Created:** 2026-10-22  
 **Status:** Research deliverable — NOT an implementation requirement, NOT an ADR  
-**Source:** `document.md` (CIT 316 Compiler Construction I course guide, NOUN) — compiler theory input for SuperPHP pipeline design  
-**Related:** `SPX-NAMING-COLLISION-REPORT.md`, `SPX-EASE-OF-USE-RESEARCH.md`, `Architecture/ADRs/ADR-005-superphp-vs-blade-twig.md` (CORE-07/11/12)
+**Source:** `document.md` (CIT 316 Compiler Construction I course guide, NOUN) — compiler theory input for NeoSPX pipeline design  
+**Related:** `SPX-NAMING-COLLISION-REPORT.md`, `SPX-EASE-OF-USE-RESEARCH.md`, `Architecture/ADRs/ADR-005-neospx-vs-blade-twig.md` (CORE-07/11/12)
 
 ---
 
 ## 1. Executive Summary
 
-The CIT 316 guide (17 study units, 4 modules) covers formal grammars, lexical analysis, syntax analysis, and code generation. Its principles map directly onto SuperPHP's three-stage pipeline (Lexer → Parser → Compiler) ratified by ADR-005. Key takeaways:
+The CIT 316 guide (17 study units, 4 modules) covers formal grammars, lexical analysis, syntax analysis, and code generation. Its principles map directly onto NeoSPX's three-stage pipeline (Lexer → Parser → Compiler) ratified by ADR-005. Key takeaways:
 
-1. **Grammar class selection**: SuperPHP's template syntax is best modeled as a **context-free grammar (Type-2 / CFG)** for structure, with **regular grammars (Type-3)** for tokenization. This matches the course's front-end/back-end split and ADR-005's regex-and-DFA-based lexer.
+1. **Grammar class selection**: NeoSPX's template syntax is best modeled as a **context-free grammar (Type-2 / CFG)** for structure, with **regular grammars (Type-3)** for tokenization. This matches the course's front-end/back-end split and ADR-005's regex-and-DFA-based lexer.
 2. **Lexical analysis**: regex → NFA → DFA pipeline (McNaughton-Yamada-Thompson + subset construction) is the standard; ADR-005's "regex-and-DFA-based lexer" is the recommended, automatable path (not hand-implemented transition diagrams).
 3. **Parsing technique**: recursive descent (top-down LL(1)-style) is the ADR-005 ratified choice; the course's left-recursion elimination, ambiguity resolution (precedence/associativity), and parse-tree construction are prerequisites for CORE-11.
 4. **Semantic analysis is embedded**, not a separate pass — consistent with the course's "analysis part" framing and ADR-005's "semantic analysis embedded in parser/compiler."
@@ -22,25 +22,25 @@ No implementation authorization is granted by this report.
 
 ---
 
-## 2. Grammar Class Mapping to SuperPHP
+## 2. Grammar Class Mapping to NeoSPX
 
-| Chomsky Class | Automaton | Use in SuperPHP | ADR-005 Alignment |
+| Chomsky Class | Automaton | Use in NeoSPX | ADR-005 Alignment |
 |---------------|-----------|-----------------|-------------------|
 | Type-3 Regular | Finite automaton (DFA/NFA) | Tokenization: identifiers, keywords, operators, literals, whitespace stripping, comment removal | CORE-07 "regex-and-DFA-based lexer" |
 | Type-2 Context-Free | Pushdown automaton | Structural parsing: directives, component tags, expressions, control flow | CORE-11 "recursive-descent parser" |
 | Type-1 Context-Sensitive | Linear-bounded automaton | Not needed for MVP; possible future use for context-dependent directives (e.g., `@persist` scoping) | Out of scope per ADR-005 |
 | Type-0 Unrestricted | Turing machine | Not applicable | Out of scope |
 
-**Principle from course**: "Context-free grammars and regular grammars provide a good compromise between expressivity and ease of parsing, and are widely used in practical applications." SuperPHP's small, bounded directive set (ADR-005) fits this compromise exactly.
+**Principle from course**: "Context-free grammars and regular grammars provide a good compromise between expressivity and ease of parsing, and are widely used in practical applications." NeoSPX's small, bounded directive set (ADR-005) fits this compromise exactly.
 
-**Analytic grammars (PEGs)**: the course mentions PEGs as "a more recent generalisation of TDPL designed around the practical expressiveness needs of programming language and compiler writers." This is relevant to SuperPHP's syntax-driver architecture (multiple authoring syntaxes → public component document), but PEGs are a research candidate only — not an approved decision.
+**Analytic grammars (PEGs)**: the course mentions PEGs as "a more recent generalisation of TDPL designed around the practical expressiveness needs of programming language and compiler writers." This is relevant to NeoSPX's syntax-driver architecture (multiple authoring syntaxes → public component document), but PEGs are a research candidate only — not an approved decision.
 
 ---
 
 ## 3. Lexical Analysis Principles for CORE-07
 
 ### 3.1 Token Model
-The course defines a token as a pair (token name, optional attribute). SuperPHP's TokenStream (per ADR-005) should follow this model:
+The course defines a token as a pair (token name, optional attribute). NeoSPX's TokenStream (per ADR-005) should follow this model:
 - Simple tokens (punctuation, operators): integer code only
 - Complex tokens (identifiers, literals, component tags): integer code + pointer to symbol table / value
 
@@ -56,7 +56,7 @@ The course presents two construction methods:
 - **Hand implementation**: input buffering + transition diagrams (error-prone, hard to maintain)
 - **Automatic generation**: regex → NFA (McNaughton-Yamada-Thompson) → DFA (subset construction) → optimized DFA → code
 
-**Recommendation for SuperPHP**: Use automatic generation (regex + DFA), consistent with ADR-005's "regex-and-DFA-based lexer." Hand-implemented transition diagrams are a research/maintenance liability. The course's longest-match and rule-priority disambiguation rules (Lex semantics) should be adopted verbatim.
+**Recommendation for NeoSPX**: Use automatic generation (regex + DFA), consistent with ADR-005's "regex-and-DFA-based lexer." Hand-implemented transition diagrams are a research/maintenance liability. The course's longest-match and rule-priority disambiguation rules (Lex semantics) should be adopted verbatim.
 
 ### 3.4 Regex → NFA → DFA Conversion
 The course's conversion pipeline is the standard:
@@ -79,7 +79,7 @@ This is the implementation blueprint for CORE-07.
 5. Report syntax errors
 
 ### 4.2 CFG Formalism
-A CFG = (N, T, P, S). SuperPHP's grammar should be specified in BNF/EBNF form before implementation, with:
+A CFG = (N, T, P, S). NeoSPX's grammar should be specified in BNF/EBNF form before implementation, with:
 - Terminals = token names from CORE-07
 - Nonterminals = ComponentNode, SetupNode, DirectiveNode, RawHtmlNode (per ADR-005)
 - Start symbol = document/template root
@@ -92,7 +92,7 @@ A CFG = (N, T, P, S). SuperPHP's grammar should be specified in BNF/EBNF form be
 ADR-005 ratifies recursive descent (top-down), which corresponds to leftmost derivations.
 
 ### 4.4 Ambiguity Resolution
-The course demonstrates that ambiguity arises from unspecified precedence/associativity. SuperPHP must define:
+The course demonstrates that ambiguity arises from unspecified precedence/associativity. NeoSPX must define:
 - Operator precedence in `~setup` expressions
 - Associativity rules
 - Disambiguation for component tag vs HTML tag parsing
@@ -107,10 +107,10 @@ Recursive descent parsers cannot handle left recursion directly. The course prov
 This is a prerequisite for CORE-11's recursive descent implementation.
 
 ### 4.6 Top-Down vs Bottom-Up
-| Approach | Pros | Cons | SuperPHP Fit |
+| Approach | Pros | Cons | NeoSPX Fit |
 |----------|------|------|--------------|
 | Top-down (LL/recursive descent) | Simple, intuitive, easy error recovery, matches ADR-005 | Cannot handle left recursion without transformation; limited lookahead | **Ratified by ADR-005** |
-| Bottom-up (LR/LALR) | Handles more grammars, powerful | Complex table generation, harder error messages | Not needed for SuperPHP's small grammar |
+| Bottom-up (LR/LALR) | Handles more grammars, powerful | Complex table generation, harder error messages | Not needed for NeoSPX's small grammar |
 | Operator precedence | Simple for expressions | Limited to expression grammars | Could be used for `~setup` expressions |
 
 ---
@@ -121,7 +121,7 @@ Per ADR-005: "semantic analysis embedded in parser/compiler." The course's compi
 - Type checking (variables, functions used consistently)
 - Translation of ASTs into IRs
 
-For SuperPHP, semantic analysis should cover:
+For NeoSPX, semantic analysis should cover:
 - Variable scope validation (`@global`)
 - Function/filter validation (allowed functions in `~setup`)
 - Type checking for `@persist` serialization
@@ -141,25 +141,25 @@ For SuperPHP, semantic analysis should cover:
 6. **Code generation** → IR → native PHP (OPcache-friendly)
 
 ### 6.2 Intermediate Representation
-The course emphasizes IR as the bridge between front-end and back-end. For SuperPHP:
+The course emphasizes IR as the bridge between front-end and back-end. For NeoSPX:
 - **IR = AST** (ComponentNode/SetupNode/DirectiveNode/RawHtmlNode) per ADR-005
 - Compiled output = flat PHP arrays + `s-data` JSON injection (Reactive Bridge)
 - No `eval()`, no string-built closures (ADR-005, ADR-010)
 
 ### 6.3 Front-End / Back-End Separation
 The course's n+m compiler architecture (n front-ends + m back-ends via universal IR) maps to:
-- Front-end: SuperPHP lexer + parser (one per authoring syntax via syntax drivers)
+- Front-end: NeoSPX lexer + parser (one per authoring syntax via syntax drivers)
 - Back-end: PHP code generator (one target: native PHP)
 - IR: public component document (language-neutral, per SPX research)
 
 ### 6.4 Passes and Back-Patching
-The course discusses reducing passes via buffering and back-patching. SuperPHP's single-pass compilation (lexer → parser → compiler in one pass) is feasible because:
+The course discusses reducing passes via buffering and back-patching. NeoSPX's single-pass compilation (lexer → parser → compiler in one pass) is feasible because:
 - Component tags are self-contained
 - No forward references (declarations after use) in template syntax
 - Back-patching only needed if future features require multi-pass
 
 ### 6.5 Code Optimization
-The course treats optimization as optional. For SuperPHP:
+The course treats optimization as optional. For NeoSPX:
 - OPcache handles runtime optimization
 - Compiler optimization pass is deferred (out of MVP scope per ADR-005)
 - Focus on correctness and preload-friendliness (ADR-010)
@@ -170,7 +170,7 @@ The course treats optimization as optional. For SuperPHP:
 
 The course (§3.2.7) states: "It is desirable that compilation be completed on flawed programmes, at least through the syntax-analysis phase, so that as many errors as possible can be detected in one compilation."
 
-SuperPHP error handling should:
+NeoSPX error handling should:
 1. **Lexical errors**: report invalid characters, unterminated strings/comments
 2. **Syntax errors**: report unexpected tokens with position (line/col)
 3. **Semantic errors**: report undefined variables, invalid function calls, type mismatches
@@ -185,7 +185,7 @@ This aligns with ADR-005's "100% coverage on complex syntax samples" testing com
 
 The course (§3.2.6): "keeps track of the names used by the programme and records essential information about each, such as its type."
 
-For SuperPHP, the symbol table should track:
+For NeoSPX, the symbol table should track:
 - Variables declared via `@global`
 - Variables persisted via `@persist` (with serialization metadata)
 - Functions/filters available in `~setup`
@@ -198,9 +198,9 @@ Implementation: hash table (course mentions hash tables as the standard data str
 
 ## 9. Compiler Quality Criteria (from course §3.4)
 
-The course lists compiler qualities in order of importance. Mapped to SuperPHP:
+The course lists compiler qualities in order of importance. Mapped to NeoSPX:
 
-| # | Quality | SuperPHP Application |
+| # | Quality | NeoSPX Application |
 |---|---------|----------------------|
 | 1 | Bug-free compiler | CORE-07/11/12 test coverage |
 | 2 | Correct generated code | AST → PHP correctness tests |
@@ -215,11 +215,11 @@ The course lists compiler qualities in order of importance. Mapped to SuperPHP:
 
 ## 10. Research Questions (Open, Not Decisions)
 
-1. Should SuperPHP adopt PEGs for its syntax drivers, or stick with CFG + recursive descent? (PEGs are a research candidate per course; ADR-005 already ratifies recursive descent.)
-2. Should SuperPHP use a separate semantic analysis pass, or keep it embedded? (ADR-005 says embedded; course supports both.)
+1. Should NeoSPX adopt PEGs for its syntax drivers, or stick with CFG + recursive descent? (PEGs are a research candidate per course; ADR-005 already ratifies recursive descent.)
+2. Should NeoSPX use a separate semantic analysis pass, or keep it embedded? (ADR-005 says embedded; course supports both.)
 3. Should the component document (interchange contract) be JSON Schema-validated? (Per SPX research — JSON Schema 2020-12 is a candidate, not approved.)
-4. Should SuperPHP support operator precedence parsing for `~setup` expressions, or full recursive descent? (Both are course-covered; recursive descent is simpler for a small grammar.)
-5. What is the error recovery strategy for SuperPHP? (Panic-mode vs phrase-level — course covers both; decision needed for CORE-11.)
+4. Should NeoSPX support operator precedence parsing for `~setup` expressions, or full recursive descent? (Both are course-covered; recursive descent is simpler for a small grammar.)
+5. What is the error recovery strategy for NeoSPX? (Panic-mode vs phrase-level — course covers both; decision needed for CORE-11.)
 
 ---
 
@@ -269,10 +269,10 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 1. **Pratt parsing for expressions**: Recursive descent requires grammar rewriting for operator precedence; Pratt parsing (top-down operator precedence) fuses precedence into a single loop and is the recommended modern approach for expression parsing within a recursive descent parser. matklad (rust-analyzer author) advocates this as the standard technique.
 2. **Loops replace left-recursion elimination**: In practice, left recursion is handled with `while`/`loop` constructs rather than formal grammar transformation. This is simpler and matches how production parsers (Kotlin, Rust) actually work.
 3. **Error recovery in recursive descent**: Two tricks — (a) in homogeneous sequences, skip tokens that cannot begin a new element; (b) for a specific construct `T` expecting token `foo` but seeing `bar`: if `bar` ∉ FOLLOW(T), skip it; if `bar` ∈ FOLLOW(T), emit error but don't skip. This yields precise partial parses.
-4. **Vue 3.4 state-machine tokenizer**: Vue replaced recursive descent + regex with a character-by-character state machine tokenizer, achieving 2x parse speedup. For SuperPHP, this suggests: if the lexer becomes a bottleneck, consider a state-machine approach over regex-and-DFA. However, ADR-005 ratifies regex-and-DFA; the state-machine is a future optimization candidate, not a replacement.
-5. **Design patterns for LL(1) parsers**: Visitor pattern (tokens as hosts, parsing algorithms as visitors), chain-of-responsibility (select correct rule), abstract factory (manufacture parsing visitors). These reduce conditionals and improve extensibility. Relevant for SuperPHP's directive extensibility.
+4. **Vue 3.4 state-machine tokenizer**: Vue replaced recursive descent + regex with a character-by-character state machine tokenizer, achieving 2x parse speedup. For NeoSPX, this suggests: if the lexer becomes a bottleneck, consider a state-machine approach over regex-and-DFA. However, ADR-005 ratifies regex-and-DFA; the state-machine is a future optimization candidate, not a replacement.
+5. **Design patterns for LL(1) parsers**: Visitor pattern (tokens as hosts, parsing algorithms as visitors), chain-of-responsibility (select correct rule), abstract factory (manufacture parsing visitors). These reduce conditionals and improve extensibility. Relevant for NeoSPX's directive extensibility.
 
-**Relevance to SuperPHP:** Pratt parsing should be the technique for `~setup` expressions; error recovery tricks should be adopted for CORE-11; state-machine tokenizer is a future optimization option.
+**Relevance to NeoSPX:** Pratt parsing should be the technique for `~setup` expressions; error recovery tricks should be adopted for CORE-11; state-machine tokenizer is a future optimization option.
 
 ### 13.2 Lexer/Tokenizer Design Patterns for Template Engines
 
@@ -285,14 +285,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - phplrt.org (regex-driven lexer, nested lexers for template languages)
 
 **Key findings:**
-1. **Stateful/mode-stacked lexer is the standard for template engines**: Twig uses 5 states (STATE_DATA, STATE_BLOCK, STATE_VAR, STATE_STRING, STATE_INTERPOLATION); php-dissect provides StatefulLexer with push/pop state stack; Sharp uses 7 modes. SuperPHP should adopt a stateful lexer with explicit mode stack.
-2. **Latte's dual-lexer architecture**: Latte runs two lexers in parallel — one for HTML template structure, one for PHP-like expression language inside tags. The lexer and parser run in parallel (not sequentially) using coroutines/fibers, because the parser must influence tokenization (e.g., `n:syntax=off`). This is critical for SuperPHP's component tags (`<s:ui:button />`) where HTML and directive contexts interleave.
-3. **Twig's pre-scan optimization**: Twig uses `preg_match_all` to find all token starts in one pass, then iterates positions. This avoids repeated regex scanning. Recommended for SuperPHP lexer performance.
+1. **Stateful/mode-stacked lexer is the standard for template engines**: Twig uses 5 states (STATE_DATA, STATE_BLOCK, STATE_VAR, STATE_STRING, STATE_INTERPOLATION); php-dissect provides StatefulLexer with push/pop state stack; Sharp uses 7 modes. NeoSPX should adopt a stateful lexer with explicit mode stack.
+2. **Latte's dual-lexer architecture**: Latte runs two lexers in parallel — one for HTML template structure, one for PHP-like expression language inside tags. The lexer and parser run in parallel (not sequentially) using coroutines/fibers, because the parser must influence tokenization (e.g., `n:syntax=off`). This is critical for NeoSPX's component tags (`<s:ui:button />`) where HTML and directive contexts interleave.
+3. **Twig's pre-scan optimization**: Twig uses `preg_match_all` to find all token starts in one pass, then iterates positions. This avoids repeated regex scanning. Recommended for NeoSPX lexer performance.
 4. **Trie-based lexer**: ircmaxell's blog demonstrates trie-based tokenization as an alternative to regex for PHP, achieving efficiency. Relevant if regex performance becomes an issue.
-5. **Nested lexers**: phplrt supports handing fragments to sub-lexers (for string literals, PHP inside HTML). SuperPHP's `~setup` blocks should use a nested lexer for PHP expressions.
+5. **Nested lexers**: phplrt supports handing fragments to sub-lexers (for string literals, PHP inside HTML). NeoSPX's `~setup` blocks should use a nested lexer for PHP expressions.
 6. **Anchoring regexes**: Always anchor regexes with `^` at the beginning (php-dissect docs). Without anchoring, PCRE scans the entire remaining input, causing O(n²) behavior.
 
-**Relevance to SuperPHP:** Adopt stateful mode-stacked lexer; consider parallel lexer/parser for component tags; anchor all regexes; pre-scan token positions for performance.
+**Relevance to NeoSPX:** Adopt stateful mode-stacked lexer; consider parallel lexer/parser for component tags; anchor all regexes; pre-scan token positions for performance.
 
 ### 13.3 AST Design for Template Languages
 
@@ -307,14 +307,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - mau (Elixir tuple-format AST with opts metadata)
 
 **Key findings:**
-1. **Node base class with compile() method**: Both Twig and Sharp use a Node base class where each node implements `compile(Compiler)` or `compile(Context)`. This is the visitor/codegen pattern. SuperPHP's AST nodes (ComponentNode, SetupNode, DirectiveNode, RawHtmlNode) should follow this.
-2. **Source location on every node**: CoffeeHaml and Sharp carry SourceLocation (line, column, offset, endLine, endColumn, endOffset) on every node. Essential for error reporting and source maps. SuperPHP should include this.
-3. **getIterator() for traversability**: Latte requires every node to implement getIterator() yielding references to children, enabling compiler passes to traverse and modify. This is a powerful pattern for SuperPHP's semantic analysis and optimization passes.
-4. **Node visitor pattern**: Twig's NodeTraverser applies registered NodeVisitors before compilation, enabling AST transformation (optimization, security sandboxing). SuperPHP should support this for the Reactive Bridge injection and sandbox checks.
-5. **Rust enum-based AST**: ruitl uses a tagged enum (Element, Text, Expression, If, For, Component, Fragment, Raw) with Box for recursive nesting. In PHP, this maps to an abstract base class with concrete subclasses. SuperPHP's 4 node types (ComponentNode, SetupNode, DirectiveNode, RawHtmlNode) are sufficient for MVP; additional types (IfNode, ForNode, etc.) can be added as directives expand.
-6. **Flat vs. nested AST**: Sharp's OptimizePass merges adjacent TextNodes and strips CommentNodes. SuperPHP should include a similar optimization pass between parse and codegen.
+1. **Node base class with compile() method**: Both Twig and Sharp use a Node base class where each node implements `compile(Compiler)` or `compile(Context)`. This is the visitor/codegen pattern. NeoSPX's AST nodes (ComponentNode, SetupNode, DirectiveNode, RawHtmlNode) should follow this.
+2. **Source location on every node**: CoffeeHaml and Sharp carry SourceLocation (line, column, offset, endLine, endColumn, endOffset) on every node. Essential for error reporting and source maps. NeoSPX should include this.
+3. **getIterator() for traversability**: Latte requires every node to implement getIterator() yielding references to children, enabling compiler passes to traverse and modify. This is a powerful pattern for NeoSPX's semantic analysis and optimization passes.
+4. **Node visitor pattern**: Twig's NodeTraverser applies registered NodeVisitors before compilation, enabling AST transformation (optimization, security sandboxing). NeoSPX should support this for the Reactive Bridge injection and sandbox checks.
+5. **Rust enum-based AST**: ruitl uses a tagged enum (Element, Text, Expression, If, For, Component, Fragment, Raw) with Box for recursive nesting. In PHP, this maps to an abstract base class with concrete subclasses. NeoSPX's 4 node types (ComponentNode, SetupNode, DirectiveNode, RawHtmlNode) are sufficient for MVP; additional types (IfNode, ForNode, etc.) can be added as directives expand.
+6. **Flat vs. nested AST**: Sharp's OptimizePass merges adjacent TextNodes and strips CommentNodes. NeoSPX should include a similar optimization pass between parse and codegen.
 
-**Relevance to SuperPHP:** Adopt Node::compile() pattern, source locations on all nodes, getIterator() for traversability, NodeVisitor pattern for passes, and an optimization pass.
+**Relevance to NeoSPX:** Adopt Node::compile() pattern, source locations on all nodes, getIterator() for traversability, NodeVisitor pattern for passes, and an optimization pass.
 
 ### 13.4 Code Generation Strategies for Template Compilers
 
@@ -328,15 +328,15 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - Mironsoft blog "Building Your Own Templating Engine in PHP" (regex → PHP, caching, mtime checks)
 
 **Key findings:**
-1. **Compile-once, cache-forever**: All major PHP template engines (Blade, Twig, Smarty, Latte) compile to PHP and cache on disk, keyed by source mtime/checksum. SuperPHP's checksum-based cache (ADR-005) is the standard approach. mtime comparison is the simplest invalidation; checksum is more robust.
-2. **Flat PHP arrays as IR/output**: PHPX compiles to flat arrays `['$', tag, props, children]`. SuperPHP's compiled output (flat PHP arrays + s-data JSON) aligns with this. Flat arrays are OPcache-friendly and avoid deep nesting at runtime.
-3. **Hoisting deterministic content**: Tangible's compiler hoists provably deterministic content to compile-time string literals, deferring only dynamic content. This is an optimization SuperPHP could adopt for static HTML blocks.
-4. **Compiler context object**: Sharp passes CompilationContext carrying DirectiveRegistry, ComponentRegistry, Config. SuperPHP should use a similar context object during codegen.
-5. **Indentation tracking**: Twig's Compiler tracks indentation level and emits formatted PHP. SuperPHP should emit readable PHP for debugging, with debug info (line mapping) like Twig's addDebugInfo().
-6. **OPcache integration**: Docket Cache demonstrates that flat array returns compile to a single opcode. SuperPHP should ensure compiled templates return flat arrays for maximum OPcache efficiency.
-7. **Never-fatal compilation**: Tangible tests 20 malformed templates that must not throw. SuperPHP should handle malformed input gracefully during codegen.
+1. **Compile-once, cache-forever**: All major PHP template engines (Blade, Twig, Smarty, Latte) compile to PHP and cache on disk, keyed by source mtime/checksum. NeoSPX's checksum-based cache (ADR-005) is the standard approach. mtime comparison is the simplest invalidation; checksum is more robust.
+2. **Flat PHP arrays as IR/output**: PHPX compiles to flat arrays `['$', tag, props, children]`. NeoSPX's compiled output (flat PHP arrays + s-data JSON) aligns with this. Flat arrays are OPcache-friendly and avoid deep nesting at runtime.
+3. **Hoisting deterministic content**: Tangible's compiler hoists provably deterministic content to compile-time string literals, deferring only dynamic content. This is an optimization NeoSPX could adopt for static HTML blocks.
+4. **Compiler context object**: Sharp passes CompilationContext carrying DirectiveRegistry, ComponentRegistry, Config. NeoSPX should use a similar context object during codegen.
+5. **Indentation tracking**: Twig's Compiler tracks indentation level and emits formatted PHP. NeoSPX should emit readable PHP for debugging, with debug info (line mapping) like Twig's addDebugInfo().
+6. **OPcache integration**: Docket Cache demonstrates that flat array returns compile to a single opcode. NeoSPX should ensure compiled templates return flat arrays for maximum OPcache efficiency.
+7. **Never-fatal compilation**: Tangible tests 20 malformed templates that must not throw. NeoSPX should handle malformed input gracefully during codegen.
 
-**Relevance to SuperPHP:** Adopt compile-once/cache-forever, flat array output, compiler context, indentation tracking, debug info, and graceful error handling.
+**Relevance to NeoSPX:** Adopt compile-once/cache-forever, flat array output, compiler context, indentation tracking, debug info, and graceful error handling.
 
 ### 13.5 Semantic Analysis in Template Engines
 
@@ -351,13 +351,13 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 
 **Key findings:**
 1. **Embedded semantic analysis**: ADR-005's "semantic analysis embedded in parser/compiler" is confirmed by all major engines. Twig validates during parsing; Latte uses compiler passes; Jinja2 parses AST without rendering.
-2. **Variable scope tracking**: LiquidJS tracks rootScope, partialScope, blockScope, and alias resolution. SuperPHP should track variable scopes for @global and ~setup variables.
-3. **Sandbox/security passes**: Latte's Sandbox is implemented as a compiler pass that traverses the AST and validates allowed functions/tags. SuperPHP's security model (no arbitrary PHP in templates) should use the same approach.
-4. **Static analysis for variables**: Kida's {% template %} declarations and LiquidScript's variable extraction provide models for SuperPHP to validate that all referenced variables are declared via @global or ~setup.
-5. **Type checking**: Kida validates literal argument types against function signatures. SuperPHP's ~setup expressions could benefit from similar validation for @persist serialization.
-6. **Scope graph formalism**: The Portland State paper on scope graphs provides a formal framework for name resolution. For SuperPHP's small scope model (template-level vs component-level), a simple hash-table-based symbol table suffices; scope graphs are overkill for MVP.
+2. **Variable scope tracking**: LiquidJS tracks rootScope, partialScope, blockScope, and alias resolution. NeoSPX should track variable scopes for @global and ~setup variables.
+3. **Sandbox/security passes**: Latte's Sandbox is implemented as a compiler pass that traverses the AST and validates allowed functions/tags. NeoSPX's security model (no arbitrary PHP in templates) should use the same approach.
+4. **Static analysis for variables**: Kida's {% template %} declarations and LiquidScript's variable extraction provide models for NeoSPX to validate that all referenced variables are declared via @global or ~setup.
+5. **Type checking**: Kida validates literal argument types against function signatures. NeoSPX's ~setup expressions could benefit from similar validation for @persist serialization.
+6. **Scope graph formalism**: The Portland State paper on scope graphs provides a formal framework for name resolution. For NeoSPX's small scope model (template-level vs component-level), a simple hash-table-based symbol table suffices; scope graphs are overkill for MVP.
 
-**Relevance to SuperPHP:** Keep semantic analysis embedded; implement scope tracking for variables; use compiler passes for sandbox security; validate variable declarations.
+**Relevance to NeoSPX:** Keep semantic analysis embedded; implement scope tracking for variables; use compiler passes for sandbox security; validate variable declarations.
 
 ### 13.6 Error Recovery in Parsers
 
@@ -370,14 +370,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - Leinius original phrase-level recovery paper (1983)
 
 **Key findings:**
-1. **Panic mode is the baseline**: Discard input until synchronizing token (e.g., `;`, `}`, newline). Simple, grammar-neutral, applicable to any parser. SuperPHP should implement this as the minimum.
+1. **Panic mode is the baseline**: Discard input until synchronizing token (e.g., `;`, `}`, newline). Simple, grammar-neutral, applicable to any parser. NeoSPX should implement this as the minimum.
 2. **Phrase-level recovery is more precise**: Replace error phrase with a reduction goal. Local correction (insert/delete/replace single tokens) handles common typos. Recommended for better diagnostics.
-3. **Synchronizing tokens for template languages**: For SuperPHP, good synchronizing tokens are: `}`, `/>`, `</`, `@`, newline, EOF. These are natural statement boundaries.
-4. **AST placeholders for error recovery**: Hylo compiler uses AST placeholders (error nodes) to keep the AST valid even with syntax errors. This enables continued analysis (type checking, etc.) after errors. SuperPHP should emit placeholder nodes for unparseable sections.
+3. **Synchronizing tokens for template languages**: For NeoSPX, good synchronizing tokens are: `}`, `/>`, `</`, `@`, newline, EOF. These are natural statement boundaries.
+4. **AST placeholders for error recovery**: Hylo compiler uses AST placeholders (error nodes) to keep the AST valid even with syntax errors. This enables continued analysis (type checking, etc.) after errors. NeoSPX should emit placeholder nodes for unparseable sections.
 5. **Error productions**: Extend grammar to accept common erroneous constructs (e.g., missing closing tag). Useful for specific known error patterns.
-6. **Diagnostic quality**: CPCT+ demonstrates that reporting minimum-cost repair sequences reduces cascading errors from 981K to 436K locations. For SuperPHP, reporting the first error precisely is more valuable than reporting many.
+6. **Diagnostic quality**: CPCT+ demonstrates that reporting minimum-cost repair sequences reduces cascading errors from 981K to 436K locations. For NeoSPX, reporting the first error precisely is more valuable than reporting many.
 
-**Relevance to SuperPHP:** Implement panic-mode recovery as baseline with template-specific synchronizing tokens; use AST placeholders for partial parse trees; prioritize precise first-error reporting.
+**Relevance to NeoSPX:** Implement panic-mode recovery as baseline with template-specific synchronizing tokens; use AST placeholders for partial parse trees; prioritize precise first-error reporting.
 
 ### 13.7 Symbol Table Design for Template Languages
 
@@ -392,12 +392,12 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 **Key findings:**
 1. **List of hash tables (sheaf-of-tables)**: The standard approach — a list of hash tables, one per scope, searched from innermost to outermost. Scope entry adds a new table; scope exit removes it. O(1) expected for declaration/lookup; O(depth) worst case for lookup.
 2. **Hash table is the standard**: All production compilers use hash tables. The course's recommendation (hash table) is confirmed.
-3. **Scope nesting in templates**: SuperPHP scopes are: template-level (@global), component-level, and ~setup block. Three levels maximum for MVP. This is shallow; performance is not a concern.
+3. **Scope nesting in templates**: NeoSPX scopes are: template-level (@global), component-level, and ~setup block. Three levels maximum for MVP. This is shallow; performance is not a concern.
 4. **Symbol entries**: Each symbol should store: name, type, scope level, declaration location (line/col), and semantic metadata (e.g., @persist serialization type, @global visibility).
 5. **Name hiding**: Inner scopes can shadow outer names. The sheaf-of-tables approach handles this naturally by searching innermost first.
-6. **Separate tables per name kind**: Some compilers use separate tables for different name kinds (variables vs functions vs types). For SuperPHP, a single table with a "kind" field is simpler and sufficient for MVP.
+6. **Separate tables per name kind**: Some compilers use separate tables for different name kinds (variables vs functions vs types). For NeoSPX, a single table with a "kind" field is simpler and sufficient for MVP.
 
-**Relevance to SuperPHP:** Implement sheaf-of-tables with hash tables; track name, type, scope, location, and semantic metadata; single table with kind field.
+**Relevance to NeoSPX:** Implement sheaf-of-tables with hash tables; track name, type, scope, location, and semantic metadata; single table with kind field.
 
 ### 13.8 Compiler Optimization for PHP Output
 
@@ -411,14 +411,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 
 **Key findings:**
 1. **OPcache handles runtime optimization**: The compiler should focus on correctness and OPcache-friendliness, not optimization passes. This confirms ADR-005's "optimization deferred" decision.
-2. **Flat array returns compile to single opcode**: Docket Cache demonstrates that `return [key => value, ...]` with all literals compiles to a single opcode. SuperPHP's flat PHP array output should leverage this.
-3. **Packed arrays**: PHP 7+ optimizes arrays with sequential integer keys (packed arrays). SuperPHP should emit sequentially-keyed arrays where possible for memory efficiency.
-4. **Preloading**: OPcache preloading (`opcache.preload`) loads compiled PHP into persistent memory at startup. SuperPHP's compiled templates should be preloadable (no global side effects, only class/function definitions or return statements).
-5. **Constant folding**: PHP compiler folds constant expressions (`4 * 25` → `100`) at compile time. SuperPHP's codegen should emit constant expressions where possible to let PHP's compiler optimize.
-6. **No NOP removal needed**: OPcache's NOP removal pass handles dead code. SuperPHP should not implement its own dead code elimination.
+2. **Flat array returns compile to single opcode**: Docket Cache demonstrates that `return [key => value, ...]` with all literals compiles to a single opcode. NeoSPX's flat PHP array output should leverage this.
+3. **Packed arrays**: PHP 7+ optimizes arrays with sequential integer keys (packed arrays). NeoSPX should emit sequentially-keyed arrays where possible for memory efficiency.
+4. **Preloading**: OPcache preloading (`opcache.preload`) loads compiled PHP into persistent memory at startup. NeoSPX's compiled templates should be preloadable (no global side effects, only class/function definitions or return statements).
+5. **Constant folding**: PHP compiler folds constant expressions (`4 * 25` → `100`) at compile time. NeoSPX's codegen should emit constant expressions where possible to let PHP's compiler optimize.
+6. **No NOP removal needed**: OPcache's NOP removal pass handles dead code. NeoSPX should not implement its own dead code elimination.
 7. **Preload-friendly output**: Flat files with no autoload dependencies, no global state mutation, and `return` statements (not `echo`) are ideal for preloading.
 
-**Relevance to SuperPHP:** Focus on OPcache-friendly output (flat arrays, packed arrays, constant folding, no global state); defer optimization passes to OPcache.
+**Relevance to NeoSPX:** Focus on OPcache-friendly output (flat arrays, packed arrays, constant folding, no global state); defer optimization passes to OPcache.
 
 ### 13.9 PHP Template Engine Compiler Internals (Twig, Blade, Smarty, Latte)
 
@@ -433,7 +433,7 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 **Key findings:**
 
 **Twig:**
-- 4-step pipeline: Load → Tokenize → Parse → Compile (same as SuperPHP)
+- 4-step pipeline: Load → Tokenize → Parse → Compile (same as NeoSPX)
 - Lexer: 5 states (STATE_DATA, STATE_BLOCK, STATE_VAR, STATE_STRING, STATE_INTERPOLATION); pre-scans token positions with preg_match_all
 - Parser: recursive descent via TokenParser handlers; NodeTraverser applies NodeVisitors before compilation
 - Compiler: Node::compile(Compiler) pattern; tracks indentation, debug info, var name salt
@@ -443,14 +443,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - Not a true parser — uses PHP's `token_get_all()` to tokenize, then regex-based directive replacement
 - Preprocessor-style: directives are string transformations, not AST-level
 - Compile-once, cache-forever model
-- Key insight: Blade's simplicity comes from NOT building an AST; but this limits semantic directives (like @persist). SuperPHP's AST approach (ADR-005) is the correct choice for semantic directives.
+- Key insight: Blade's simplicity comes from NOT building an AST; but this limits semantic directives (like @persist). NeoSPX's AST approach (ADR-005) is the correct choice for semantic directives.
 
 **Smarty:**
 - True compiler: Lexer + Parser (TemplateParser.y grammar file) + Code Generation
 - Uses yacc/bison-style grammar file (TemplateParser.y) — a parser generator, not hand-written
 - Plugin/tag system with attribute validation (required/optional attributes, option flags)
 - Nocache handling: tracks nocache sections and injects code conditionally
-- Key pattern: grammar file + parser generator for complex grammars; but SuperPHP's small grammar favors hand-written recursive descent
+- Key pattern: grammar file + parser generator for complex grammars; but NeoSPX's small grammar favors hand-written recursive descent
 
 **Latte:**
 - Most sophisticated PHP template engine: dual lexer (HTML + PHP expression), parallel lexer/parser execution
@@ -460,7 +460,7 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - PHP linter integration: validates generated PHP code during compilation
 - Key patterns: compiler passes, context-aware escaping, PHP linter validation, dual lexer with parallel execution
 
-**Relevance to SuperPHP:** Twig's NodeVisitor pattern and Compiler architecture are the closest model; Latte's compiler passes and context-aware escaping are valuable; Blade's preprocessor approach validates ADR-005's AST decision; Smarty's parser-generator approach is not recommended for SuperPHP's small grammar.
+**Relevance to NeoSPX:** Twig's NodeVisitor pattern and Compiler architecture are the closest model; Latte's compiler passes and context-aware escaping are valuable; Blade's preprocessor approach validates ADR-005's AST decision; Smarty's parser-generator approach is not recommended for NeoSPX's small grammar.
 
 ### 13.10 Formal Grammar Specification for Template Languages
 
@@ -474,14 +474,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - tomassetti.me EBNF explained
 
 **Key findings:**
-1. **EBNF is the standard notation**: ISO 14977 defines the standard EBNF. SuperPHP's grammar should be specified in EBNF (or a documented variant) before implementation. ADR-005 requires BNF/EBNF form (Section 4.2 of existing report).
-2. **LBNF (Labelled BNF)**: BNFC uses LBNF where each rule has a label (constructor name). This is useful for AST generation — the label becomes the node class name. SuperPHP could adopt this convention (e.g., `ComponentNode ::= "<s:" IDENT ... ">"`).
-3. **Grammar should be versioned**: XEBNF supports version annotations (`@[since: "11.0"]`). SuperPHP's grammar should include version info for SemVer tracking (ADR-005 notes compiler output format is a SemVer major).
-4. **Grammar diversity is a real problem**: The Grammarware paper shows 42 different notations across 77 grammars. SuperPHP should pick one notation and document it clearly.
+1. **EBNF is the standard notation**: ISO 14977 defines the standard EBNF. NeoSPX's grammar should be specified in EBNF (or a documented variant) before implementation. ADR-005 requires BNF/EBNF form (Section 4.2 of existing report).
+2. **LBNF (Labelled BNF)**: BNFC uses LBNF where each rule has a label (constructor name). This is useful for AST generation — the label becomes the node class name. NeoSPX could adopt this convention (e.g., `ComponentNode ::= "<s:" IDENT ... ">"`).
+3. **Grammar should be versioned**: XEBNF supports version annotations (`@[since: "11.0"]`). NeoSPX's grammar should include version info for SemVer tracking (ADR-005 notes compiler output format is a SemVer major).
+4. **Grammar diversity is a real problem**: The Grammarware paper shows 42 different notations across 77 grammars. NeoSPX should pick one notation and document it clearly.
 5. **EBNF operators**: Standard EBNF uses `=` for definition, `|` for alternation, `[]` for option, `{}` for repetition, `()` for grouping. These should be used consistently.
-6. **Grammar recovery from sources**: The Grammarware approach (formal notation definition + automated extraction) could help if SuperPHP's grammar needs to be extracted from code later.
+6. **Grammar recovery from sources**: The Grammarware approach (formal notation definition + automated extraction) could help if NeoSPX's grammar needs to be extracted from code later.
 
-**Relevance to SuperPHP:** Specify grammar in EBNF/LBNF before CORE-11 implementation; use LBNF labels for AST node naming; version the grammar; document notation choice.
+**Relevance to NeoSPX:** Specify grammar in EBNF/LBNF before CORE-11 implementation; use LBNF labels for AST node naming; version the grammar; document notation choice.
 
 ### 13.11 Compiler Construction Textbooks and Resources
 
@@ -497,13 +497,13 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 
 **Key findings:**
 1. **Dragon Book (2nd ed.)**: The classic reference. Covers lexical analysis (regex, DFA, NFA), syntax analysis (LL, LR, LALR), syntax-directed translation, intermediate code, symbol tables, code generation, optimization. However, criticized for excessive focus on lexing/parsing and lack of modern techniques (SSA, graph coloring register allocation).
-2. **Engineering a Compiler (Cooper & Torczon, 2012)**: More modern than Dragon Book; covers later phases in more detail; less focus on lexing/parsing. Better for SuperPHP's codegen phase.
+2. **Engineering a Compiler (Cooper & Torczon, 2012)**: More modern than Dragon Book; covers later phases in more detail; less focus on lexing/parsing. Better for NeoSPX's codegen phase.
 3. **Modern Compiler Implementation (Appel, 2002)**: Cleanly written; covers ML/Java/C perspectives. Good for understanding compiler front-end design.
 4. **CIT 316 (course guide)**: Already analyzed in Sections 1–12. Provides the foundational theory (Chomsky hierarchy, regex→NFA→DFA, CFG, recursive descent, codegen phases, error handling, symbol tables).
-5. **Wirth "Compiler Construction"**: Oberon-based; good for understanding small-language compiler design. Relevant for SuperPHP's small grammar.
+5. **Wirth "Compiler Construction"**: Oberon-based; good for understanding small-language compiler design. Relevant for NeoSPX's small grammar.
 6. **Compiler Programming blog (compilerprogramming.github.io)**: Curated list of compiler books with reviews. Recommends 1986 Dragon Book edition over 2nd ed. for pseudo-code style.
 
-**Relevance to SuperPHP:** Dragon Book for theory (already covered by CIT 316); Engineering a Compiler for modern codegen; Wirth for small-language design; all confirm the course guide's recommendations.
+**Relevance to NeoSPX:** Dragon Book for theory (already covered by CIT 316); Engineering a Compiler for modern codegen; Wirth for small-language design; all confirm the course guide's recommendations.
 
 ### 13.12 Modern Compiler Construction Patterns (Incremental, Demand-Driven, Rust-Based)
 
@@ -517,14 +517,14 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 - PLISS 2019 "Responsive compilers" (Nicholas Matsakis)
 
 **Key findings:**
-1. **Query-based/demand-driven architecture**: Rust compiler organizes computation as queries (functions with memoization and dependency tracking). Instead of fixed passes, the compiler demands information from the end (codegen) backward. SuperPHP's single-pass compilation is simpler but could adopt query-based caching for multi-file scenarios.
-2. **Incremental compilation via red-green algorithm**: After each compilation, save query results and dependency DAG. On next run, color queries red (changed) or green (unchanged). Green queries skip re-execution. SuperPHP's checksum-based cache is file-level; query-based caching would be finer-grained (per-component, per-directive).
-3. **Early cutoff**: If a re-executed query produces the same result, dependents skip re-execution. This is powerful for template engines — a whitespace-only edit should not trigger recompilation of the entire template. SuperPHP could implement this at the AST level.
-4. **Fault-tolerant parsers**: Modern compilers (rust-analyzer, Roslyn) always produce a valid AST even with syntax errors, using error nodes/placeholders. This is essential for IDE support (Language Server Protocol). SuperPHP should adopt this for future tooling.
-5. **Concurrent compilation**: jfecher's modern compiler compiles files in parallel. SuperPHP's component-based architecture could compile components in parallel.
+1. **Query-based/demand-driven architecture**: Rust compiler organizes computation as queries (functions with memoization and dependency tracking). Instead of fixed passes, the compiler demands information from the end (codegen) backward. NeoSPX's single-pass compilation is simpler but could adopt query-based caching for multi-file scenarios.
+2. **Incremental compilation via red-green algorithm**: After each compilation, save query results and dependency DAG. On next run, color queries red (changed) or green (unchanged). Green queries skip re-execution. NeoSPX's checksum-based cache is file-level; query-based caching would be finer-grained (per-component, per-directive).
+3. **Early cutoff**: If a re-executed query produces the same result, dependents skip re-execution. This is powerful for template engines — a whitespace-only edit should not trigger recompilation of the entire template. NeoSPX could implement this at the AST level.
+4. **Fault-tolerant parsers**: Modern compilers (rust-analyzer, Roslyn) always produce a valid AST even with syntax errors, using error nodes/placeholders. This is essential for IDE support (Language Server Protocol). NeoSPX should adopt this for future tooling.
+5. **Concurrent compilation**: jfecher's modern compiler compiles files in parallel. NeoSPX's component-based architecture could compile components in parallel.
 6. **Salsa framework**: General-purpose incremental computation framework (inputs, tracked functions, automatic dependency tracking, early cutoff). Could be adapted for PHP but is likely overkill for MVP.
 
-**Relevance to SuperPHP:** Query-based caching and early cutoff are valuable for future iterations; fault-tolerant parsing should be adopted now; concurrent compilation is a future optimization. For MVP, checksum-based file cache (ADR-005) is sufficient.
+**Relevance to NeoSPX:** Query-based caching and early cutoff are valuable for future iterations; fault-tolerant parsing should be adopted now; concurrent compilation is a future optimization. For MVP, checksum-based file cache (ADR-005) is sufficient.
 
 ---
 
@@ -573,12 +573,12 @@ This section supplements the CIT 316 course-guide analysis (Sections 1–12) wit
 
 In addition to the 5 questions in Section 10, the online research raises these further questions for owner review:
 
-6. Should SuperPHP adopt **Pratt parsing** for `~setup` expressions, or full recursive descent? (Pratt is the modern standard per matklad; recursive descent is simpler for a small grammar. Both are course-covered.)
+6. Should NeoSPX adopt **Pratt parsing** for `~setup` expressions, or full recursive descent? (Pratt is the modern standard per matklad; recursive descent is simpler for a small grammar. Both are course-covered.)
 7. Should the lexer and parser run **in parallel** (Latte-style) for component tags, or sequentially (Twig-style)? (Parallel enables parser-influenced tokenization but adds complexity.)
-8. Should SuperPHP implement **fault-tolerant parsing** with AST placeholders from the start (for future IDE/LSP support), or defer to a later iteration?
-9. Should SuperPHP implement **early cutoff** at the AST level (whitespace-only edits skip recompilation) in the initial cache design, or keep it file-level (checksum)?
-10. Should SuperPHP adopt **context-aware escaping** (Latte-style, tracking HTML/JS/CSS/URL/XML content types) from MVP, or defer?
-11. Should SuperPHP emit **debug info** (source-to-compiled line mapping) in compiled output from MVP, or defer?
+8. Should NeoSPX implement **fault-tolerant parsing** with AST placeholders from the start (for future IDE/LSP support), or defer to a later iteration?
+9. Should NeoSPX implement **early cutoff** at the AST level (whitespace-only edits skip recompilation) in the initial cache design, or keep it file-level (checksum)?
+10. Should NeoSPX adopt **context-aware escaping** (Latte-style, tracking HTML/JS/CSS/URL/XML content types) from MVP, or defer?
+11. Should NeoSPX emit **debug info** (source-to-compiled line mapping) in compiled output from MVP, or defer?
 12. Should the grammar be specified in **LBNF** (with constructor labels = AST node names) for formal precision, or informal EBNF?
 
 ---

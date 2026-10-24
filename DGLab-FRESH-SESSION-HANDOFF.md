@@ -5,7 +5,7 @@
 
 ## 0. Mission
 
-The founder no longer wants a page-ready LMS prototype. The founder wants the **complete LMS backend** and will build the UI/UX independently. At the same time, pending research—including SPX/SuperPHP—must be completed first and must not be lost during implementation pauses.
+The founder no longer wants a page-ready LMS prototype. The founder wants the **complete LMS backend** and will build the UI/UX independently. At the same time, pending research—including SPX/NeoSPX—must be completed first and must not be lost during implementation pauses.
 
 Order of operations:
 1. Re-establish the real repository state and preserve local work.
@@ -49,7 +49,7 @@ Deliver a short state report with current SHA, dirty state, branch/worktrees, av
 
 ## 3. Research work package — do this first
 
-### 3.1 SPX / SuperPHP architecture and naming
+### 3.1 SPX / NeoSPX architecture and naming
 Research the design question, not just the name:
 - Syntax drivers enable multiple authoring syntaxes.
 - Proposed pipeline: authoring syntax → syntax driver → public component document → AST → validation/semantic analysis/compilation.
@@ -59,7 +59,7 @@ Research the design question, not just the name:
 - Evaluate JSON Schema 2020-12, YAML 1.2.2 typing edge cases, canonicalization, semantic validation, source maps/provenance, error diagnostics, round-tripping/source preservation, extension/versioning strategy, security boundaries, compatibility policy, and conformance fixtures.
 - Study existing comparable systems and primary specifications; cite sources, version/date, and limitations. Separate fact from design recommendation.
 - Provide example component document and AST only as illustrative proposals, clearly labeled.
-- Do not code the runtime, create an ADR, rename SuperPHP, or amend ADR-005.
+- Do not code the runtime, create an ADR, rename SuperPHP (historical), or amend ADR-005.
 
 Naming/collision audit previously reported, to be rechecked:
 | Candidate | Prior reported finding | Verification required |

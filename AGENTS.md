@@ -8,7 +8,7 @@ DGLab is a PHP 8.4 Sovereign Stack monorepo. The founder has changed the LMS obj
 
 There are two parallel concerns, in this order:
 
-1. **First complete the pending research and reconcile the research record.** This includes SPX/SuperPHP and the four product-research tracks plus their connecting-theme investigation. Research is separate from implementation.
+1. **First complete the pending research and reconcile the research record.** This includes SPX/NeoSPX and the four product-research tracks plus their connecting-theme investigation. Research is separate from implementation.
 2. **Then resume LMS backend delivery** against approved architecture, security, API, and testing decisions.
 
 Do not let the LMS backlog erase research priorities. Do not let research delay unrelated read-only review or preparation, but do not mix research deliverables into LMS implementation PRs.
@@ -37,7 +37,7 @@ The baseline supplied in the current handoff is `origin/main` at `ae410ea09fcd7a
 - Treat `FROZEN-CONTRACTS.md`, `Architecture/Core/`, approved ADRs, package manifests, and current code as authoritative constraints. Inspect them before proposing or modifying contracts.
 - PHP baseline reported by the repo is PHP `^8.4`; verify current `composer.json`. Do not repeat stale claims that the baseline is PHP 8.3.
 - Do not introduce a JavaScript framework or polished frontend as part of the backend handoff. The founder owns UI/UX.
-- SuperPHP is not yet a runtime dependency for LMS. SPX research must not block LMS backend delivery after the research handoff is completed.
+- NeoSPX is not yet a runtime dependency for LMS. SPX research must not block LMS backend delivery after the research handoff is completed.
 
 ## 4. Collaboration and SDLC v5.1
 
@@ -57,7 +57,7 @@ Never infer authorization to merge, push, format the repository, amend frozen co
 
 Complete research before new LMS implementation increments.
 
-### Research track SPX / SuperPHP
+### Research track SPX / NeoSPX
 Research the component/syntax architecture, not just the name:
 - Multiple authoring syntaxes through syntax drivers.
 - Two-stage representation: authoring syntax → syntax driver → **public, language-neutral component document** → AST → validation/semantic analysis/compilation.
@@ -85,7 +85,7 @@ These are not interchangeable. Present them side-by-side, explain differences, a
 
 ### Research deliverables
 - A source-backed report per track, including scope, research questions, evidence, counterarguments/limitations, implications for DGLab, open questions, and decisions explicitly **not** made.
-- A reconciliation table for all known agenda renditions, including the SuperPHP placement conflict.
+- A reconciliation table for all known agenda renditions, including the NeoSPX placement conflict.
 - A proposed canonical agenda for owner review; **do not commit/push/create `Architecture/CrossCutting/RESEARCH-AGENDA.md` without explicit owner authorization**.
 - A standalone SPX naming/collision finding, labeled with verification status.
 - A final research index that links reports and clearly separates evidence from recommendations.

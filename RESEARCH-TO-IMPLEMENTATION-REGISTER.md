@@ -19,7 +19,7 @@
 
 ---
 
-## 1. SPX / SuperPHP Naming (`SPX-NAMING-COLLISION-REPORT.md`)
+## 1. SPX / NeoSPX Naming (`SPX-NAMING-COLLISION-REPORT.md`)
 
 | Finding ID | Source Doc + ID | Problem / Capability | Decision | Target Package / Files | Concrete Task | Acceptance Criteria | Tests | Status / Blockers / Evidence |
 |------------|------------------|---------------------|----------|------------------------|---------------|---------------------|-------|------------------------------|
@@ -72,7 +72,7 @@
 | F-FW-04 | FW §11.1.4 | Strong package boundaries with `exports` | W (proposed) | `packages/*/composer.json` | Add `exports`/autoload boundaries | Package boundaries enforced | Boundary tests | Blocker: owner decision |
 | F-FW-05 | FW §11.1.5 | Onboarding path with SUS ≥68 | W (proposed) | `README.md`, docs | Add quickstart + samples + SUS measure | SUS ≥68 in founder review | Usability eval | Blocker: founder owns UI |
 | F-FW-06 | FW §11.1.6 | Accessibility enforcement (lint + CI + primitives) | W (proposed, frontend founder-owned) | CI workflows (future) | Add a11y lint when frontend work begins | Lint in CI | CI check | Blocker: frontend not in backend handoff |
-| F-FW-07 | FW §11.2.1 | Component-scoped folders with co-located tests | W (proposed, SuperPHP) | `packages/SuperPHP` (future) | Adopt component-scoped layout | Layout documented | N/A | Blocker: owner decision |
+| F-FW-07 | FW §11.2.1 | Component-scoped folders with co-located tests | W (proposed, NeoSPX) | `packages/core/neospx` (future) | Adopt component-scoped layout | Layout documented | N/A | Blocker: owner decision |
 | F-FW-08 | FW §11.2.4 | Formal grammar EBNF for tooling | D (dup of F-EASE-07) | — | See F-EASE-07 | — | — | Duplicate |
 
 ---
@@ -95,7 +95,7 @@
 | Finding ID | Source Doc + ID | Problem / Capability | Decision | Target Package / Files | Concrete Task | Acceptance Criteria | Tests | Status / Blockers / Evidence |
 |------------|------------------|---------------------|----------|------------------------|---------------|---------------------|-------|------------------------------|
 | F-REC-01 | REC §2 | Connecting-theme wording unresolved (3 variants) | W (proposed reconciliation) | `RESEARCH-AGENDA.md` Track 5 | Owner selects variant A/B/C | Single wording in agenda | N/A | Blocker: owner decision (R1) |
-| F-REC-02 | REC §3 | SuperPHP placement divergence (separate section vs numbered track) | W | `RESEARCH-AGENDA.md` | Owner decides placement | Agenda updated | N/A | Blocker: owner decision (R2) |
+| F-REC-02 | REC §3 | NeoSPX placement divergence (separate section vs numbered track) | W | `RESEARCH-AGENDA.md` | Owner decides placement | Agenda updated | N/A | Blocker: owner decision (R2) |
 | F-REC-03 | REC §4 | Half Exceptions 4 formulations; confirm 3 & 4 with owner | W | `RESEARCH-AGENDA.md` Track 3 | Owner confirms formulations | Agenda updated | N/A | Blocker: owner decision (R5) |
 | F-REC-04 | REC §8 | Agenda rendition reconciliation table | A (done) | `RESEARCH-RECONCILIATION-MATRIX.md` | Reconciliation table complete | Table present | N/A | Verified: matrix §1, §8 |
 | F-REC-05 | AGENDA §Track1-4 | Product research tracks (platform integrity, YouTube model, Half Exceptions, Cancel-Anytime) | W (research only) | N/A (no code) | No implementation; research deliverables only | Research reports complete | N/A | Research gate: owner approval pending |

@@ -17,7 +17,7 @@ DGLab is a **PHP 8.4 Sovereign Stack monorepo** using a custom **Core/Hub/Spoke 
 
 - **Complete, usable LMS backend** — The founder changed the LMS objective from a page-ready prototype to a complete, usable backend so the founder can build UI/UX independently.
 - **LMS target capabilities:** Identity/auth + RBAC; course/module CRUD + publish; published-course discovery; learner enrollment; progress recording/retrieval; versioned REST/JSON API; composition-root/DI wiring; middleware; migrations; real-MySQL integration tests; end-to-end learner/admin flow; founder handoff documentation.
-- **SuperPHP template language** — A component/syntax architecture with multiple authoring syntaxes, two-stage representation (syntax → public component document → AST → compilation), and a language-neutral interchange contract.
+- **NeoSPX template language** — A component/syntax architecture with multiple authoring syntaxes, two-stage representation (syntax → public component document → AST → compilation), and a language-neutral interchange contract.
 - **Founder owns frontend/UI/UX** — No JavaScript framework or polished frontend is part of the backend handoff.
 
 ### Current Development Direction
@@ -136,7 +136,7 @@ See §10 for the full hierarchy. In brief:
 | ADR | Title | Status | Relevance |
 |-----|-------|--------|-----------|
 | ADR-003 | ES256 JWT Signing | Accepted | Auth transport |
-| ADR-005 | SuperPHP vs Blade/Twig | Accepted | Template language |
+| ADR-005 | NeoSPX vs Blade/Twig | Accepted | Template language |
 | ADR-008 | Argon2id Password Hashing | Accepted | Auth |
 | ADR-009 | ULID over UUID | Accepted | Identifiers |
 | ADR-010 | Opcache Preload Strategy | Accepted | Performance |
@@ -338,7 +338,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 | R-12 | PR #310 (CORE-15 cache) parked | CORE-15 package exists, no cache impl | Open decision | Core tier | Founder | Resume or leave parked |
 | R-13 | Stale git credential | Reported in pre-existing branch config | Unverified | Security hygiene | Founder | Revoke/rotate if valid |
 | R-14 | SKILL.md provenance (`82ddde7`) | Local-only change, modified `.kilo/skills/` | Unverified | Governance | Founder | Authorize or revert |
-| R-15 | SuperPHP naming undecided | 5 candidates, collisions identified | Open decision | Future rename | Founder | Accept candidate or keep SuperPHP |
+| R-15 | NeoSPX naming undecided (historical: SuperPHP) | 5 candidates, collisions identified | Open decision | Future rename | Founder | Accept candidate or keep SuperPHP |
 | R-16 | Connecting-theme variant undecided | 3 variants, only 1 in agenda | Open decision | Research direction | Founder | Choose variant |
 | R-17 | Half Exceptions formulations 3 & 4 unconfirmed | Agent interpretations, not owner-confirmed | Open decision | Research scope | Founder | Confirm or reject |
 | R-18 | No real MySQL on main CI | No MySQL service in packages-ci.yml | Active blocker | Cannot verify DB behavior | Founder (R-02) | Define test contract |
@@ -370,7 +370,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 1. **Auth transport (ADR-022)** — Session cookies / JWT / both
 2. **MySQL integration-test contract** — DSN, runner, isolation, CI service
 3. **Research agenda publication** — Authorize `Architecture/CrossCutting/RESEARCH-AGENDA.md`
-4. **SuperPHP naming** — Accept Foundry/SPX or keep SuperPHP
+4. **NeoSPX naming** — Accept Foundry/SPX or keep SuperPHP (historical)
 5. **Connecting-theme variant** — A, B, C, or combination
 6. **PR #368/#369 review and merge** — Approve or request changes
 7. **D-01/D-09 governance items** — Re-scope or commission tests
@@ -403,7 +403,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 **Minimum reading set:**
 - `Architecture/CrossCutting/STRUCTURE-01-Wheel.md` — Six-ring wheel model
 - `Architecture/ADRs/ADR-013-*` — MySQL primary datastore
-- `Architecture/ADRs/ADR-005-*` — SuperPHP vs Blade/Twig
+- `Architecture/ADRs/ADR-005-*` — NeoSPX vs Blade/Twig
 
 **Expanded reading set:**
 - All 21 ADRs in `Architecture/ADRs/`
@@ -509,7 +509,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 
 **Minimum reading set:**
 - `RESEARCH-INDEX.md` — Links 14 inventory rows (13 distinct reports; row #13 duplicated; omits `COMPONENT-TEMPLATE-FORMATS-RESEARCH.md`)
-- `RESEARCH-AGENDA.md` — Canonical agenda draft (5 tracks + SuperPHP)
+- `RESEARCH-AGENDA.md` — Canonical agenda draft (5 tracks + NeoSPX)
 
 **Expanded reading set:**
 - `RESEARCH-RECONCILIATION-MATRIX.md` — V1–V7 reconciliation

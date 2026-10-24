@@ -272,7 +272,7 @@ This track investigates the shared implications without prematurely creating abs
 
 ### Background
 
-SuperPHP is currently the planned template-language capability encompassing `CORE-07` (Lexer), `CORE-11` (Parser), and `CORE-12` (Compiler), per `Architecture/INDEX.md` §1 (lines 109, 113, 114 — all three 📝 Not started). It is referenced in `ADR-005-superphp-vs-blade-twig.md` and in `OPEN-DECISIONS.md` §OD-09 (DGLab SCSS framework authoring model).
+NeoSPX is currently the planned template-language capability (formerly SuperPHP) encompassing `CORE-07` (Lexer), `CORE-11` (Parser), and `CORE-12` (Compiler), per `Architecture/INDEX.md` §1 (lines 109, 113, 114 — all three 📝 Not started). It is referenced in `ADR-005-superphp-vs-blade-twig.md` (historical: ratified SuperPHP over Blade/Twig; identity superseded by NeoSPX pending ADR-023) and in `OPEN-DECISIONS.md` §OD-09 (DGLab SCSS framework authoring model).
 
 SAAI's directive (2026-10-13) records five candidate replacement names: **Forge, Foundry, Nexus, SPX, Sovereign**. The directive is explicit: *"No rename is approved. Preserve the current name until its responsibilities and architectural boundaries are documented and the proposed alternatives have been evaluated for collisions."*
 

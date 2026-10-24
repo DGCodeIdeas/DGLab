@@ -10,6 +10,8 @@
 **Date:** 2026-08-04
 **Deciders:** DGLab architecture team
 
+> **Identity update (2026-10-22):** The template language ratified here as **SuperPHP** has since been renamed to **NeoSPX** (Tech Lead confirmed). This ADR remains the historical record of the decision to build a custom template engine over Blade/Twig/Plates; the identity rename is tracked separately and is pending formalization in ADR-023. See `NEOSPX-EBNF-GRAMMAR-SPECIFICATION.md` §1 for the supersession note.
+
 ## Context
 
 The Sovereign Stack's three Core-tier blueprints CORE-07 (SuperPHP Lexer), CORE-11 (SuperPHP Parser), and CORE-12 (SuperPHP Compiler) define a purpose-built template language that compiles `.super.php` files to native PHP. The language introduces first-class directives (`@global`, `@persist`, `~setup`), a custom component tag syntax (`<s:ui:button />`), and a "Reactive Bridge" that injects `s-data` JSON attributes into the rendered HTML so the frontend SPA runtime can hydrate server-rendered state. This is a deliberate departure from Blade, Twig, and Plates.
