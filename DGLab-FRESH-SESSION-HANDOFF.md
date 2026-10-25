@@ -166,11 +166,10 @@ Backend-complete LMS, not polished UI:
 - API and frontend handoff docs
 
 ### 5.2 Reported state to verify
-- PR #364 (published-course discovery) is open and reported CI-green. It adds repository/application discovery (`findPublished(limit, offset)` and application service). Tests were reported mock-based: 63 mock references, 0 PDO. It is not real-DB evidence and should not be reimplemented.
+- PR #364 (published-course discovery) is **merged** via PR #366 (commit a18a3e8). Enrollment persistence and application service now exist on main.
 - `ApplicationFactory` was reported to register only `/` and `/health`, with no LMS/identity services in the DI container.
-- `AuthMiddleware` was reported present but not wired.
-- Enrollment entity/value objects/interface/migration reported present; MySQL repository and application service missing.
-- Progress entity/migration reported present; repository interface, MySQL implementation, and application service missing.
+- Enrollment entity/value objects/interface/migration reported present; MySQL repository and application service **now exist on main** (PR #366).
+- Progress entity/migration reported present; repository interface, MySQL implementation, and application service **still missing**.
 - No MySQL service in CI was reported.
 - No LMS HTTP controllers/routes or shared JSON response layer were reported.
 - Identity domain/application/repository/JWT primitives were reported present but authentication route/wiring is absent. Verify exact current files and approved ADRs before designing transport.
@@ -198,37 +197,36 @@ Do not create ADR-022 before the owner ratifies the authentication choice. A pri
 3. Reconfirm current LMS capability matrix with four evidence levels: implemented, unit-tested, real-DB integration-tested, end-to-end demonstrated.
 
 **Gate 1 — API/security/test contracts**
-4. Owner decides auth transport and same-origin/cross-origin assumption.
-5. Approve API versioning, roles/permissions, error envelope, pagination, validation, transactions, and security controls.
-6. Ratify or revise the MySQL integration-test contract: `TEST_MYSQL_DSN` shape, migration runner, command, isolation/reset strategy, CI MySQL service, and failure diagnostics.
+4. Auth transport + same-origin vs cross-origin assumptions.
+5. API versioning, roles/permissions, error envelope, pagination, validation, transactions, security controls.
+6. MySQL integration-test contract: env var/DSN, migration runner, test command, isolation/reset strategy, CI MySQL service.
 
 **Gate 2 — domain/persistence/application**
 7. Enrollment repository implementation and integration tests.
 8. Enrollment application service and authorization/business-rule tests.
-9. Progress repository port, MySQL implementation, migration review, integration tests.
-10. Progress application service and tests.
-11. Course/module/detail read models and use cases needed by the API; avoid duplicating PR #364.
-12. Verify transactions, uniqueness, foreign keys, ordering, concurrency, and ownership invariants.
+9. **Progress repository port, MySQL implementation, migration review, integration tests.**
+8. **Progress application service and tests.**
+9. Course/module/detail read models and use cases needed by the API; avoid duplicating PR #364.
+10. Verify transactions, uniqueness, foreign keys, ordering, concurrency, and ownership invariants.
 
 **Gate 3 — HTTP/API**
 13. Composition-root and DI registration.
 14. JSON request parsing/response serialization, DTOs, validation, consistent error taxonomy.
-15. Login/logout/session/token endpoint and middleware according to approved ADR.
+15. Login/logout/session/token endpoints + middleware per approved ADR.
 16. Public course discovery/detail routes.
-17. Admin course/module CRUD and publish routes with role checks.
-18. Enrollment routes and learner/course access rules.
-19. Progress routes with enrollment and content authorization.
-20. API contract tests and OpenAPI or equivalent documentation.
+17. Admin course/module CRUD + publish routes + role checks.
+18. Enrollment routes + learner/course access rules.
+19. Progress routes + enrollment/content authorization.
+20. API contract tests + OpenAPI or equivalent documentation.
 
 **Gate 4 — real verification**
 21. Add MySQL 8 CI service and run migrations in isolated test DB.
 22. Real-MySQL integration tests for every repository and transaction boundary.
-23. End-to-end journey: authenticate as admin → create course → add modules/content → publish → discover/detail → authenticate as learner → enroll → retrieve content → record/read progress.
-24. Negative tests: unauthenticated, unauthorized role, cross-user access, unpublished course, invalid payload, duplicate enrollment, missing records, malformed IDs, database failure, pagination bounds, CSRF/CORS behavior as applicable.
-25. Independent review, fix findings, owner acceptance and merge.
+23. E2E journey: admin→create course→add modules/content→publish→learner→enroll→retrieve content→record/read progress.
+24. Negative tests: unauth, unauthorized, cross-user, unpublished, invalid, duplicate, missing, malformed, DB failure, pagination, CSRF/CORS.
 
 **Gate 5 — founder handoff**
-26. Provide current commit and capability matrix, local setup, env var reference, migrations, API spec, sample curl requests/responses, auth instructions, error catalogue, test commands, known limitations, and extension points.
+26. Provide current commit and capability matrix, local setup, env vars, migrations, API spec, sample curl requests/responses, auth instructions, error catalogue, test commands, known limitations, extension points.
 27. Ask Claude to independently review the code; do not frame the task as approval or rubber-stamping.
 
 ### 5.5 Implementation ownership

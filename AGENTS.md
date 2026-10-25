@@ -105,12 +105,11 @@ The deliverable is a complete backend, not a page-ready UI. Target capabilities 
 - End-to-end test of a complete journey once the pieces exist.
 - A founder handoff with API/OpenAPI documentation, setup instructions, schema/migrations, auth behavior, examples, and known limitations.
 
-Reported state from agent summaries (must re-verify):
-- PR #364 adds published-course discovery at repository/application layers (`findPublished(limit, offset)` and a service method). It is open, not merged, and its tests were reported to be mock-based; do not call it real-DB evidence or duplicate its implementation.
-- No LMS/identity HTTP routes were reported in `ApplicationFactory` beyond `/` and `/health`.
-- Enrollment entity/value objects/interface/migration exist, but `MySQLEnrollmentRepository` and `EnrollmentApplicationService` were reported missing.
-- Progress entity/migration exist, but `ProgressRepositoryInterface`, MySQL repository, and application service were reported missing.
-- `AuthMiddleware` exists but was reported not wired into the request pipeline.
+### 6.1 Verified current state (re-validated 2026-10-24)
+- PR #364 (published-course discovery): **merged** via PR #366 (commit a18a3e8). Enrollment persistence and application service now exist on main.
+- Course/module/detail read models and published-course discovery: implemented and unit-tested.
+- Progress entity/migration exist, but `ProgressRepositoryInterface`, MySQL repository, and application service are **still missing**.
+- `AuthMiddleware` exists but is **not wired** into the request pipeline.
 - No MySQL service in CI was reported.
 - PR #363 is an open temporary formatting-audit workflow + dangling `external/ELQ` gitlink removal; it is not a clean feature PR and requires an owner decision about separation/merge route.
 - PR #310 (CORE-15 cache) is parked.
@@ -120,13 +119,14 @@ Reported state from agent summaries (must re-verify):
 1. Review current main, frozen contracts, ADRs, PR #364 and its CI/test evidence.
 2. Agree and record auth transport, API versioning, role/permission matrix, error format, pagination, and same-origin/separate-origin assumptions. Do not assume PHP sessions or JWT are approved.
 3. Approve the MySQL integration-test contract: env var/DSN, migration runner, test command, isolation/reset strategy, CI MySQL service.
-4. Complete missing enrollment persistence and application service.
+4. **Enrollment persistence and application service complete on main (PR #366).**
 5. Complete progress port, MySQL persistence, and application service.
-6. Complete course/module/detail read models and use cases, without duplicating PR #364.
 7. Implement composition-root registration, HTTP controllers/routes, validation/serialization, authentication middleware, and authorization enforcement.
 8. Add real-MySQL integration tests and a complete end-to-end learner/admin flow.
 9. Produce API docs, OpenAPI if agreed, setup guide, sample requests/responses, migration instructions, and frontend handoff.
 10. Run independent review, correct findings, owner acceptance, and merge only with explicit approval.
+
+Keep increments reviewable. Do not promise a calendar duration until the current code, CI capacity, and task boundaries have been checked.
 
 Keep increments reviewable. Do not promise a calendar duration until the current code, CI capacity, and task boundaries have been checked.
 

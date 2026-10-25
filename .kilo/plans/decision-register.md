@@ -23,10 +23,9 @@
 
 | Decision ID | Title | Status | Owner | Options | Recommended | Blocks |
 |--------------|-------|--------|-------|--------|-------------|--------|
-| ADR-023 | NeoSPX canonical identity | Tech Lead | Publication | Approve ADR-023 / Amend ADR-005 | Approve ADR-023 | Publication |
 | ADR-022 | Auth transport (LMS) | Founder | LMS HTTP | Session cookies / JWT / Both | Session cookies (same-origin) | LMS HTTP |
-| ADR-022 | MySQL integration-test contract | Founder | CI | MySQL service in CI | Configure MySQL service | CI |
-| F-EASE-03 | Context-aware escaping | Tech Lead | M4 | Automatic (Latte) / Explicit opt-in | Automatic | Compiler |
+| OD-022 | MySQL integration-test contract | Founder | CI | MySQL service in CI | Configure MySQL service | CI |
+| ADR-023 | NeoSPX canonical identity (supersedes ADR-005) | Tech Lead | Publication | Approve ADR-023 | Approve ADR-023 | Publication |
 | F-EASE-06 | Dual surface (single vs dual syntax) | Tech Lead | M3 | Single / Dual | Single (v1) | Parser |
 | F-EASE-11 | Debug info in output | Tech Lead | M4 | Defer / Include | Defer to v1.1 | Compiler |
 | F-NAM-06 | Component doc format | Tech Lead | M5 | JSON-first / JSON+YAML | JSON-first | Integration |
