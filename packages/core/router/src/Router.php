@@ -57,9 +57,9 @@ final class Router implements RouterInterface
         }
 
         // Sort routes: static (no placeholders) first, then parameterized.
-        // This ensures /users/me matches before /users/{id} regardless of
-        // registration order (P2 fix from Core audit).
+        // For static routes, prefer longer paths (more specific) first.
         $routes = $this->byMethod[$method] ?? [];
+        
         usort($routes, static function (CompiledRoute $a, CompiledRoute $b): int {
             $aIsStatic = $a->placeholderNames === [];
             $bIsStatic = $b->placeholderNames === [];
@@ -69,11 +69,14 @@ final class Router implements RouterInterface
             if (!$aIsStatic && $bIsStatic) {
                 return 1;
             }
-            return 0;
+            // Both static or both parameterized: prefer longer path (more specific) first.
+            return \strlen($b->route->path) <=> \strlen($a->route->path);
         });
+        
 
         foreach ($routes as $compiled) {
             $result = @\preg_match($compiled->regex, $path, $matches);
+            
             if ($result === false) {
                 // PCRE error (e.g., backtrack limit exceeded by a catastrophic
                 // backtracking constraint). Log and continue to next route.
@@ -114,7 +117,7 @@ final class Router implements RouterInterface
                     $placeholder,
                 ));
             }
-            $value = (string) $parameters[$placeholder];
+            $value = $parameters[$placeholder];
             unset($parameters[$placeholder]);
 
             // rawurlencode preserves unreserved chars per RFC 3986.

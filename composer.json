@@ -32,7 +32,8 @@
         "sovereign-stack/core-filesystem": "*",
         "sovereign-stack/hub-identity": "*",
         "sovereign-stack/spoke-showcase": "*",
-        "sovereign-stack/spoke-lms": "*"
+        "sovereign-stack/spoke-lms": "*",
+        "sovereign-stack/core-view": "*"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.4",
@@ -59,7 +60,8 @@
             "SovereignStack\\Core\\Filesystem\\": "packages/core/filesystem/src/",
             "SovereignStack\\Hub\\Identity\\": "packages/hub/identity/src/",
             "SovereignStack\\Spoke\\Showcase\\": "packages/spoke/internal/showcase/src/",
-            "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/"
+            "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/",
+            "SovereignStack\\Core\\View\\": "packages/core/view/src/"
         }
     },
     "autoload-dev": {
@@ -68,7 +70,8 @@
             "App\\Tests\\": "app/tests/",
             "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/",
             "SovereignStack\\Spoke\\Showcase\\Tests\\": "packages/spoke/internal/showcase/tests/",
-            "SovereignStack\\Spoke\\Lms\\Tests\\": "packages/spoke/internal/lms/tests/"
+            "SovereignStack\\Spoke\\Lms\\Tests\\": "packages/spoke/internal/lms/tests/",
+            "SovereignStack\\Core\\View\\Tests\\": "packages/core/view/tests/"
         }
     },
     "repositories": [

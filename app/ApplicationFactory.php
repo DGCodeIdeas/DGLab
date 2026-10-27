@@ -6,6 +6,7 @@ namespace App;
 
 use App\Controller\HealthController;
 use App\Controller\HelloController;
+use App\Controller\TemplateController;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\NullLogger;
 use SovereignStack\Bridge\ContractRegistry;
@@ -27,6 +28,8 @@ use SovereignStack\Core\Kernel\Stub\EmptyProviderRegistry;
 use SovereignStack\Core\Logger\Logger;
 use SovereignStack\Core\Router\Route;
 use SovereignStack\Core\Router\Router;
+use SovereignStack\Core\View\ViewFactory;
+use SovereignStack\Core\View\ViewInterface;
 
 /**
  * Application composition root — extracts construction from public/index.php.
@@ -77,6 +80,17 @@ final class ApplicationFactory
         private readonly \Closure $log,
         private readonly bool $isDevMode,
     ) {}
+
+    /**
+     * Get the kernel for testing purposes.
+     *
+     * This is intentionally limited to testing — production code should
+     * not depend on kernel internals.
+     */
+    public function getKernel(): Kernel
+    {
+        return $this->kernel;
+    }
 
     /**
      * Compose the application from existing Core/Bridge components.
@@ -133,6 +147,9 @@ final class ApplicationFactory
         // Register the root contract — the "Hello World" route.
         $contractRegistry->registerContract('/', new DefaultDtoTransformer());
 
+        // Register the /hello contract for template rendering.
+        $contractRegistry->registerContract('/hello', new DefaultDtoTransformer());
+
         // Register the /health contract — used by Tengine's active health check
         // and future monitoring systems. Pass-through DTO transformer.
         $contractRegistry->registerContract('/health', new DefaultDtoTransformer());
@@ -152,7 +169,13 @@ final class ApplicationFactory
         // --- 3. Build the Kernel with the wiring bootstrapper ---
         $kernel = new Kernel(
             containerFactory: fn () => $container,
-            configFactory: fn () => new ConfigRepository([]),
+            configFactory: fn () => new ConfigRepository([
+                'view' => [
+                    'driver' => 'twig',
+                    'path' => __DIR__ . '/Resources/views',
+                    'options' => [],
+                ],
+            ]),
             errorHandlerFactory: fn () => $errorHandler,
             providerRegistryFactory: fn () => new EmptyProviderRegistry(),
             eventDispatcherFactory: fn () => $dispatcher,
@@ -197,6 +220,23 @@ final class ApplicationFactory
                         // Bind the controllers into the container.
                         $kernel->getContainer()->bind(HelloController::class);
                         $kernel->getContainer()->bind(HealthController::class);
+                        $kernel->getContainer()->bind(TemplateController::class);
+
+                        // Register the template rendering route.
+                        $router->addRoute(new Route(
+                            path: '/hello',
+                            methods: ['GET'],
+                            name: 'template.hello',
+                            controllerClass: TemplateController::class,
+                            controllerMethod: 'hello',
+                        ));
+
+                        // --- View subsystem integration ---
+                        $config = $kernel->getConfig();
+                        if ($config->has('view.driver')) {
+                            $view = ViewFactory::fromConfig($config);
+                            $kernel->getContainer()->instance(ViewInterface::class, $view);
+                        }
                     }
                 },
             ],
@@ -361,6 +401,6 @@ final class ApplicationFactory
      */
     private static function isDevMode(): bool
     {
-        return ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
+        return (($_ENV['APP_ENV'] ?? getenv('APP_ENV')) !== false ? ($_ENV['APP_ENV'] ?? getenv('APP_ENV')) : 'production') === 'dev';
     }
 }

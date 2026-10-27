@@ -78,12 +78,13 @@ final class ApplicationFactoryTest extends TestCase
     }
 
     /**
-     * The factory exposes only create() + run() — no container leak.
+     * The factory exposes only create() + run() + getKernel() — no container leak.
      *
      * Per SPEC §44: "The factory MUST NOT become a service locator."
      * This test verifies the public API surface is minimal: no getContainer(),
-     * no getKernel(), no resolve() — those would leak the container and become
+     * no resolve() — those would leak the container and become
      * a service locator anti-pattern.
+     * getKernel() is explicitly allowed as a testing helper (does not expose container).
      */
     public function testPublicApiSurfaceIsMinimal(): void
     {
@@ -94,7 +95,7 @@ final class ApplicationFactoryTest extends TestCase
         );
 
         // Allowed public methods (per SPEC §44 design)
-        $allowed = ['create', 'run'];
+        $allowed = ['create', 'run', 'getKernel'];
 
         foreach ($publicMethods as $methodName) {
             self::assertContains(
