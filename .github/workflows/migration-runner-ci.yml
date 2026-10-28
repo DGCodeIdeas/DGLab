@@ -92,7 +92,9 @@ jobs:
               "SovereignStack\\Core\\MigrationRunner\\Sequence\\GseqAllocator",
               "SovereignStack\\Core\\MigrationRunner\\Recovery\\Reconciler",
               "SovereignStack\\Core\\MigrationRunner\\Locking\\Gate",
-              "SovereignStack\\Core\\MigrationRunner\\Locking\\AdvisoryLocks",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\MigrationLock",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\LevelLock",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\LivenessGuard",
               "SovereignStack\\Core\\MigrationRunner\\Event\\EventTypes",
               "SovereignStack\\Core\\MigrationRunner\\Cli\\Application",
             ];
@@ -112,7 +114,7 @@ jobs:
       - name: PHPUnit — Unit suite (no MySQL, fast feedback)
         working-directory: packages/core/migration-runner
         run: |
-          ../../../../vendor/bin/phpunit \
+          ../../../vendor/bin/phpunit \
             --configuration phpunit.xml.dist \
             --testsuite Unit \
             --testdox \
@@ -124,7 +126,7 @@ jobs:
         if: always()
         run: |
           # Re-run with log-junit to count executed tests
-          ../../../../vendor/bin/phpunit \
+          ../../../vendor/bin/phpunit \
             --configuration phpunit.xml.dist \
             --testsuite Unit \
             --log-junit /tmp/unit-results.xml \
@@ -160,10 +162,10 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -P 3306 -u root -ptestpass"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptestpass --silent"
+          --health-interval=5s
+          --health-timeout=10s
+          --health-retries=30
           --name=mysql-svc
     env:
       TEST_DB_HOST: 127.0.0.1
@@ -251,7 +253,7 @@ jobs:
           # Override the phpunit.xml.dist default which EXCLUDES mysql-required.
           # We explicitly INCLUDE only the mysql-required group — if MySQL is
           # provisioned (it is), every mysql-required test MUST run, not skip.
-          ../../../../vendor/bin/phpunit \
+          ../../../vendor/bin/phpunit \
             --configuration phpunit.xml.dist \
             --testsuite Integration \
             --group mysql-required \
@@ -266,7 +268,7 @@ jobs:
         if: always()
         run: |
           # Re-run with log-junit to detect skipped tests
-          ../../../../vendor/bin/phpunit \
+          ../../../vendor/bin/phpunit \
             --configuration phpunit.xml.dist \
             --testsuite Integration \
             --group mysql-required \
