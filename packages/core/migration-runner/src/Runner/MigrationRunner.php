@@ -11,6 +11,7 @@ use SovereignStack\Core\MigrationRunner\Locking\Gate;
 use SovereignStack\Core\MigrationRunner\Locking\LevelLock;
 use SovereignStack\Core\MigrationRunner\Locking\LivenessGuard;
 use SovereignStack\Core\MigrationRunner\Locking\MigrationLock;
+use SovereignStack\Core\MigrationRunner\Migration\ChainValidationException;
 use SovereignStack\Core\MigrationRunner\Migration\ChainValidator;
 use SovereignStack\Core\MigrationRunner\Migration\MigrationDefinition;
 use SovereignStack\Core\MigrationRunner\Migration\SqlBlockParser;
@@ -556,6 +557,12 @@ final class MigrationRunner
 
     private function executeSchemaSql(string $sql): void
     {
+        // Strip -- comment lines BEFORE splitting on ';'. Comments often
+        // contain ';' (e.g., 'FOR SHARE; global reconciliation') which would
+        // split the comment into fragments, and fragments not starting with
+        // '--' would be executed as SQL → syntax error 1064.
+        $sql = preg_replace('/^--.*$/m', '', $sql);
+
         // Split on DELIMITER boundaries for trigger definitions.
         $parts = preg_split('/^DELIMITER\s+\S+/m', $sql);
         $delimiter = ';';
