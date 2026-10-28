@@ -52,12 +52,12 @@ jobs:
           fetch-depth: 0
 
       - name: Setup PHP 8.4
-        uses: shivammathur/setup-php@2
-          with:
-            php-version: '8.4'
-            coverage: none
-            extensions: mbstring, xml, dom, openssl, pdo
-            tools: composer:v2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, xml, dom, openssl, pdo
+          tools: composer:v2
 
       - name: Validate root composer.json
         run: composer validate --strict --no-check-publish
@@ -179,7 +179,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup PHP 8.4
-        uses: shivammathur/setup-php@2
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
