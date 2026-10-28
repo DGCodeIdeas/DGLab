@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * DGLab Migration Runner — CLI entry point.
+ *
+ * Usage: php migrate <command> [options]
+ *
+ * Commands: install, apply, rollback, status, dry-run, reconcile
+ */
+
+$candidates = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../vendor/autoload.php',
+    __DIR__ . '/../../../../vendor/autoload.php',
+    getcwd() . '/vendor/autoload.php',
+];
+
+$autoload = null;
+foreach ($candidates as $candidate) {
+    if (file_exists($candidate)) {
+        $autoload = $candidate;
+        break;
+    }
+}
+
+if ($autoload === null) {
+    fwrite(STDERR, "Cannot find Composer autoloader. Run 'composer install' at the repository root.\n");
+    exit(1);
+}
+
+require $autoload;
+
+use SovereignStack\Core\MigrationRunner\Cli\Application;
+
+$app = new Application();
+exit($app->run($argv));

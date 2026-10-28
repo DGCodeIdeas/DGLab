@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit configuration for the Migration Runner package.
+  
+  Unit tests (ChainValidator, SqlBlockParser) run without MySQL.
+  Integration tests (Test6e, concurrency, recovery) require a real MySQL
+  instance with InnoDB — set TEST_DB_HOST, TEST_DB_NAME, TEST_DB_USER, TEST_DB_PASS.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="../../../vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="../../../vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         testdox="true">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="TEST_DB_HOST" value="127.0.0.1"/>
+        <env name="TEST_DB_PORT" value="3306"/>
+        <env name="TEST_DB_NAME" value="dglab_test"/>
+        <env name="TEST_DB_USER" value="root"/>
+        <env name="TEST_DB_PASS" value=""/>
+    </php>
+    <groups>
+        <exclude>
+            <group>mysql-required</group>
+        </exclude>
+    </groups>
+</phpunit>
