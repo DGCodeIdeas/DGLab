@@ -5,6 +5,55 @@
 
 ---
 
+## G-0. Cross-cutting contracts (apply to every stage)
+
+### G-0.1 Per-stage Composer state (Issue 4)
+
+Every stage that moves a component MUST satisfy the **Per-stage Composer state contract** defined in Deliverable F-7. In summary:
+
+- Path repositories remain in root `composer.json` until Stage 9 (no premature removal).
+- Each stage appends new `DGLab\<Tier>\<Component>\` PSR-4 prefixes to root `autoload.psr-4` AND removes the corresponding `SovereignStack\<...>\` prefixes AND deletes the per-package `composer.json` for moved components — all in the same commit.
+- `sovereign-stack/*` requires shrink stage-by-stage as their packages move.
+- **Mandatory validation at every stage boundary:**
+  ```bash
+  composer validate --strict
+  composer dump-autoload -o
+  composer install --dry-run
+  # plus autoload smoke per new prefix:
+  php -r 'require "vendor/autoload.php"; class_exists("DGLab\<Tier>\<Component>\<Class>") or exit(1);'
+  ```
+- **Acceptance:** `composer install` succeeds; previously-passing tests still pass; new component tests pass from new paths; no half-migrated PSR-4 root; CI green.
+- **No stage ends in a broken-Composer state.** If a stage cannot satisfy this contract, it is split into substages that each leave the tree consistent.
+
+See F-7 for the full per-stage Composer state table (Stages 2–9).
+
+### G-0.2 Protected-directory scope (Issue 5)
+
+The protected directories `Architecture/`, `orchestrator/`, `anvil/`, and `archive/` remain physically in place during the entire restructure. The migration touches them ONLY for **reference updates**, never for internal code modifications:
+
+- `Architecture/` — adds `component-inventory.yaml` (Stage 1); updates INDEX/DAG derived artifacts per D-H9 scope decision (deferred unless owner folds into Stage 1).
+- `orchestrator/` — updates path globs (`packages/*/*/composer.json` → tier-layout globs) in Stage 9; its internal namespace `SovereignStack\Orchestrator\*` is **grandfathered** as a sanctioned exception (see I-9) and is NOT rewritten by the migration. Decision D-H2 (post-migration workstream) decides whether/how the orchestrator's namespace eventually moves.
+- `anvil/` — updates Caddyfile/frankenphp.sh/deploy.sh docroot references in Stage 6; anvil contains no PHP namespace declarations (shell scripts + Caddyfile + systemd units only); nothing internal to rewrite.
+- `archive/` — byte-identical (`git diff --stat -- archive/` empty); zero migration touches.
+
+**Distinguishing reference updates from internal modifications (Issue 5 reconciliation):** the migration's zero-`SovereignStack\` grep gate (I-2) applies to non-protected code ONLY. The protected dirs' internal `SovereignStack\` references are listed in the inventory's `grandfathered_exceptions` field (Deliverable D-5 rule 10). The migration does NOT introduce NEW `SovereignStack\` references inside protected dirs (only existing references are grandfathered). This reconciles I-2 (zero `SovereignStack\`) with I-9 (protected dirs physically retained) — they are not in conflict because the grep rule's scope is non-protected code only.
+
+### G-0.3 Products/Codex boundary (Issue 1)
+
+`Products/Codex/` is a **reserved proposed Product boundary** (blueprint-only; no application code today). No stage creates, moves, or modifies Codex application code. The migration does NOT invent Codex application code to fill the directory (per owner directive). When a Codex application is built (post-migration workstream), it will compose `Spokes/Internal/Codex/` and live at `Products/Codex/`. See C-6b and D-H6 (updated).
+
+### G-0.4 Counting conventions (Issue 2)
+
+All stage-level action counts use the conventions defined in A §8:
+- *Move+Rename* = 1:1 source→target mapping (paired `git mv` + namespace rewrite).
+- *Split* = 1→many mapping (counted ONCE under splits, never under moves).
+- *Merge* = many→1 mapping.
+- *Removal* = file/dir deletion.
+
+Totals (reconciled across A, B, C): 42 components / 21 moves / 2 splits / 1 merge / 11 removals.
+
+---
+
 ### Stage 0 — CI pre-flight repairs (independent of the moves)
 
 - **Scope:** fix `branches: ain]` → `branches: [main]` in all 6 workflows; add `packages/core/neospx` + `packages/core/view` to packages-ci matrix (or exclusion entries with reasons); delete dangling `scripts/architecture-boundary-lint.php` references in architecture-boundary-lint.yml; untrack `.phpunit.cache/`.
@@ -24,13 +73,14 @@
 
 ### Stage 2 — Core tier move (14 components)
 
-- **Scope:** `git mv packages/core/<x>` → `Core/<X>/` per mapping (dbal→Database; middleware→Middleware with OD-01 namespace split); rewrite `namespace`/`use` in all src+tests; **same-commit caller updates** in hub/identity, bridge/vanguard, spokes (lms/showcase), app/, tests/, scripts (naming-drift map, allowlist FQCNs), root composer autoload (new `DGLab\Core\*` prefixes — packages still exist for Hub/Bridge/Spokes path repos until Stage 9? **No — see note**).
-- **Sequencing note (important):** because the root composer currently wires packages via path repos, moving a package directory breaks its path repo. Two options: (a) do Core..Products moves with **per-stage root composer.json rewrites** (path repos + PSR-4 updated each stage — the recommended path, keeping the tree consistent at every stage boundary), or (b) one giant Stage 2-9 cutover. **Recommended: (a)** — each stage ends with a green composer validate + CI; the "single cutover" of Deliverable F applies to the *final dissolution* (removing path repos + per-pkg manifests) which still lands as its own atomic stage 9 after all directories have already moved.
+- **Scope:** `git mv packages/core/<x>` → `Core/<X>/` per mapping (dbal→Database; middleware→Middleware with OD-01 namespace split); rewrite `namespace`/`use` in all src+tests; **same-commit caller updates** in hub/identity, bridge/vanguard, spokes (lms/showcase), app/, tests/, scripts (naming-drift map, allowlist FQCNs), root composer autoload (new `DGLab\Core\*` prefixes added; `SovereignStack\Core\*` prefixes removed; per-package manifests for the 14 Core components DELETED; `sovereign-stack/core-*` requires REMOVED).
+- **Composer state at stage exit (per F-7):** 14 new `DGLab\Core\*` PSR-4 prefixes in root autoload; 14 per-pkg manifests deleted; 14 `core-*` requires removed; path repos still present (Hub/Bridge/Spokes not yet moved); validation: `composer validate --strict` + `composer dump-autoload -o` + autoload smoke over 14 new prefixes; CI green.
+- **Sequencing note (important):** because the root composer currently wires packages via path repos, moving a package directory breaks its path repo. The recommended path is **per-stage root composer.json rewrites** (path repos + PSR-4 updated each stage — keeping the tree consistent at every stage boundary per F-7). The "single cutover" of Deliverable F-5/F-7 applies ONLY to Stage 9's final dissolution (removing path repos entirely + committing `composer.lock`), NOT to the per-stage moves.
 - **Wave order within stage:** leaves (config, container, crypto, Database, filesystem, neospx(+add to composer), event-dispatcher, view) → logger, error-handler → router + **Http/Middleware split** → kernel (last).
 - **Files:** 14 package trees (~287 files), callers (~30 files), root composer.json, `.github/architecture-export-allowlist.yaml`, `scripts/fitness/naming-drift.py`, packages-ci matrix paths, Loom contract test pin (`packages/core/logger` → `Core/Logger`).
 - **Tests:** all 14 component suites + hub/bridge/spoke/app suites (import-renames) + boundary lint + fitness scripts (updated maps).
-- **Acceptance:** `grep -r "SovereignStack\\\\Core" --include=*.php | wc -l` = 0; composer dump-autoload -o; CI green; no public-signature diffs except namespace lines (verified by `git diff -w` review discipline).
-- **Risks:** Http/Middleware split caller misses (grep gate), vendor-symlink reliance disappearing mid-flight (each stage's composer update re-links).
+- **Acceptance:** `grep -r "SovereignStack\\\\Core" --include=*.php --exclude-dir=vendor --exclude-dir=archive --exclude-dir=orchestrator --exclude-dir=anvil | wc -l` = 0 (protected-dir grandfathered exceptions per I-9); `composer validate --strict` + `composer dump-autoload -o` + autoload smoke (14 prefixes) + CI green; no public-signature diffs except namespace lines (verified by `git diff -w` review discipline).
+- **Risks:** Http/Middleware split caller misses (grep gate); vendor-symlink reliance disappearing mid-flight (each stage's composer update re-links).
 
 ### Stage 3 — Hub tier (2 components)
 

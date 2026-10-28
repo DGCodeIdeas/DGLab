@@ -16,7 +16,8 @@ Every item must pass on a **clean clone of the migrated tree** before the restru
 
 ## I-2. Namespace hygiene
 
-- [ ] `grep -r "SovereignStack\\\\" --include="*.php" . | grep -v vendor | grep -v archive | wc -l` = **0** (protected orchestrator/src also migrated: its namespace `SovereignStack\Orchestrator\` → decided in D-H2 context; if kept, documented as the single sanctioned exception).
+- [ ] `grep -r "SovereignStack\\\\" --include="*.php" --exclude-dir=vendor --exclude-dir=archive --exclude-dir=orchestrator --exclude-dir=anvil . | wc -l` = **0** (excludes protected dirs whose internal namespace is grandfathered — see I-9 for the sanctioned-exception list).
+- [ ] Inside protected dirs: `SovereignStack\\` references are documented as sanctioned exceptions (see I-9). `orchestrator/` retains `SovereignStack\\Orchestrator\\` internally (decision deferred to D-H2 for the post-migration release-model workstream); `anvil/` contains no PHP namespaces (shell scripts only); `Architecture/` contains no PHP source. No NEW `SovereignStack\\` references are introduced inside protected dirs by the migration (only existing references are grandfathered).
 - [ ] `grep -rn "App\\\\" --include="*.php" --exclude-dir=vendor --exclude-dir=archive . | wc -l` = 0 (skeleton namespace retired).
 - [ ] `grep -rni "packages/core\|packages/hub\|packages/bridge\|packages/spoke" --include="*.php" --include="*.yml" --include="*.yaml" --include="*.json" --include="*.xml" --include="*.sh" --include="Caddyfile*" . | grep -v vendor | grep -v archive | wc -l` = 0 except **documented grandfathered strings** (Loom legacy-tag regex for `core/container` v1.0.0 if retained).
 
@@ -32,7 +33,7 @@ Every item must pass on a **clean clone of the migrated tree** before the restru
 
 ## I-4. Product entrypoints and document roots
 
-- [ ] `Products/LMS/public/index.php` exists; `Products/LMS/Bootstrap.php` (or documented equivalent) reachable; routes `/`, `/health`, `/hello` return expected bodies (smoke test asserts).
+- [ ] `Products/LMS/public/index.php` exists (front controller, non-namespaced); `Products/LMS/src/Bootstrap.php` reachable via PSR-4 autoload (class `DGLab\Products\LMS\Bootstrap`); routes `/`, `/health`, `/hello` return expected bodies (smoke test asserts).
 - [ ] `anvil/dev/Caddyfile.dev` + `anvil/lib/frankenphp.sh` reference the new docroot; **`anvilctl start` (dev collapsed) boots**; `anvilctl verify health|headers` passes; deploy-smoke suite passes: `/health` 2xx < 5s, security headers present, `/debug/xff` reports `scheme=https` + propagated client IP.
 - [ ] `anvil/lib/deploy.sh` release-shape check updated and passing against a packaged release dir containing `Products/LMS/public/index.php`.
 
@@ -71,6 +72,8 @@ Every item must pass on a **clean clone of the migrated tree** before the restru
 
 - [ ] `git diff --stat origin/main..<migration> -- Architecture/ orchestrator/ anvil/` shows ONLY: `Architecture/component-inventory.yaml` (added, Stage 1) + documented reference updates (anvil Caddyfiles/frankenphp/deploy in Stage 6; orchestrator path-glob updates in Stage 9) — **no other file changes**; no file moved/renamed/deleted within them.
 - [ ] `archive/` byte-identical (`git diff --stat -- archive/` empty).
+- [ ] **Reference updates vs internal modifications (Issue 5 reconciliation):** the migration touches protected dirs ONLY for reference updates (path globs in orchestrator/Loom, docroot paths in anvil/Caddyfile+frankenphp+deploy.sh, component-inventory.yaml added in Architecture/). It does NOT modify internal namespace declarations, class bodies, or business logic inside protected dirs.
+- [ ] **Sanctioned SovereignStack\\ exceptions (inside protected dirs only):** `orchestrator/src/` retains `SovereignStack\\Orchestrator\\*` (decision deferred to D-H2 for the post-migration release-model workstream). `anvil/` contains no PHP namespace declarations (shell scripts + Caddyfile + systemd units only). `Architecture/` contains no PHP source. These are the ONLY sanctioned exceptions to I-2's zero-`SovereignStack\\` rule and are listed in the inventory's `grandfathered_exceptions` field (Deliverable D-5 rule 10). The migration does NOT introduce NEW `SovereignStack\\` references inside protected dirs (only existing references are grandfathered).
 
 ## I-10. Behavioral parity (no BC, but no accidental drift)
 

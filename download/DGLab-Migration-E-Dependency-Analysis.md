@@ -57,6 +57,27 @@
 
 **Composer-declared but code-unused edges (cleanup list):** logger→config; error-handler→logger (tests only); router→http-message (tests only); vanguard→middleware+router; hub-config→container; lms/showcase→container+event-dispatcher+http-message+kernel+filesystem. These six groups are removed at Stage 9 (they exist only to simulate package boundaries).
 
+**Dependency category definitions (per owner revision Issue 6):**
+
+- **Runtime dependencies**: `use` statements in production source code (`src/` directories). These are the 16 verified edges in the table above; they are the only edges that define runtime architecture. Verifiable via `git grep '^use ' -- '<component>/src/'`.
+- **Test-only dependencies**: `use` statements that appear ONLY in `tests/` directories of a component (never in `src/`). These do not affect runtime architecture but DO affect composer/package boundaries (the consuming component's tests cannot run without the dependency). Example: `error-handler` tests import `core-logger` for fixture setup — runtime never imports logger, but tests need it.
+- **Composer package-boundary artifacts**: dependencies declared in a package's `composer.json` `require` section but never imported in any `src/` or `tests/` file. These exist only to simulate package boundaries (e.g., `lms` requires `core-filesystem` though no LMS code uses it). They are removed at Stage 9 with the package manifests.
+
+**Classification of the 6 declared-but-unused edge groups:**
+
+| Edge | Category | Evidence |
+|---|---|---|
+| logger → config | Composer-boundary artifact | no `use` of `SovereignStack\Core\Config` in logger src/ or tests/ |
+| error-handler → logger | Test-only | `use` of `SovereignStack\Core\Logger` appears in error-handler tests/ only, not in src/ |
+| router → http-message | Test-only | `use` of `SovereignStack\Core\Http` appears in router tests/ only, not in src/ (src/ uses only `psr/http-message` PSR interfaces) |
+| vanguard → middleware + router | Composer-boundary artifact | no `use` of `SovereignStack\Core\Middleware` or `SovereignStack\Core\Router` anywhere in vanguard |
+| hub-config → container | Composer-boundary artifact | no `use` of `SovereignStack\Core\Container` in hub-config src/ or tests/ |
+| lms/showcase → container + event-dispatcher + http-message + kernel + filesystem | Composer-boundary artifact | no `use` of any of these in lms or showcase src/ or tests/ |
+
+**Products/Codex mention:** no runtime edges today (no application code). The PRODUCT-CODEX inventory entry (Deliverable D-4) records a declared-intent dependency on ISPOKE-09 for when the Codex Product is implemented post-migration. It is not counted in the 16-edge verified graph because there is no source evidence to verify.
+
+**Revalidation of carried-forward findings (against baseline `4ba7e7a`):** every prior finding cataloged in A3-ARCH-DAG-REPORT.md was re-checked at the baseline commit `4ba7e7a4`, not at `ff439a4` (the prior baseline). The single one-commit delta between `ff439a4` and `4ba7e7a4` adds `A3-ARCH-DAG-REPORT.md` at the repo root and does not affect any code-level finding. The E-2 status column reflects this revalidation.
+
 ## E-2. Reconciliation with the declared/verified DAGs (Phase F revalidation)
 
 | Prior finding (A3-ARCH-DAG-REPORT / audits) | Revalidated at 4ba7e7a | Status |

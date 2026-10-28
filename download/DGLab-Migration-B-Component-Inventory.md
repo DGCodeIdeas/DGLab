@@ -46,6 +46,14 @@
 | 29 | App unit tests | `app/tests/Unit/ApplicationFactoryTest.php` | `App\Tests\Unit` | Factory API-surface tests — **orphaned: no CI runner includes it** | Products/LMS tests (needs runner) | V |
 | 30 | Scaffolding set | `config/.gitkeep`, `cli/.bin/.gitkeep`, `docker-compose.yml`, `.env.example` (placeholders: "Nothing here yet"/"deferred") | — | Empty scaffolding; real config is inline; real CLI lives in orchestrator+anvil | **Remove or repurpose** (D-H4 for Cli/) | V |
 
+### B-2b. Reserved Product boundary (proposed, no application code today)
+
+| # | Component | Target path | Target namespace | Status | Source evidence | Migration action | Conf |
+|---|---|---|---|---|---|---|---|
+| 30a | Codex Product (proposed) | `Products/Codex/` | `DGLab\Products\Codex` | **blueprint-only** (no code today) | Brief target structure (§3) lists `Products/LMS\|Codex/`; the reusable capability stays at `Spokes/Internal/Codex/` (B-1 row 18, ISPOKE-09) — separate inventoried component | **Defer** — directory reserved as future Product boundary; no migration action because there is no source code to move; the migration does NOT invent Codex application code to fill the directory | U (no source evidence to verify) |
+
+This row is recorded in the component inventory (Deliverable D-4 PRODUCT-CODEX entry) so the inventory owns the future boundary. Decision D-H6 (updated) confirms this arrangement.
+
 ## B-3. Protected / platform areas (physically in place)
 
 | # | Component | Path | What it is | References INTO main repo (migration surface) | Conf |
@@ -71,6 +79,6 @@
 
 ---
 
-**Component count summary:** 41 inventoried groups (B-1: 21 runtime packages; B-2: 9 app-layer items; B-3: 4 protected/platform; B-4: 7 tooling/CI/docs groups) — expanding to ~60 individual rows in the migration map (Deliverable C) where splits (e.g., per-script, per-migration-file detail) matter. Every row carries path+namespace evidence from `git show origin/main:<path>`.
+**Component count summary:** 42 inventoried groups (B-1: 21 runtime packages; B-2: 9 app-layer items; B-2b: 1 reserved Product boundary (blueprint-only, no code); B-3: 4 protected/platform; B-4: 7 tooling/CI/docs groups) — expanding to ~60 individual rows in the migration map (Deliverable C) where splits (e.g., per-script, per-migration-file detail) matter. **Cross-document reconciliation:** 42 components / 21 moves / 2 splits / 1 merge / 11 removals — see A §8 for the canonical count definitions; all three documents agree.
 
 *Deliverable B complete.*

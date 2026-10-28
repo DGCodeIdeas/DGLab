@@ -138,6 +138,23 @@ components:
     migration_from: [app/, public/]
     evidence: [{path: app/ApplicationFactory.php}, {path: public/index.php}]
 
+  - component_id: PRODUCT-CODEX
+    name: Codex Product
+    tier: product
+    path: Products/Codex
+    namespace: DGLab\Products\Codex
+    status: blueprint-only                   # NO application code today; reserved per agreed target structure (§3)
+    dependencies:
+      - {component_id: ISPOKE-09, kind: runtime, evidence: "declared intent — Codex Product will compose the Codex spoke; not yet wired (no source)"}
+    test_path: null                          # none — no code today
+    entrypoints: []                          # reserved for Products/Codex/public/index.php when implemented
+    migration_action: defer                  # no source to migrate; directory is reserved as the future boundary
+    migration_from: null
+    evidence:
+      - path: README.md                      # brief §3 target structure lists Products/LMS|Codex/
+        symbol: "target directory listing"
+    notes: "owner directive: do NOT invent Codex application code to fill this directory; spoke Spokes/Internal/Codex (ISPOKE-09) is the reusable capability, NOT a Product"
+
   - component_id: TOOL-BOUNDARY-LINT
     name: Architecture Boundary Lint
     tier: tools
@@ -161,6 +178,7 @@ components:
 7. **Generated-artifact freshness**: INDEX tier tables, DAG summaries, and build orders regenerated from the inventory must match the committed files (hash comparison), else "stale generated artifact" failure — this directly prevents the current S-059/S-061 drift class.
 8. **Retired IDs**: no component references a retired ID.
 9. **Protected paths**: `Architecture/`, `orchestrator/`, `anvil/`, `archive/` never appear as a `path` for migration actions other than `retain`.
+10. **Grandfathered namespace exceptions**: a new top-level field `grandfathered_exceptions` lists `SovereignStack\` namespaces retained inside protected dirs (e.g., `SovereignStack\Orchestrator\*` in `orchestrator/src/`). Each entry must reference the protected-dir path and the decision ID that justifies retention (e.g., `D-H2` for the orchestrator release-model workstream). The CI rule enforces: NO `SovereignStack\` references exist OUTSIDE the listed exception paths; the migration does NOT introduce new `SovereignStack\` references inside protected dirs (only existing references are grandfathered). This reconciles I-2's zero-`SovereignStack\` rule with I-9's protected-dir physical-retention rule.
 
 ## D-6. What stays OUT of the inventory
 

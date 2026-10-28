@@ -77,7 +77,7 @@ Problems: dual-root `Core\Http` (middleware resolves only via path-repo vendor d
       "DGLab\\Spokes\\Internal\\Codex\\":    "Spokes/Internal/Codex/src/",
       "DGLab\\Spokes\\Internal\\Showcase\\": "Spokes/Internal/Showcase/src/",
       "DGLab\\Spokes\\External\\Canvas\\":   "Spokes/External/Canvas/src/",
-      "DGLab\\Products\\LMS\\":       "Products/LMS/src/"       // Bootstrap/controllers live under src/ or PSR-4 root at Products/LMS/ — see note
+      "DGLab\\Products\\LMS\\":       "Products/LMS/src/"       // canonical PSR-4 root, consistent with all other components; Bootstrap at src/Bootstrap.php (class DGLab\Products\LMS\Bootstrap); controllers at src/Controller/*; front controller at Products/LMS/public/index.php (non-namespaced, requires ../src/Bootstrap.php)
   }},
   "autoload-dev": { "psr-4": {
       "Testsuite\\":  "Testsuite/",
@@ -143,5 +143,59 @@ Problems: dual-root `Core\Http` (middleware resolves only via path-repo vendor d
 | per-pkg phpstan configs lost → strict-rule coverage drop | root phpstan.neon gains all component `src` paths at same level (max); strict-rules stays global |
 | CI jobs that `composer install` per package lose their working-dir subjects | Stage 9 re-points matrix `working-dir` to component dirs; completeness checker learns tier layout in same commit |
 | Loom release automation mis-fires on missing pkg composer.json | Stage 9 disables per-package release jobs pending D-H2 (documented, not silent) |
+
+## F-7. Per-stage Composer state contract (applies to every moving stage 2–8)
+
+**Owner requirement (Issue 4):** for every migration stage that moves a component, the migration MUST state exactly how path repositories, root autoload mappings, and remaining package manifests stay valid at the end of that stage. No stage may end in a broken-Composer state.
+
+**Contract (applies uniformly to Stages 2, 3, 4, 5, 6, 7, 8):**
+
+1. **Path repositories remain until Stage 9.** The root `composer.json` `repositories` section keeps the `packages/*/*` and `packages/*/*/*` URL patterns until Stage 9's final dissolution. At any point during Stages 2–8:
+   - Packages that have NOT yet moved still resolve via their path repos.
+   - Packages that HAVE moved this stage are covered by the root autoload (their `DGLab\<Tier>\<Component>\` PSR-4 prefix is added to root `autoload.psr-4` in the same commit) AND their per-package `composer.json` is DELETED in the same commit (no longer needed).
+
+2. **Root autoload PSR-4 grows monotonically.** Each moving stage appends new `DGLab\<Tier>\<Component>\` prefixes pointing at the new tier paths. The corresponding old `SovereignStack\<...>\` prefixes are removed in the same commit (the moved code no longer uses them; this is the grep gate from F-5 step 2, applied per-stage rather than only at Stage 9).
+
+3. **`sovereign-stack/*` requires shrink as their packages move.** The root `composer.json` `require` section loses one `sovereign-stack/<pkg>` entry per component moved. By Stage 9, it is empty of internal packages.
+
+4. **Validation commands at every stage boundary (mandatory):**
+
+   ```bash
+   composer validate --strict                                    # root composer.json is well-formed
+   composer dump-autoload -o                                     # autoload regenerates cleanly
+   composer install --dry-run                                    # no drift; resolution succeeds
+   ```
+
+   Plus an autoload smoke for each new prefix added this stage:
+
+   ```bash
+   php -r 'require "vendor/autoload.php";
+     class_exists("DGLab\\<Tier>\\<Component>\\<Class>") or exit(1);'
+   # one smoke per new PSR-4 prefix added this stage
+   ```
+
+5. **Acceptance criteria at every stage boundary:**
+   - `composer install` succeeds (no resolution failures).
+   - All previously-passing tests still pass (CI green).
+   - Tests for components moved this stage pass from their new paths.
+   - `grep -r 'SovereignStack\\<moved-namespace>\\' --include='*.php'` returns 0 outside grandfathered protected-dir exceptions (Deliverable I-9).
+   - No half-migrated PSR-4 root (every moved component has exactly one PSR-4 prefix owner in root `autoload.psr-4`).
+
+6. **No stage ends in a broken-Composer state.** If a stage cannot satisfy this contract (e.g., a caller outside the stage's scope still imports the old namespace), the stage is split into substages that each leave the tree consistent. The "single cutover" of F-5 refers ONLY to Stage 9's final dissolution (removing path repos + remaining per-pkg manifests + committing `composer.lock`); Stages 2–8 each maintain Composer validity independently.
+
+**Stage-by-stage Composer state (summary; see Deliverable G for full stage scope):**
+
+| Stage | Moves | New PSR-4 prefixes added | `sovereign-stack/*` requires removed | Per-pkg manifests deleted | Path repos remaining |
+|---|---|---|---|---|---|
+| 2 | 14 Core | 14 `DGLab\Core\*` | 14 `core-*` (13 + neospx newly added) | 14 (incl. neospx's first manifest) | still present (Hub/Bridge/Spokes not yet moved) |
+| 3 | 2 Hub | 2 `DGLab\Hub\*` | 2 `hub-*` | 2 | still present (Bridge/Spokes not yet moved) |
+| 4 | 1 Bridge | 1 `DGLab\Bridge\Vanguard` | 1 `bridge-vanguard` | 1 | still present (Spokes not yet moved) |
+| 5 | 4 Spokes | 4 `DGLab\Spokes\*` | 4 `spoke-*` | 4 | still present (none left to move except app/) |
+| 6 | app/→Products/LMS (split) | 1 `DGLab\Products\LMS` | n/a (app was `App\` not a sovereign-stack pkg) | 0 (no per-pkg manifest for app/) | still present (path repos now empty of consumers but section remains until Stage 9) |
+| 7 | scripts/→Tools/, root-docs→Docs/ | 0 (no PHP namespaces) | 0 | 0 | still present (unchanged) |
+| 8 | tests/Integration→Testsuite/ | 1 `DGLab\Testsuite\Integration` (dev) | 0 | 0 | still present (unchanged) |
+| 9 | (dissolution only — no code moves) | 0 | 0 remaining | delete remaining orchestrator exception aside, all 0 remaining | **REMOVED entirely** + commit `composer.lock` |
+
+This table is the authoritative per-stage Composer state reference; any stage whose actual diff does not match this contract is a defect to fix before merging the stage.
 
 *Deliverable F complete.*

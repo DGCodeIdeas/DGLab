@@ -40,11 +40,16 @@
 - **Consequences:** (a) preserves investment + keeps the eventual-primary-template path visible; (b) removes it from CI surface but loses test coverage.
 - **Owner decision required:** YES (also fixes casing `NeoSpx` vs `NeoSPX` in namespace).
 
-### D-H6 — Codex / Showcase / Canvas placement confirmation
-- **Evidence:** all three are library capabilities (no HTTP controllers, no deployment); brief namespaces list BOTH `DGLab\Spokes\Internal\Codex` and `DGLab\Products\Codex`.
-- **Options:** (a) all three stay capability spokes; `Products/Codex` deferred until a Codex app exists (recommended); (b) promote any to Product now.
-- **Recommendation:** (a).
-- **Owner decision required:** YES (confirmatory).
+### D-H6 — Codex Product boundary confirmation
+- **Evidence:** brief target structure (§3) lists BOTH `Products/LMS|Codex/` and `DGLab\Spokes\Internal\Codex`. The spoke `packages/spoke/internal/codex` (ISPOKE-09) is a reusable library capability (no HTTP controllers, no deployment).
+- **Confirmed arrangement (per owner revision Issue 1):**
+  - `Spokes/Internal/Codex/` (ISPOKE-09) remains the reusable capability spoke.
+  - `Products/Codex/` is reserved as the intended Product boundary (deployable application).
+  - **No Codex application code exists today.** The Product is recorded in the inventory at `status: blueprint-only` (Deliverable D-4 PRODUCT-CODEX entry); no migration action because there is no source to move.
+  - When a Codex application is built (post-migration workstream), it will compose the Codex spoke at `Products/Codex/`.
+- **Recommendation:** confirmed (per owner revision; not deferred — proposed and reserved as the intended boundary).
+- **Consequences:** inventory carries PRODUCT-CODEX as blueprint-only; migration stages do NOT touch `Products/Codex/` (no code to migrate); the migration does NOT invent Codex application code to fill the directory (per owner directive Issue 1).
+- **Owner decision required:** NO (confirmed by owner revision).
 
 ### D-H7 — Root-doc corpus + scripts re-homing depth
 - **Evidence:** 23 root .md (~800KB, incl. 367KB `document.md`, 251KB tracked `worklog.md`); 12 scripts referenced by 3 workflows.

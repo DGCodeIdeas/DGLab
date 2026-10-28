@@ -48,7 +48,7 @@ Tiered directory monorepo (`Core/ Hub/ Bridge/ Spokes/Internal|External/ Product
 1. **Package-layout vs directory-tier layout**: 20 Composer packages under `packages/{tier}/{name}` with path repos must dissolve into tier directories with a single root autoload — the defining change of the migration.
 2. **Namespace scheme**: all code is `SovereignStack\*`; target is `DGLab\*` with tier-exact prefixes (`DGLab\Spokes\Internal\Lms` vs current `SovereignStack\Spoke\Lms`; `DGLab\Spokes\External\Canvas` vs current `SovereignStack\External\Canvas`; Bridge loses its flat namespace).
 3. **Dual PSR-4 roots for `SovereignStack\Core\Http\`** (http-message + middleware) — must be separated into `DGLab\Core\Http\` and `DGLab\Core\Middleware\` (OD-01 confirmed split), with all callers/tests updated.
-4. **No Products exist**: the current app/ + public/ skeleton is generic, but it is the seed of the LMS product; it must move to `Products/LMS/` with product-owned entrypoint/bootstrap/routes/config/resources. `app/Bridge|Spokes` placeholder trees die.
+4. **No Product application code exists today**: the current app/ + public/ skeleton is generic; it is the seed of the LMS Product and moves to `Products/LMS/` with product-owned entrypoint/bootstrap/routes/config/resources. `Products/Codex/` is reserved as a future Product boundary (no application code today — see D-H6 updated; the spoke `Spokes/Internal/Codex/` is the reusable capability, not a Product). `app/Bridge|Spokes` placeholder trees die. The migration does NOT invent Codex application code to fill the directory.
 5. **Test layout**: 177 test files live inside packages (co-located) + 2 root integration tests + 1 orphaned `app/tests` suite with **no CI runner**; target distinguishes `Testsuite/` (cross-component) from component-owned tests.
 6. **Database assets scattered**: 9 SQL migrations across 3 packages (identity 3, LMS 5, showcase 1) with two naming conventions (unprefixed `users/roles/user_roles` vs prefixed `lms_*`, `showcase_products`); target `Database/` needs a consolidated layout + the migration-runner workstream (PR #370) as its tooling core.
 7. **CI hardcodes package geometry**: packages-ci matrix (20 working-dirs), release.yml loops over `packages/${TIER}/*/`, the Loom's `dirname(__DIR__,2)` + `packages/*/*/composer.json` globs, completeness-check globs — all must be re-pointed at tier directories in lockstep. Additionally **all six push triggers are dead** (`branches: ain]` corruption) and the CI matrix is missing `core/neospx` + `core/view` (completeness guard should be red).
@@ -86,7 +86,7 @@ Stage 0 pre-flight (CI fixes + inventory skeleton) → 1 governance inventory �
 3. **D-H3**: Testsuite layout — component tests stay co-located (recommended) vs all tests centralized under `Testsuite/`?
 4. **D-H4**: Database layout — `Database/Migrations/<owner>/` (recommended) vs per-component migration retention; and whether the PR #370 migration runner lands as `Database/Runner` tooling.
 5. **D-H5**: NeoSPX partial component — carry lexer forward at `Core/NeoSPX` as-is (recommended) vs defer removal until parser/compiler work resumes?
-6. **D-H6**: Codex/Showcase/Canvas — confirm they remain capability spokes only (no Product apps yet; `Products/Codex` deferred).
+6. **D-H6**: Codex Product boundary — `Spokes/Internal/Codex/` remains the reusable capability spoke; `Products/Codex/` is reserved as the intended Product boundary (blueprint-only; no application code today; the migration does NOT invent code to fill it). Showcase and Canvas remain capability spokes only.
 7. **D-H7**: Root-doc corpus re-homing to `Docs/` — depth of reorganization (minimal move vs curated split).
 8. **D-H8**: `Public/` legacy root — delete after Products/LMS owns its public dir (recommended) vs keep a redirect?
 9. **D-H9**: Governance repair scope — does the migration task also fix INDEX/DAG drift (S-055..S-065) or only establish component-inventory.yaml?
@@ -98,15 +98,29 @@ Stage 0 pre-flight (CI fixes + inventory skeleton) → 1 governance inventory �
 
 ## 8. Inventory totals (from Deliverables B/C)
 
-- **Meaningful components inventoried: 41** (14 Core + 2 Hub + 1 Bridge + 4 Spokes + 1 Loom + 1 app-skeleton + 1 public front controller + 1 xff fixture + 3 test suites at root/app + 12 script tools + 7 CI workflows + 6 archive sub-trees + scaffolding set + root-doc corpus counted as groups; see Deliverable B for the full 41-row inventory with the long tail of individual scripts/workflows).
-- **Proposed moves (directory+namespace): 22** (14 Core, 2 Hub, 1 Bridge, 4 Spokes, 1 app→Products/LMS group) — all namespace renames are mechanical `SovereignStack\X` → `DGLab\Y` per the mapping table.
-- **Splits: 2** (Core\Http dual-root split into Http+Middleware — OD-01; app-skeleton split into Products/LMS vs Testsuite/App-tests).
-- **Merges: 1** (9 SQL migrations from 3 packages consolidate under Database/ ownership layout).
+**Counting conventions (applied uniformly across A, B, C — all totals below use these definitions):**
+
+- *Components*: architectural units with a single stable identity (CORE-02, HUB-04, PRODUCT-LMS, etc.). Multi-file groups (e.g., 14 Core packages) count as 14 components, not 1 group.
+- *Component groups*: narrative rollups ("Core tier" = 14 components). Group counts never duplicate component counts.
+- *Physical moves*: `git mv` of a directory preserving a 1:1 source→target mapping.
+- *Namespace changes*: mechanical `SovereignStack\X` → `DGLab\Y` rewrites, ALWAYS paired with the corresponding physical move in the same stage (never counted twice).
+- *Splits*: one source component → multiple target components. The skeleton is counted ONCE here (its 1→many mapping disqualifies it from the move+rename count).
+- *Merges*: multiple sources → one target.
+- *Removals*: deletions of files/dirs (placeholder trees, empty scaffolding, obsolete generators).
+
+**Totals (reconciled across A, B, C):**
+
+- **Meaningful components inventoried: 42** (14 Core + 2 Hub + 1 Bridge + 4 Spokes + 1 Loom + 1 app-skeleton + 1 public front controller + 1 xff fixture + 3 test suites at root/app + 1 proposed Codex Product boundary (blueprint-only, no code today) + 12 script tools + 7 CI workflows + 6 archive sub-trees + scaffolding set + root-doc corpus counted as groups; see Deliverable B for the full inventory with the long tail of individual scripts/workflows).
+- **Move+Rename (directory+namespace, 1:1 source→target): 21** (14 Core + 2 Hub + 1 Bridge + 4 Spokes). Each pairs a `git mv` with the mechanical `SovereignStack\X` → `DGLab\Y` namespace rewrite in the same stage. The skeleton is NOT counted here — its primary action is split.
+- **Splits: 2** (Core\Http dual-root namespace separation → Http + Middleware per OD-01; app-skeleton → Products/LMS + Testsuite/ + Products/LMS/tests). The skeleton is counted ONLY here, not under moves, because one source maps to multiple targets.
+- **Merges: 1** (9 SQL migrations from 3 packages consolidate under Database/Migrations/<owner>).
 - **Removals (recommended, pending owner): 11** (app/{Bridge,Spokes,Resources} placeholder trees; empty `config/`, `cli/`; root docker-compose.yml + .env.example placeholders; obsolete baseline generators v1; tracked `.phpunit.cache/`) — plus optional root-doc re-homes.
-- **Retained in place: 3 protected dirs + archive + external tooling** (Architecture/, orchestrator/, anvil/, archive/, .github (path-updated), scripts/ (path-updated)).
+- **Retained in place: 3 protected dirs + archive + external tooling** (Architecture/, orchestrator/, anvil/, archive/, .github (path-updated), scripts/ (path-updated)). Internal namespaces inside protected dirs (e.g., `SovereignStack\Orchestrator\`) are grandfathered as sanctioned exceptions (see I-9) — the migration does NOT rewrite protected code.
 - **Unresolved classifications: 5** (migration-runner home pending D-H4; LMS-skeleton policy D-H1; NeoSPX carry-forward D-H5; Docs re-home depth D-H7; Public/ root retirement D-H8) — plus 7 governance-drift items requiring owner scoping (D-H9).
 
-**Confidence:** 36 components Verified (direct source evidence); 3 Partially verified (anvil web-UI latent bug, neospx test bootstrap portability, release.yml historical no-op modes); 2 Unresolved (explicitly flagged above).
+**Cross-document total reconciliation:** A §8 totals = B summary = C §C-10 totals. All three documents agree: 42 components / 21 moves / 2 splits / 1 merge / 11 removals. Any future discrepancy must be flagged at the document level.
+
+**Confidence:** 36 components Verified (direct source evidence); 3 Partially verified (anvil web-UI latent bug, neospx test bootstrap portability, release.yml historical no-op modes); 2 Unresolved (explicitly flagged above). PRODUCT-CODEX is inventoried at `blueprint-only` status (proposed Product boundary; no code today) — not counted in the Verified/Partially/Unresolved tally because there is no source evidence to verify; it is recorded so the inventory owns the future boundary.
 
 ---
 

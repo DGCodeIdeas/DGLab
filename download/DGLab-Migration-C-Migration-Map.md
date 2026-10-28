@@ -153,7 +153,7 @@
 |---|---|---|---|
 | Existing path / namespace | `app/ApplicationFactory.php` + `app/Controller/*` + `app/Resources/views/hello.twig` + `public/index.php` · `App`, `App\Controller` | `public/debug/xff.php` | `config/`, `cli/`, `app/{Bridge,Spokes}/**.gitkeep`, `docker-compose.yml`, `.env.example` |
 | Actual responsibility | Generic composition root + front controller serving `/`, `/health`, `/hello`; FrankenPHP worker loop | APP_DEBUG-gated XFF diagnostic (anvil smoke dependency) | Empty placeholders ("Nothing here yet" / "deferred") |
-| Target path / namespace | **`Products/LMS/Bootstrap.php`** (=ApplicationFactory, class `DGLab\Products\LMS\Bootstrap` or keep Factory name — **D-H1**), **`Products/LMS/public/index.php`**, **`Products/LMS/Routes/`** (route registration extracted from inline wiring — **new structure, same behavior**), **`Products/LMS/Config/`** (inline view config becomes file), **`Products/LMS/resources/views/hello.twig`** | Stays a dev fixture: `Products/LMS/public/debug/xff.php` (anvil smoke probes `/debug/xff(.php)`) | **Remove** (5 .gitkeep trees + 2 placeholder files); root `Dockerfile` → re-point/retire (docs server), `Public/` root retires (D-H8) |
+| Target path / namespace | **`Products/LMS/src/Bootstrap.php`** (=ApplicationFactory, class `DGLab\Products\LMS\Bootstrap`; canonical PSR-4 root `Products/LMS/src/` per F-1, consistent with every other component), **`Products/LMS/src/Controller/{Hello,Health,Template}Controller.php`** (namespace `DGLab\Products\LMS\Controller`), **`Products/LMS/public/index.php`** (front controller — non-namespaced, `require_once __DIR__.'/../src/Bootstrap.php'`), **`Products/LMS/Routes/web.php`** (route table — non-namespaced), **`Products/LMS/Config/view.php`** (inline view config becomes file — non-namespaced), **`Products/LMS/resources/views/hello.twig`**, **`Products/LMS/tests/Unit/*`** (namespace `DGLab\Products\LMS\Tests\Unit`) | Stays a dev fixture: `Products/LMS/public/debug/xff.php` (anvil smoke probes `/debug/xff(.php)`) | **Remove** (5 .gitkeep trees + 2 placeholder files); root `Dockerfile` → re-point/retire (docs server), `Public/` root retires (D-H8) |
 | Action | **Move + Split** (app/tests → Products/LMS tests; integration tests → Testsuite/; demo controllers → Products/LMS/Controller/) | Move | Remove |
 | Dependency evidence | imports 11 SovereignStack core comps + Vanguard; wired contracts/routes | none (self-gated) | — |
 | Dependents | anvil (document root `public/index.php` at fixed relative depth); tests/Integration boots it | anvil deploy-smoke | — |
@@ -163,7 +163,28 @@
 | Verification | PublicIndexSmokeTest + ViewIntegrationTest green from new path; anvil dev boot + smoke passes; `/health/{live,ready,dependencies}` routing fixed (D-4 defect: registered-but-unrouted — **fix in Stage 6 as a called-out behavior change** or keep defect; owner call) | smoke green | grep for placeholder refs = 0 |
 | Conf | V (paths) / **U (D-H1 policy)** | V | V |
 
-**D6/D7 layer analysis:** No `App/` tier is justified — the skeleton is the LMS product seed (only product). Template engines stay in `Core/View` (driver infra) — NOT an external spoke (adapter-for-library ≠ external-service spoke). Product resources: `Products/LMS/resources/` with explicit shared-fallback config only (deterministic resolution: product resources win; shared root configured, no autodetection). Twig-first confirmed; NeoSPX driver stub stays until runtime ships (never default — enforced already by ViewFactory rejecting 'neospx').
+**D6/D7 layer analysis:** No `App/` tier is justified — the skeleton is the LMS product seed (only Product with code today). `Products/Codex/` is reserved as a future Product boundary (blueprint-only, no application code today — see C-6b below and D-H6 updated); the migration does NOT invent Codex application code. Template engines stay in `Core/View` (driver infra) — NOT an external spoke (adapter-for-library ≠ external-service spoke). Product resources: `Products/LMS/resources/` with explicit shared-fallback config only (deterministic resolution: product resources win; shared root configured, no autodetection). Twig-first confirmed; NeoSPX driver stub stays until runtime ships (never default — enforced already by ViewFactory rejecting 'neospx').
+
+## C-6b. Reserved Product boundary: Products/Codex (proposed, no code today)
+
+| Field | Codex Product (proposed) |
+|---|---|
+| Existing path / namespace | (none — no application code exists today) |
+| Actual responsibility | Future deployable application composing the Codex spoke (ISPOKE-09). Not implemented in this migration. |
+| Target path / namespace | **`Products/Codex/`** · `DGLab\Products\Codex` (reserved per agreed target structure §3) |
+| Composer identity | n/a — no source code today; when implemented, root autoload prefix `DGLab\Products\Codex\` → `Products/Codex/src/` (consistent with LMS Product convention) |
+| Action | **Defer** (blueprint-only; no source to migrate — see D-H6 updated) |
+| Dependency evidence | (none today) — expected to compose `Spokes/Internal/Codex/` when implemented (declared intent in brief, not yet wired) |
+| Dependents | none (no code) |
+| Test ownership | n/a |
+| Other affected assets | none |
+| Contract impact | none (no contracts to freeze) |
+| Migration order | Post-migration workstream when the Codex application is built |
+| Risk / mitigation | none (no code = no risk); owner directive: do NOT invent implementation merely to fill the directory |
+| Verification | inventory records PRODUCT-CODEX at `status: blueprint-only`; no source code on disk to verify |
+| Conf | U (no source evidence) |
+
+The reusable capability stays at `Spokes/Internal/Codex/` (C-4 row "ISPOKE-09 Codex"). Decision D-H6 (updated) confirms: `Products/Codex/` is the intended application boundary; `Spokes/Internal/Codex/` is the capability. The migration does not blur this distinction by inventing code.
 
 ## C-7. Database assets (SQL migrations + runner)
 
@@ -203,14 +224,18 @@
 
 ---
 
-## C-10. Action summary counts
+## C-10. Action summary counts (reconciled with A §8 and B summary)
 
-- **Move+Rename (directory+namespace):** 21 components (14 Core, 2 Hub, 1 Bridge, 3 Internal spokes + Canvas, skeleton→Products/LMS counted in splits below as its primary action is a move).
-- **Split:** 2 (shared `Core\Http` NS → Http + Middleware; app skeleton → Products/LMS + Testsuite + app-tests).
-- **Merge:** 1 group (9 SQL migrations → Database/Migrations/<owner>).
-- **Remove:** 11 items (4 .gitkeep placeholder trees, `config/`, `cli/`, `docker-compose.yml`, `.env.example`, 2 obsolete generator scripts, 3 doc-append helpers — counted with those; plus untrack `.phpunit.cache/`).
-- **Retain in place:** Architecture/, orchestrator/, anvil/, archive/ (6 subtrees), README/AGENTS/CLAUDE root docs.
-- **Defer:** migration-runner home (D-H4), Products/Codex (D-H6), Public/ retirement (D-H8), NeoSPX casing (D-H5).
-- **Unresolved classifications:** 5 explicit (D-H1, D-H4, D-H5, D-H7 depth, D-H8) — see Deliverable H.
+**Counting conventions:** see A §8 for the canonical definitions (components / physical moves / namespace changes / splits / merges / removals). Splits are 1→many mappings (counted once, here); moves+renames are 1:1 mappings (counted once, here); the skeleton's primary action is split, so it is NOT counted under moves.
+
+- **Move+Rename (directory+namespace, 1:1 source→target): 21 components** (14 Core + 2 Hub + 1 Bridge + 4 Spokes). Skeleton is NOT counted here — its 1→many mapping makes it a split, not a move.
+- **Split: 2** (shared `Core\Http` NS → Http + Middleware per OD-01; app-skeleton → Products/LMS + Testsuite/ + Products/LMS/tests). Skeleton counted ONLY here.
+- **Merge: 1 group** (9 SQL migrations → Database/Migrations/<owner>).
+- **Remove: 11 items** (4 .gitkeep placeholder trees, `config/`, `cli/`, `docker-compose.yml`, `.env.example`, 2 obsolete generator scripts, 3 doc-append helpers — counted with those; plus untrack `.phpunit.cache/`).
+- **Retain in place:** Architecture/, orchestrator/, anvil/, archive/ (6 subtrees), README/AGENTS/CLAUDE root docs. Internal namespaces inside protected dirs (e.g., `SovereignStack\Orchestrator\`) are grandfathered as sanctioned exceptions per I-9 — the migration does NOT rewrite protected code.
+- **Defer:** migration-runner home (D-H4), Public/ retirement (D-H8), NeoSPX casing (D-H5). `Products/Codex/` is NOT in the defer list — it is a reserved proposed Product boundary (blueprint-only; no migration action because there is no source to move — see C-6b and D-H6 updated).
+- **Unresolved classifications: 5 explicit** (D-H1, D-H4, D-H5, D-H7 depth, D-H8) — see Deliverable H.
+
+**Cross-document total reconciliation:** A §8 = B summary = C §C-10. All three documents agree: 42 components / 21 moves / 2 splits / 1 merge / 11 removals.
 
 *Deliverable C complete.*
