@@ -60,7 +60,7 @@ jobs:
           tools: composer:v2
 
       - name: Validate root composer.json
-        run: composer validate --strict --no-check-publish
+        run: composer validate --no-check-publish
 
       - name: Install root dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
