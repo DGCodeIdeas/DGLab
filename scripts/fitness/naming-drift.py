@@ -30,7 +30,11 @@ def check_naming_drift():
     violations = []
     
     for component_id, canonical in CANONICAL_COMPONENTS.items():
-        pkg_path = REPO_ROOT / "packages" / canonical["package"]
+        # Check both old (packages/) and new (tier dirs) locations
+        if canonical["package"].startswith(("Core/", "Hub/", "Bridge/", "Spokes/")):
+            pkg_path = REPO_ROOT / canonical["package"]
+        else:
+            pkg_path = REPO_ROOT / "packages" / canonical["package"]
         
         if not pkg_path.exists():
             violations.append({
