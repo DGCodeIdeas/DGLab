@@ -87,33 +87,16 @@ final class MySQLCourseRepository implements CourseRepositoryInterface
         $stmt->execute(['id' => (string) $id]);
     }
 
-    public function findPublished(int $limit = 20, int $offset = 0): array
+    public function listAll(): array
     {
-        // Clamp limit to [1, 100] and offset to [0, PHP_INT_MAX] to prevent
-        // pathological inputs from causing huge result sets or negative offsets.
-        $limit  = max(1, min(100, $limit));
-        $offset = max(0, $offset);
-
         $stmt = $this->connection->prepare(
-            'SELECT * FROM lms_courses WHERE status = :status '
-            . 'ORDER BY updated_at DESC, id DESC '
-            . 'LIMIT :limit OFFSET :offset',
+            'SELECT * FROM lms_courses ORDER BY created_at DESC',
         );
-        // bindValue with explicit type so LIMIT/OFFSET are sent as integers,
-        // not strings (PDO emulation would otherwise quote them).
-        $stmt->bindValue(':status', CourseStatus::Published->value, \PDO::PARAM_STR);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
         $stmt->execute();
         /** @var array<int, array<string, string|null>> $rows */
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        $courses = [];
-        foreach ($rows as $row) {
-            $courses[] = $this->hydrate($row);
-        }
-
-        return $courses;
+        return array_map(fn(array $row): Course => $this->hydrate($row), $rows);
     }
 
     /**
