@@ -108,6 +108,10 @@ jobs:
             working-dir: packages/core/crypto
           - package: core/filesystem
             working-dir: packages/core/filesystem
+          - package: core/neospx
+            working-dir: packages/core/neospx
+          - package: core/view
+            working-dir: packages/core/view
           - package: spoke/internal/showcase
             working-dir: packages/spoke/internal/showcase
           - package: hub/config

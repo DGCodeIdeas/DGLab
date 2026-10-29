@@ -29,14 +29,12 @@ on:
       - 'packages/**'
       - 'app/**'
       - 'scripts/architecture-boundary-lint.py'
-      - 'scripts/architecture-boundary-lint.php'
       - '.github/workflows/architecture-boundary-lint.yml'
   pull_request:
     paths:
       - 'packages/**'
       - 'app/**'
       - 'scripts/architecture-boundary-lint.py'
-      - 'scripts/architecture-boundary-lint.php'
       - '.github/workflows/architecture-boundary-lint.yml'
   workflow_dispatch: {}
 
@@ -97,7 +95,6 @@ jobs:
         run: python3 scripts/test_architecture_boundary_lint.py
 
       # Note: a PHP equivalent of this checker exists at
-      # scripts/architecture-boundary-lint.php for contractor environments
       # where PHP 8.4 is the primary runtime. The Python version is used in
       # CI for portability; both versions produce identical output.
 
