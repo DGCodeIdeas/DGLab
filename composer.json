@@ -65,6 +65,7 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "DGLab\\Core\\Filesystem\\Tests\\": "Core/Filesystem/tests/",
             "Tests\\": "tests/",
             "App\\Tests\\": "app/tests/",
             "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/",

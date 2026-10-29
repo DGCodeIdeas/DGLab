@@ -55,7 +55,7 @@ jobs:
             echo "Base: $BASE"
             echo "Head: $HEAD"
             CHANGED=$(git diff --name-only "$BASE" "$HEAD" \
-              | grep -E '^(packages/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/packages-ci\.yml)' \
+              | grep -E '^(packages/|Core/|Hub/|Bridge/|Spokes/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/packages-ci\.yml)' \
               || true)
             if [ -n "$CHANGED" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
@@ -161,15 +161,17 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Validate composer.json (packages/ layout)
-        if: !(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))
+        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
         working-directory: ${{ matrix.working-dir }}
         run: composer validate --no-check-publish --no-check-version
 
       - name: Clean vendor directory
+        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
         working-directory: ${{ matrix.working-dir }}
         run: rm -rf vendor
 
       - name: Install dependencies
+        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
         working-directory: ${{ matrix.working-dir }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -179,7 +181,7 @@ jobs:
           if [ -f vendor/bin/phpstan ]; then
             vendor/bin/phpstan analyse --error-format=github
           else
-            ../../../vendor/bin/phpstan analyse --error-format=github
+            ../../vendor/bin/phpstan analyse --error-format=github
           fi
 
       - name: PHPUnit (full suite, testdox)
@@ -188,7 +190,7 @@ jobs:
           if [ -f vendor/bin/phpunit ]; then
             vendor/bin/phpunit --testdox --colors=never --no-coverage
           else
-            ../../../vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=never --no-coverage
+            ../../vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=never --no-coverage
           fi
 
       - name: PHPUnit (PSR-11 conformance, named)
