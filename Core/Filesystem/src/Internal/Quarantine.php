@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Filesystem\Internal;
+namespace DGLab\Core\Filesystem\Internal;
 
 /**
  * Quarantine — moves corrupt files to a separate directory for operator inspection.
@@ -14,7 +14,7 @@ namespace SovereignStack\Core\Filesystem\Internal;
  * operator can inspect what went wrong.
  *
  * @internal
- * @package SovereignStack\Core\Filesystem\Internal
+ * @package DGLab\Core\Filesystem\Internal
  */
 final readonly class Quarantine
 {

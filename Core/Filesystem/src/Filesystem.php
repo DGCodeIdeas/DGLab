@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Filesystem;
+namespace DGLab\Core\Filesystem;
 
 use DateTimeImmutable;
-use SovereignStack\Core\Filesystem\Internal\AtomicWriter;
-use SovereignStack\Core\Filesystem\Internal\PathGuard;
-use SovereignStack\Core\Filesystem\Internal\Quarantine;
+use DGLab\Core\Filesystem\Internal\AtomicWriter;
+use DGLab\Core\Filesystem\Internal\PathGuard;
+use DGLab\Core\Filesystem\Internal\Quarantine;
 
 /**
  * Local filesystem implementation — the "beautiful plug" over PHP file functions.
@@ -24,7 +24,7 @@ use SovereignStack\Core\Filesystem\Internal\Quarantine;
  * Per SPEC §58 (Existing Capabilities That MUST NOT Be Rebuilt): this is the CORE-14
  * plug — it's genuinely new (no existing Core package covers filesystem abstraction).
  *
- * @package SovereignStack\Core\Filesystem
+ * @package DGLab\Core\Filesystem
  */
 final class Filesystem implements FilesystemInterface
 {

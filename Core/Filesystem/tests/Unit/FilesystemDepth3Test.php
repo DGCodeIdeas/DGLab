@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Filesystem\Tests\Unit;
+namespace DGLab\Core\Filesystem\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Filesystem\Filesystem;
-use SovereignStack\Core\Filesystem\PathTraversalRefusedException;
-use SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException;
-use SovereignStack\Core\Filesystem\StreamByteLimitExceededException;
+use DGLab\Core\Filesystem\Filesystem;
+use DGLab\Core\Filesystem\PathTraversalRefusedException;
+use DGLab\Core\Filesystem\FileIntegrityCheckFailedException;
+use DGLab\Core\Filesystem\StreamByteLimitExceededException;
 
 /**
  * Depth 3 error-path tests for Filesystem (Lap 2 deepening).

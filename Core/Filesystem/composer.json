@@ -15,12 +15,12 @@
     },
     "autoload": {
         "psr-4": {
-            "SovereignStack\\Core\\Filesystem\\": "src/"
+            "DGLab\\Core\\Filesystem\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "SovereignStack\\Core\\Filesystem\\Tests\\": "tests/"
+            "DGLab\\Core\\Filesystem\\Tests\\": "tests/"
         }
     }
 }

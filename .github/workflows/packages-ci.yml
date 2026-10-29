@@ -106,8 +106,8 @@ jobs:
             working-dir: packages/core/dbal
           - package: core/crypto
             working-dir: packages/core/crypto
-          - package: core/filesystem
-            working-dir: packages/core/filesystem
+          - package: core/filesystem  # migrated to Core/Filesystem
+            working-dir: Core/Filesystem
           - package: spoke/internal/showcase
             working-dir: packages/spoke/internal/showcase
           - package: hub/config

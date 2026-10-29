@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Filesystem\Internal;
+namespace DGLab\Core\Filesystem\Internal;
 
-use SovereignStack\Core\Filesystem\PathTraversalRefusedException;
+use DGLab\Core\Filesystem\PathTraversalRefusedException;
 
 /**
  * Path traversal detection — normalizes paths and rejects those escaping root.
@@ -15,7 +15,7 @@ use SovereignStack\Core\Filesystem\PathTraversalRefusedException;
  * Per Lap 2 P0-3 fix: boundary-aware containment check (not prefix match).
  *
  * @internal
- * @package SovereignStack\Core\Filesystem\Internal
+ * @package DGLab\Core\Filesystem\Internal
  */
 final readonly class PathGuard
 {

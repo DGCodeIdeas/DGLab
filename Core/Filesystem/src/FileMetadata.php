@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Filesystem;
+namespace DGLab\Core\Filesystem;
 
 use DateTimeImmutable;
 
@@ -12,7 +12,7 @@ use DateTimeImmutable;
  * Returned by write(), writeStream(), and stat() — captures size, modification
  * time, and MIME type in a single observation, avoiding repeated filesystem calls.
  *
- * @package SovereignStack\Core\Filesystem
+ * @package DGLab\Core\Filesystem
  */
 final readonly class FileMetadata
 {
