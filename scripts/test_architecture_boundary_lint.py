@@ -486,7 +486,7 @@ def test_export_allowlist_loads_correctly() -> TestResult:
     allowlist = architecture_boundary_lint.load_export_allowlist()
 
     identity_key = r"SovereignStack\Hub\Identity"
-    filesystem_key = r"SovereignStack\Core\Filesystem"
+    filesystem_key = r"DGLab\Core\Filesystem"
 
     if identity_key not in allowlist:
         return TestResult(name="export_allowlist_loads_correctly", passed=False,
