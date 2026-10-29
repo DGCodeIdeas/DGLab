@@ -73,6 +73,7 @@ final class ViewFactory
         if (!is_array($options)) {
             throw new \InvalidArgumentException('view.options must be an array.');
         }
+        /** @var array<string, mixed> $options */
 
         if ($driverName === 'twig') {
             if ($cachePath !== null) {
