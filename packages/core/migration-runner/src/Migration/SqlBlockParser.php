@@ -77,7 +77,8 @@ final class SqlBlockParser
         $blocks = $this->extractStmtBlocks($content, $filePath);
 
         foreach ($blocks as $label => $blockContent) {
-            $lines = array_filter(explode("\n", $blockContent), fn($l) => trim($l) !== '');
+            // Do NOT filter blank lines — splitBlocks uses them as block boundaries.
+            $lines = explode("\n", $blockContent);
             switch ($label) {
                 case 'upgrade':
                     $def->upgradeBlocks = $this->splitBlocks($lines);
