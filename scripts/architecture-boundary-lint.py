@@ -473,6 +473,18 @@ def scan_repository() -> ScanResult:
             if "/src/" in str(php_file.relative_to(REPO_ROOT)):
                 scan_file(php_file, result, allowlist)
 
+    # Scan migrated tier directories: Core/, Hub/, Bridge/, Spokes/Internal/, Spokes/External/
+    # Source files live directly under the component directory (no src/ subdir).
+    for tier_dir in ["Core", "Hub", "Bridge", "Spokes/Internal", "Spokes/External"]:
+        tier_path = REPO_ROOT / tier_dir
+        if not tier_path.is_dir():
+            continue
+        for php_file in tier_path.rglob("*.php"):
+            rel = str(php_file.relative_to(REPO_ROOT))
+            if "/tests/" in rel or "/vendor/" in rel:
+                continue
+            scan_file(php_file, result, allowlist)
+
     # Scan app/
     app_path = REPO_ROOT / "app"
     if app_path.is_dir():

@@ -60,7 +60,7 @@
             "SovereignStack\\Spoke\\Showcase\\": "packages/spoke/internal/showcase/src/",
             "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/",
             "SovereignStack\\Core\\View\\": "packages/core/view/src/",
-            "DGLab\\Core\\Filesystem\\": "Core/Filesystem/src/"
+            "DGLab\\Core\\Filesystem\\": "Core/Filesystem/"
         }
     },
     "autoload-dev": {

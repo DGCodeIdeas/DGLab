@@ -15,7 +15,7 @@ CANONICAL_COMPONENTS = {
     "CORE-08": {"package": "core/error-handler", "namespace": "SovereignStack\\Core\\ErrorHandler", "name": "ErrorHandler"},
     "CORE-09": {"package": "core/logger", "namespace": "SovereignStack\\Core\\Logger", "name": "Logger"},
     "CORE-10": {"package": "core/config", "namespace": "SovereignStack\\Core\\Config", "name": "Config"},
-    "CORE-14": {"package": "Core/Filesystem", "namespace": "DGLab\\Core\\Filesystem", "name": "Filesystem"},
+    "CORE-14": {"package": "Core/Filesystem", "namespace": "DGLab\Core\Filesystem", "name": "Filesystem"},
     "CORE-16": {"package": "core/crypto", "namespace": "SovereignStack\\Core\\Crypto", "name": "Crypto"},
     "CORE-18": {"package": "core/kernel", "namespace": "SovereignStack\\Core\\Kernel", "name": "Kernel"},
     "CORE-19": {"package": "core/dbal", "namespace": "SovereignStack\\Core\\Database", "name": "DBAL"},
