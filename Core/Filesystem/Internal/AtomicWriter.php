@@ -119,7 +119,8 @@ final class AtomicWriter
                 // Per P1-4: verify complete chunk was written
                 $written = fwrite($out, $chunk);
                 if ($written === false || $written !== $chunkLen) {
-                    $streamError = "Write incomplete: expected {$chunkLen} bytes, wrote " . ($written ?: 0);
+                    $streamError = "Write incomplete: expected {$chunkLen} bytes, wrote "
+                        . ($written === false ? 0 : $written);
                     break;
                 }
             }

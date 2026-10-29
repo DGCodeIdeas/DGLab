@@ -109,7 +109,8 @@ final class Filesystem implements FilesystemInterface
         if (!file_exists($absolutePath)) {
             return null;
         }
-        return fopen($absolutePath, 'r') ?: null;
+        $stream = fopen($absolutePath, 'r');
+        return $stream === false ? null : $stream;
     }
 
     public function exists(string $path): bool
@@ -138,10 +139,11 @@ final class Filesystem implements FilesystemInterface
 
     private function buildMetadata(string $absolutePath): FileMetadata
     {
+        $mimeType = mime_content_type($absolutePath);
         return new FileMetadata(
             size: (int) filesize($absolutePath),
             modifiedAt: new DateTimeImmutable('@' . filemtime($absolutePath)),
-            mimeType: (string) (mime_content_type($absolutePath) ?: 'application/octet-stream'),
+            mimeType: $mimeType === false ? 'application/octet-stream' : $mimeType,
         );
     }
 }

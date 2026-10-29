@@ -28,7 +28,8 @@ final readonly class PathGuard
         // NOT a promoted property: the constructor normalizes (realpath) the value,
         // and assigning over an already-promoted readonly property throws at runtime.
         // PHPStan level max caught this while the package had no CI coverage.
-        $real = realpath($rootPath) ?: $rootPath;
+        $realized = realpath($rootPath);
+        $real = $realized === false ? $rootPath : $realized;
         $this->rootPath = $real;
         // Boundary-aware: /tmp/data/ not /tmp/data (prevents /tmp/database matching)
         $this->rootWithSeparator = rtrim($real, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
@@ -70,11 +71,16 @@ final readonly class PathGuard
         if ($resolved === false) {
             $segments = [];
             $walker = $fullPath;
-            $ancestor = realpath($walker);
-            while ($ancestor === false) {
+            // Walk up to the deepest existing ancestor. The loop is
+            // structured (check-then-record) so the exit type of
+            // $ancestor is narrowed to string for the containment check.
+            while (true) {
+                $ancestor = realpath($walker);
+                if ($ancestor !== false) {
+                    break;
+                }
                 $segments[] = basename($walker);
                 $walker = dirname($walker);
-                $ancestor = realpath($walker);
             }
 
             if (!$this->isWithinRoot($ancestor)) {
