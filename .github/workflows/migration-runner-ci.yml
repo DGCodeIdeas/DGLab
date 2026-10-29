@@ -1,0 +1,304 @@
+name: Migration Runner CI
+
+# =============================================================================
+# Dedicated CI for the migration-runner (PR #370).
+#
+# Why a separate workflow (not folded into packages-ci.yml):
+#   - The migration-runner has NO per-package composer.json (it is a directory
+#     component wired into the root autoload), so the packages-ci matrix
+#     pattern (per-package `composer install`) does not apply.
+#   - Integration tests require a real MySQL 8 service container with InnoDB;
+#     packages-ci has no MySQL service and should not gain one for every job.
+#
+# Jobs:
+#   - unit        : ChainValidator + SqlBlockParser (no MySQL) — fast feedback
+#   - integration : Test6e (locking, 13-step corrected sequence) + MigrationRunner
+#                   smoke (schema install + gseq + reconcile) — real MySQL 8
+#
+# Both jobs are REQUIRED status checks. Neither can silently pass: the unit job
+# fails if zero tests are discovered; the integration job fails if any
+# mysql-required test is SKIPPED rather than run (a "skipped" outcome is a
+# failure here, because MySQL is provisioned — silence is not consent).
+# =============================================================================
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/core/migration-runner/**'
+      - 'composer.json'
+      - '.github/workflows/migration-runner-ci.yml'
+  pull_request:
+    paths:
+      - 'packages/core/migration-runner/**'
+      - 'composer.json'
+      - '.github/workflows/migration-runner-ci.yml'
+  workflow_dispatch: {}  # manual trigger for any branch
+
+# Cancel superseded runs on the same ref (saves CI minutes on force-push).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit (ChainValidator + SqlBlockParser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, xml, dom, openssl, pdo
+          tools: composer:v2
+
+      - name: Validate root composer.json
+        run: composer validate --no-check-publish
+
+      - name: Install root dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Verify test files exist (no silent empty suite)
+        working-directory: packages/core/migration-runner
+        run: |
+          set -e
+          for f in tests/Unit/ChainValidatorTest.php tests/Unit/SqlBlockParserTest.php; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Expected unit test missing: $f"
+              exit 1
+            fi
+            echo "  OK: $f"
+          done
+
+      - name: Dump autoload (smoke)
+        run: composer dump-autoload -o
+
+      - name: Autoload smoke (verify migration-runner classes resolve)
+        run: |
+          php -r '
+            require "vendor/autoload.php";
+            $classes = [
+              "SovereignStack\\Core\\MigrationRunner\\Migration\\ChainValidator",
+              "SovereignStack\\Core\\MigrationRunner\\Migration\\SqlBlockParser",
+              "SovereignStack\\Core\\MigrationRunner\\Migration\\MigrationDefinition",
+              "SovereignStack\\Core\\MigrationRunner\\Runner\\MigrationRunner",
+              "SovereignStack\\Core\\MigrationRunner\\Sequence\\GseqAllocator",
+              "SovereignStack\\Core\\MigrationRunner\\Recovery\\Reconciler",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\Gate",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\MigrationLock",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\LevelLock",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\LivenessGuard",
+              "SovereignStack\\Core\\MigrationRunner\\Event\\EventTypes",
+              "SovereignStack\\Core\\MigrationRunner\\Cli\\Application",
+            ];
+            foreach ($classes as $c) {
+              if (!class_exists($c)) { echo "MISSING: $c\n"; exit(1); }
+              echo "  OK: $c\n";
+            }
+            echo "All 10 migration-runner classes autoloaded.\n";
+          '
+
+      - name: PHPStan (migration-runner src only)
+        run: |
+          vendor/bin/phpstan analyse \
+            --no-progress \
+            packages/core/migration-runner/src
+
+      - name: PHPUnit — Unit suite (no MySQL, fast feedback)
+        working-directory: packages/core/migration-runner
+        run: |
+          ../../../vendor/bin/phpunit \
+            --configuration phpunit.xml.dist \
+            --testsuite Unit \
+            --testdox \
+            --colors=never \
+            --no-coverage
+
+      - name: Test-discovery completeness check (fail if zero tests ran)
+        working-directory: packages/core/migration-runner
+        if: always()
+        run: |
+          # Re-run with log-junit to count executed tests
+          ../../../vendor/bin/phpunit \
+            --configuration phpunit.xml.dist \
+            --testsuite Unit \
+            --log-junit /tmp/unit-results.xml \
+            --no-coverage || true
+          if [ ! -f /tmp/unit-results.xml ]; then
+            echo "::error::No JUnit results produced — unit suite did not run."
+            exit 1
+          fi
+          # Count testsuites/testcase elements
+          TESTS=$(grep -oP '<testcase ' /tmp/unit-results.xml | wc -l)
+          echo "Tests discovered and executed: $TESTS"
+          if [ "$TESTS" -lt 5 ]; then
+            echo "::error::Only $TESTS unit tests ran — expected ≥5 (ChainValidator 9 + SqlBlockParser ≥5). Silent test discovery failure."
+            exit 1
+          fi
+          echo "  OK: ≥5 unit tests ran."
+
+  integration:
+    name: Integration (MySQL 8 — Test6e + MigrationRunner smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # NOTE: integration tests do NOT silently skip. If MySQL is provisioned
+    # (it always is, via the service container below), any test marked
+    # @group mysql-required that returns "skipped" is a HARD FAILURE —
+    # the test author intended MySQL to be present and the skip means CI
+    # has lost the ability to validate the behavior.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+          MYSQL_DATABASE: dglab_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptestpass --silent"
+          --health-interval=5s
+          --health-timeout=10s
+          --health-retries=30
+          --name=mysql-svc
+    env:
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      TEST_DB_NAME: dglab_test
+      TEST_DB_USER: root
+      TEST_DB_PASS: testpass
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, xml, dom, openssl, pdo, pdo_mysql
+          tools: composer:v2
+
+      - name: Install root dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Probing MySQL at 127.0.0.1:3306..."
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -u root -ptestpass --silent 2>/dev/null; then
+              echo "  MySQL is up (attempt $i)."
+              break
+            fi
+            echo "  attempt $i: not ready, sleeping 2s..."
+            sleep 2
+          done
+          # Final verification
+          if ! mysqladmin ping -h 127.0.0.1 -P 3306 -u root -ptestpass --silent; then
+            echo "::error::MySQL did not become ready within 60 seconds."
+            exit 1
+          fi
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass -e "SELECT VERSION();"
+
+      - name: Install migration-runner schema
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass dglab_test \
+            < packages/core/migration-runner/schema/001_create_migration_runner_tables.sql
+          echo "Schema installed. Verifying tables:"
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass dglab_test -e "SHOW TABLES;"
+
+      - name: Verify integration test files exist
+        working-directory: packages/core/migration-runner
+        run: |
+          set -e
+          for f in tests/Integration/Test6eTest.php tests/Integration/MigrationRunnerSmokeTest.php; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Expected integration test missing: $f"
+              exit 1
+            fi
+            echo "  OK: $f"
+          done
+
+      - name: Autoload smoke (integration classes)
+        run: |
+          php -r '
+            require "vendor/autoload.php";
+            $classes = [
+              "SovereignStack\\Core\\Database\\Connection",
+              "SovereignStack\\Core\\MigrationRunner\\Runner\\MigrationRunner",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\MigrationLock",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\LevelLock",
+              "SovereignStack\\Core\\MigrationRunner\\Recovery\\Reconciler",
+              "SovereignStack\\Core\\MigrationRunner\\Sequence\\GseqAllocator",
+              "SovereignStack\\Core\\MigrationRunner\\Locking\\Gate",
+            ];
+            foreach ($classes as $c) {
+              if (!class_exists($c)) { echo "MISSING: $c\n"; exit(1); }
+              echo "  OK: $c\n";
+            }
+          '
+
+      - name: PHPUnit — Integration suite (MySQL-backed, no silent skip)
+        working-directory: packages/core/migration-runner
+        run: |
+          # Override the phpunit.xml.dist default which EXCLUDES mysql-required.
+          # We explicitly INCLUDE only the mysql-required group — if MySQL is
+          # provisioned (it is), every mysql-required test MUST run, not skip.
+          ../../../vendor/bin/phpunit \
+            --configuration phpunit.xml.dist \
+            --testsuite Integration \
+            --group mysql-required \
+            --testdox \
+            --colors=never \
+            --no-coverage \
+            --fail-on-incomplete \
+            --fail-on-skipped
+
+      - name: No-skip enforcement (fail if any test was skipped)
+        working-directory: packages/core/migration-runner
+        if: always()
+        run: |
+          # Re-run with log-junit to detect skipped tests
+          ../../../vendor/bin/phpunit \
+            --configuration phpunit.xml.dist \
+            --testsuite Integration \
+            --group mysql-required \
+            --log-junit /tmp/integration-results.xml \
+            --no-coverage || true
+          if [ ! -f /tmp/integration-results.xml ]; then
+            echo "::error::No JUnit results produced — integration suite did not run."
+            exit 1
+          fi
+          SKIPPED=$(grep -oP '<testcase [^>]*skipped="[^"]*"' /tmp/integration-results.xml | wc -l)
+          if [ "$SKIPPED" -gt 0 ]; then
+            echo "::error::$SKIPPED integration test(s) were SKIPPED despite MySQL being provisioned. Silent green is not allowed."
+            exit 1
+          fi
+          TESTS=$(grep -oP '<testcase ' /tmp/integration-results.xml | wc -l)
+          echo "Integration tests executed (no skips): $TESTS"
+          if [ "$TESTS" -lt 2 ]; then
+            echo "::error::Only $TESTS integration test(s) ran — expected ≥2 (Test6e + MigrationRunnerSmoke)."
+            exit 1
+          fi
+          echo "  OK: ≥2 integration tests ran, 0 skipped."
+
+      - name: Post-test state inspection (debugging aid on failure)
+        if: failure()
+        run: |
+          echo "=== Tables ==="
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass dglab_test -e "SHOW TABLES;" || true
+          echo "=== migration_attempt ==="
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass dglab_test -e "SELECT * FROM migration_attempt ORDER BY id DESC LIMIT 10;" || true
+          echo "=== migration_attempt_event ==="
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass dglab_test -e "SELECT * FROM migration_attempt_event ORDER BY gseq DESC LIMIT 20;" || true
+          echo "=== migration_gseq_counter ==="
+          mysql -h 127.0.0.1 -P 3306 -u root -ptestpass dglab_test -e "SELECT * FROM migration_gseq_counter;" || true
