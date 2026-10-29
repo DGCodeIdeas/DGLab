@@ -33,26 +33,29 @@ EXCLUSIONS = ROOT / "scripts" / "ci-matrix-exclusions.txt"
 
 def discover_packages() -> list[str]:
     found: list[str] = []
+    # Old package layout
     candidates = [p.parent for p in ROOT.glob("packages/*/*/composer.json")]
-    # Migrated tier directories (Stage 2+)
-    candidates += [p.parent for p in ROOT.glob("Core/*/composer.json")]
-    candidates += [p.parent for p in ROOT.glob("Hub/*/composer.json")]
-    candidates += [p.parent for p in ROOT.glob("Bridge/*/composer.json")]
-    candidates += [p.parent for p in ROOT.glob("Spokes/Internal/*/composer.json")]
-    candidates += [p.parent for p in ROOT.glob("Spokes/External/*/composer.json")]
     candidates += [p.parent for p in ROOT.glob("packages/*/*/*/composer.json")]
     candidates.append(ROOT / "orchestrator")
-    for d in sorted({c for c in candidates if c.is_dir()}):
-        if all(
-            [
-                (d / "composer.json").is_file(),
-                (d / "src").is_dir(),
-                (d / "tests").is_dir(),
-                (d / "phpunit.xml.dist").is_file(),
-            ]
-        ):
-            rel = str(d.relative_to(ROOT))
-            found.append(rel[len("packages/"):] if rel.startswith("packages/") else rel)
+
+    # Migrated tier directories: eligible by phpunit.xml.dist only (no src/ or composer.json)
+    for tier_dir in ["Core", "Hub", "Bridge", "Spokes/Internal", "Spokes/External"]:
+        tier_path = ROOT / tier_dir
+        if not tier_path.is_dir():
+            continue
+        for entry in sorted(tier_path.iterdir()):
+            if entry.is_dir() and (entry / "phpunit.xml.dist").is_file():
+                candidates.append(entry)
+
+    for d in sorted({c2 for c2 in candidates if c2.is_dir()}):
+        rel = str(d.relative_to(ROOT))
+        is_tier = rel.startswith(("Core/", "Hub/", "Bridge/", "Spokes/"))
+        if is_tier:
+            if (d / "phpunit.xml.dist").is_file():
+                found.append(rel)
+        else:
+            if all([(d / "composer.json").is_file(), (d / "src").is_dir(), (d / "tests").is_dir(), (d / "phpunit.xml.dist").is_file()]):
+                found.append(rel[len("packages/"):] if rel.startswith("packages/") else rel)
     return found
 
 
