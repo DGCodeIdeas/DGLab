@@ -352,7 +352,7 @@ def is_production_source(file_path: Path) -> bool:
     if file_path.name in ("bootstrap.php", "run.php"):
         return False
     # Production source: under packages/*/src/ or app/
-    return ("/src/" in rel) or rel.startswith("app/")
+    return ("/src/" in rel) or rel.startswith("app/") or rel.startswith(("Core/", "Hub/", "Bridge/", "Spokes/"))
 
 
 def scan_file(file_path: Path, result: ScanResult, allowlist: dict[str, set[str]] | None = None) -> None:
@@ -449,6 +449,15 @@ def scan_repository() -> ScanResult:
     # Scan packages/{core,hub,spoke,bridge}/*/src/
     for tier in ["core", "hub", "spoke/internal", "spoke/external", "bridge"]:
         tier_path = REPO_ROOT / "packages" / tier
+        if not tier_path.is_dir():
+            continue
+        for php_file in tier_path.rglob("*.php"):
+            if "/src/" in str(php_file.relative_to(REPO_ROOT)):
+                scan_file(php_file, result, allowlist)
+
+    # Scan migrated tier directories: Core/, Hub/, Bridge/, Spokes/Internal/, Spokes/External/
+    for tier_dir in ["Core", "Hub", "Bridge", "Spokes/Internal", "Spokes/External"]:
+        tier_path = REPO_ROOT / tier_dir
         if not tier_path.is_dir():
             continue
         for php_file in tier_path.rglob("*.php"):

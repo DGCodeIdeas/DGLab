@@ -1,6 +1,6 @@
 {
     "name": "sovereign-stack/spoke-lms",
-    "description": "LMS Spoke — course catalog + enrollment + progress app",
+    "description": "LMS Spoke \u2014 course catalog + enrollment + progress app",
     "type": "library",
     "license": "Apache-2.0",
     "version": "0.1.0.0",
@@ -13,8 +13,7 @@
         "sovereign-stack/core-event-dispatcher": "*",
         "sovereign-stack/core-http-message": "*",
         "sovereign-stack/core-kernel": "*",
-        "sovereign-stack/hub-identity": "*",
-        "sovereign-stack/core-filesystem": "*"
+        "sovereign-stack/hub-identity": "*"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",
@@ -33,7 +32,13 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [
-        {"type": "path", "url": "../../../../packages/*/*"},
-        {"type": "path", "url": "../../../../packages/*/*/*"}
+        {
+            "type": "path",
+            "url": "../../../../packages/*/*"
+        },
+        {
+            "type": "path",
+            "url": "../../../../packages/*/*/*"
+        }
     ]
 }

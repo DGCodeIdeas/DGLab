@@ -558,7 +558,7 @@ def test_export_not_checked_for_packages_without_allowlist() -> TestResult:
 
 def test_filesystem_public_surface_enforced() -> TestResult:
     """Test 18: Importing internal Filesystem symbol IS flagged."""
-    atomic_writer = r"SovereignStack\Core\Filesystem\Internal\AtomicWriter"
+    atomic_writer = r"DGLab\Core\Filesystem\Internal\AtomicWriter"
     violation = architecture_boundary_lint.check_export_violation(
         atomic_writer,
         "packages/hub/showcase/src/Application/SomeService.php",
@@ -573,7 +573,7 @@ def test_filesystem_public_surface_enforced() -> TestResult:
 
 def test_filesystem_public_surface_allowed() -> TestResult:
     """Test 19: Importing FilesystemInterface is NOT flagged."""
-    fs_interface = r"SovereignStack\Core\Filesystem\FilesystemInterface"
+    fs_interface = r"DGLab\Core\Filesystem\FilesystemInterface"
     violation = architecture_boundary_lint.check_export_violation(
         fs_interface,
         "packages/hub/showcase/src/Application/SomeService.php",
