@@ -93,6 +93,12 @@ PATH_RING_MAP = [
     ("packages/spoke/internal/", "spoke-internal"),
     ("packages/spoke/external/", "spoke-external"),
     ("packages/bridge/", "bridge"),
+    # Migrated tier directories (Stage 2+)
+    ("Core/", "core"),
+    ("Hub/", "hub"),
+    ("Bridge/", "bridge"),
+    ("Spokes/Internal/", "spoke-internal"),
+    ("Spokes/External/", "spoke-external"),
     ("app/", "outer-rim"),
 ]
 

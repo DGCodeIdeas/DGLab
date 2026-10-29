@@ -19,6 +19,10 @@ on:
     branches: [main]
     paths:
       - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
       - 'orchestrator/**'
       - 'anvil/**'
       - 'app/**'

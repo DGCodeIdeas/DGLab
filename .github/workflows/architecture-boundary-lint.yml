@@ -27,6 +27,10 @@ on:
     branches: [main]
     paths:
       - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
       - 'app/**'
       - 'scripts/architecture-boundary-lint.py'
       - 'scripts/architecture-boundary-lint.php'
@@ -34,6 +38,10 @@ on:
   pull_request:
     paths:
       - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
       - 'app/**'
       - 'scripts/architecture-boundary-lint.py'
       - 'scripts/architecture-boundary-lint.php'
