@@ -31,7 +31,7 @@ final class ChainValidator
      */
     public function validate(array $migrations): array
     {
-        if (empty($migrations)) {
+        if (count($migrations) === 0) {
             return [0, null];
         }
 

@@ -147,11 +147,11 @@ final class Application
      */
     private function loadConfig(array $options): array
     {
-        $host = $options['host'] ?? getenv('DB_HOST') ?: '127.0.0.1';
-        $port = $options['port'] ?? getenv('DB_PORT') ?: '3306';
-        $name = $options['db'] ?? getenv('DB_NAME') ?: '';
-        $user = $options['user'] ?? getenv('DB_USER') ?: '';
-        $pass = $options['pass'] ?? getenv('DB_PASS') ?: '';
+        $host = $options['host'] ?? (getenv('DB_HOST') !== false && getenv('DB_HOST') !== '' ? getenv('DB_HOST') : '127.0.0.1');
+        $port = $options['port'] ?? (getenv('DB_PORT') !== false && getenv('DB_PORT') !== '' ? getenv('DB_PORT') : '3306');
+        $name = $options['db'] ?? (getenv('DB_NAME') !== false && getenv('DB_NAME') !== '' ? getenv('DB_NAME') : '');
+        $user = $options['user'] ?? (getenv('DB_USER') !== false && getenv('DB_USER') !== '' ? getenv('DB_USER') : '');
+        $pass = $options['pass'] ?? (getenv('DB_PASS') !== false && getenv('DB_PASS') !== '' ? getenv('DB_PASS') : '');
 
         if ($name === '' || $user === '') {
             throw new \RuntimeException(

@@ -11,7 +11,6 @@ use SovereignStack\Core\MigrationRunner\Locking\Gate;
 use SovereignStack\Core\MigrationRunner\Locking\LevelLock;
 use SovereignStack\Core\MigrationRunner\Locking\LivenessGuard;
 use SovereignStack\Core\MigrationRunner\Locking\MigrationLock;
-use SovereignStack\Core\MigrationRunner\Migration\ChainValidationException;
 use SovereignStack\Core\MigrationRunner\Migration\ChainValidator;
 use SovereignStack\Core\MigrationRunner\Migration\MigrationDefinition;
 use SovereignStack\Core\MigrationRunner\Migration\SqlBlockParser;
@@ -95,7 +94,7 @@ final class MigrationRunner
             $found[] = $def;
         }
 
-        if (empty($found)) {
+        if (count($found) === 0) {
             throw ChainValidationException::emptyDirectory();
         }
 
@@ -353,7 +352,7 @@ final class MigrationRunner
             $this->gseq->allocateAndInsertAttemptEvent($attemptId, EventTypes::PREPARED);
 
             // Validate downgrade blocks exist.
-            if (empty($def->downgradeBlocks)) {
+            if (count($def->downgradeBlocks) === 0) {
                 $this->gseq->allocateAndInsertAttemptEvent(
                     $attemptId, EventTypes::EXECUTION_FAILED_PRE_EXEC, null,
                     ['reason' => 'no downgrade blocks defined']
@@ -513,7 +512,7 @@ final class MigrationRunner
 
     private function validateMigration(MigrationDefinition $def): ?string
     {
-        if (empty($def->upgradeBlocks)) {
+        if (count($def->upgradeBlocks) === 0) {
             return "migration '{$def->migrationId}' has no upgrade SQL blocks";
         }
         // The driver contract (EMULATE_PREPARES off) enforces one-statement-per-block
@@ -557,53 +556,167 @@ final class MigrationRunner
 
     private function executeSchemaSql(string $sql): void
     {
-        // Strip -- comment lines BEFORE splitting on ';'. Comments often
-        // contain ';' (e.g., 'FOR SHARE; global reconciliation') which would
-        // split the comment into fragments, and fragments not starting with
-        // '--' would be executed as SQL → syntax error 1064.
-        $sql = preg_replace('/^--.*$/m', '', $sql);
-
-        // Split on DELIMITER boundaries for trigger definitions.
-        $parts = preg_split('/^DELIMITER\s+\S+/m', $sql);
-        $delimiter = ';';
-
-        foreach ($parts as $part) {
-            $part = trim($part);
-            if ($part === '') continue;
-            if (str_contains($part, 'DELIMITER //')) continue;
-
-            // For non-trigger parts, split on ; and execute each statement.
-            // For trigger parts (between DELIMITER // and DELIMITER ;),
-            // execute the whole block.
-            if (str_contains($part, 'BEGIN') && str_contains($part, 'SIGNAL')) {
-                // This is a trigger block — execute as a whole.
-                // Replace // with ; for the final delimiter.
-                $part = str_replace('//', ';', $part);
-                $statements = array_filter(array_map('trim', explode(';', $part)));
-                foreach ($statements as $stmt) {
-                    $stmt = trim($stmt);
-                    if ($stmt !== '' && !str_starts_with($stmt, '--')) {
-                        try {
-                            $this->workConnection->exec($stmt);
-                        } catch (DatabaseException $e) {
-                            // Triggers may fail if they already exist (IF NOT EXISTS
-                            // is used in CREATE TRIGGER on MySQL 8.0+; on 5.7 it's not supported).
-                            if (!str_contains($e->getMessage(), 'already exists')) {
-                                throw $e;
-                            }
-                        }
-                    }
-                }
-            } else {
-                $statements = array_filter(array_map('trim', explode(';', $part)));
-                foreach ($statements as $stmt) {
-                    $stmt = trim($stmt);
-                    if ($stmt !== '' && !str_starts_with($stmt, '--')) {
-                        $this->workConnection->exec($stmt);
-                    }
+        $statements = $this->splitSqlStatements($sql);
+        foreach ($statements as $stmt) {
+            $stmt = trim($stmt);
+            if ($stmt === '' || str_starts_with($stmt, '--') || str_starts_with($stmt, '/*')) {
+                continue;
+            }
+            if (str_starts_with(strtoupper($stmt), 'DELIMITER')) {
+                continue;
+            }
+            try {
+                $this->workConnection->exec($stmt);
+            } catch (DatabaseException $e) {
+                // Triggers may fail if they already exist (IF NOT EXISTS is
+                // used in CREATE TRIGGER on MySQL 8.0+; on 5.7 not supported).
+                if (!str_contains($e->getMessage(), 'already exists')) {
+                    throw $e;
                 }
             }
         }
+    }
+
+    /**
+     * Split a SQL script into individual statements using a state machine
+     * that correctly handles:
+     *   - -- line comments (ignored, do not split)
+     *   - /\* *\/ block comments (ignored, do not split)
+     *   - single-quoted string literals (with backslash escapes)
+     *   - double-quoted string literals (with backslash escapes)
+     *   - DELIMITER directives (changes the statement separator for
+     *     trigger bodies using BEGIN...END)
+     *
+     * This replaces the previous ad-hoc semicolon-splitting approach which
+     * broke on: (a) ';' inside SQL comments, (b) trigger bodies where
+     * BEGIN...END must be sent as a single unit.
+     *
+     * @return array<int, string> Complete SQL statements (delimiter stripped).
+     */
+    private function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $current = '';
+        $delimiter = ';';
+        $inSingle = false;
+        $inDouble = false;
+        $inLineComment = false;
+        $inBlockComment = false;
+        $len = strlen($sql);
+        $i = 0;
+
+        while ($i < $len) {
+            $char = $sql[$i];
+            $rest = substr($sql, $i);
+            $atLineStart = ($i === 0 || $sql[$i - 1] === "\n");
+
+            // DELIMITER directive — only at line start, outside strings/comments
+            if ($atLineStart && !$inSingle && !$inDouble && !$inLineComment && !$inBlockComment) {
+                if (preg_match('/^DELIMITER\s+(\S+)[ \t]*\r?\n/', $rest, $m)) {
+                    $current = trim($current);
+                    if ($current !== '') {
+                        $statements[] = $current;
+                    }
+                    $current = '';
+                    $delimiter = $m[1];
+                    // Skip past the DELIMITER line (including the newline)
+                    $lineEnd = strpos($rest, "\n");
+                    $i += $lineEnd !== false ? $lineEnd + 1 : strlen($rest);
+                    continue;
+                }
+            }
+
+            // Line comment (-- to end of line)
+            if ($inLineComment) {
+                $current .= $char;
+                if ($char === "\n") {
+                    $inLineComment = false;
+                }
+                $i++;
+                continue;
+            }
+
+            // Block comment (/* ... */)
+            if ($inBlockComment) {
+                $current .= $char;
+                if ($char === '*' && $i + 1 < $len && $sql[$i + 1] === '/') {
+                    $current .= '/';
+                    $i += 2;
+                    $inBlockComment = false;
+                    continue;
+                }
+                $i++;
+                continue;
+            }
+
+            // Single-quoted string
+            if ($inSingle) {
+                $current .= $char;
+                if ($char === "'" && ($i === 0 || $sql[$i - 1] !== '\\')) {
+                    $inSingle = false;
+                }
+                $i++;
+                continue;
+            }
+
+            // Double-quoted string
+            if ($inDouble) {
+                $current .= $char;
+                if ($char === '"' && ($i === 0 || $sql[$i - 1] !== '\\')) {
+                    $inDouble = false;
+                }
+                $i++;
+                continue;
+            }
+
+            // Not in any string/comment — detect comment/string starts
+            if ($char === '-' && $i + 1 < $len && $sql[$i + 1] === '-') {
+                $inLineComment = true;
+                $current .= '--';
+                $i += 2;
+                continue;
+            }
+            if ($char === '/' && $i + 1 < $len && $sql[$i + 1] === '*') {
+                $inBlockComment = true;
+                $current .= '/*';
+                $i += 2;
+                continue;
+            }
+            if ($char === "'") {
+                $inSingle = true;
+                $current .= $char;
+                $i++;
+                continue;
+            }
+            if ($char === '"') {
+                $inDouble = true;
+                $current .= $char;
+                $i++;
+                continue;
+            }
+
+            // Check for delimiter match (outside strings/comments)
+            $delimLen = strlen($delimiter);
+            if (substr($rest, 0, $delimLen) === $delimiter) {
+                $current = trim($current);
+                if ($current !== '') {
+                    $statements[] = $current;
+                }
+                $current = '';
+                $i += $delimLen;
+                continue;
+            }
+
+            $current .= $char;
+            $i++;
+        }
+
+        $current = trim($current);
+        if ($current !== '') {
+            $statements[] = $current;
+        }
+
+        return $statements;
     }
 }
 

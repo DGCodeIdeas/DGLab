@@ -122,7 +122,7 @@ final class SqlBlockParser
             }
         }
 
-        if (empty($metaLines)) {
+        if (count($metaLines) === 0) {
             return null;
         }
 
@@ -220,7 +220,7 @@ final class SqlBlockParser
             $stripped = trim($line);
             if ($stripped === '') {
                 // Blank line: block boundary.
-                if (!empty($currentBlock)) {
+                if (count($currentBlock) > 0) {
                     $blocks[] = trim(implode("\n", $currentBlock));
                     $currentBlock = [];
                 }
@@ -229,7 +229,7 @@ final class SqlBlockParser
             }
         }
 
-        if (!empty($currentBlock)) {
+        if (count($currentBlock) > 0) {
             $blocks[] = trim(implode("\n", $currentBlock));
         }
 
