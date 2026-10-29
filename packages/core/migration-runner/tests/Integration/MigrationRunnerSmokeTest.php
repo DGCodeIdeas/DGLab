@@ -58,15 +58,18 @@ final class MigrationRunnerSmokeTest extends TestCase
 
     protected function tearDown(): void
     {
+        // Do NOT drop the schema tables between tests. The schema is
+        // installed once (by the CI mysql CLI step OR by the first test's
+        // installSchema() call) and is idempotent (CREATE TABLE IF NOT
+        // EXISTS, CREATE TRIGGER IF NOT EXISTS). Dropping tables between
+        // tests causes the next test's installSchema() to re-create them,
+        // but trigger-creation edge cases can leave the schema in a
+        // partial state. Letting the schema persist is safer.
+        //
+        // smoke_test_users (created by the discoverMigrations test) IS
+        // dropped because it's a test-specific table, not part of the
+        // runner schema.
         if ($this->workConn !== null) {
-            // Clean up smoke-test artifacts (idempotent — tables may or may not exist).
-            $this->dropSafely("migration_attempt_event");
-            $this->dropSafely("migration_attempt");
-            $this->dropSafely("migration_state");
-            $this->dropSafely("migration");
-            $this->dropSafely("migration_gate");
-            $this->dropSafely("migration_gseq_counter");
-            $this->dropSafely("operator_event");
             $this->dropSafely("smoke_test_users");
             $this->workConn = null;
         }

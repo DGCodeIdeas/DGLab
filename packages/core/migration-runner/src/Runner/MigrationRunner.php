@@ -11,6 +11,7 @@ use SovereignStack\Core\MigrationRunner\Locking\Gate;
 use SovereignStack\Core\MigrationRunner\Locking\LevelLock;
 use SovereignStack\Core\MigrationRunner\Locking\LivenessGuard;
 use SovereignStack\Core\MigrationRunner\Locking\MigrationLock;
+use SovereignStack\Core\MigrationRunner\Migration\ChainValidationException;
 use SovereignStack\Core\MigrationRunner\Migration\ChainValidator;
 use SovereignStack\Core\MigrationRunner\Migration\MigrationDefinition;
 use SovereignStack\Core\MigrationRunner\Migration\SqlBlockParser;
