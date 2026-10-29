@@ -32,7 +32,7 @@ final class ChainValidator
     public function validate(array $migrations): array
     {
         if (count($migrations) === 0) {
-            return [0, null];
+            throw ChainValidationException::emptyDirectory();
         }
 
         // Build a map: migration_id => MigrationDefinition.

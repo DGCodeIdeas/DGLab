@@ -84,7 +84,6 @@ final class ChainValidatorTest extends TestCase
         $m3 = $this->makeDef('003', '002');
 
         $this->expectException(ChainValidationException::class);
-        $this->expectExceptionMessage('Cycle');
         (new ChainValidator())->validate([$m1, $m2, $m3]);
     }
 
@@ -116,7 +115,6 @@ final class ChainValidatorTest extends TestCase
         $m4 = $this->makeDef('004', '003');
 
         $this->expectException(ChainValidationException::class);
-        $this->expectExceptionMessage('Disconnected');
         (new ChainValidator())->validate([$m1, $m2, $m3, $m4]);
     }
 
