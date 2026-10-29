@@ -6,7 +6,7 @@ namespace App;
 
 use App\Controller\HealthController;
 use App\Controller\HelloController;
-use App\Controller\TemplateController;
+use App\Controller\CourseController;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\NullLogger;
 use SovereignStack\Bridge\ContractRegistry;
@@ -15,6 +15,7 @@ use SovereignStack\Bridge\Vanguard;
 use SovereignStack\Bridge\WafInspector;
 use SovereignStack\Core\Config\ConfigRepository;
 use SovereignStack\Core\Container\Container;
+use SovereignStack\Core\Database\Connection;
 use SovereignStack\Core\ErrorHandler\ErrorHandler;
 use SovereignStack\Core\ErrorHandler\Renderer\PlainTextRenderer;
 use SovereignStack\Core\EventDispatcher\EventDispatcher;
@@ -28,8 +29,8 @@ use SovereignStack\Core\Kernel\Stub\EmptyProviderRegistry;
 use SovereignStack\Core\Logger\Logger;
 use SovereignStack\Core\Router\Route;
 use SovereignStack\Core\Router\Router;
-use SovereignStack\Core\View\ViewFactory;
-use SovereignStack\Core\View\ViewInterface;
+use SovereignStack\Spoke\Lms\Domain\Repository\CourseRepositoryInterface;
+use SovereignStack\Spoke\Lms\Infrastructure\Persistence\MySQLCourseRepository;
 
 /**
  * Application composition root — extracts construction from public/index.php.
@@ -80,17 +81,6 @@ final class ApplicationFactory
         private readonly \Closure $log,
         private readonly bool $isDevMode,
     ) {}
-
-    /**
-     * Get the kernel for testing purposes.
-     *
-     * This is intentionally limited to testing — production code should
-     * not depend on kernel internals.
-     */
-    public function getKernel(): Kernel
-    {
-        return $this->kernel;
-    }
 
     /**
      * Compose the application from existing Core/Bridge components.
@@ -147,9 +137,6 @@ final class ApplicationFactory
         // Register the root contract — the "Hello World" route.
         $contractRegistry->registerContract('/', new DefaultDtoTransformer());
 
-        // Register the /hello contract for template rendering.
-        $contractRegistry->registerContract('/hello', new DefaultDtoTransformer());
-
         // Register the /health contract — used by Tengine's active health check
         // and future monitoring systems. Pass-through DTO transformer.
         $contractRegistry->registerContract('/health', new DefaultDtoTransformer());
@@ -166,16 +153,15 @@ final class ApplicationFactory
             logger: new NullLogger(),
         );
 
+        // --- 2b. LMS vertical slice: DBAL Connection + Course repo + controller ---
+        // Conditional on MySQL env vars being set; if absent, LMS routes are
+        // skipped (the skeleton still serves / and /health).
+        $courseController = self::buildCourseController();
+
         // --- 3. Build the Kernel with the wiring bootstrapper ---
         $kernel = new Kernel(
             containerFactory: fn () => $container,
-            configFactory: fn () => new ConfigRepository([
-                'view' => [
-                    'driver' => 'twig',
-                    'path' => __DIR__ . '/Resources/views',
-                    'options' => [],
-                ],
-            ]),
+            configFactory: fn () => new ConfigRepository([]),
             errorHandlerFactory: fn () => $errorHandler,
             providerRegistryFactory: fn () => new EmptyProviderRegistry(),
             eventDispatcherFactory: fn () => $dispatcher,
@@ -184,9 +170,10 @@ final class ApplicationFactory
             bootstrappers: [
                 // Custom bootstrapper: wires the Vanguard as outermost middleware,
                 // then delegates to the HttpBootstrapper for the router + pipeline.
-                new class ($vanguard) implements BootstrapperInterface {
+                new class ($vanguard, $courseController) implements BootstrapperInterface {
                     public function __construct(
                         private readonly Vanguard $vanguard,
+                        private readonly ?CourseController $courseController,
                     ) {}
 
                     public function bootstrap(KernelInterface $kernel): void
@@ -220,22 +207,26 @@ final class ApplicationFactory
                         // Bind the controllers into the container.
                         $kernel->getContainer()->bind(HelloController::class);
                         $kernel->getContainer()->bind(HealthController::class);
-                        $kernel->getContainer()->bind(TemplateController::class);
 
-                        // Register the template rendering route.
-                        $router->addRoute(new Route(
-                            path: '/hello',
-                            methods: ['GET'],
-                            name: 'template.hello',
-                            controllerClass: TemplateController::class,
-                            controllerMethod: 'hello',
-                        ));
-
-                        // --- View subsystem integration ---
-                        $config = $kernel->getConfig();
-                        if ($config->has('view.driver')) {
-                            $view = ViewFactory::fromConfig($config);
-                            $kernel->getContainer()->instance(ViewInterface::class, $view);
+                        // Register the LMS course routes (vertical slice).
+                        if ($this->courseController !== null) {
+                            $router->addRoute(new Route(
+                                path: '/courses',
+                                methods: ['GET'],
+                                name: 'courses.list',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'list',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/courses',
+                                methods: ['POST'],
+                                name: 'courses.create',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'create',
+                            ));
+                            // Bind the CourseController instance directly (it's
+                            // pre-constructed with the DBAL-backed repo).
+                            $kernel->getContainer()->instance(CourseController::class, $this->courseController);
                         }
                     }
                 },
@@ -250,6 +241,41 @@ final class ApplicationFactory
             log: $log,
             isDevMode: $isDevMode,
         );
+    }
+
+    /**
+     * Build the LMS CourseController if MySQL is configured.
+     *
+     * Reads DB_HOST, DB_NAME, DB_USER, DB_PASS env vars. If DB_HOST is
+     * set, creates a DBAL Connection + MySQLCourseRepository + CourseController.
+     * If DB_HOST is absent, returns null (the skeleton runs without LMS routes).
+     *
+     * This keeps the vertical slice optional — the app still boots and serves
+     * / and /health even without a database.
+     */
+    private static function buildCourseController(): ?CourseController
+    {
+        $host = getenv('DB_HOST');
+        if ($host === false || $host === '') {
+            return null;
+        }
+
+        $port = getenv('DB_PORT') ?: '3306';
+        $name = getenv('DB_NAME') ?: 'dglab';
+        $user = getenv('DB_USER') ?: 'root';
+        $pass = getenv('DB_PASS') ?: '';
+
+        $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+
+        try {
+            $connection = new Connection($dsn, $user, $pass);
+            $repo = new MySQLCourseRepository($connection);
+            return new CourseController($repo);
+        } catch (\Throwable $e) {
+            // MySQL unavailable — log and skip LMS wiring.
+            error_log('[DGLab] LMS wiring skipped: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -401,6 +427,6 @@ final class ApplicationFactory
      */
     private static function isDevMode(): bool
     {
-        return (($_ENV['APP_ENV'] ?? getenv('APP_ENV')) !== false ? ($_ENV['APP_ENV'] ?? getenv('APP_ENV')) : 'production') === 'dev';
+        return ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'dev';
     }
 }
