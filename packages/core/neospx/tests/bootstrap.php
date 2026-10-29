@@ -17,4 +17,7 @@ spl_autoload_register(function (string $class): void {
 });
 
 // Also load vendor autoloader for PHPUnit
-require '/home/dgci/www/DGLab/vendor/autoload.php';
+$rootVendorAutoload = __DIR__ . '/../../../../vendor/autoload.php';
+if (file_exists($rootVendorAutoload)) {
+    require $rootVendorAutoload;
+}
