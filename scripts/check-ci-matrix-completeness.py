@@ -34,6 +34,12 @@ EXCLUSIONS = ROOT / "scripts" / "ci-matrix-exclusions.txt"
 def discover_packages() -> list[str]:
     found: list[str] = []
     candidates = [p.parent for p in ROOT.glob("packages/*/*/composer.json")]
+    # Migrated tier directories (Stage 2+)
+    candidates += [p.parent for p in ROOT.glob("Core/*/composer.json")]
+    candidates += [p.parent for p in ROOT.glob("Hub/*/composer.json")]
+    candidates += [p.parent for p in ROOT.glob("Bridge/*/composer.json")]
+    candidates += [p.parent for p in ROOT.glob("Spokes/Internal/*/composer.json")]
+    candidates += [p.parent for p in ROOT.glob("Spokes/External/*/composer.json")]
     candidates += [p.parent for p in ROOT.glob("packages/*/*/*/composer.json")]
     candidates.append(ROOT / "orchestrator")
     for d in sorted({c for c in candidates if c.is_dir()}):
