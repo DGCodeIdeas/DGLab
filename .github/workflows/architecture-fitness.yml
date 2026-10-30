@@ -5,12 +5,20 @@ on:
     branches: [main]
     paths:
       - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
       - 'app/**'
       - 'scripts/fitness/**'
       - '.github/workflows/architecture-fitness.yml'
   pull_request:
     paths:
       - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
       - 'app/**'
       - 'scripts/fitness/**'
       - '.github/workflows/architecture-fitness.yml'

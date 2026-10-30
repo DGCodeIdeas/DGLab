@@ -29,7 +29,6 @@
         "sovereign-stack/spoke-canvas": "*",
         "sovereign-stack/core-dbal": "*",
         "sovereign-stack/core-crypto": "*",
-        "sovereign-stack/core-filesystem": "*",
         "sovereign-stack/hub-identity": "*",
         "sovereign-stack/spoke-showcase": "*",
         "sovereign-stack/spoke-lms": "*",
@@ -57,15 +56,16 @@
             "SovereignStack\\Bridge\\": "packages/bridge/vanguard/src/",
             "SovereignStack\\Internal\\Codex\\": "packages/spoke/internal/codex/src/",
             "SovereignStack\\External\\Canvas\\": "packages/spoke/external/canvas/src/",
-            "SovereignStack\\Core\\Filesystem\\": "packages/core/filesystem/src/",
             "SovereignStack\\Hub\\Identity\\": "packages/hub/identity/src/",
             "SovereignStack\\Spoke\\Showcase\\": "packages/spoke/internal/showcase/src/",
             "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/",
-            "SovereignStack\\Core\\View\\": "packages/core/view/src/"
+            "SovereignStack\\Core\\View\\": "packages/core/view/src/",
+            "DGLab\\Core\\Filesystem\\": "Core/Filesystem/"
         }
     },
     "autoload-dev": {
         "psr-4": {
+            "DGLab\\Core\\Filesystem\\Tests\\": "Core/Filesystem/tests/",
             "Tests\\": "tests/",
             "App\\Tests\\": "app/tests/",
             "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/",

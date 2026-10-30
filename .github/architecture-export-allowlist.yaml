@@ -7,15 +7,15 @@ packages:
     - SovereignStack\Hub\Identity\Domain\ValueObject\Email
     - SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier
     - SovereignStack\Hub\Identity\Http\AuthMiddleware
-  SovereignStack\Core\Filesystem:
+  DGLab\Core\Filesystem:
     public_surface:
-    - SovereignStack\Core\Filesystem\FilesystemInterface
-    - SovereignStack\Core\Filesystem\Filesystem
-    - SovereignStack\Core\Filesystem\FileMetadata
-    - SovereignStack\Core\Filesystem\FilesystemException
-    - SovereignStack\Core\Filesystem\PathTraversalRefusedException
-    - SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException
-    - SovereignStack\Core\Filesystem\StreamByteLimitExceededException
+    - DGLab\Core\Filesystem\FilesystemInterface
+    - DGLab\Core\Filesystem\Filesystem
+    - DGLab\Core\Filesystem\FileMetadata
+    - DGLab\Core\Filesystem\FilesystemException
+    - DGLab\Core\Filesystem\PathTraversalRefusedException
+    - DGLab\Core\Filesystem\FileIntegrityCheckFailedException
+    - DGLab\Core\Filesystem\StreamByteLimitExceededException
   SovereignStack\Spoke\Showcase:
     public_surface:
     - SovereignStack\Spoke\Showcase\Application\ProductApplicationInterface

@@ -19,6 +19,10 @@ on:
     branches: [main]
     paths:
       - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
       - 'orchestrator/**'
       - 'anvil/**'
       - 'app/**'
@@ -51,7 +55,7 @@ jobs:
             echo "Base: $BASE"
             echo "Head: $HEAD"
             CHANGED=$(git diff --name-only "$BASE" "$HEAD" \
-              | grep -E '^(packages/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/packages-ci\.yml)' \
+              | grep -E '^(packages/|Core/|Hub/|Bridge/|Spokes/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/packages-ci\.yml)' \
               || true)
             if [ -n "$CHANGED" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
@@ -106,8 +110,12 @@ jobs:
             working-dir: packages/core/dbal
           - package: core/crypto
             working-dir: packages/core/crypto
-          - package: core/filesystem
-            working-dir: packages/core/filesystem
+          - package: core/neospx
+            working-dir: packages/core/neospx
+          - package: core/view
+            working-dir: packages/core/view
+          - package: Core/Filesystem
+            working-dir: Core/Filesystem
           - package: spoke/internal/showcase
             working-dir: packages/spoke/internal/showcase
           - package: hub/config
@@ -143,25 +151,47 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
 
-      - name: Validate composer.json
+      # Migrated tier-dir components (Core/, Hub/, etc.) have no per-package composer.json.
+      - name: Validate root composer.json (migrated components)
+        if: startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/')
+        run: composer validate --no-check-publish --no-check-version
+
+      - name: Install root dependencies (migrated components)
+        if: startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/')
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Validate composer.json (packages/ layout)
+        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
         working-directory: ${{ matrix.working-dir }}
         run: composer validate --no-check-publish --no-check-version
 
       - name: Clean vendor directory
+        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
         working-directory: ${{ matrix.working-dir }}
         run: rm -rf vendor
 
       - name: Install dependencies
+        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
         working-directory: ${{ matrix.working-dir }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: PHPStan (level max)
         working-directory: ${{ matrix.working-dir }}
-        run: vendor/bin/phpstan analyse --error-format=github
+        run: |
+          if [ -f vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse --error-format=github
+          else
+            ../../vendor/bin/phpstan analyse --error-format=github
+          fi
 
       - name: PHPUnit (full suite, testdox)
         working-directory: ${{ matrix.working-dir }}
-        run: vendor/bin/phpunit --testdox --colors=never --no-coverage
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --testdox --colors=never --no-coverage
+          else
+            ../../vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=never --no-coverage
+          fi
 
       - name: PHPUnit (PSR-11 conformance, named)
         if: matrix.package == 'core/container'

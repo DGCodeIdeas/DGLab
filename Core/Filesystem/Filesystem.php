@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Filesystem;
+namespace DGLab\Core\Filesystem;
 
 use DateTimeImmutable;
-use SovereignStack\Core\Filesystem\Internal\AtomicWriter;
-use SovereignStack\Core\Filesystem\Internal\PathGuard;
-use SovereignStack\Core\Filesystem\Internal\Quarantine;
+use DGLab\Core\Filesystem\Internal\AtomicWriter;
+use DGLab\Core\Filesystem\Internal\PathGuard;
+use DGLab\Core\Filesystem\Internal\Quarantine;
 
 /**
  * Local filesystem implementation — the "beautiful plug" over PHP file functions.
@@ -24,7 +24,7 @@ use SovereignStack\Core\Filesystem\Internal\Quarantine;
  * Per SPEC §58 (Existing Capabilities That MUST NOT Be Rebuilt): this is the CORE-14
  * plug — it's genuinely new (no existing Core package covers filesystem abstraction).
  *
- * @package SovereignStack\Core\Filesystem
+ * @package DGLab\Core\Filesystem
  */
 final class Filesystem implements FilesystemInterface
 {
@@ -109,7 +109,8 @@ final class Filesystem implements FilesystemInterface
         if (!file_exists($absolutePath)) {
             return null;
         }
-        return fopen($absolutePath, 'r') ?: null;
+        $stream = fopen($absolutePath, 'r');
+        return $stream === false ? null : $stream;
     }
 
     public function exists(string $path): bool
@@ -138,10 +139,11 @@ final class Filesystem implements FilesystemInterface
 
     private function buildMetadata(string $absolutePath): FileMetadata
     {
+        $mimeType = mime_content_type($absolutePath);
         return new FileMetadata(
             size: (int) filesize($absolutePath),
             modifiedAt: new DateTimeImmutable('@' . filemtime($absolutePath)),
-            mimeType: (string) (mime_content_type($absolutePath) ?: 'application/octet-stream'),
+            mimeType: $mimeType === false ? 'application/octet-stream' : $mimeType,
         );
     }
 }

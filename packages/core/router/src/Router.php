@@ -57,26 +57,32 @@ final class Router implements RouterInterface
         }
 
         // Sort routes: static (no placeholders) first, then parameterized.
-        // For static routes, prefer longer paths (more specific) first.
+        // This ensures /users/me matches before /users/{id} regardless of
+        // registration order (P2 fix from Core audit).
         $routes = $this->byMethod[$method] ?? [];
-        
-        usort($routes, static function (CompiledRoute $a, CompiledRoute $b): int {
-            $aIsStatic = $a->placeholderNames === [];
-            $bIsStatic = $b->placeholderNames === [];
+        // Stable sort: static routes first, then parameterized in registration order.
+        // PHP's usort is NOT stable — equal elements may be reordered.
+        // Fix: decorate with original index, sort, then undecorate (Schwartzian transform).
+        $decorated = [];
+        foreach ($routes as $i => $compiled) {
+            $decorated[] = [$i, $compiled];
+        }
+        usort($decorated, static function (array $a, array $b): int {
+            $aIsStatic = $a[1]->placeholderNames === [];
+            $bIsStatic = $b[1]->placeholderNames === [];
             if ($aIsStatic && !$bIsStatic) {
                 return -1;
             }
             if (!$aIsStatic && $bIsStatic) {
                 return 1;
             }
-            // Both static or both parameterized: prefer longer path (more specific) first.
-            return \strlen($b->route->path) <=> \strlen($a->route->path);
+            // Same priority — preserve registration order (stable).
+            return $a[0] <=> $b[0];
         });
-        
+        $routes = array_column($decorated, 1);
 
         foreach ($routes as $compiled) {
             $result = @\preg_match($compiled->regex, $path, $matches);
-            
             if ($result === false) {
                 // PCRE error (e.g., backtrack limit exceeded by a catastrophic
                 // backtracking constraint). Log and continue to next route.
@@ -117,7 +123,7 @@ final class Router implements RouterInterface
                     $placeholder,
                 ));
             }
-            $value = $parameters[$placeholder];
+            $value = (string) $parameters[$placeholder];
             unset($parameters[$placeholder]);
 
             // rawurlencode preserves unreserved chars per RFC 3986.

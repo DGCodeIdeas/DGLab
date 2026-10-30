@@ -15,7 +15,7 @@ CANONICAL_COMPONENTS = {
     "CORE-08": {"package": "core/error-handler", "namespace": "SovereignStack\\Core\\ErrorHandler", "name": "ErrorHandler"},
     "CORE-09": {"package": "core/logger", "namespace": "SovereignStack\\Core\\Logger", "name": "Logger"},
     "CORE-10": {"package": "core/config", "namespace": "SovereignStack\\Core\\Config", "name": "Config"},
-    "CORE-14": {"package": "core/filesystem", "namespace": "SovereignStack\\Core\\Filesystem", "name": "Filesystem"},
+    "CORE-14": {"package": "Core/Filesystem", "namespace": "DGLab\Core\Filesystem", "name": "Filesystem"},
     "CORE-16": {"package": "core/crypto", "namespace": "SovereignStack\\Core\\Crypto", "name": "Crypto"},
     "CORE-18": {"package": "core/kernel", "namespace": "SovereignStack\\Core\\Kernel", "name": "Kernel"},
     "CORE-19": {"package": "core/dbal", "namespace": "SovereignStack\\Core\\Database", "name": "DBAL"},
@@ -30,7 +30,11 @@ def check_naming_drift():
     violations = []
     
     for component_id, canonical in CANONICAL_COMPONENTS.items():
-        pkg_path = REPO_ROOT / "packages" / canonical["package"]
+        # Check both old (packages/) and new (tier dirs) locations
+        if canonical["package"].startswith(("Core/", "Hub/", "Bridge/", "Spokes/")):
+            pkg_path = REPO_ROOT / canonical["package"]
+        else:
+            pkg_path = REPO_ROOT / "packages" / canonical["package"]
         
         if not pkg_path.exists():
             violations.append({
