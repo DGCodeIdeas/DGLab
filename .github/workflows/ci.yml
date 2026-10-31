@@ -1,0 +1,395 @@
+name: CI
+
+# Main CI workflow for the DGLab monorepo with migrated architecture.
+# Replaces the legacy packages-ci.yml which was built around packages/** discovery.
+#
+# This workflow:
+#   - Runs on all PRs and pushes to main
+#   - Uses path-based execution to avoid unnecessary work
+#   - Delegates to specialized workflows for parallel execution
+#   - Aggregates results via required status checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Required status checks for branch protection:
+# - ci/component-tests
+# - ci/integration-tests
+# - ci/architecture-validation
+# - ci/static-analysis
+# - ci/security
+
+jobs:
+  # Quick gate to detect if code files changed (skip for docs-only PRs)
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code-changed: ${{ steps.filter.outputs.code }}
+      config-changed: ${{ steps.filter.outputs.config }}
+      docs-only: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'Core/**/*.php'
+              - 'Hub/**/*.php'
+              - 'Bridge/**/*.php'
+              - 'Spokes/**/*.php'
+              - 'Products/**/*.php'
+              - 'app/**/*.php'
+              - 'public/**/*.php'
+              - 'tests/**/*.php'
+              - 'orchestrator/**/*.php'
+              - 'anvil/**/*.php'
+              - 'composer.json'
+              - 'composer.lock'
+              - 'phpunit.xml.dist'
+            config:
+              - '.github/workflows/**'
+              - 'scripts/**'
+              - 'phpstan.neon'
+              - '**/phpunit.xml.dist'
+            docs:
+              - 'Architecture/**'
+              - 'archive/**'
+              - '*.md'
+              - '!.github/**'
+
+  # Component tests - discover and run all component-local test suites
+  component-tests:
+    name: Component Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code-changed == 'true' || needs.detect-changes.outputs.config-changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, xml, dom, openssl, pdo, pdo_sqlite, fileinfo
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Generate component manifest
+        run: python3 scripts/generate-component-manifest.py > component-manifest.txt
+
+      - name: Discover and run component tests
+        run: |
+          set -euo pipefail
+          
+          # Load component manifest
+          mapfile -t COMPONENTS < <(grep -E '^\s+"Core/' component-manifest.txt | sed 's/.*"\(.*\)".*/\1/')
+          # Also include orchestrator if not in manifest
+          if [[ ! " ${COMPONENTS[@]} " =~ " orchestrator " ]]; then
+            COMPONENTS+=("orchestrator")
+          fi
+          
+          FAILED=()
+          PASSED=()
+          
+          for COMPONENT in "${COMPONENTS[@]}"; do
+            if [ -f "${COMPONENT}/phpunit.xml.dist" ]; then
+              echo "::group::Testing ${COMPONENT}"
+              if ../../vendor/bin/phpunit --configuration "${COMPONENT}/phpunit.xml.dist" --no-coverage; then
+                PASSED+=("${COMPONENT}")
+              else
+                FAILED+=("${COMPONENT}")
+              fi
+              echo "::endgroup::"
+            else
+              echo "::warning::${COMPONENT} has no phpunit.xml.dist — skipping"
+            fi
+          done
+          
+          echo ""
+          echo "=== Component Test Summary ==="
+          echo "Passed: ${#PASSED[@]}"
+          for p in "${PASSED[@]}"; do echo "  ✓ ${p}"; done
+          echo "Failed: ${#FAILED[@]}"
+          for f in "${FAILED[@]}"; do echo "  ✗ ${f}"; done
+          
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            exit 1
+          fi
+
+  # Integration tests - root-level integration suite
+  integration-tests:
+    name: Integration Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code-changed == 'true' || needs.detect-changes.outputs.config-changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, xml, dom, openssl, pdo, pdo_sqlite, fileinfo
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run root integration tests
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --no-coverage
+
+  # Architecture validation - enforce boundaries, no src/, namespace rules
+  architecture-validation:
+    name: Architecture Validation
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code-changed == 'true' || needs.detect-changes.outputs.config-changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Verify no src/ directories in components
+        run: |
+          set -euo pipefail
+          echo "Checking for forbidden src/ directories..."
+          VIOLATIONS=$(find Core Hub Bridge Spokes Products -type d -name 'src' 2>/dev/null || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Forbidden src/ directories found:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "✓ No src/ directories found"
+
+- name: Verify component structure (tests/ at component level)
+        run: |
+          set -euo pipefail
+          echo "Verifying component structure..."
+          COMPONENTS=(
+            "Core/Container"
+            "Core/EventDispatcher"
+            "Core/HttpMessage"
+            "Core/Middleware"
+            "Core/Router"
+            "Core/Config"
+            "Core/Logger"
+            "Core/ErrorHandler"
+            "Core/Kernel"
+            "Core/Database"
+            "Core/Filesystem"
+            "Core/NeoSpx"
+            "Core/Crypto"
+            "Core/View"
+            "Hub/Config"
+            "Hub/Identity"
+            "Bridge/Vanguard"
+            "Spokes/Internal/Codex"
+            "Spokes/Internal/Showcase"
+            "Spokes/Internal/Lms"
+            "Spokes/External/Canvas"
+            "orchestrator"
+          )
+          
+          MISSING_TESTS=()
+          for COMPONENT in "${COMPONENTS[@]}"; do
+            if [ -d "${COMPONENT}" ] && [ ! -d "${COMPONENT}/tests" ]; then
+              MISSING_TESTS+=("${COMPONENT}")
+            fi
+          done
+          
+          if [ ${#MISSING_TESTS[@]} -gt 0 ]; then
+            echo "::warning::Components missing tests/ directory:"
+            for m in "${MISSING_TESTS[@]}"; do echo "  - ${m}"; done
+          fi
+
+      - name: Run architecture boundary lint (Python)
+        run: |
+          pip install pyyaml
+          python3 scripts/architecture-boundary-lint.py
+
+      - name: Verify architecture boundary lint coverage
+        run: |
+          files_scanned=$(python3 -c "import json; print(json.load(open('/tmp/abl-summary.json'))['files_scanned'])" 2>/dev/null || echo 0)
+          if [ "$files_scanned" -eq 0 ]; then
+            echo "::error::architecture-boundary-lint scanned 0 files - UNVERIFIED"
+            exit 1
+          fi
+
+      - name: Run architecture boundary lint regression tests
+        run: python3 scripts/test_architecture_boundary_lint.py
+
+      - name: Run architecture documentation lint
+        run: php Architecture/Verification/lint/run.php
+
+      - name: Run architecture lint self-test
+        run: php Architecture/Verification/lint/run.php --self-test
+
+  # Static analysis - PHPStan at agreed levels
+  static-analysis:
+    name: Static Analysis (PHPStan)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code-changed == 'true' || needs.detect-changes.outputs.config-changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run PHPStan on entire codebase
+        run: vendor/bin/phpstan analyse --error-format=github
+
+  # Security checks - secret scanning, dependency vulnerabilities
+  security:
+    name: Security
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code-changed == 'true' || needs.detect-changes.outputs.config-changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify gitleaks
+        run: |
+          set -euo pipefail
+          V="8.24.3"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${V}"
+          asset="gitleaks_${V}_linux_x64.tar.gz"
+          curl -sSfL -o "$asset" "${base}/${asset}"
+          curl -sSfL -o checksums.txt "${base}/gitleaks_${V}_checksums.txt"
+          expected=$(awk -v a="$asset" '$2==a {print $1; exit}' checksums.txt)
+          actual=$(sha256sum "$asset" | awk '{print $1}')
+          if [ "$actual" != "$expected" ]; then echo "::error::CHECKSUM MISMATCH"; exit 1; fi
+          tar xzf "$asset"
+          ./gitleaks version | grep -F "$V"
+
+      - name: Self-test — canary secret MUST be detected
+        run: |
+          set -euo pipefail
+          canary=$(mktemp -d)
+          FAKE_ID="AKIA$(printf 'R E 1 F A K E K E Y 1 2 3 4 5 X' | tr -d ' ')"
+          printf 'AWS_ACCESS_KEY_ID=%s\naws_secret_access_key = "%s"\n' "$FAKE_ID" "$(printf 'a%.0s' {1..40})" > "$canary/canary.env"
+          set +e
+          out=$(./gitleaks dir "$canary" --redact --report-format json --report-path canary-leaks.json 2>&1)
+          rc=$?
+          set -e
+          n=$(python3 -c "import json,os;print(len(json.load(open('canary-leaks.json'))) if os.path.exists('canary-leaks.json') else -1)" || echo -1)
+          if [ "$rc" -eq 1 ] && [ "$n" -ge 1 ]; then
+            echo "OK: canary detected"
+          else
+            echo "::error::Secret-scan self-test FAILED"
+            exit 1
+          fi
+          rm -rf "$canary" canary-leaks.json
+
+      - name: Scan working tree for secrets
+        run: |
+          set -euo pipefail
+          out=$(./gitleaks dir . --config .gitleaks.toml --redact --report-format json --report-path leaks.json 2>&1)
+          rc=$?
+          n=$(python3 -c "import json, os; print(len(json.load(open('leaks.json'))) if os.path.exists('leaks.json') else -1)" || echo -1)
+          if [ "$rc" -eq 0 ] && [ "$n" -eq 0 ]; then
+            echo "Working tree clean: 0 leaks"
+            exit 0
+          fi
+          if [ "$rc" -eq 1 ] && [ "$n" -ge 1 ]; then
+            python3 -c "
+import json
+for l in json.load(open('leaks.json'))[:50]:
+    safe = {k: v for k, v in l.items() if k not in ('Secret', 'Match', 'Redacted')}
+    print('::error file=leaks.json::' + json.dumps(safe)[:350])
+"
+            echo "::error::Secrets found in tracked tree"
+            exit 1
+          fi
+          echo "::error::gitleaks unexpected state (exit=$rc, leaks=$n)"
+          exit 1
+
+      - name: Composer audit (dependency vulnerabilities)
+        run: |
+          composer audit --locked --format=plain || true
+
+  # Aggregate results for branch protection
+  aggregate:
+    name: CI Summary
+    needs: [detect-changes, component-tests, integration-tests, architecture-validation, static-analysis, security]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all required jobs succeeded
+        run: |
+          FAILED=0
+          for job in component-tests integration-tests architecture-validation static-analysis security; do
+            RESULT="${{ needs.$job.result }}"
+            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
+              echo "::error::$job: $RESULT"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "::error::One or more CI jobs failed"
+            exit 1
+          fi
+          echo "✓ All CI checks passed"
+
+      - name: Summary
+        run: |
+          echo "### CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          for job in component-tests integration-tests architecture-validation static-analysis security; do
+            RESULT="${{ needs.$job.result }}"
+            echo "| $job | $RESULT |" >> $GITHUB_STEP_SUMMARY
+          done

@@ -1,0 +1,258 @@
+name: Release Validation
+
+# Release validation for the migrated DGLab architecture.
+# This workflow validates that the loom release tooling works with the new
+# tier-directory structure (Core/, Hub/, Bridge/, Spokes/Internal/, Spokes/External/)
+# instead of the legacy packages/ layout.
+#
+# The actual release automation remains in release.yml (uses orchestrator/loom).
+# This workflow validates preconditions and health checks.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'composer.json'
+      - 'orchestrator/**'
+      - '.github/workflows/release-validation.yml'
+  pull_request:
+    paths:
+      - 'composer.json'
+      - 'orchestrator/**'
+      - '.github/workflows/release-validation.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry-run mode (validate only, no tags)'
+        required: false
+        default: 'true'
+        type: boolean
+      health_check:
+        description: 'Run per-component tag health check'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+validate-composer-versions:
+    name: Validate Composer Versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate root composer.json
+        run: |
+          set -euo pipefail
+          echo "Validating root composer.json..."
+          if ! composer validate --no-check-publish --no-check-version; then
+            echo "::error::Root composer.json is invalid"
+            exit 1
+          fi
+          echo "✓ Root composer.json valid"
+
+      - name: Validate orchestrator composer.json
+        run: |
+          set -euo pipefail
+          echo "Validating orchestrator/composer.json..."
+          if ! composer validate --no-check-publish --no-check-version --working-dir=orchestrator; then
+            echo "::error::Orchestrator composer.json is invalid"
+            exit 1
+          fi
+          echo "✓ Orchestrator composer.json valid"
+
+      - name: Extract component versions from root composer.json
+        run: |
+          set -euo pipefail
+          echo "Extracting component versions from root composer.json..."
+          # The root composer.json requires sovereign-stack/* packages with version constraints
+          # Version info is in the lock file or package manifests
+          echo "Root composer.json requires:"
+          jq -r '.require | to_entries[] | select(.key | startswith("sovereign-stack/")) | "\(.key): \(.value)"' composer.json
+
+  loom-health:
+    name: Loom Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache orchestrator dependencies
+        uses: actions/cache@v4
+        with:
+          path: orchestrator/vendor
+          key: ${{ runner.os }}-orchestrator-composer-${{ hashFiles('orchestrator/composer.lock') }}
+          restore-keys: ${{ runner.os }}-orchestrator-composer-
+
+      - name: Install orchestrator
+        working-directory: orchestrator
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Verify loom executable
+        run: test -x orchestrator/bin/loom && orchestrator/bin/loom
+
+      - name: Generate repos.json for new architecture
+        run: orchestrator/bin/loom repos:generate
+
+      - name: Verify repos.json includes migrated components
+        run: |
+          cat orchestrator/repos.json | jq '.'
+          # Verify all expected components are present
+          EXPECTED=(
+            "sovereign-stack/core-container"
+            "sovereign-stack/core-event-dispatcher"
+            "sovereign-stack/core-http-message"
+            "sovereign-stack/core-middleware"
+            "sovereign-stack/core-router"
+            "sovereign-stack/core-config"
+            "sovereign-stack/core-logger"
+            "sovereign-stack/core-error-handler"
+            "sovereign-stack/core-kernel"
+            "sovereign-stack/core-dbal"
+            "sovereign-stack/core-filesystem"
+            "sovereign-stack/core-neospx"
+            "sovereign-stack/core-crypto"
+            "sovereign-stack/core-view"
+            "sovereign-stack/hub-config"
+            "sovereign-stack/hub-identity"
+            "sovereign-stack/bridge-vanguard"
+            "sovereign-stack/spoke-codex"
+            "sovereign-stack/spoke-showcase"
+            "sovereign-stack/spoke-lms"
+            "sovereign-stack/spoke-canvas"
+          )
+          
+          MISSING=()
+          for pkg in "${EXPECTED[@]}"; do
+            if ! grep -q "\"$pkg\"" orchestrator/repos.json; then
+              MISSING+=("$pkg")
+            fi
+          done
+          
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing packages in repos.json:"
+            for m in "${MISSING[@]}"; do echo "  - $m"; done
+            exit 1
+          fi
+          echo "✓ All expected packages present in repos.json"
+
+  tag-health-check:
+    name: Per-Component Tag Health Check
+    if: github.event.inputs.health_check == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check per-component tags exist (via component directories)
+        run: |
+          set -euo pipefail
+          MISSING=0
+          echo "Checking per-component tags for all tier directories..."
+          
+          # Component directories to check (they have phpunit.xml.dist and are real components)
+          COMPONENTS=(
+            "Core/Container:core"
+            "Core/EventDispatcher:core"
+            "Core/HttpMessage:core"
+            "Core/Middleware:core"
+            "Core/Router:core"
+            "Core/Config:core"
+            "Core/Logger:core"
+            "Core/ErrorHandler:core"
+            "Core/Kernel:core"
+            "Core/Database:core"
+            "Core/Filesystem:core"
+            "Core/NeoSpx:core"
+            "Core/Crypto:core"
+            "Core/View:core"
+            "Hub/Config:hub"
+            "Hub/Identity:hub"
+            "Bridge/Vanguard:bridge"
+            "Spokes/Internal/Codex:ispoke"
+            "Spokes/Internal/Showcase:ispoke"
+            "Spokes/Internal/Lms:ispoke"
+            "Spokes/External/Canvas:espoke"
+          )
+          
+          # Since we don't have per-component composer.json files with versions,
+          # we check for tags using the pattern from the loom release tooling
+          # Tags follow: <tier>-<component>-v<version> or <tier>-v<version>
+          
+          for entry in "${COMPONENTS[@]}"; do
+            DIR="${entry%%:*}"
+            TIER="${entry##*:}"
+            COMPONENT=$(basename "$DIR")
+            
+            # Look for tags matching this component
+            # Pattern: <tier>-<component-lower>-v<version> or <tier>-v<version>
+            TAGS=$(git tag -l "${TIER}-${COMPONENT,,}-v*" 2>/dev/null || true)
+            TIER_TAGS=$(git tag -l "${TIER}-v*" 2>/dev/null || true)
+            
+            if [ -n "$TAGS" ]; then
+              echo "  OK:   Component $DIR has tags: $(echo "$TAGS" | head -3 | tr '\n' ' ')"
+            elif [ -n "$TIER_TAGS" ]; then
+              echo "  OK:   Tier $TIER has tags: $(echo "$TIER_TAGS" | head -3 | tr '\n' ' ')"
+            else
+              echo "  MISSING: No tags found for $DIR (tier: $TIER, component: $COMPONENT)"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          
+          # Also check orchestrator
+          ORCH_TAGS=$(git tag -l "orchestrator-v*" 2>/dev/null || true)
+          if [ -n "$ORCH_TAGS" ]; then
+            echo "  OK:   orchestrator has tags: $(echo "$ORCH_TAGS" | head -3 | tr '\n' ' ')"
+          else
+            echo "  MISSING: No tags found for orchestrator"
+            MISSING=$((MISSING + 1))
+          fi
+          
+          echo ""
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::warning::$MISSING component(s) missing tags"
+          else
+            echo "All component tags present. Release workflow is healthy."
+          fi
+
+  summary:
+    name: Release Validation Summary
+    needs: [validate-composer-versions, loom-health, tag-health-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate results
+        run: |
+          FAILED=0
+          for job in validate-composer-versions loom-health tag-health-check; do
+            RESULT="${{ needs.$job.result }}"
+            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
+              echo "::error::$job: $RESULT"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "::error::Release validation failed"
+            exit 1
+          fi
+          echo "✓ Release validation passed"

@@ -7,36 +7,36 @@ packages:
     - SovereignStack\Hub\Identity\Domain\ValueObject\Email
     - SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier
     - SovereignStack\Hub\Identity\Http\AuthMiddleware
-  DGLab\Core\Filesystem:
+  SovereignStack\Core\Filesystem:
     public_surface:
-    - DGLab\Core\Filesystem\FilesystemInterface
-    - DGLab\Core\Filesystem\Filesystem
-    - DGLab\Core\Filesystem\FileMetadata
-    - DGLab\Core\Filesystem\FilesystemException
-    - DGLab\Core\Filesystem\PathTraversalRefusedException
-    - DGLab\Core\Filesystem\FileIntegrityCheckFailedException
-    - DGLab\Core\Filesystem\StreamByteLimitExceededException
-  SovereignStack\Spoke\Showcase:
+    - SovereignStack\Core\Filesystem\FilesystemInterface
+    - SovereignStack\Core\Filesystem\Filesystem
+    - SovereignStack\Core\Filesystem\FileMetadata
+    - SovereignStack\Core\Filesystem\FilesystemException
+    - SovereignStack\Core\Filesystem\PathTraversalRefusedException
+    - SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException
+    - SovereignStack\Core\Filesystem\StreamByteLimitExceededException
+  SovereignStack\Internal\Showcase:
     public_surface:
-    - SovereignStack\Spoke\Showcase\Application\ProductApplicationInterface
-    - SovereignStack\Spoke\Showcase\Application\Command\CreateProductCommand
-    - SovereignStack\Spoke\Showcase\Domain\ValueObject\ProductId
-    - SovereignStack\Spoke\Showcase\Domain\ValueObject\Sku
-    - SovereignStack\Spoke\Showcase\Domain\ValueObject\Price
-    - SovereignStack\Spoke\Showcase\Domain\ValueObject\ProductTitle
-    - SovereignStack\Spoke\Showcase\Domain\ValueObject\ProductSlug
-    - SovereignStack\Spoke\Showcase\Domain\Exception\ProductNotFoundException
-    - SovereignStack\Spoke\Showcase\Domain\Exception\DuplicateSkuException
-    - SovereignStack\Spoke\Showcase\Domain\Exception\InvalidProductDataException
-  SovereignStack\Spoke\Lms:
+    - SovereignStack\Internal\Showcase\Application\ProductApplicationInterface
+    - SovereignStack\Internal\Showcase\Application\Command\CreateProductCommand
+    - SovereignStack\Internal\Showcase\Domain\ValueObject\ProductId
+    - SovereignStack\Internal\Showcase\Domain\ValueObject\Sku
+    - SovereignStack\Internal\Showcase\Domain\ValueObject\Price
+    - SovereignStack\Internal\Showcase\Domain\ValueObject\ProductTitle
+    - SovereignStack\Internal\Showcase\Domain\ValueObject\ProductSlug
+    - SovereignStack\Internal\Showcase\Domain\Exception\ProductNotFoundException
+    - SovereignStack\Internal\Showcase\Domain\Exception\DuplicateSkuException
+    - SovereignStack\Internal\Showcase\Domain\Exception\InvalidProductDataException
+  SovereignStack\Internal\Lms:
     public_surface:
-    - SovereignStack\Spoke\Lms\Application\CourseApplicationInterface
-    - SovereignStack\Spoke\Lms\Application\Command\CreateCourseCommand
-    - SovereignStack\Spoke\Lms\Domain\ValueObject\CourseId
-    - SovereignStack\Spoke\Lms\Domain\ValueObject\CourseTitle
-    - SovereignStack\Spoke\Lms\Domain\ValueObject\CourseSlug
-    - SovereignStack\Spoke\Lms\Domain\ValueObject\EnrollmentId
-    - SovereignStack\Spoke\Lms\Domain\ValueObject\EnrollmentStatus
-    - SovereignStack\Spoke\Lms\Domain\ValueObject\ModuleStatus
-    - SovereignStack\Spoke\Lms\Domain\Exception\CourseNotFoundException
-    - SovereignStack\Spoke\Lms\Domain\Exception\AlreadyEnrolledException
+    - SovereignStack\Internal\Lms\Application\CourseApplicationInterface
+    - SovereignStack\Internal\Lms\Application\Command\CreateCourseCommand
+    - SovereignStack\Internal\Lms\Domain\ValueObject\CourseId
+    - SovereignStack\Internal\Lms\Domain\ValueObject\CourseTitle
+    - SovereignStack\Internal\Lms\Domain\ValueObject\CourseSlug
+    - SovereignStack\Internal\Lms\Domain\ValueObject\EnrollmentId
+    - SovereignStack\Internal\Lms\Domain\ValueObject\EnrollmentStatus
+    - SovereignStack\Internal\Lms\Domain\ValueObject\ModuleStatus
+    - SovereignStack\Internal\Lms\Domain\Exception\CourseNotFoundException
+    - SovereignStack\Internal\Lms\Domain\Exception\AlreadyEnrolledException

@@ -25,8 +25,10 @@
 #
 #   - Conventional-Commit PR title enforcement  (P1 gap 5 — branch protection)
 #
-# See Architecture/Core/CORE-01.md §SemVer Automation Plan for the full gap
-# analysis and the path to close each item.
+# MIGRATION NOTE (2026-10-31): Updated for post-migration architecture.
+# The workflow now triggers on tier directories (Core/, Hub/, Bridge/, Spokes/)
+# instead of the legacy packages/ layout. The loom tooling (orchestrator/bin/loom)
+# discovers components via repos.json generated from the new directory structure.
 # =============================================================================
 
 name: Release
@@ -35,7 +37,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'packages/**'
+      - 'Core/**'
+      - 'Hub/**'
+      - 'Bridge/**'
+      - 'Spokes/**'
+      - 'orchestrator/**'
       - '.github/workflows/release.yml'
   workflow_dispatch:
     inputs:
@@ -52,9 +58,9 @@ on:
         required: false
         default: 'false'
 
-# Do not run concurrently with packages-ci.yml — the loom's
-# --require-ci-green flag polls for up to 60 seconds waiting for packages-ci.yml
-# to complete; if both jobs ran in parallel and packages-ci.yml was cancelled
+# Do not run concurrently with ci.yml — the loom's
+# --require-ci-green flag polls for up to 60 seconds waiting for ci.yml
+# to complete; if both jobs ran in parallel and ci.yml was cancelled
 # by a later push, the gate would block forever.
 concurrency:
   group: release-${{ github.ref }}
@@ -103,8 +109,8 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Generate repos.json (P2 gap 11 — closed)
-        # `loom repos:generate` scans packages/*/*/composer.json and writes
-        # orchestrator/repos.json. Replaces the previous inline PHP script.
+        # `loom repos:generate` scans tier directories (Core/, Hub/, Bridge/, Spokes/*/)
+        # for component structure and writes orchestrator/repos.json.
         run: orchestrator/bin/loom repos:generate
 
       - name: Verify bin/loom is present and executable (Finding 21 guard)
@@ -120,7 +126,7 @@ jobs:
       - name: Compute next version for ${{ matrix.tier }} tier
         id: bump
         # ADR-018: per-tier centralized releases. The loom analyzes ALL packages
-        # in the tier (packages/<tier>/*/) and takes the highest bump level.
+        # in the tier (tier directories) and takes the highest bump level.
         # TODO: implement `loom version:bump:tier <tier>` — until then, iterate
         # all packages in the tier and take the highest bump.
         run: |
@@ -129,7 +135,9 @@ jobs:
           HIGHEST_INCREMENT="none"
           HIGHEST_VERSION=""
           COUNT=0
-          for PKG_DIR in packages/${TIER}/*/; do
+          # Map tier name to directory (core -> Core, hub -> Hub, etc.)
+          TIER_DIR=$(echo "$TIER" | sed 's/^./\U&/')
+          for PKG_DIR in ${TIER_DIR}/*/; do
             [ -d "$PKG_DIR" ] || continue
             PKG=$(basename "$PKG_DIR")
             COUNT=$((COUNT+1))
@@ -165,7 +173,7 @@ jobs:
             esac
           done
           if [ "$COUNT" -eq 0 ]; then
-            echo "::error::no package directories found under packages/${TIER}/ — refusing a vacuous skip"
+            echo "::error::no package directories found under ${TIER_DIR}/ — refusing a vacuous skip"
             exit 1
           fi
           if [ -z "$HIGHEST_VERSION" ]; then
@@ -183,9 +191,16 @@ jobs:
         if: steps.bump.outputs.has_bump == 'true'
         run: |
           # ADR-018: all packages in the tier share the same version.
-          # Read the version from the first package as the canonical tier version.
-          FIRST_PKG=$(ls -d packages/${{ matrix.tier }}/*/ | head -1)
-          CURRENT=$(jq -r '.version // ""' "${FIRST_PKG}composer.json")
+          # Since per-component composer.json files were removed during migration,
+          # read the current tier version from the latest tier tag.
+          TIER="${{ matrix.tier }}"
+          CURRENT_TAG=$(git tag -l "${TIER}-v*" --sort=-v:refname | head -1 || true)
+          if [ -n "$CURRENT_TAG" ]; then
+            # Extract version from tag (format: tier-vX.Y.Z.W+sha)
+            CURRENT=$(echo "$CURRENT_TAG" | sed -E 's/^[a-z]+-v([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          else
+            CURRENT="0.0.0.0"
+          fi
           echo "current_version=$CURRENT" >> "$GITHUB_OUTPUT"
           if [ "$CURRENT" = "${{ steps.bump.outputs.new_version }}" ]; then
             echo "No version change for ${{ matrix.tier }} tier (current=$CURRENT, computed=${{ steps.bump.outputs.new_version }}). Skipping."
@@ -227,7 +242,7 @@ jobs:
           TAG_MESSAGE="Release ${TIER} tier ${NEW_VERSION} (${{ steps.bump.outputs.increment }} bump). Computed by: loom. Triggered by: ${{ github.actor }} via ${{ github.event_name }}."
 
           # Bump ALL packages in the tier to the same version.
-          for PKG_DIR in packages/${TIER}/*/; do
+          for PKG_DIR in ${TIER}/*/; do
             PKG=$(basename "$PKG_DIR")
             # Error contract (SAAI Phase 3): the trailing `|| true` here turned
             # every failed release — refused CI gate, tag conflict, push reject,
@@ -239,7 +254,7 @@ jobs:
               --message "$TAG_MESSAGE" \
               --remote "$TOKEN_URL" \
               --require-ci-green \
-              --ci-workflow packages-ci.yml \
+              --ci-workflow ci.yml \
               --ci-branch main \
               --ci-repo ${{ github.repository }} \
               --ci-timeout 60 \
@@ -382,30 +397,66 @@ jobs:
         run: |
           set -euo pipefail
           MISSING=0
-          echo "Checking per-package tags for all packages/*/*/composer.json..."
-          for COMPOSER_JSON in packages/*/*/composer.json packages/*/*/*/composer.json; do
-            [ -f "$COMPOSER_JSON" ] || continue
-            PKG_DIR=$(dirname "$COMPOSER_JSON")
-            PKG_NAME=$(basename "$PKG_DIR")
-            TIER=$(basename "$(dirname "$PKG_DIR")")
-            VERSION=$(jq -r '.version // ""' "$COMPOSER_JSON")
-            if [ -z "$VERSION" ]; then
-              echo "  WARN: $TIER/$PKG_NAME has no 'version' field in composer.json"
-              continue
-            fi
-            TAG_NAME="${TIER}-${PKG_NAME}-v${VERSION}"
-            if git rev-parse "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
-              echo "  OK:   $TAG_NAME"
+          echo "Checking per-component tags for all tier directories..."
+          # Component directories (post-migration structure)
+          COMPONENTS=(
+            "Core/Container:core"
+            "Core/EventDispatcher:core"
+            "Core/HttpMessage:core"
+            "Core/Middleware:core"
+            "Core/Router:core"
+            "Core/Config:core"
+            "Core/Logger:core"
+            "Core/ErrorHandler:core"
+            "Core/Kernel:core"
+            "Core/Database:core"
+            "Core/Filesystem:core"
+            "Core/NeoSpx:core"
+            "Core/Crypto:core"
+            "Core/View:core"
+            "Hub/Config:hub"
+            "Hub/Identity:hub"
+            "Bridge/Vanguard:bridge"
+            "Spokes/Internal/Codex:ispoke"
+            "Spokes/Internal/Showcase:ispoke"
+            "Spokes/Internal/Lms:ispoke"
+            "Spokes/External/Canvas:espoke"
+          )
+          
+          for entry in "${COMPONENTS[@]}"; do
+            DIR="${entry%%:*}"
+            TIER="${entry##*:}"
+            COMPONENT=$(basename "$DIR")
+            
+            # Look for tags matching this component
+            # Pattern: <tier>-<component-lower>-v<version> or <tier>-v<version>
+            TAGS=$(git tag -l "${TIER}-${COMPONENT,,}-v*" 2>/dev/null || true)
+            TIER_TAGS=$(git tag -l "${TIER}-v*" 2>/dev/null || true)
+            
+            if [ -n "$TAGS" ]; then
+              echo "  OK:   Component $DIR has tags: $(echo "$TAGS" | head -3 | tr '\n' ' ')"
+            elif [ -n "$TIER_TAGS" ]; then
+              echo "  OK:   Tier $TIER has tags: $(echo "$TIER_TAGS" | head -3 | tr '\n' ' ')"
             else
-              echo "  MISSING: $TAG_NAME (package $TIER/$PKG_NAME at version $VERSION has no per-package tag)"
+              echo "  MISSING: No tags found for $DIR (tier: $TIER, component: $COMPONENT)"
               MISSING=$((MISSING + 1))
             fi
           done
+          
+          # Also check orchestrator
+          ORCH_TAGS=$(git tag -l "orchestrator-v*" 2>/dev/null || true)
+          if [ -n "$ORCH_TAGS" ]; then
+            echo "  OK:   orchestrator has tags: $(echo "$ORCH_TAGS" | head -3 | tr '\n' ' ')"
+          else
+            echo "  MISSING: No tags found for orchestrator"
+            MISSING=$((MISSING + 1))
+          fi
+          
           echo ""
           if [ "$MISSING" -gt 0 ]; then
-            echo "::warning::$MISSING per-package tag(s) are missing. Releases for those packages will silently no-op (getLogSince returns empty array per PR #255 fix). Run 'git tag <tier>-<pkg>-v<version> <sha> && git push origin <tag>' to create baseline tags."
+            echo "::warning::$MISSING component(s) missing tags"
           else
-            echo "All per-package tags present. Release workflow is healthy."
+            echo "All component tags present. Release workflow is healthy."
           fi
 
   summary:

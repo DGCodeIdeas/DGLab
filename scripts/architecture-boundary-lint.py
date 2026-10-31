@@ -139,12 +139,12 @@ SERVICE_LOCATOR_PATTERNS = [
 # Legitimate callers — these are NOT container service-locators. Listed so the
 # checker can audit them against false-positive regressions.
 LEGITIMATE_RESOLVE_CALLERS = [
-    "packages/core/middleware/src/MiddlewareResolver.php",
-    "packages/core/middleware/src/MiddlewareResolverInterface.php",
-    "packages/core/middleware/src/PerRequestHandler.php",
-    "packages/core/middleware/src/MiddlewarePipelineInterface.php",
-    "packages/bridge/vanguard/src/Vanguard.php",
-    "packages/bridge/vanguard/src/ContractRegistry.php",
+    "Core/Middleware/MiddlewareResolver.php",
+    "Core/Middleware/MiddlewareResolverInterface.php",
+    "Core/Middleware/PerRequestHandler.php",
+    "Core/Middleware/MiddlewarePipelineInterface.php",
+    "Bridge/Vanguard/Vanguard.php",
+    "Bridge/Vanguard/ContractRegistry.php",
 ]
 
 

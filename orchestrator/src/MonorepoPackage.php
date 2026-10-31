@@ -37,26 +37,76 @@ final class MonorepoPackage
     }
 
     /**
-     * Discover all library packages under packages/{tier}/{name}/composer.json.
+     * Discover all library packages under tier directories (Core/, Hub/, Bridge/, Spokes/*/)
+     * or legacy packages/ directory.
      *
      * Skips entries whose composer.json declares "type": "project" — those
      * are not library packages and do not get SemVer tags via the loom.
+     *
+     * Since the architecture migration, packages live directly in tier directories
+     * (Core/Container, Hub/Config, etc.) without per-component composer.json files.
+     * Discovery falls back to detecting component directories by presence of
+     * phpunit.xml.dist or a component manifest.
      *
      * @param string $repoRoot Absolute path to the monorepo root.
      * @return array<int, self>
      */
     public static function discover(string $repoRoot): array
     {
-        $pattern = \rtrim($repoRoot, '/') . '/packages/*/*/composer.json';
-        $matches = \glob($pattern) ?: [];
         $packages = [];
+
+        // First, try the new tier directory structure (post-migration)
+        // Tier directories: Core/, Hub/, Bridge/, Spokes/Internal/, Spokes/External/
+        $tierDirs = ['Core', 'Hub', 'Bridge', 'Spokes/Internal', 'Spokes/External'];
+        foreach ($tierDirs as $tierDir) {
+            $fullTierDir = rtrim($repoRoot, '/') . '/' . $tierDir;
+            if (!is_dir($fullTierDir)) {
+                continue;
+            }
+            $tierName = strtolower(basename($tierDir)); // core, hub, bridge, internal, external
+            if ($tierName === 'internal') {
+                $tierName = 'spoke-internal';
+            } elseif ($tierName === 'external') {
+                $tierName = 'spoke-external';
+            }
+            
+            $entries = scandir($fullTierDir);
+            foreach ($entries as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                $componentDir = $fullTierDir . '/' . $entry;
+                if (!is_dir($componentDir)) {
+                    continue;
+                }
+                // Check if this is a valid component (has phpunit.xml.dist or similar marker)
+                if (!file_exists($componentDir . '/phpunit.xml.dist')) {
+                    continue;
+                }
+                $shortName = $entry;
+                $fullName = "{$tierName}/{$shortName}";
+                $tagPrefix = "{$tierName}-{$shortName}";
+                $relativePath = $tierDir . '/' . $shortName;
+                
+                // Grandfathered: core/container's inaugural tag is unprefixed "v1.0.0".
+                $legacy = ($fullName === 'core/container')
+                    ? '/^v(\d+\.\d+\.\d+)$/'
+                    : null;
+
+                $packages[] = new self($fullName, $relativePath, $tagPrefix, $legacy);
+            }
+        }
+
+        // Fallback: legacy packages/ directory structure (pre-migration)
+        $pattern = rtrim($repoRoot, '/') . '/packages/*/*/composer.json';
+        $matches = glob($pattern) ?: [];
         foreach ($matches as $composerPath) {
-            $contents = \file_get_contents($composerPath);
+            $contents = file_get_contents($composerPath);
             if ($contents === false) {
                 continue;
             }
-            $json = \json_decode($contents, true);
-            if (!\is_array($json)) {
+            $json = json_decode($contents, true);
+            if (!is_array($json)) {
                 continue;
             }
             // Skip type:project packages — they follow their own release cadence.
@@ -64,11 +114,11 @@ final class MonorepoPackage
                 continue;
             }
 
-            $packageDir = \dirname($composerPath);             // .../packages/core/container
-            $shortName  = \basename($packageDir);              // container
-            $tierName   = \basename(\dirname($packageDir));    // core
-            $fullName   = "{$tierName}/{$shortName}";          // core/container
-            $tagPrefix  = "{$tierName}-{$shortName}";          // core-container
+            $packageDir = dirname($composerPath);             // .../packages/core/container
+            $shortName  = basename($packageDir);              // container
+            $tierName   = basename(dirname($packageDir));     // core
+            $fullName   = "{$tierName}/{$shortName}";         // core/container
+            $tagPrefix  = "{$tierName}-{$shortName}";         // core-container
 
             // Grandfathered: core/container's inaugural tag is unprefixed "v1.0.0".
             // Future container releases MUST use the prefixed form.
@@ -79,9 +129,20 @@ final class MonorepoPackage
             // Store the path relative to the repo root (more portable than absolute).
             $relativePath = 'packages/' . $tierName . '/' . $shortName;
 
-            $packages[] = new self($fullName, $relativePath, $tagPrefix, $legacy);
+            // Avoid duplicates if already discovered from new structure
+            $exists = false;
+            foreach ($packages as $p) {
+                if ($p->name === $fullName) {
+                    $exists = true;
+                    break;
+                }
+            }
+            if (!$exists) {
+                $packages[] = new self($fullName, $relativePath, $tagPrefix, $legacy);
+            }
         }
-        \usort($packages, static fn (self $a, self $b): int => \strcmp($a->name, $b->name));
+
+        usort($packages, static fn (self $a, self $b): int => strcmp($a->name, $b->name));
         return $packages;
     }
 
