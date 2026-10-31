@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config;
+namespace DGLab\Core\Config;
 
-use SovereignStack\Core\Config\Exception\InvalidConfigFileException;
+use DGLab\Core\Config\Exception\InvalidConfigFileException;
 
 /**
  * Default {@see ConfigBuilderInterface} implementation.

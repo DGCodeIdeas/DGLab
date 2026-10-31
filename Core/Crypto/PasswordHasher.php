@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Crypto;
+namespace DGLab\Core\Crypto;
 
 /**
  * Argon2id password hashing wrapper per ADR-008.
@@ -14,7 +14,7 @@ namespace SovereignStack\Core\Crypto;
  * Default parameters: memory_cost=65536 (64 MiB), time_cost=4, threads=2
  * per ADR-008 (RFC 9106 second-tier).
  *
- * @package SovereignStack\Core\Crypto
+ * @package DGLab\Core\Crypto
  */
 final class PasswordHasher
 {

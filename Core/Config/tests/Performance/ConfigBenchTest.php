@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config\Tests\Performance;
+namespace DGLab\Core\Config\Tests\Performance;
 
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Config\ConfigBuilder;
-use SovereignStack\Core\Config\ConfigRepository;
+use DGLab\Core\Config\ConfigBuilder;
+use DGLab\Core\Config\ConfigRepository;
 
 /**
  * Performance test per blueprint CI criterion:

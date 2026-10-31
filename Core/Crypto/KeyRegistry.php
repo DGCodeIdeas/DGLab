@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Crypto;
+namespace DGLab\Core\Crypto;
 
 use SensitiveParameterValue;
 
@@ -16,7 +16,7 @@ use SensitiveParameterValue;
  * The registry never persists keys — it is an in-process cache
  * populated at boot from CORE-10 Config or HUB-20 Vault.
  *
- * @package SovereignStack\Core\Crypto
+ * @package DGLab\Core\Crypto
  */
 final class KeyRegistry implements KeyRegistryInterface
 {

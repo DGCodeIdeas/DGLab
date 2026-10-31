@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config\Tests\Unit;
+namespace DGLab\Core\Config\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Config\EnvLoader;
-use SovereignStack\Core\Config\Exception\InvalidEnvFileException;
+use DGLab\Core\Config\EnvLoader;
+use DGLab\Core\Config\Exception\InvalidEnvFileException;
 
 final class EnvLoaderTest extends TestCase
 {

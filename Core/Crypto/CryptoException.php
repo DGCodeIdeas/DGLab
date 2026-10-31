@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Crypto;
+namespace DGLab\Core\Crypto;
 
 /**
  * Thrown for every cryptographic failure in CORE-16.

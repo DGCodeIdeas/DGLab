@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config\Exception;
+namespace DGLab\Core\Config\Exception;
 
 /**
  * Thrown when a .env file cannot be loaded.

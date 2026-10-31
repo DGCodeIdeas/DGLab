@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config\Tests\Unit;
+namespace DGLab\Core\Config\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Config\ConfigBuilder;
-use SovereignStack\Core\Config\Exception\InvalidConfigFileException;
+use DGLab\Core\Config\ConfigBuilder;
+use DGLab\Core\Config\Exception\InvalidConfigFileException;
 
 final class ConfigBuilderTest extends TestCase
 {

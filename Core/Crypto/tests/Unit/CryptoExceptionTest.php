@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-namespace SovereignStack\Core\Crypto\Tests\Unit;
+namespace DGLab\Core\Crypto\Tests\Unit;
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Crypto\CryptoException;
+use DGLab\Core\Crypto\CryptoException;
 final class CryptoExceptionTest extends TestCase
 {
     public function testTagMismatchErrorCode(): void

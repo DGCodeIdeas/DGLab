@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config\Exception;
+namespace DGLab\Core\Config\Exception;
 
 /**
- * Thrown by {@see \SovereignStack\Core\Config\ConfigInterface::getOrFail()}
+ * Thrown by {@see \DGLab\Core\Config\ConfigInterface::getOrFail()}
  * when a required configuration key is absent.
  */
 class MissingConfigurationException extends \RuntimeException

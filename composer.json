@@ -61,7 +61,9 @@
             "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/",
             "SovereignStack\\Core\\View\\": "packages/core/view/src/",
             "DGLab\\Core\\Filesystem\\": "Core/Filesystem/",
-            "DGLab\\Core\\NeoSpx\\": "Core/NeoSpx/"
+            "DGLab\\Core\\NeoSpx\\": "Core/NeoSpx/",
+            "DGLab\\Core\\Config\\": "Core/Config/",
+            "DGLab\\Core\\Crypto\\": "Core/Crypto/"
         }
     },
     "autoload-dev": {
@@ -73,7 +75,9 @@
             "SovereignStack\\Spoke\\Showcase\\Tests\\": "packages/spoke/internal/showcase/tests/",
             "SovereignStack\\Spoke\\Lms\\Tests\\": "packages/spoke/internal/lms/tests/",
             "SovereignStack\\Core\\View\\Tests\\": "packages/core/view/tests/",
-            "DGLab\\Core\\NeoSpx\\Tests\\": "Core/NeoSpx/tests/"
+            "DGLab\\Core\\NeoSpx\\Tests\\": "Core/NeoSpx/tests/",
+            "DGLab\\Core\\Config\\Tests\\": "Core/Config/tests/",
+            "DGLab\\Core\\Crypto\\Tests\\": "Core/Crypto/tests/"
         }
     },
     "repositories": [

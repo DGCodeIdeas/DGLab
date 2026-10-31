@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace SovereignStack\Core\Config\Tests\Unit;
+namespace DGLab\Core\Config\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Config\ConfigRepository;
-use SovereignStack\Core\Config\Exception\MissingConfigurationException;
+use DGLab\Core\Config\ConfigRepository;
+use DGLab\Core\Config\Exception\MissingConfigurationException;
 
 final class ConfigRepositoryTest extends TestCase
 {

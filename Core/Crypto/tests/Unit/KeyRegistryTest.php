@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
-namespace SovereignStack\Core\Crypto\Tests\Unit;
+namespace DGLab\Core\Crypto\Tests\Unit;
 use PHPUnit\Framework\TestCase;
-use SovereignStack\Core\Crypto\CryptoException;
-use SovereignStack\Core\Crypto\KeyRegistry;
+use DGLab\Core\Crypto\CryptoException;
+use DGLab\Core\Crypto\KeyRegistry;
 final class KeyRegistryTest extends TestCase
 {
     public function testAddAndGetKey(): void
