@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\NeoSPX\Tests\Unit\Lexer;
+namespace DGLab\Core\NeoSpx\Tests\Unit\Lexer;
 
-use SovereignStack\Core\NeoSPX\Lexer\NeoSPXLexer;
-use SovereignStack\Core\NeoSPX\Lexer\TokenType;
+use DGLab\Core\NeoSpx\Lexer\NeoSPXLexer;
+use DGLab\Core\NeoSpx\Lexer\TokenType;
 use PHPUnit\Framework\TestCase;
 
 /**

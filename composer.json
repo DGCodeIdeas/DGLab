@@ -60,7 +60,8 @@
             "SovereignStack\\Spoke\\Showcase\\": "packages/spoke/internal/showcase/src/",
             "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/",
             "SovereignStack\\Core\\View\\": "packages/core/view/src/",
-            "DGLab\\Core\\Filesystem\\": "Core/Filesystem/"
+            "DGLab\\Core\\Filesystem\\": "Core/Filesystem/",
+            "DGLab\\Core\\NeoSpx\\": "Core/NeoSpx/"
         }
     },
     "autoload-dev": {
@@ -71,7 +72,8 @@
             "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/",
             "SovereignStack\\Spoke\\Showcase\\Tests\\": "packages/spoke/internal/showcase/tests/",
             "SovereignStack\\Spoke\\Lms\\Tests\\": "packages/spoke/internal/lms/tests/",
-            "SovereignStack\\Core\\View\\Tests\\": "packages/core/view/tests/"
+            "SovereignStack\\Core\\View\\Tests\\": "packages/core/view/tests/",
+            "DGLab\\Core\\NeoSpx\\Tests\\": "Core/NeoSpx/tests/"
         }
     },
     "repositories": [

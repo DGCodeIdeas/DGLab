@@ -110,20 +110,12 @@ jobs:
             working-dir: packages/core/dbal
           - package: core/crypto
             working-dir: packages/core/crypto
-<<<<<<< HEAD
-=======
-          - package: core/filesystem
-            working-dir: packages/core/filesystem
->>>>>>> origin/migration-stage-0-ci-preflight
-          - package: core/neospx
-            working-dir: packages/core/neospx
+          - package: Core/NeoSpx
+            working-dir: Core/NeoSpx
           - package: core/view
             working-dir: packages/core/view
-<<<<<<< HEAD
           - package: Core/Filesystem
             working-dir: Core/Filesystem
-=======
->>>>>>> origin/migration-stage-0-ci-preflight
           - package: spoke/internal/showcase
             working-dir: packages/spoke/internal/showcase
           - package: hub/config

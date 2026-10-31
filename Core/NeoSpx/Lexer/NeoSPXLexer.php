@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace SovereignStack\Core\NeoSPX\Lexer;
+namespace DGLab\Core\NeoSpx\Lexer;
 
 /**
  * NeoSPXLexer — stateful mode-stacked lexer for the NeoSPX template language.
