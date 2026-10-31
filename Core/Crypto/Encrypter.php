@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Crypto;
+namespace SovereignStack\Core\Crypto;
 
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -19,7 +19,7 @@ use Psr\Log\NullLogger;
  * sodium_memzero after each encrypt/decrypt call. The encrypter does
  * not cache DEKs across requests.
  *
- * @package DGLab\Core\Crypto
+ * @package SovereignStack\Core\Crypto
  */
 final class Encrypter implements EncrypterInterface
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config;
+namespace SovereignStack\Core\Config;
 
 /**
  * Builds an immutable {@see ConfigInterface} from PHP config files,
@@ -17,7 +17,7 @@ namespace DGLab\Core\Config;
  * mutations throw. This matches ADR-017's worker-scope discipline:
  * the repository is built once at worker boot and never mutated.
  *
- * @package DGLab\Core\Config
+ * @package SovereignStack\Core\Config
  */
 interface ConfigBuilderInterface
 {

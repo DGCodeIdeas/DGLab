@@ -40,56 +40,50 @@
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^11.0"
     },
-    "autoload": {
+"autoload": {
         "psr-4": {
             "App\\": "app/",
-            "SovereignStack\\Core\\Container\\": "packages/core/container/src/",
-            "SovereignStack\\Core\\EventDispatcher\\": "packages/core/event-dispatcher/src/",
-            "SovereignStack\\Core\\Http\\": "packages/core/http-message/src/",
-            "SovereignStack\\Core\\Router\\": "packages/core/router/src/",
-            "SovereignStack\\Core\\Config\\": "packages/core/config/src/",
-            "SovereignStack\\Core\\Logger\\": "packages/core/logger/src/",
-            "SovereignStack\\Core\\ErrorHandler\\": "packages/core/error-handler/src/",
-            "SovereignStack\\Core\\Kernel\\": "packages/core/kernel/src/",
-            "SovereignStack\\Core\\Database\\": "packages/core/dbal/src/",
-            "SovereignStack\\Hub\\Config\\": "packages/hub/config/src/",
-            "SovereignStack\\Bridge\\": "packages/bridge/vanguard/src/",
-            "SovereignStack\\Internal\\Codex\\": "packages/spoke/internal/codex/src/",
-            "SovereignStack\\External\\Canvas\\": "packages/spoke/external/canvas/src/",
-            "SovereignStack\\Hub\\Identity\\": "packages/hub/identity/src/",
-            "SovereignStack\\Spoke\\Showcase\\": "packages/spoke/internal/showcase/src/",
-            "SovereignStack\\Spoke\\Lms\\": "packages/spoke/internal/lms/src/",
-            "SovereignStack\\Core\\View\\": "packages/core/view/src/",
-            "DGLab\\Core\\Filesystem\\": "Core/Filesystem/",
-            "DGLab\\Core\\NeoSpx\\": "Core/NeoSpx/",
-            "DGLab\\Core\\Config\\": "Core/Config/",
-            "DGLab\\Core\\Crypto\\": "Core/Crypto/"
+            "SovereignStack\\Core\\Container\\": "Core/Container/",
+            "SovereignStack\\Core\\EventDispatcher\\": "Core/EventDispatcher/",
+            "SovereignStack\\Core\\Http\\": ["Core/HttpMessage/", "Core/Middleware/"],
+            "SovereignStack\\Core\\Router\\": "Core/Router/",
+            "SovereignStack\\Core\\Config\\": "Core/Config/",
+            "SovereignStack\\Core\\Logger\\": "Core/Logger/",
+            "SovereignStack\\Core\\ErrorHandler\\": "Core/ErrorHandler/",
+            "SovereignStack\\Core\\Kernel\\": "Core/Kernel/",
+            "SovereignStack\\Core\\Database\\": "Core/Database/",
+            "SovereignStack\\Core\\Filesystem\\": "Core/Filesystem/",
+            "SovereignStack\\Core\\NeoSpx\\": "Core/NeoSpx/",
+            "SovereignStack\\Core\\Crypto\\": "Core/Crypto/",
+            "SovereignStack\\Core\\View\\": "Core/View/",
+            "SovereignStack\\Hub\\Config\\": "Hub/Config/",
+            "SovereignStack\\Bridge\\": "Bridge/Vanguard/",
+            "SovereignStack\\Internal\\Codex\\": "Spokes/Internal/Codex/",
+            "SovereignStack\\External\\Canvas\\": "Spokes/External/Canvas/",
+            "SovereignStack\\Hub\\Identity\\": "Hub/Identity/",
+            "SovereignStack\\Internal\\Showcase\\": "Spokes/Internal/Showcase/",
+            "SovereignStack\\Internal\\Lms\\": "Spokes/Internal/Lms/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DGLab\\Core\\Filesystem\\Tests\\": "Core/Filesystem/tests/",
+            "SovereignStack\\Core\\Container\\Tests\\": "Core/Container/tests/",
+            "SovereignStack\\Core\\Filesystem\\Tests\\": "Core/Filesystem/tests/",
             "Tests\\": "tests/",
             "App\\Tests\\": "app/tests/",
-            "SovereignStack\\Hub\\Identity\\Tests\\": "packages/hub/identity/tests/",
-            "SovereignStack\\Spoke\\Showcase\\Tests\\": "packages/spoke/internal/showcase/tests/",
-            "SovereignStack\\Spoke\\Lms\\Tests\\": "packages/spoke/internal/lms/tests/",
-            "SovereignStack\\Core\\View\\Tests\\": "packages/core/view/tests/",
-            "DGLab\\Core\\NeoSpx\\Tests\\": "Core/NeoSpx/tests/",
-            "DGLab\\Core\\Config\\Tests\\": "Core/Config/tests/",
-            "DGLab\\Core\\Crypto\\Tests\\": "Core/Crypto/tests/"
+            "SovereignStack\\Hub\\Identity\\Tests\\": "Hub/Identity/tests/",
+            "SovereignStack\\Internal\\Showcase\\Tests\\": "Spokes/Internal/Showcase/tests/",
+            "SovereignStack\\Internal\\Lms\\Tests\\": "Spokes/Internal/Lms/tests/",
+            "SovereignStack\\Core\\Kernel\\Tests\\": "Core/Kernel/tests/",
+            "SovereignStack\\Core\\NeoSpx\\Tests\\": "Core/NeoSpx/tests/",
+            "SovereignStack\\Core\\Config\\Tests\\": "Core/Config/tests/",
+            "SovereignStack\\Core\\EventDispatcher\\Tests\\": "Core/EventDispatcher/tests/",
+            "SovereignStack\\Core\\Router\\Tests\\": "Core/Router/tests/",
+            "SovereignStack\\Core\\Crypto\\Tests\\": "Core/Crypto/tests/",
+            "SovereignStack\\Core\\Http\\Tests\\": ["Core/HttpMessage/tests/", "Core/Middleware/tests/"]
         }
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "packages/*/*"
-        },
-        {
-            "type": "path",
-            "url": "packages/*/*/*"
-        }
-    ],
+    "repositories": [],
     "minimum-stability": "dev",
     "prefer-stable": true,
     "config": {

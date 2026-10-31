@@ -90,8 +90,8 @@ jobs:
         include:
           - package: core/container
             working-dir: packages/core/container
-          - package: core/event-dispatcher
-            working-dir: packages/core/event-dispatcher
+          - package: Core/EventDispatcher
+            working-dir: Core/EventDispatcher
           - package: core/http-message
             working-dir: packages/core/http-message
           - package: core/middleware
@@ -112,8 +112,8 @@ jobs:
             working-dir: Core/Crypto
           - package: Core/NeoSpx
             working-dir: Core/NeoSpx
-          - package: core/view
-            working-dir: packages/core/view
+          - package: Core/View
+            working-dir: Core/View
           - package: Core/Filesystem
             working-dir: Core/Filesystem
           - package: spoke/internal/showcase

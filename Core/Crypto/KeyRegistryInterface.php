@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Crypto;
+namespace SovereignStack\Core\Crypto;
 
 /**
  * Multi-key registry contract.

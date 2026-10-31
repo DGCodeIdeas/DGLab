@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config;
+namespace SovereignStack\Core\Config;
 
-use DGLab\Core\Config\Exception\InvalidEnvFileException;
+use SovereignStack\Core\Config\Exception\InvalidEnvFileException;
 
 /**
  * Parses .env files into $_ENV.

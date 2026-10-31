@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Filesystem\Tests\Unit;
+namespace SovereignStack\Core\Filesystem\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use DGLab\Core\Filesystem\Filesystem;
-use DGLab\Core\Filesystem\FileMetadata;
-use DGLab\Core\Filesystem\PathTraversalRefusedException;
+use SovereignStack\Core\Filesystem\Filesystem;
+use SovereignStack\Core\Filesystem\FileMetadata;
+use SovereignStack\Core\Filesystem\PathTraversalRefusedException;
 
 final class FilesystemTest extends TestCase
 {
@@ -103,7 +103,7 @@ final class FilesystemTest extends TestCase
     public function testStreamByteLimitEnforced(): void
     {
         $fs = new Filesystem($this->tempRoot, streamByteLimit: 10);
-        $this->expectException(\DGLab\Core\Filesystem\StreamByteLimitExceededException::class);
+        $this->expectException(\SovereignStack\Core\Filesystem\StreamByteLimitExceededException::class);
         $fs->write('test.txt', str_repeat('x', 100));
     }
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config;
+namespace SovereignStack\Core\Config;
 
-use DGLab\Core\Config\Exception\MissingConfigurationException;
+use SovereignStack\Core\Config\Exception\MissingConfigurationException;
 
 /**
  * Immutable configuration repository backed by a nested array.

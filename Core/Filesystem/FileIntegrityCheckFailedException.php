@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Filesystem;
+namespace SovereignStack\Core\Filesystem;
 
 /**
  * Thrown when a file's integrity check fails (write succeeded but read-back
@@ -11,6 +11,6 @@ namespace DGLab\Core\Filesystem;
  * Per SPEC §25: class Corrupt (no retry, immediate breaker, HTTP 500 + page operator).
  * Per doctrine §4.3: corrupt files are moved to quarantine for operator inspection.
  *
- * @package DGLab\Core\Filesystem
+ * @package SovereignStack\Core\Filesystem
  */
 class FileIntegrityCheckFailedException extends FilesystemException {}

@@ -1,0 +1,15 @@
+includes:
+    - ../../vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+    level: 6
+    paths:
+        - Application
+        - Domain
+        - Http
+        - Infrastructure
+        - Jwt
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        - '#has parameter \$roles with no value type specified in iterable type array#'
+        - '#Value assigned to variable \$seqLen only flows into values that are never used#'

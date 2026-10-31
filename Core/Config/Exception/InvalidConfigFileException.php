@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config\Exception;
+namespace SovereignStack\Core\Config\Exception;
 
 /**
  * Thrown when a PHP config file cannot be loaded: missing file,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Filesystem;
+namespace SovereignStack\Core\Filesystem;
 
 /**
  * Safe blob storage abstraction — the "beautiful plug" over PHP filesystem functions.
@@ -23,7 +23,7 @@ namespace DGLab\Core\Filesystem;
  *
  * All paths are RELATIVE to the configured root. Absolute paths are rejected.
  *
- * @package DGLab\Core\Filesystem
+ * @package SovereignStack\Core\Filesystem
  */
 interface FilesystemInterface
 {

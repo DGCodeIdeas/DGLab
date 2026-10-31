@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Filesystem\Internal;
+namespace SovereignStack\Core\Filesystem\Internal;
 
-use DGLab\Core\Filesystem\FileIntegrityCheckFailedException;
-use DGLab\Core\Filesystem\StreamByteLimitExceededException;
+use SovereignStack\Core\Filesystem\FileIntegrityCheckFailedException;
+use SovereignStack\Core\Filesystem\StreamByteLimitExceededException;
 
 /**
  * Atomic file writer — temp file + flush + rename pattern.
@@ -16,7 +16,7 @@ use DGLab\Core\Filesystem\StreamByteLimitExceededException;
  * Per Lap 2 P1-4: writeStream now handles fread/fwrite failures explicitly.
  *
  * @internal
- * @package DGLab\Core\Filesystem\Internal
+ * @package SovereignStack\Core\Filesystem\Internal
  */
 final class AtomicWriter
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config;
+namespace SovereignStack\Core\Config;
 
 /**
  * Immutable configuration repository.
@@ -17,7 +17,7 @@ namespace DGLab\Core\Config;
  * with '***REDACTED***'. Use {@see allRaw()} for the unredacted tree
  * (trusted internal callers only — NEVER log or expose to clients).
  *
- * @package DGLab\Core\Config
+ * @package SovereignStack\Core\Config
  */
 interface ConfigInterface
 {

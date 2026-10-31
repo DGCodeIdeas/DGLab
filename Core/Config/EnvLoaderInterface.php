@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config;
+namespace SovereignStack\Core\Config;
 
 /**
  * Loads environment variables from a .env file into $_ENV.
@@ -15,7 +15,7 @@ namespace DGLab\Core\Config;
  *  - Write results to $_ENV only — never to getenv(), which is not thread-safe
  *    under FrankenPHP workers (per blueprint §Context7 Research).
  *
- * @package DGLab\Core\Config
+ * @package SovereignStack\Core\Config
  */
 interface EnvLoaderInterface
 {

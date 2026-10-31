@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Crypto;
+namespace SovereignStack\Core\Crypto;
 
 /**
  * HKDF-SHA256 key derivation wrapper (RFC 5869).
@@ -14,7 +14,7 @@ namespace DGLab\Core\Crypto;
  * NOT a password-hashing primitive — HKDF has no salt-and-iteration
  * loop and is trivially brute-forceable for low-entropy inputs.
  *
- * @package DGLab\Core\Crypto
+ * @package SovereignStack\Core\Crypto
  */
 final class Hasher
 {

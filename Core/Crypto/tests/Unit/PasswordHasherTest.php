@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
-namespace DGLab\Core\Crypto\Tests\Unit;
+namespace SovereignStack\Core\Crypto\Tests\Unit;
 use PHPUnit\Framework\TestCase;
-use DGLab\Core\Crypto\CryptoException;
-use DGLab\Core\Crypto\PasswordHasher;
+use SovereignStack\Core\Crypto\CryptoException;
+use SovereignStack\Core\Crypto\PasswordHasher;
 final class PasswordHasherTest extends TestCase
 {
     public function testHashProducesArgon2id(): void

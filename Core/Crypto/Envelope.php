@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Crypto;
+namespace SovereignStack\Core\Crypto;
 
 use JsonSerializable;
 
@@ -12,7 +12,7 @@ use JsonSerializable;
  * Properties are base64-encoded for JSON transport. The envelope
  * is the only payload format the Encrypter accepts/returns.
  *
- * @package DGLab\Core\Crypto
+ * @package SovereignStack\Core\Crypto
  */
 final readonly class Envelope implements JsonSerializable
 {

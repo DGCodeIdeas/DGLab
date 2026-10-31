@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DGLab\Core\Config\Tests\Security;
+namespace SovereignStack\Core\Config\Tests\Security;
 
 use PHPUnit\Framework\TestCase;
-use DGLab\Core\Config\ConfigBuilder;
+use SovereignStack\Core\Config\ConfigBuilder;
 
 /**
  * Security tests: configuration values that originate from $_ENV or .env

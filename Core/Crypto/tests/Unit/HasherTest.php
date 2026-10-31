@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-namespace DGLab\Core\Crypto\Tests\Unit;
+namespace SovereignStack\Core\Crypto\Tests\Unit;
 use PHPUnit\Framework\TestCase;
-use DGLab\Core\Crypto\Hasher;
+use SovereignStack\Core\Crypto\Hasher;
 final class HasherTest extends TestCase
 {
     public function testDeriveKeyDeterministic(): void

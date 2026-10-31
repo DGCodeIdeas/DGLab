@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace DGLab\Core\NeoSpx\Lexer;
+namespace SovereignStack\Core\NeoSpx\Lexer;
 
 /**
  * NeoSPX token types per §3.2 of the NeoSPX EBNF Grammar Specification.
