@@ -139,7 +139,7 @@ jobs:
           TIER_DIR=$(echo "$TIER" | sed 's/^./\U&/')
           for PKG_DIR in ${TIER_DIR}/*/; do
             [ -d "$PKG_DIR" ] || continue
-            PKG=$(basename "$PKG_DIR")
+            PKG=$(basename "$PKG_DIR" | tr '[:upper:]' '[:lower:]')
             COUNT=$((COUNT+1))
             # Error contract (SAAI Phase 3): loom failing, or answering with
             # output that is not its documented JSON, is a hard failure. Only
@@ -243,7 +243,7 @@ jobs:
 
           # Bump ALL packages in the tier to the same version.
           for PKG_DIR in ${TIER}/*/; do
-            PKG=$(basename "$PKG_DIR")
+            PKG=$(basename "$PKG_DIR" | tr '[:upper:]' '[:lower:]')
             # Error contract (SAAI Phase 3): the trailing `|| true` here turned
             # every failed release — refused CI gate, tag conflict, push reject,
             # unknown package — into a green "Bumped" line while nothing was
