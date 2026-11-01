@@ -73,7 +73,8 @@
             "SovereignStack\\Core\\Http\\Tests\\": [
                 "Core/HttpMessage/tests/",
                 "Core/Middleware/tests/"
-            ]
+            ],
+            "SovereignStack\\Orchestrator\\Tests\\": "orchestrator/tests/"
         }
     },
     "repositories": [],
