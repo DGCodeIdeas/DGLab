@@ -200,6 +200,10 @@ function computeVersionBump(string $repoName): array
             if (\is_array($composerJson) && \is_string($composerJson['version'] ?? null)) {
                 $currentVersion = $composerJson['version'];
             }
+        } else {
+            // Post-migration: no per-component composer.json.
+            // Default to 4-segment ADR-019 format.
+            $currentVersion = '0.0.0.0';
         }
     }
     $log = $manager->getLogSince($currentVersion);

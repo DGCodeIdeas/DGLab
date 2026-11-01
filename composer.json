@@ -40,12 +40,15 @@
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^11.0"
     },
-"autoload": {
+    "autoload": {
         "psr-4": {
             "App\\": "app/",
             "SovereignStack\\Core\\Container\\": "Core/Container/",
             "SovereignStack\\Core\\EventDispatcher\\": "Core/EventDispatcher/",
-            "SovereignStack\\Core\\Http\\": ["Core/HttpMessage/", "Core/Middleware/"],
+            "SovereignStack\\Core\\Http\\": [
+                "Core/HttpMessage/",
+                "Core/Middleware/"
+            ],
             "SovereignStack\\Core\\Router\\": "Core/Router/",
             "SovereignStack\\Core\\Config\\": "Core/Config/",
             "SovereignStack\\Core\\Logger\\": "Core/Logger/",
@@ -62,7 +65,8 @@
             "SovereignStack\\External\\Canvas\\": "Spokes/External/Canvas/",
             "SovereignStack\\Hub\\Identity\\": "Hub/Identity/",
             "SovereignStack\\Internal\\Showcase\\": "Spokes/Internal/Showcase/",
-            "SovereignStack\\Internal\\Lms\\": "Spokes/Internal/Lms/"
+            "SovereignStack\\Internal\\Lms\\": "Spokes/Internal/Lms/",
+            "SovereignStack\\Orchestrator\\": "orchestrator/src/"
         }
     },
     "autoload-dev": {
@@ -80,7 +84,10 @@
             "SovereignStack\\Core\\EventDispatcher\\Tests\\": "Core/EventDispatcher/tests/",
             "SovereignStack\\Core\\Router\\Tests\\": "Core/Router/tests/",
             "SovereignStack\\Core\\Crypto\\Tests\\": "Core/Crypto/tests/",
-            "SovereignStack\\Core\\Http\\Tests\\": ["Core/HttpMessage/tests/", "Core/Middleware/tests/"]
+            "SovereignStack\\Core\\Http\\Tests\\": [
+                "Core/HttpMessage/tests/",
+                "Core/Middleware/tests/"
+            ]
         }
     },
     "repositories": [],
