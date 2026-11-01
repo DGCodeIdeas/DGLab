@@ -90,7 +90,6 @@ jobs:
       matrix:
         include:
           - package: orchestrator
-            working-dir: orchestrator
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,26 +111,26 @@ jobs:
 
       # Migrated tier-dir components (Core/, Hub/, etc.) have no per-package composer.json.
       - name: Validate root composer.json (migrated components)
-        if: startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/')
+        if: startsWith(matrix.package, 'Core/') || startsWith(matrix.package, 'Hub/') || startsWith(matrix.package, 'Bridge/') || startsWith(matrix.package, 'Spokes/')
         run: composer validate --no-check-publish --no-check-version
 
       - name: Install root dependencies (migrated components)
-        if: startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/')
+        if: startsWith(matrix.package, 'Core/') || startsWith(matrix.package, 'Hub/') || startsWith(matrix.package, 'Bridge/') || startsWith(matrix.package, 'Spokes/')
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Validate composer.json (packages/ layout)
-        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
-        working-directory: ${{ matrix.working-dir }}
+        if: "!(startsWith(matrix.package, 'Core/') || startsWith(matrix.package, 'Hub/') || startsWith(matrix.package, 'Bridge/') || startsWith(matrix.package, 'Spokes/'))"
+        working-directory: ${{ matrix.package }}
         run: composer validate --no-check-publish --no-check-version
 
       - name: Clean vendor directory
-        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
-        working-directory: ${{ matrix.working-dir }}
+        if: "!(startsWith(matrix.package, 'Core/') || startsWith(matrix.package, 'Hub/') || startsWith(matrix.package, 'Bridge/') || startsWith(matrix.package, 'Spokes/'))"
+        working-directory: ${{ matrix.package }}
         run: rm -rf vendor
 
       - name: Install dependencies
-        if: "!(startsWith(matrix.working-dir, 'Core/') || startsWith(matrix.working-dir, 'Hub/') || startsWith(matrix.working-dir, 'Bridge/') || startsWith(matrix.working-dir, 'Spokes/'))"
-        working-directory: ${{ matrix.working-dir }}
+        if: "!(startsWith(matrix.package, 'Core/') || startsWith(matrix.package, 'Hub/') || startsWith(matrix.package, 'Bridge/') || startsWith(matrix.package, 'Spokes/'))"
+        working-directory: ${{ matrix.package }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Install root autoload dependencies for orchestrator tests
@@ -139,7 +138,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: PHPStan (level max)
-        working-directory: ${{ matrix.working-dir }}
+        working-directory: ${{ matrix.package }}
         run: |
           if [ -f vendor/bin/phpstan ]; then
             vendor/bin/phpstan analyse --error-format=github
@@ -148,7 +147,7 @@ jobs:
           fi
 
       - name: PHPUnit (full suite, testdox)
-        working-directory: ${{ matrix.working-dir }}
+        working-directory: ${{ matrix.package }}
         run: |
           if [ -f vendor/bin/phpunit ]; then
             vendor/bin/phpunit --testdox --colors=never --no-coverage
@@ -158,12 +157,12 @@ jobs:
 
       - name: PHPUnit (PSR-11 conformance, named)
         if: matrix.package == 'core/container'
-        working-directory: ${{ matrix.working-dir }}
+        working-directory: ${{ matrix.package }}
         run: vendor/bin/phpunit --filter Psr11Conformance --testdox --colors=never --no-coverage
 
       - name: Verify bin/loom is executable (Finding 21 guard)
         if: matrix.package == 'orchestrator'
-        working-directory: ${{ matrix.working-dir }}
+        working-directory: ${{ matrix.package }}
         run: |
           set -x
           ls -la bin/loom
