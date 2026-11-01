@@ -288,7 +288,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run PHPStan on entire codebase
-        run: vendor/bin/phpstan analyse --error-format=github
+        run: vendor/bin/phpstan analyse Core Hub Bridge Spokes app orchestrator --error-format=github
 
   # Security checks - secret scanning, dependency vulnerabilities
   security:
