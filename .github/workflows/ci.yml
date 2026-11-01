@@ -103,8 +103,8 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Load component manifest
-          mapfile -t COMPONENTS < <(grep -E '^\s+"Core/' component-manifest.txt | sed 's/.*"\(.*\)".*/\1/')
+          # Load component manifest (all component paths, not just Core/)
+          mapfile -t COMPONENTS < <(grep -E '^\s+"(Core|Hub|Bridge|Spokes|orchestrator)' component-manifest.txt | sed 's/.*"\(.*\)".*/\1/')
           # Also include orchestrator if not in manifest
           if [[ ! " ${COMPONENTS[@]} " =~ " orchestrator " ]]; then
             COMPONENTS+=("orchestrator")
