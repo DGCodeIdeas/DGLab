@@ -83,7 +83,7 @@ jobs:
   test:
     needs: gate
     if: needs.gate.outputs.changed == 'true'
-    name: PHPUnit + PHPStan (${{ matrix.package }})
+    name: PHPUnit + PHPStan
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
