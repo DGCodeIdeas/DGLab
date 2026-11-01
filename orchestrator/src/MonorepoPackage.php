@@ -14,6 +14,7 @@ final class MonorepoPackage
     ) {
     }
 
+    /** @return list<self> */
     public static function discover(string $repoRoot): array
     {
         $packages = [];

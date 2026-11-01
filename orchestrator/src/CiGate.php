@@ -69,7 +69,7 @@ class CiGate
                 $githubRepo = '';
             }
             $parts = \explode('/', $githubRepo);
-            $repoOwner = $repoOwner ?? ($parts[0] ?? '');
+            $repoOwner = $repoOwner ?? $parts[0];
             $repoName = $repoName ?? ($parts[1] ?? '');
         }
         // At this point PHPStan infers both as non-nullable string.

@@ -59,7 +59,7 @@ class CIMonitor
         // (and previously returned 'fail' instead of the correct 'unknown'
         // or 'pass' from running ci/run.php). See Task 49 CIMonitorTest
         // regression after Guzzle was added as a PSR-18 implementation.
-        if (\preg_match('#^https?://#', $repo['ci_url'])
+        if (\preg_match('#^https?://#', $repo['ci_url']) === 1
             && $this->httpClient !== null
             && $this->requestFactory !== null
         ) {

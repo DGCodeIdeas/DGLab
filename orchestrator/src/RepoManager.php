@@ -210,7 +210,7 @@ class RepoManager
         }
 
         $sha = \trim($output[0] ?? '');
-        if (!\preg_match('/^[0-9a-f]{40}$/', $sha)) {
+        if (\preg_match('/^[0-9a-f]{40}$/', $sha) !== 1) {
             throw new \RuntimeException("Unexpected HEAD SHA after commit: {$sha}");
         }
         return $sha;
@@ -312,7 +312,7 @@ class RepoManager
         $patterns = $this->buildTagPatterns();
         foreach ($tags as $tag) {
             foreach ($patterns as $pattern) {
-                if (\preg_match($pattern, $tag, $m) && isset($m[1])) {
+                if (\preg_match($pattern, $tag, $m) === 1 && isset($m[1])) {
                     $versions[] = $m[1];
                     break;
                 }
@@ -446,11 +446,11 @@ class RepoManager
     private function isValidVersion(string $version): bool
     {
         // Four-segment (ADR-019), with optional +build-metadata.
-        if (\preg_match('/^\d+\.\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version)) {
+        if (\preg_match('/^\d+\.\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version) === 1) {
             return true;
         }
         // Legacy three-segment SemVer, with optional +build-metadata.
-        if (\preg_match('/^\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version)) {
+        if (\preg_match('/^\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version) === 1) {
             return true;
         }
         return false;
@@ -493,7 +493,7 @@ class RepoManager
         $patterns = $this->buildTagPatterns();
         foreach ($tags as $tag) {
             foreach ($patterns as $pattern) {
-                if (\preg_match($pattern, $tag, $m) && isset($m[1]) && $m[1] === $version) {
+                if (\preg_match($pattern, $tag, $m) === 1 && isset($m[1]) && $m[1] === $version) {
                     return $tag;
                 }
             }

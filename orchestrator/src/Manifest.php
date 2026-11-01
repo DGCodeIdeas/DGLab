@@ -42,8 +42,8 @@ final class Manifest
         // version:release step then threw 'Invalid SemVer version: 0.2.0.0'
         // for every package on the first tier release attempt — silent no-op
         // root cause #4 (Task 50). Fixed by accepting both 3- and 4-segment.
-        $isValid = \preg_match('/^\d+\.\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version)
-            || \preg_match('/^\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version);
+        $isValid = \preg_match('/^\d+\.\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version) === 1
+            || \preg_match('/^\d+\.\d+\.\d+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/', $version) === 1;
         if (!$isValid) {
             throw new \RuntimeException("Invalid SemVer version: {$version}");
         }
