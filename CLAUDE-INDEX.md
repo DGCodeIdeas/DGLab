@@ -1,9 +1,8 @@
 # DGLab — Claude Session Context Index
 
-**Last verified:** 2026-10-22 09:00 UTC  
-**Git baseline:** `main` at `8858e165a76db7b14650298ca17b2265da1e4115`  
-**Remote verified:** Yes — `git fetch origin` completed; remote refs resolve to reported SHAs  
-**Verification limitations:** GitHub web UI may lag behind `git fetch` results; CI run details confirmed via GitHub Actions. Some PR status claims are REPORTED, not independently verified.
+**Last verified:** 2026-11-01  
+**Git baseline:** `origin/main` at `11244ebb5d3d11b7f38ee51100ed069668fbd251` (PR #376 merge)  
+**Verification:** Remote main, current source paths, and GitHub PR/CI state checked on 2026-11-01. This index is a dated snapshot; refresh moving facts each session.
 
 ---
 
@@ -22,7 +21,7 @@ DGLab is a **PHP 8.4 Sovereign Stack monorepo** using a custom **Core/Hub/Spoke 
 
 ### Current Development Direction
 
-**Research-first, then LMS backend.** Per `AGENTS.md` §5, research tracks must complete before new LMS implementation increments. The research phase is substantially complete (9 research report files in root: 5 `*-RESEARCH*.md` + 3 `RESEARCH-*.md` + `COMPLETE-ANALYSIS-RECORD.md`; `RESEARCH-INDEX.md` lists 14 inventory rows but one is duplicated and one file is omitted). The LMS backend is in-progress: enrollment persistence is done (PR #366 merged); progress persistence is on a feature branch (PR #369, unmerged); HTTP/API layer and auth wiring are not started.
+**Research-first, then LMS backend.** Research materials exist in the root, but reconciliation, source review, connecting-theme wording, NeoSPX placement, and authorization to publish the canonical agenda remain unresolved. Do not treat reports as owner-approved decisions. Enrollment persistence and course discovery are present on main (PRs #366 and #364 respectively). Progress persistence is not implemented in the migrated LMS tree; PR #369 closed unmerged against the retired `packages/spoke/internal/lms/` layout. LMS HTTP/API and authentication wiring remain incomplete.
 
 ### Claude's Intended Role
 
@@ -100,7 +99,7 @@ See §10 for the full hierarchy. In brief:
 
 | Path | Purpose | Authority |
 |------|---------|-----------|
-| `AGENTS.md` | Active repository instructions for AI agents | APPROVED (current) — but see §6 re: PR #368 |
+| `AGENTS.md` | Active repository instructions for AI agents | Current instructions; dated operational snapshot must be reverified |
 | `Architecture/SDLC/` | SDLC v5.1 governance documentation | APPROVED |
 | `Architecture/FROZEN-CONTRACTS.md` | 31 frozen interfaces, 2 frozen enums | APPROVED (frozen) |
 | `Architecture/ADRs/` | 21 ADRs (ADR-001 through ADR-021) | APPROVED where status = Accepted |
@@ -169,7 +168,7 @@ See §10 for the full hierarchy. In brief:
 
 ## 5. LMS Architecture and Implementation Map
 
-### Current State (Verified on `main` at `8858e16`)
+### Current State (Verified on `origin/main` at `11244eb`, 2026-11-01)
 
 | Component | Implemented | Unit-Tested | MySQL Integration | E2E Demo |
 |-----------|-------------|-------------|-------------------|----------|
@@ -177,14 +176,16 @@ See §10 for the full hierarchy. In brief:
 | LMS Course/Module Persistence | ✅ | ✅ (mock) | ❌ | ❌ |
 | LMS Enrollment Persistence | ✅ | ✅ | ❌ | ❌ |
 | LMS Enrollment Application Service | ✅ | ✅ | ❌ | ❌ |
-| LMS Progress Persistence | ❌ (on PR #369 branch) | ❌ | ❌ | ❌ |
-| LMS Progress Application Service | ❌ (on PR #369 branch) | ❌ | ❌ | ❌ |
+| LMS Progress Entity + Migration | ✅ | ✅ (domain tests) | ❌ | ❌ |
+| LMS Progress Persistence + Application Service | ❌ | ❌ | ❌ | ❌ |
 | LMS HTTP Routes/Controllers | ❌ | ❌ | ❌ | ❌ |
 | Auth Middleware Wired | ❌ (exists in Hub) | ❌ | ❌ | ❌ |
-| Real MySQL in CI | ❌ | ❌ | ❌ | ❌ |
+| LMS Real MySQL in CI | ❌ | ❌ | ❌ | ❌ |
 | Complete Learner/Admin Flow | ❌ | ❌ | ❌ | ❌ |
 
-### Progress-Recording Path (on PR #369 branch, not yet merged)
+**Current source root:** `Spokes/Internal/Lms/`. Course/module/enrollment entities, services, repositories, and migrations are present. `ProgressRepositoryInterface`, `MySQLProgressRepository`, and a progress application service are absent. PR #369 was closed unmerged and targeted the retired `packages/spoke/internal/lms/` tree.
+
+### Progress-Recording Proposal (PR #369; closed unmerged, not current implementation)
 
 ```
 RecordProgressCommand(enrollmentId, moduleId, newStatus)
@@ -232,15 +233,15 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 
 | Path | Purpose |
 |------|---------|
-| `packages/spoke/internal/lms/src/Domain/Entity/Course.php` | Course aggregate root |
-| `packages/spoke/internal/lms/src/Domain/Entity/Module.php` | Module entity |
-| `packages/spoke/internal/lms/src/Domain/Entity/Enrollment.php` | Enrollment entity |
-| `packages/spoke/internal/lms/src/Domain/Entity/Progress.php` | Progress entity (on PR #369 branch only) |
-| `packages/spoke/internal/lms/src/Application/Service/CourseApplicationService.php` | Course use cases |
-| `packages/spoke/internal/lms/src/Application/Service/EnrollmentApplicationService.php` | Enrollment use cases |
-| `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLCourseRepository.php` | Course persistence |
-| `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLEnrollmentRepository.php` | Enrollment persistence |
-| `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLModuleRepository.php` | Module persistence |
+| `Spokes/Internal/Lms/Domain/Entity/Course.php` | Course aggregate root |
+| `Spokes/Internal/Lms/Domain/Entity/Module.php` | Module entity |
+| `Spokes/Internal/Lms/Domain/Entity/Enrollment.php` | Enrollment entity |
+| `Spokes/Internal/Lms/Domain/Entity/Progress.php` | Progress entity; persistence/application service remain absent |
+| `Spokes/Internal/Lms/Application/Service/CourseApplicationService.php` | Course use cases |
+| `Spokes/Internal/Lms/Application/Service/EnrollmentApplicationService.php` | Enrollment use cases |
+| `Spokes/Internal/Lms/Infrastructure/Persistence/MySQLCourseRepository.php` | Course persistence |
+| `Spokes/Internal/Lms/Infrastructure/Persistence/MySQLEnrollmentRepository.php` | Enrollment persistence |
+| `Spokes/Internal/Lms/Infrastructure/Persistence/MySQLModuleRepository.php` | Module persistence |
 | `app/ApplicationFactory.php` | Composition root — only `/` and `/health` routes |
 
 ### LMS Migrations
@@ -262,61 +263,53 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 | `MySQLCourseRepositoryTest.php` | Unit (mock) | Course persistence queries |
 | `MySQLEnrollmentRepositoryTest.php` | Unit (mock) | Enrollment persistence queries |
 | `MySQLModuleRepositoryTest.php` | Unit (mock) | Module persistence queries |
-| `ProgressApplicationServiceTest.php` | Unit (mock) | Progress service (on PR #369 branch) |
-| `MySQLProgressRepositoryTest.php` | Unit (mock) | Progress persistence (on PR #369 branch) |
-| `ProgressConcurrencyTest.php` | Integration (real MySQL) | Concurrency (on PR #369 branch) |
+| `Spokes/Internal/Lms/tests/Unit/Application/EnrollmentApplicationServiceTest.php` | Unit | Enrollment application rules |
+| `Spokes/Internal/Lms/tests/Unit/Infrastructure/MySQLCourseRepositoryTest.php` | Unit (mock) | Course persistence queries |
+| `Spokes/Internal/Lms/tests/Unit/Infrastructure/MySQLEnrollmentRepositoryTest.php` | Unit (mock) | Enrollment persistence queries |
+| `Spokes/Internal/Lms/tests/Unit/Infrastructure/MySQLModuleRepositoryTest.php` | Unit (mock) | Module persistence queries |
 
 ---
 
 ## 6. Git, Pull Requests, and CI
 
-### Current Git State (Verified 2026-10-22)
+### Current Git State (Verified 2026-11-01)
 
 | Field | Value |
 |-------|-------|
-| Branch | `main` |
-| HEAD | `8858e165a76db7b14650298ca17b2265da1e4115` |
-| origin/main | `8858e165a76db7b14650298ca17b2265da1e4115` (matches) |
-| Working tree | Clean (tracked). Untracked: `.phpunit.cache/`, `CLAUDE-INDEX(Stale!).md`, `CLAUDE-INDEX.md`, `CLAUDE.md` |
-| Stash | `stash@{0}: On main: SPX Stash` (modifies RESEARCH-AGENDA.md, RESEARCH-INDEX.md, SPX-NAMING-COLLISION-REPORT.md) |
-| Local branches | `main`, `docs/update-agents-md-status`, `lms-progress-persistence` (worktree) |
-| Worktrees | `/home/dgci/www/DGLab` (main), `/home/dgci/.local/share/kilo/worktree-pool/dglab-7f4f6ae19e3a/plume-astrodon` (detached), `/home/dgci/www/DGLab-concurrent-tests` (detached), `/home/dgci/www/dglab-progress-fix` (lms-progress-persistence) |
+| `origin/main` | `11244ebb5d3d11b7f38ee51100ed069668fbd251` |
+| Current checkout when this index was refreshed | `fix/release-package-name-casing` at `e49d93a`; verify locally before use |
+| Open PRs | None reported by GitHub at verification time; query GitHub before relying on this |
+| Worktree | Clean at verification time; do not rely on that after session start |
 
-### PR #368 — `AGENTS.md` Reconciliation
+### Relevant PR Dispositions
 
-| Field | Value |
-|-------|-------|
-| Branch | `docs/update-agents-md-status` |
-| Remote HEAD (VERIFIED) | `c1baea799ecf48064f91e8a478d183de41a2109a` |
-| Previously reported | `c1baea7` (matches verified) |
-| Status | Ready for review, not approved for merge |
-| Changes | Draft-status removed, active-instruction status, baseline verification requirement, transient status labeled |
-| CI | Passed |
-
-### PR #369 — LMS Progress Persistence
-
-| Field | Value |
-|-------|-------|
-| Branch | `lms-progress-persistence` |
-| Remote HEAD (VERIFIED) | `f985a180e8866e6d1de424eb7d05ceebcc035ad9` |
-| Previously reported | `f985a18` (matches verified) |
-| Status | Open, unapproved |
-| Latest CI run | ❌ FAILED (Run #39744074200, 2026-10-22T07:56:33Z). Failing job: `Root integration (public entry point smoke)`. Error: `Class "SovereignStack\Spoke\Lms\Domain\ValueObject\CourseStatus" not found` at `tests/Integration/ProgressConcurrencyTest.php:137`. Root cause: `CourseStatus` is declared as an enum in `Domain\Entity\Course.php`, not in `Domain\ValueObject`. A separate run (#39744759924) on `main` succeeded but does not reflect the PR branch state. Fix committed locally (unstaged) in worktree `/tmp/wt-progress-3`. |
-| Changes | Progress persistence + service, concurrent integration tests (7 tests), MySQL 8.0 CI service, cache cleanup |
+| PR | Disposition | Current relevance |
+|----|-------------|-------------------|
+| #364 | Merged at `b03306c` | Published-course discovery is on main |
+| #366 | Merged at `a18a3e8` | Enrollment persistence/application service is on main |
+| #375 | Merged at `c0a03cd` | CI migration, gitleaks, and PHPStan cleanup |
+| #376 | Merged at `11244eb` | Release package-ID casing correction |
+| #369 | Closed unmerged | Progress work targeted retired `packages/spoke/internal/lms/`; requires a deliberate port, not direct cherry-pick |
+| #370 | Closed unmerged | Migration runner targeted retired `packages/core/migration-runner/`; requires architecture review before any port |
+| #371 | Closed unmerged | Migration-map documents were not accepted as canonical records |
+| #372 | Closed unmerged | HTTP vertical slice targeted retired LMS paths |
+| #368 | Closed | AGENTS status patch superseded by direct verified documentation updates |
+| #310 | Closed unmerged | CORE-15 cache work remains unauthorized/parked for the migrated layout |
 
 ### CI Workflows
 
-| Workflow | Purpose | Triggers on PR? |
-|----------|---------|-----------------|
-| `packages-ci.yml` | PHPStan + PHPUnit per package (20+ entries) | Yes |
-| `architecture-lint.yml` | Documentation/reference structure checks | Yes (paths) |
-| `architecture-fitness.yml` | Pulse consistency, naming drift, blueprint fidelity | Yes |
-| `architecture-boundary-lint.yml` | Ring-boundary enforcement + service-locator prohibition | Yes |
-| `release.yml` | SemVer release automation via Loom | No (push to main only) |
-| `secret-scan.yml` | Security scanning | Yes |
-| `pr-title-lint.yml` | PR title conventions | Yes |
+| Workflow | Purpose |
+|----------|---------|
+| `ci.yml` | Component tests, root integration, PHPStan, architecture validation, and security |
+| `packages-ci.yml` | Required Packages CI gate; currently runs the orchestrator matrix and root integration, while migrated components are tested by `ci.yml` |
+| `architecture-lint.yml` | Documentation/reference structure checks |
+| `architecture-fitness.yml` | Pulse consistency, naming drift, blueprint fidelity |
+| `architecture-boundary-lint.yml` | Ring-boundary enforcement |
+| `release.yml` | Loom-based release automation; package IDs are lowercase even where component directory names are PascalCase |
+| `secret-scan.yml` | Pinned gitleaks working-tree scan |
+| `pr-title-lint.yml` | PR title conventions |
 
-**CI on `main`:** No MySQL service. All LMS tests are unit tests with mocked connections. Integration tests exist only on PR #369 branch.
+**LMS integration status:** CI has no MySQL service for the migrated LMS. Existing LMS persistence tests are mock/unit tests; no complete real-MySQL learner/admin journey is demonstrated.
 
 ---
 
@@ -326,22 +319,22 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 |----|-------|----------|--------|--------|----------------|-------------|
 | R-01 | Auth transport undecided (ADR-022 not written) | No ADR-022 exists; AGENTS.md §6 step 4 | Open decision | Blocks all HTTP/API work | Founder | Choose session cookies / JWT / both |
 | R-02 | MySQL integration-test contract undefined | No DSN convention, no migration runner in CI, no isolation strategy | Open decision | Blocks real-DB tests | Founder | Define env var, runner, isolation, CI service |
-| R-03 | PR #369 not merged | Open PR, unapproved, CI FAILED (CourseStatus namespace error in test) | Active blocker | Progress persistence unavailable on main; CI failing | Founder/SAAI | Review, fix test, re-run CI, then approve |
-| R-04 | PR #368 not merged | Open PR, unapproved | Active blocker | AGENTS.md draft status remains | Founder/SAAI | Review and approve |
-| R-05 | No LMS HTTP routes/controllers | `ApplicationFactory` only has `/` and `/health` | Active blocker | No API surface | Kilo (after R-01) | Implement controllers/routes |
+| R-03 | LMS progress persistence absent | `ProgressRepositoryInterface`, MySQL repository, and application service are absent under `Spokes/Internal/Lms/`; PR #369 closed unmerged against retired paths | Active blocker | No progress recording/persistence on main | Owner / designated implementer after research gate | Authorize a migrated-layout increment after the MySQL contract |
+| R-04 | AGENTS.md snapshot freshness | Current `AGENTS.md` is tracked active guidance with a 2026-11-01 status snapshot | Monitor | Status can age | Session owner | Reverify baseline/status each session |
+| R-05 | No LMS HTTP routes/controllers | `ApplicationFactory` registers root/hello/health routes; no LMS API routes | Active blocker | No LMS API surface | Kilo (after ADR-022) | Implement only after API/auth decisions |
 | R-06 | AuthMiddleware not wired | Exists in Hub Identity, not in pipeline | Active blocker | No auth enforcement | Kilo (after R-01) | Wire into middleware stack |
-| R-07 | No Progress persistence on main | `ProgressRepositoryInterface` not found anywhere | Active blocker | No progress tracking | Kilo (after R-03) | Merge PR #369 |
+| R-07 | No Progress persistence on main | Verified absent in `Spokes/Internal/Lms/`; entity and migration exist | Active blocker | No progress tracking | Designated implementer after approval | Port/implement in migrated layout; do not merge legacy PR #369 directly |
 | R-08 | Research agenda not published | `Architecture/CrossCutting/RESEARCH-AGENDA.md` does not exist | Open decision | Research gate not closed | Founder | Authorize publication |
 | R-09 | D-01/S-003 governance item | `PulseFiberIsolationTest.php` missing | Open decision | SDLC compliance | Founder | Re-scope or commission test |
 | R-10 | D-09 PSR-4 collision vs ADR-011 | ADR-011 is Proposed; no findings register found | Open decision | ADR-011 priority | Founder | Resolve collision |
-| R-11 | PR #363 route (formatting/gitlink) | Reported closed in PR #368 branch AGENTS.md, but not independently verified | UNVERIFIED | CI hygiene | Founder | Verify resolution independently |
-| R-12 | PR #310 (CORE-15 cache) parked | CORE-15 package exists, no cache impl | Open decision | Core tier | Founder | Resume or leave parked |
+| R-11 | `external/ELQ` gitlink disposition | Path remains as gitlink in `origin/main`; PR #363 is closed and no `.gitmodules` registration was verified | Owner decision required | Repository checkout/tooling hygiene | Founder | Decide whether to remove or properly register; handle separately |
+| R-12 | CORE-15 cache disposition | PR #310 closed unmerged; its old-layout implementation is not current migrated code | Owner decision required | Core capability roadmap | Founder | Reauthorize and scope a migrated-layout design or leave parked |
 | R-13 | Stale git credential | Reported in pre-existing branch config | Unverified | Security hygiene | Founder | Revoke/rotate if valid |
 | R-14 | SKILL.md provenance (`82ddde7`) | Local-only change, modified `.kilo/skills/` | Unverified | Governance | Founder | Authorize or revert |
 | R-15 | NeoSPX naming undecided (historical: SuperPHP) | 5 candidates, collisions identified | Open decision | Future rename | Founder | Accept candidate or keep SuperPHP |
 | R-16 | Connecting-theme variant undecided | 3 variants, only 1 in agenda | Open decision | Research direction | Founder | Choose variant |
 | R-17 | Half Exceptions formulations 3 & 4 unconfirmed | Agent interpretations, not owner-confirmed | Open decision | Research scope | Founder | Confirm or reject |
-| R-18 | No real MySQL on main CI | No MySQL service in packages-ci.yml | Active blocker | Cannot verify DB behavior | Founder (R-02) | Define test contract |
+| R-18 | No real MySQL service for migrated LMS CI | Current CI workflows do not provision MySQL for LMS repositories | Active blocker | Cannot verify LMS persistence against real DB | Founder (R-02) | Define test contract and CI service |
 
 ---
 
@@ -360,7 +353,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 
 | Candidate Task | Interfaces Affected | Tests Needed | Dependencies |
 |----------------|-------------------|--------------|--------------|
-| Progress persistence (if PR #369 not merged) | `ProgressRepositoryInterface`, `ProgressApplicationService` | Unit + integration | PR #369 merge or reimplementation |
+| Progress persistence | `ProgressRepositoryInterface`, `MySQLProgressRepository`, progress application service under `Spokes/Internal/Lms/` | Unit + real-MySQL integration | Research gate and MySQL test contract; PR #369 is closed and legacy-layout only |
 | HTTP/API layer | Controllers, routes, DTOs, validators | Contract + integration | R-01 (auth), R-02 (MySQL) |
 | Auth middleware wiring | `AuthMiddleware`, middleware stack | Auth flow tests | R-01 (auth transport) |
 | Course/module read models | Read models, use cases | Unit + integration | PR #364 scope |
@@ -372,7 +365,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 3. **Research agenda publication** — Authorize `Architecture/CrossCutting/RESEARCH-AGENDA.md`
 4. **NeoSPX naming** — Accept Foundry/SPX or keep SuperPHP (historical)
 5. **Connecting-theme variant** — A, B, C, or combination
-6. **PR #368/#369 review and merge** — Approve or request changes
+6. **Progress-persistence increment** — authorize a fresh migrated-layout implementation after the research and MySQL-test gates
 7. **D-01/D-09 governance items** — Re-scope or commission tests
 
 ### D. Blocked Work
@@ -380,7 +373,6 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 - All HTTP/API implementation (blocked by R-01)
 - All real-MySQL integration tests (blocked by R-02)
 - Progress persistence on main (blocked by R-03)
-- AGENTS.md reconciliation on main (blocked by R-04)
 
 ---
 
@@ -417,90 +409,90 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 - `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` — Framework structures, DI, DX, accessibility (70 sources)
 
 **Expanded reading set:**
-- `packages/core/container/` — Core container implementation
+- `Core/Container/` — Core container implementation
 - `app/ApplicationFactory.php` — Composition root
 - `Architecture/ADRs/ADR-002-*` — PSR-11 Container Scope
 
 ### 9.4 LMS Domain
 
 **Minimum reading set:**
-- `packages/spoke/internal/lms/src/Domain/Entity/Course.php`
-- `packages/spoke/internal/lms/src/Domain/Entity/Enrollment.php`
-- `packages/spoke/internal/lms/src/Domain/Entity/Progress.php` (PR #369 branch only)
-- `packages/spoke/internal/lms/src/Domain/Entity/Module.php`
+- `Spokes/Internal/Lms/Domain/Entity/Course.php`
+- `Spokes/Internal/Lms/Domain/Entity/Enrollment.php`
+- `Spokes/Internal/Lms/Domain/Entity/Progress.php` (entity exists; persistence/application service are absent)
+- `Spokes/Internal/Lms/Domain/Entity/Module.php`
 
 **Expanded reading set:**
-- `packages/spoke/internal/lms/src/Domain/ValueObject/` (7 value objects)
-- `packages/spoke/internal/lms/src/Domain/Exception/` (4 exceptions)
-- `packages/spoke/internal/lms/src/Domain/Repository/` (interfaces)
+- `Spokes/Internal/Lms/Domain/ValueObject/`
+- `Spokes/Internal/Lms/Domain/Exception/`
+- `Spokes/Internal/Lms/Domain/Repository/` (Course/Enrollment/Module ports; no Progress port yet)
 
 ### 9.5 LMS Application Services
 
 **Minimum reading set:**
-- `packages/spoke/internal/lms/src/Application/Service/CourseApplicationService.php`
-- `packages/spoke/internal/lms/src/Application/Service/EnrollmentApplicationService.php`
-- `packages/spoke/internal/lms/src/Application/ProgressApplicationInterface.php` (PR #369 branch)
+- `Spokes/Internal/Lms/Application/Service/CourseApplicationService.php`
+- `Spokes/Internal/Lms/Application/Service/EnrollmentApplicationService.php`
 
 **Expanded reading set:**
-- `packages/spoke/internal/lms/src/Application/Command/` (4 commands)
-- `packages/spoke/internal/lms/src/Application/ProgressApplicationService.php` (PR #369 branch)
+- `Spokes/Internal/Lms/Application/Command/`
+- Progress application service is not present on main; PR #369's implementation targets a retired path.
 
 ### 9.6 Persistence and Migrations
 
 **Minimum reading set:**
-- `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLCourseRepository.php`
-- `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLEnrollmentRepository.php`
-- `packages/spoke/internal/lms/migrations/` (5 SQL files)
+- `Spokes/Internal/Lms/Infrastructure/Persistence/MySQLCourseRepository.php`
+- `Spokes/Internal/Lms/Infrastructure/Persistence/MySQLEnrollmentRepository.php`
+- `Spokes/Internal/Lms/migrations/`
 
 **Expanded reading set:**
-- `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLModuleRepository.php`
-- `packages/spoke/internal/lms/src/Infrastructure/Persistence/MySQLProgressRepository.php` (PR #369 branch)
-- `packages/core/dbal/` — Database abstraction layer
+- `Spokes/Internal/Lms/Infrastructure/Persistence/MySQLModuleRepository.php`
+- Progress persistence repository is not present on main; PR #369's implementation targets a retired path.
+- `Core/Database/` — Database abstraction layer
 
 ### 9.7 Authentication and Authorization
 
 **Minimum reading set:**
-- `packages/hub/identity/src/Http/AuthMiddleware.php` (exists, not wired)
+- `Hub/Identity/Http/AuthMiddleware.php` (exists, not wired)
 - `Architecture/ADRs/ADR-003-*` — ES256 JWT
 - `Architecture/ADRs/ADR-008-*` — Argon2id
 
 **Expanded reading set:**
-- `packages/hub/identity/` (full package)
+- `Hub/Identity/` (current source tree)
 - `Architecture/ADRs/ADR-012-*` — Post-Quantum JWT Agility
 - `Architecture/FROZEN-CONTRACTS.md` (HUB-01 Config frozen interfaces)
 
 ### 9.8 API and Application Wiring
 
 **Minimum reading set:**
-- `app/ApplicationFactory.php` — Composition root (only `/` and `/health`)
+- `app/ApplicationFactory.php` — Composition root; root/hello/health routes exist, but no LMS/API/auth routes
 - `public/index.php` — Web entry point
 
 **Expanded reading set:**
-- `app/Controllers/` — HelloController, HealthController
+- `app/Controller/` — HelloController, HealthController, TemplateController
 - `app/Bridge/` — Vanguard bridge
 - `app/Resources/` — Resource definitions
 
 ### 9.9 Unit and Integration Testing
 
 **Minimum reading set:**
-- `packages/spoke/internal/lms/tests/Unit/Application/CourseApplicationServiceTest.php`
-- `packages/spoke/internal/lms/tests/Unit/Application/EnrollmentApplicationServiceTest.php`
-- `packages/spoke/internal/lms/phpunit.xml.dist`
+- `Spokes/Internal/Lms/tests/Unit/Application/`
+- `Spokes/Internal/Lms/tests/Unit/Infrastructure/`
+- `Spokes/Internal/Lms/phpunit.xml.dist`
 
 **Expanded reading set:**
-- All LMS test files (7 unit test files)
+- All migrated LMS test files under `Spokes/Internal/Lms/tests/`
 - `tests/Integration/PublicIndexSmokeTest.php` (root)
-- `ProgressConcurrencyTest.php` (PR #369 branch)
+- No real-MySQL LMS concurrency test is currently present on main.
 - `RESEARCH-INDEX.md` — Research test coverage
 
 ### 9.10 CI and Developer Tooling
 
 **Minimum reading set:**
-- `.github/workflows/packages-ci.yml` — Main test matrix
+- `.github/workflows/ci.yml` — Migrated component tests, root integration, PHPStan, architecture validation, and security
+- `.github/workflows/packages-ci.yml` — Packages CI gate, orchestrator test matrix, and root integration
 - `.github/workflows/architecture-boundary-lint.yml` — Ring boundaries
 
 **Expanded reading set:**
-- All 7 workflows in `.github/workflows/`
+- All current workflows in `.github/workflows/`
 - `scripts/` — CI/architecture tooling (Python/PHP)
 - `anvil/` — Infrastructure tooling
 - `orchestrator/` — Loom release automation

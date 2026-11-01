@@ -12,4 +12,4 @@ Distinguish verified facts, reported claims, proposals, and unresolved questions
 
 For detailed context, navigation, architecture, LMS implementation map, risk register, and the Claude opening prompt, see `CLAUDE-INDEX.md`.
 
-`AGENTS.md` describes itself as a proposed handoff draft not yet added to the repository. Treat its contents as the current repository instructions, but verify claims against source code, tests, and CI before relying on them.
+`AGENTS.md` is tracked active repository guidance. Its operational status snapshot is dated and must be re-verified against current source, tests, CI, and `origin/main` before relying on it.

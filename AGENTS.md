@@ -1,6 +1,6 @@
 # DGLab — Instructions for AI Coding and Research Agents
 
-> Status: proposed handoff draft, prepared from owner-supplied conversation summaries and agent reports on 2026-10-20. It has **not** been added to the repository. Verify current repository state before treating reported facts as current.
+> Status: active repository instructions. Operational status below is a snapshot last verified against `origin/main` at `11244ebb5d3d11b7f38ee51100ed069668fbd251` on 2026-11-01; re-verify moving facts at session start.
 
 ## 1. Mission and immediate priority
 
@@ -8,7 +8,7 @@ DGLab is a PHP 8.4 Sovereign Stack monorepo. The founder has changed the LMS obj
 
 There are two parallel concerns, in this order:
 
-1. **First complete the pending research and reconcile the research record.** This includes SPX/NeoSPX and the four product-research tracks plus their connecting-theme investigation. Research is separate from implementation.
+1. **First complete and reconcile the research package for owner review.** Root research reports and agenda materials exist, but source review, the V1–V7 reconciliation, connecting-theme wording, NeoSPX placement, and authorization to publish the canonical agenda remain unresolved. Research is separate from implementation.
 2. **Then resume LMS backend delivery** against approved architecture, security, API, and testing decisions.
 
 Do not let the LMS backlog erase research priorities. Do not let research delay unrelated read-only review or preparation, but do not mix research deliverables into LMS implementation PRs.
@@ -25,7 +25,7 @@ Use this authority order:
 
 Never describe a chat statement, local-only commit, draft, open PR, or agent report as a merged repository fact. Label important statements **Verified**, **Reported**, **Proposed**, or **Owner decision required**. Include the commit SHA, path, command, test, or link that supports verification where possible.
 
-The baseline supplied in the current handoff is `origin/main` at `ae410ea09fcd7a4c0c2c77cc980ff7d3e4984ac3`. This is a historical reported baseline, not an assumption that remote `main` is still there. At session start, fetch/read the actual current state and report any divergence before work. `lms-status-baseline` was reported to be a local-only worktree branch in Z.ai's environment; do not assume it exists remotely.
+The verified `origin/main` baseline on 2026-11-01 is `11244ebb5d3d11b7f38ee51100ed069668fbd251` (PR #376). Earlier SHAs in handoffs are historical, not current baselines. At session start, fetch/read the actual current state and report any divergence before work. Never assume a local branch or worktree exists remotely.
 
 ## 3. Architecture principles
 
@@ -105,22 +105,24 @@ The deliverable is a complete backend, not a page-ready UI. Target capabilities 
 - End-to-end test of a complete journey once the pieces exist.
 - A founder handoff with API/OpenAPI documentation, setup instructions, schema/migrations, auth behavior, examples, and known limitations.
 
-### 6.1 Verified current state (re-validated 2026-10-24)
-- PR #364 (published-course discovery): **merged** via PR #366 (commit a18a3e8). Enrollment persistence and application service now exist on main.
-- Course/module/detail read models and published-course discovery: implemented and unit-tested.
-- Progress entity/migration exist, but `ProgressRepositoryInterface`, MySQL repository, and application service are **still missing**.
-- `AuthMiddleware` exists but is **not wired** into the request pipeline.
-- No MySQL service in CI was reported.
-- PR #363 is an open temporary formatting-audit workflow + dangling `external/ELQ` gitlink removal; it is not a clean feature PR and requires an owner decision about separation/merge route.
-- PR #310 (CORE-15 cache) is parked.
-- D-01/D-09, ADR-011, register corrections, formatting/readability, SKILL.md provenance, and MySQL test contract remain reported open items. Revalidate before scheduling.
+### 6.1 Verified current state (2026-11-01; origin/main `11244eb`)
+- PR #364 (published-course discovery) merged at `b03306c`; PR #366 (enrollment persistence and application service) separately merged at `a18a3e8`.
+- Current LMS source is under `Spokes/Internal/Lms/`. Course, module, and enrollment entities, application services, MySQL repositories, and migrations are present; component/unit tests are not real-MySQL integration evidence.
+- The progress entity and migration exist, but `ProgressRepositoryInterface`, `MySQLProgressRepository`, and a progress application service are absent from the current LMS tree. PR #369 closed unmerged; it targets the retired `packages/spoke/internal/lms/` layout and must not be cherry-picked without a reviewed port.
+- `Hub/Identity/Http/AuthMiddleware.php` exists, but `app/ApplicationFactory.php` does not wire LMS routes or authentication middleware. No auth transport/API contract is approved; do not assume sessions or JWT.
+- The active CI workflows do not provision a MySQL service for LMS integration tests. PR #370's migration runner is closed and remains in the legacy `packages/core/migration-runner/` layout; no current LMS MySQL contract is thereby approved.
+- PR #363 is closed; the `external/ELQ` gitlink remains in the current tree. Do not change it as part of unrelated work.
+- PR #310 is closed unmerged. PRs #368–#372 and #375–#376 are closed/merged as of this snapshot; verify current PR state before relying on this list. No open PRs were reported by GitHub at verification time.
+- PHPStan is 2.3.4 in the root and orchestrator Composer constraints. CI has component tests, root integration, static analysis, and a legacy Packages CI gate; use current workflow definitions rather than old package-matrix counts.
+- NeoSPX lexer source/tests exist under `Core/NeoSpx/`; local verification on 2026-11-01 was 27 tests / 74 assertions passing. ADR-023 is absent; lexer presence or test success is not approval of the grammar/specification.
+- Research agenda and connecting-theme decisions remain owner-review items. Keep research documents separate from LMS implementation PRs.
 
 ### LMS build order
-1. Review current main, frozen contracts, ADRs, PR #364 and its CI/test evidence.
+1. Review current main, frozen contracts, ADRs, and current CI/test evidence. PRs #364 and #366 are already merged; inspect current source rather than relying on their old diffs.
 2. Agree and record auth transport, API versioning, role/permission matrix, error format, pagination, and same-origin/separate-origin assumptions. Do not assume PHP sessions or JWT are approved.
 3. Approve the MySQL integration-test contract: env var/DSN, migration runner, test command, isolation/reset strategy, CI MySQL service.
-4. **Enrollment persistence and application service complete on main (PR #366).**
-5. Complete progress port, MySQL persistence, and application service.
+4. **Enrollment persistence and application service are present on main (PR #366).** Re-verify current source and tests.
+5. Port and implement progress persistence under `Spokes/Internal/Lms/` only after the research gate and MySQL integration-test contract are accepted; PR #369 is closed and targets a retired path.
 7. Implement composition-root registration, HTTP controllers/routes, validation/serialization, authentication middleware, and authorization enforcement.
 8. Add real-MySQL integration tests and a complete end-to-end learner/admin flow.
 9. Produce API docs, OpenAPI if agreed, setup guide, sample requests/responses, migration instructions, and frontend handoff.
@@ -135,14 +137,13 @@ Keep increments reviewable. Do not promise a calendar duration until the current
 Track these explicitly; do not resolve them by assumption:
 - Authentication transport and authorization to create ADR-022.
 - MySQL integration-test contract.
-- PR #364 review/acceptance/merge.
-- PR #363 route for separating or retaining the temporary workflow and gitlink fix.
+- Whether to remove or properly register the remaining `external/ELQ` gitlink; PR #363 is closed and does not settle current tree state.
 - D-01: re-scope S-003 closure condition or commission the missing `PulseFiberIsolationTest.php`.
 - D-09 reported PSR-4 namespace collision versus findings-register corrections and ADR-011 priority.
 - Research agenda wording/placement and authorization to publish.
 - Provenance/authorization for local-only `82ddde7` SKILL.md change.
 - Formatting audit artifact/scope, readability Phase A verdict, and any Phase C authorization.
-- PR #310 disposition.
+- Whether to reauthorize/re-scope CORE-15 cache after PR #310 was closed unmerged.
 - Whether other reported baseline facts still hold.
 
 The `external/ELQ` path was reported to be a dangling gitlink, not a properly registered submodule: no `.gitmodules` existed in the examined history, and four of six submodule commands failed before removal. This is reported evidence; verify current PR and main before acting. Do not add `.gitmodules` reflexively.

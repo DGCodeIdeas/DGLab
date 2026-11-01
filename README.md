@@ -235,11 +235,11 @@ The doctrine is **binding governance**: it constrains how findings are closed an
 
 ## Current State
 
-**Version:** `v1.2.0.0+<sha>` — post-MUWV (stable), per [ADR-019](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md). MUWV flipped to `1` on 2026-09-18 after all 8 Milestone 0 blueprints shipped and the full Pulse trace was verified end-to-end.
+**Current release:** `v1.2.47.0+11244eb` on `main` as of 2026-11-01. The version scheme is post-MUWV per [ADR-019](Architecture/ADRs/ADR-019-pre-muwv-version-scheme.md); verify the latest tag before quoting this snapshot.
 
 ### Implemented (depth ≥ 2)
 
-**Core tier — 12 packages on `main`:**
+**Core tier — 14 component directories on `main`:**
 
 | Package | Blueprint | Notes |
 |---|---|---|
@@ -255,6 +255,9 @@ The doctrine is **binding governance**: it constrains how findings are closed an
 | `core/dbal` | [CORE-19](Architecture/Core/CORE-19.md) | MySQL + SQLite drivers, tenant context |
 | `core/crypto` | [CORE-16](Architecture/Core/CORE-16.md) | Argon2id + envelope encryption + key registry |
 | `core/filesystem` | [CORE-14](Architecture/Core/CORE-14.md) | Path-traversal guard + atomic writer |
+| `core/database` | [CORE-19](Architecture/Core/CORE-19.md) | MySQL + SQLite database layer |
+| `core/neospx` | [CORE-07](Architecture/Core/CORE-07.md) | NeoSPX lexer; grammar identity/ADR-023 remains unresolved |
+| `core/view` | [CORE-12](Architecture/Core/CORE-12.md) | View drivers and Twig integration |
 
 **Hub tier — 2 packages on `main`:**
 
@@ -276,7 +279,7 @@ The doctrine is **binding governance**: it constrains how findings are closed an
 | `spoke/external/canvas` | [ESPOKE-01](Architecture/Spoke/External/ESPOKE-01.md) — Sovereign Canvas (depth 2) |
 | `spoke/internal/codex` | [ISPOKE-09](Architecture/Spoke/Internal/ISPOKE-09.md) — Sovereign Codex (depth 1-2) |
 | `spoke/internal/showcase` | ISPOKE (depth 3) — DDD showcase (Entity, ValueObject, Repository, Application) |
-| `spoke/internal/lms` | ISPOKE (depth 3) — DDD LMS (Course, Module, Enrollment, Progress) |
+| `spoke/internal/lms` | ISPOKE — course/module/enrollment foundation; Progress entity/migration exist, but progress persistence, application service, and HTTP/API wiring are not present on `main` |
 
 ### In Progress
 
@@ -397,38 +400,40 @@ The public entry point is [`public/index.php`](public/index.php), which delegate
 
 ### Testing
 
-Each package has its own PHPUnit 11 test suite. Run a single package:
+Each migrated component has a PHPUnit 11 test suite. From the repository root, run one component:
 
 ```bash
-cd packages/core/container
-composer install
-vendor/bin/phpunit --testdox
+composer install --no-interaction --prefer-dist
+vendor/bin/phpunit --configuration Core/Container/phpunit.xml.dist --testdox --no-coverage
 ```
 
-Run all packages (monorepo CI matrix):
+Run the component and integration suites used by CI:
 
 ```bash
-# See .github/workflows/packages-ci.yml for the full matrix
+vendor/bin/phpunit --configuration phpunit.xml.dist --no-coverage
+# Component suites are enumerated by .github/workflows/ci.yml.
 ```
 
-Cross-package integration tests live in [`tests/`](tests/) and in each package's `tests/Integration/` directory.
+Cross-package integration tests live in [`tests/`](tests/) and component-level `tests/Integration/` directories.
 
 ### Static Analysis
 
-PHPStan 2.x at level max is configured per-package (`phpstan.neon` in each package root).
+PHPStan 2.3.x is used at the root and in the orchestrator. Component configurations live in each migrated component's `phpstan.neon` where present.
 
 ```bash
-cd packages/core/container
-vendor/bin/phpstan analyse
+vendor/bin/phpstan analyse Core Hub Bridge Spokes app orchestrator --error-format=github
 ```
 
 ### Architecture Verification
 
-The architecture is verified by three CI workflows:
+The architecture is verified by the current CI workflows:
 
-- [`architecture-lint.yml`](.github/workflows/architecture-lint.yml) — namespace root lint, prefix-numbering lint, blind-spot-awareness lint.
+- [`ci.yml`](.github/workflows/ci.yml) — component tests, root integration, PHPStan, architecture validation, and security.
+- [`packages-ci.yml`](.github/workflows/packages-ci.yml) — legacy path gate, orchestrator PHPUnit/PHPStan, and root integration; migrated component suites are delegated to `ci.yml`.
 - [`architecture-boundary-lint.yml`](.github/workflows/architecture-boundary-lint.yml) — tier-boundary enforcement (no outer-tier imports inner-tier).
 - [`architecture-fitness.yml`](.github/workflows/architecture-fitness.yml) — blueprint fidelity, naming drift, pulse consistency.
+- [`release.yml`](.github/workflows/release.yml) — Loom-based tier and monorepo release automation.
+- [`secret-scan.yml`](.github/workflows/secret-scan.yml) — pinned gitleaks working-tree scan.
 
 The fitness scripts live in [`scripts/fitness/`](scripts/fitness/) and the lint scripts in [`scripts/`](scripts/). Generated DAG artifacts (CORE-VERIFIED-DAG, HUB-VERIFIED-DAG, etc.) are reproducible from these scripts.
 
@@ -456,7 +461,7 @@ The roadmap is **derived** from the build orders, not authored independently. Se
 - [Core build order](Architecture/Core/CORE-BUILD-ORDER.md) — generated waves for the Core tier.
 - [Hub build order](Architecture/Hub/HUB-BUILD-ORDER.md) — generated waves for the Hub tier.
 
-**Current focus:** CORE-15 Cache (the master blocker) → merge to `main` → regenerate Hub eligibility → Wave 1 Hub packages (HUB-06, HUB-11, HUB-14, HUB-19).
+**Current focus:** Complete and reconcile the research package for owner review before new LMS implementation increments, per [`AGENTS.md`](AGENTS.md). The canonical research agenda has not been published. The LMS backend remains incomplete: progress persistence and HTTP/API/auth wiring are absent from the migrated LMS tree, and the MySQL integration-test contract is undecided. CORE-15 Cache PR #310 was closed unmerged; it is not the current release blocker.
 
 **Open decisions:** See [`OPEN-DECISIONS.md`](Architecture/OPEN-DECISIONS.md) for the live ledger. Notable open items: OD-12 (APIfy — declarative API exposure), ADR-015 (Hospitality Vertical promotion — Proposed), ADR-016 (Library/Application boundary split — Proposed).
 
