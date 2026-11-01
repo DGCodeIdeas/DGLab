@@ -30,6 +30,7 @@ on:
       - 'tests/**'
       - 'phpunit.xml.dist'
       - '.github/workflows/packages-ci.yml'
+      - '.github/workflows/release.yml'
   pull_request: {}  # always trigger on PRs — gate job handles path detection
   workflow_dispatch: {}
 
@@ -55,7 +56,7 @@ jobs:
             echo "Base: $BASE"
             echo "Head: $HEAD"
             CHANGED=$(git diff --name-only "$BASE" "$HEAD" \
-              | grep -E '^(packages/|Core/|Hub/|Bridge/|Spokes/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/packages-ci\.yml)' \
+              | grep -E '^(packages/|Core/|Hub/|Bridge/|Spokes/|orchestrator/|anvil/|app/|public/|tests/|composer\.json|\.github/workflows/(packages-ci|release)\.yml)' \
               || true)
             if [ -n "$CHANGED" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
