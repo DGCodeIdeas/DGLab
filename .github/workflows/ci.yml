@@ -116,7 +116,7 @@ jobs:
           for COMPONENT in "${COMPONENTS[@]}"; do
             if [ -f "${COMPONENT}/phpunit.xml.dist" ]; then
               echo "::group::Testing ${COMPONENT}"
-              if ../../vendor/bin/phpunit --configuration "${COMPONENT}/phpunit.xml.dist" --no-coverage; then
+              if vendor/bin/phpunit --configuration "${COMPONENT}/phpunit.xml.dist" --no-coverage; then
                 PASSED+=("${COMPONENT}")
               else
                 FAILED+=("${COMPONENT}")
