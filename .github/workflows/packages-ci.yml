@@ -133,6 +133,10 @@ jobs:
         working-directory: ${{ matrix.working-dir }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Install root autoload dependencies for orchestrator tests
+        if: matrix.package == 'orchestrator'
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: PHPStan (level max)
         working-directory: ${{ matrix.working-dir }}
         run: |
