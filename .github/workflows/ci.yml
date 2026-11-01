@@ -245,11 +245,12 @@ jobs:
 
       - name: Verify architecture boundary lint coverage
         run: |
-          files_scanned=$(python3 -c "import json; print(json.load(open('/tmp/abl-summary.json'))['files_scanned'])" 2>/dev/null || echo 0)
+          files_scanned=$(python3 scripts/architecture-boundary-lint.py 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['files_scanned'])" 2>/dev/null || echo 0)
           if [ "$files_scanned" -eq 0 ]; then
             echo "::error::architecture-boundary-lint scanned 0 files - UNVERIFIED"
             exit 1
           fi
+          echo "Architecture boundary lint scanned $files_scanned files"
 
       - name: Run architecture boundary lint regression tests
         run: python3 scripts/test_architecture_boundary_lint.py
