@@ -366,13 +366,19 @@ jobs:
       - name: Check all required jobs succeeded
         run: |
           FAILED=0
-          for job in component-tests integration-tests architecture-validation static-analysis security; do
-            RESULT="${{ needs.$job.result }}"
-            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
-              echo "::error::$job: $RESULT"
+          check_job() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "::error::$name: $result"
               FAILED=1
             fi
-          done
+          }
+          check_job "component-tests" "${{ needs.component-tests.result }}"
+          check_job "integration-tests" "${{ needs.integration-tests.result }}"
+          check_job "architecture-validation" "${{ needs.architecture-validation.result }}"
+          check_job "static-analysis" "${{ needs.static-analysis.result }}"
+          check_job "security" "${{ needs.security.result }}"
           if [ "$FAILED" -eq 1 ]; then
             echo "::error::One or more CI jobs failed"
             exit 1
@@ -384,7 +390,8 @@ jobs:
           echo "### CI Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          for job in component-tests integration-tests architecture-validation static-analysis security; do
-            RESULT="${{ needs.$job.result }}"
-            echo "| $job | $RESULT |" >> $GITHUB_STEP_SUMMARY
-          done
+          echo "| component-tests | ${{ needs.component-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| integration-tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| architecture-validation | ${{ needs.architecture-validation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| static-analysis | ${{ needs.static-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
