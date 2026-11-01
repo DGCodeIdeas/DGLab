@@ -197,7 +197,7 @@ jobs:
           fi
           echo "✓ No src/ directories found"
 
-- name: Verify component structure (tests/ at component level)
+      - name: Verify component structure (tests/ at component level)
         run: |
           set -euo pipefail
           echo "Verifying component structure..."
@@ -345,12 +345,7 @@ jobs:
             exit 0
           fi
           if [ "$rc" -eq 1 ] && [ "$n" -ge 1 ]; then
-            python3 -c "
-import json
-for l in json.load(open('leaks.json'))[:50]:
-    safe = {k: v for k, v in l.items() if k not in ('Secret', 'Match', 'Redacted')}
-    print('::error file=leaks.json::' + json.dumps(safe)[:350])
-"
+            echo "::error::Secrets found in tracked tree ($n leaks)"
             echo "::error::Secrets found in tracked tree"
             exit 1
           fi
