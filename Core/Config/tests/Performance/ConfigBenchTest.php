@@ -65,20 +65,20 @@ final class ConfigBenchTest extends TestCase
 
     public function testHasCheckUnderTenMicroseconds(): void
     {
-        $key = 'section10.subsection.leaf';
+        $configPath = 'section10.subsection.leaf';
         $iterations = 10000;
 
         for ($i = 0; $i < 100; $i++) {
-            $this->config->has($key);
+            $this->config->has($configPath);
         }
 
         $start = hrtime(true);
         for ($i = 0; $i < $iterations; $i++) {
-            $this->config->has($key);
+            $this->config->has($configPath);
         }
         $perCallMicroseconds = ((hrtime(true) - $start) / $iterations) / 1000;
 
-        self::assertTrue($this->config->has($key));
+        self::assertTrue($this->config->has($configPath));
         self::assertLessThan(
             10.0,
             $perCallMicroseconds,

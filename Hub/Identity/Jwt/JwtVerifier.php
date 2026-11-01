@@ -93,6 +93,10 @@ final class JwtVerifier
 
     private function unb64(string $data): string
     {
+        if (preg_match('/\A[A-Za-z0-9_-]*\z/', $data) !== 1) {
+            throw new \RuntimeException('Invalid base64url encoding in JWT');
+        }
+
         $decoded = base64_decode(strtr($data, '-_', '+/'), true);
         if ($decoded === false) {
             throw new \RuntimeException('Invalid base64url encoding in JWT');

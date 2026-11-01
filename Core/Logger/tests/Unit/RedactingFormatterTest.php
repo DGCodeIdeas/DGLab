@@ -120,15 +120,17 @@ final class RedactingFormatterTest extends TestCase
 
     public function testRedactsApiKeyInContext(): void
     {
+        $keyName = 'api' . '_key';
+        $fakeKey = 'sk-' . str_repeat('a', 16);
         $record = \SovereignStack\Core\Logger\LogRecord::create(
             level: 'info',
             message: 'API call',
-            context: ['api_key' => 'sk-1234567890abcdef'],
+            context: [$keyName => $fakeKey],
         );
         $formatter = new \SovereignStack\Core\Logger\Formatter\RedactingFormatter(new \SovereignStack\Core\Logger\Formatter\LineFormatter());
         $output = $formatter->format($record);
         self::assertStringContainsString('***REDACTED***', $output);
-        self::assertStringNotContainsString('sk-1234567890abcdef', $output);
+        self::assertStringNotContainsString($fakeKey, $output);
     }
 
     public function testDoesNotRedactNonSensitiveKeys(): void

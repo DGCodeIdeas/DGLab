@@ -115,6 +115,13 @@ final class FeatureFlagManagerTest extends TestCase
         self::assertContains('B', $variants);
     }
 
+    public function testGetVariantReturnsNumericVariantKeyAsString(): void
+    {
+        $this->repository->save('numeric_flag', enabled: true, rolloutPercentage: 100, variants: ['1' => 100]);
+
+        self::assertSame('1', $this->manager->getVariant('numeric_flag'));
+    }
+
     public function testNullContextUsesAnonymousUser(): void
     {
         $this->repository->save('anon_flag', enabled: true, rolloutPercentage: 100);

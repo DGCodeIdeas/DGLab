@@ -8,5 +8,24 @@
 # for staleness: an exclusion whose package no longer exists/is no longer
 # eligible also fails, so this file cannot accumulate mute cruft.
 #
-# (Intentionally empty as of 2026-10-13: every eligible package is in the
-# matrix.)
+Bridge/Vanguard	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Config	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Container	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Crypto	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Database	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/ErrorHandler	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/EventDispatcher	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Filesystem	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/HttpMessage	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Kernel	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Logger	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Middleware	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/NeoSpx	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/Router	Migrated component tests are owned by .github/workflows/ci.yml.
+Core/View	Migrated component tests are owned by .github/workflows/ci.yml.
+Hub/Config	Migrated component tests are owned by .github/workflows/ci.yml.
+Hub/Identity	Migrated component tests are owned by .github/workflows/ci.yml.
+Spokes/External/Canvas	Migrated component tests are owned by .github/workflows/ci.yml.
+Spokes/Internal/Codex	Migrated component tests are owned by .github/workflows/ci.yml.
+Spokes/Internal/Lms	Migrated component tests are owned by .github/workflows/ci.yml.
+Spokes/Internal/Showcase	Migrated component tests are owned by .github/workflows/ci.yml.
