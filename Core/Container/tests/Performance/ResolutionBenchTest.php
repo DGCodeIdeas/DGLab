@@ -24,7 +24,7 @@ class ResolutionBenchTest extends TestCase
             $container->make('depth1_0');
         }
         $end = microtime(true);
-        $this->assertLessThan(1.0, $end - $start, '10k resolutions of depth-1 service should take < 1s');
+        self::assertLessThan(1.0, $end - $start, '10k resolutions of depth-1 service should take < 1s');
     }
 
     public function testResolutionDepth5(): void
@@ -37,7 +37,7 @@ class ResolutionBenchTest extends TestCase
             $container->make('depth5');
         }
         $end = microtime(true);
-        $this->assertLessThan(2.0, $end - $start, '1k resolutions of depth-5 service should take < 2s');
+        self::assertLessThan(2.0, $end - $start, '1k resolutions of depth-5 service should take < 2s');
     }
 
     public function testCompileIdempotency(): void
@@ -46,7 +46,7 @@ class ResolutionBenchTest extends TestCase
         $container->bind(Service::class);
         $container->compile();
         $container->compile(); // Second call should be no-op
-        $this->assertTrue($container->hasDefinition(Service::class));
+        self::assertTrue($container->hasDefinition(Service::class));
     }
 
     public function testFinallyCleanupAfterCycle(): void
@@ -57,13 +57,13 @@ class ResolutionBenchTest extends TestCase
 
         try {
             $container->make('A');
-            $this->fail('Expected CircularDependencyException');
+            self::fail('Expected CircularDependencyException');
         } catch (CircularDependencyException $e) {
             // Expected
         }
 
         // After exception, resolving a different service should work fine
         $service = $container->make(Service::class);
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 }

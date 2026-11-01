@@ -96,6 +96,11 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Configure git identity for tests
+        run: |
+          git config --global user.email "ci@dglab.dev"
+          git config --global user.name "CI"
+
       - name: Generate component manifest
         run: python3 scripts/generate-component-manifest.py > component-manifest.txt
 
@@ -103,8 +108,8 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Load component manifest
-          mapfile -t COMPONENTS < <(grep -E '^\s+"Core/' component-manifest.txt | sed 's/.*"\(.*\)".*/\1/')
+          # Load component manifest (all component paths, not just Core/)
+          mapfile -t COMPONENTS < <(grep -E '^\s+"(Core|Hub|Bridge|Spokes|orchestrator)' component-manifest.txt | sed 's/.*"\(.*\)".*/\1/')
           # Also include orchestrator if not in manifest
           if [[ ! " ${COMPONENTS[@]} " =~ " orchestrator " ]]; then
             COMPONENTS+=("orchestrator")
@@ -116,7 +121,7 @@ jobs:
           for COMPONENT in "${COMPONENTS[@]}"; do
             if [ -f "${COMPONENT}/phpunit.xml.dist" ]; then
               echo "::group::Testing ${COMPONENT}"
-              if ../../vendor/bin/phpunit --configuration "${COMPONENT}/phpunit.xml.dist" --no-coverage; then
+              if vendor/bin/phpunit --configuration "${COMPONENT}/phpunit.xml.dist" --no-coverage; then
                 PASSED+=("${COMPONENT}")
               else
                 FAILED+=("${COMPONENT}")
@@ -197,7 +202,7 @@ jobs:
           fi
           echo "✓ No src/ directories found"
 
-- name: Verify component structure (tests/ at component level)
+      - name: Verify component structure (tests/ at component level)
         run: |
           set -euo pipefail
           echo "Verifying component structure..."
@@ -245,11 +250,12 @@ jobs:
 
       - name: Verify architecture boundary lint coverage
         run: |
-          files_scanned=$(python3 -c "import json; print(json.load(open('/tmp/abl-summary.json'))['files_scanned'])" 2>/dev/null || echo 0)
+          files_scanned=$(python3 scripts/architecture-boundary-lint.py 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['files_scanned'])" 2>/dev/null || echo 0)
           if [ "$files_scanned" -eq 0 ]; then
             echo "::error::architecture-boundary-lint scanned 0 files - UNVERIFIED"
             exit 1
           fi
+          echo "Architecture boundary lint scanned $files_scanned files"
 
       - name: Run architecture boundary lint regression tests
         run: python3 scripts/test_architecture_boundary_lint.py
@@ -287,7 +293,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run PHPStan on entire codebase
-        run: vendor/bin/phpstan analyse --error-format=github
+        run: vendor/bin/phpstan analyse Core Hub Bridge Spokes app orchestrator --error-format=github
 
   # Security checks - secret scanning, dependency vulnerabilities
   security:
@@ -345,12 +351,7 @@ jobs:
             exit 0
           fi
           if [ "$rc" -eq 1 ] && [ "$n" -ge 1 ]; then
-            python3 -c "
-import json
-for l in json.load(open('leaks.json'))[:50]:
-    safe = {k: v for k, v in l.items() if k not in ('Secret', 'Match', 'Redacted')}
-    print('::error file=leaks.json::' + json.dumps(safe)[:350])
-"
+            echo "::error::Secrets found in tracked tree ($n leaks)"
             echo "::error::Secrets found in tracked tree"
             exit 1
           fi
@@ -371,13 +372,19 @@ for l in json.load(open('leaks.json'))[:50]:
       - name: Check all required jobs succeeded
         run: |
           FAILED=0
-          for job in component-tests integration-tests architecture-validation static-analysis security; do
-            RESULT="${{ needs.$job.result }}"
-            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
-              echo "::error::$job: $RESULT"
+          check_job() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "::error::$name: $result"
               FAILED=1
             fi
-          done
+          }
+          check_job "component-tests" "${{ needs.component-tests.result }}"
+          check_job "integration-tests" "${{ needs.integration-tests.result }}"
+          check_job "architecture-validation" "${{ needs.architecture-validation.result }}"
+          check_job "static-analysis" "${{ needs.static-analysis.result }}"
+          check_job "security" "${{ needs.security.result }}"
           if [ "$FAILED" -eq 1 ]; then
             echo "::error::One or more CI jobs failed"
             exit 1
@@ -389,7 +396,8 @@ for l in json.load(open('leaks.json'))[:50]:
           echo "### CI Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          for job in component-tests integration-tests architecture-validation static-analysis security; do
-            RESULT="${{ needs.$job.result }}"
-            echo "| $job | $RESULT |" >> $GITHUB_STEP_SUMMARY
-          done
+          echo "| component-tests | ${{ needs.component-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| integration-tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| architecture-validation | ${{ needs.architecture-validation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| static-analysis | ${{ needs.static-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY

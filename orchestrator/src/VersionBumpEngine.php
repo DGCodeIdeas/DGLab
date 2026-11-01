@@ -26,7 +26,7 @@ class VersionBumpEngine
             // bumps. Without this, each bump commit (chore(core/X): bump
             // version to Y) triggers a new release run that creates another
             // bump commit, ad infinitum — the runaway release loop (Task 53).
-            if (\preg_match('/^chore\([^)]*\): bump version to /', $message)) {
+            if (\preg_match('/^chore\([^)]*\): bump version to /', $message) === 1) {
                 continue;
             }
 
@@ -37,7 +37,7 @@ class VersionBumpEngine
             }
 
             // Also check body for BREAKING CHANGE:
-            if (\preg_match('/BREAKING CHANGE:/', $message)) {
+            if (\preg_match('/BREAKING CHANGE:/', $message) === 1) {
                 $hasBreaking = true;
             }
 
@@ -109,7 +109,7 @@ class VersionBumpEngine
         // per-package loop swallowed the throw (`|| continue`), `has_bump` stayed
         // `false`, and per-tier tags were never created. Silent no-op for the
         // entire Step-5 release cycle. See worklog Task 46 for the trace.
-        if (!\preg_match('/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/', $currentVersion, $matches)) {
+        if (\preg_match('/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/', $currentVersion, $matches) !== 1) {
             throw new \RuntimeException("Invalid SemVer format: {$currentVersion}");
         }
 
@@ -143,7 +143,7 @@ class VersionBumpEngine
 
         $pattern = '/^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?\s*:\s*(?P<description>.+)$/';
 
-        if (!\preg_match($pattern, $subject, $matches)) {
+        if (\preg_match($pattern, $subject, $matches) !== 1) {
             return [
                 'type' => 'unknown',
                 'scope' => '',
@@ -152,7 +152,7 @@ class VersionBumpEngine
             ];
         }
 
-        $breaking = $matches['breaking'] === '!' || \preg_match('/BREAKING CHANGE:/', $message);
+        $breaking = $matches['breaking'] === '!' || \preg_match('/BREAKING CHANGE:/', $message) === 1;
 
         return [
             'type' => $matches['type'],

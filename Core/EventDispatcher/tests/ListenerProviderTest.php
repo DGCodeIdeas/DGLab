@@ -26,8 +26,8 @@ final class ListenerProviderTest extends TestCase
         $event = new TestEvent();
         $listeners = iterator_to_array($provider->getListenersForEvent($event));
 
-        $this->assertCount(1, $listeners);
-        $this->assertSame($listener, $listeners[0]);
+        self::assertCount(1, $listeners);
+        self::assertSame($listener, $listeners[0]);
     }
 
     public function testAddListenerWithClassNameStoresSuccessfully(): void
@@ -38,7 +38,7 @@ final class ListenerProviderTest extends TestCase
         $event = new TestEvent();
         $listeners = iterator_to_array($provider->getListenersForEvent($event));
 
-        $this->assertCount(1, $listeners);
+        self::assertCount(1, $listeners);
     }
 
     public function testAddListenerThrowsForInvalidEventClass(): void
@@ -76,7 +76,7 @@ final class ListenerProviderTest extends TestCase
         $event = new TestEvent();
         $listeners = iterator_to_array($provider->getListenersForEvent($event));
 
-        $this->assertSame([], $listeners);
+        self::assertSame([], $listeners);
     }
 
     public function testGetListenersForEventSortsByPriorityDescending(): void
@@ -93,10 +93,10 @@ final class ListenerProviderTest extends TestCase
         $event = new TestEvent();
         $listeners = iterator_to_array($provider->getListenersForEvent($event));
 
-        $this->assertCount(3, $listeners);
-        $this->assertSame($high, $listeners[0]);
-        $this->assertSame($mid, $listeners[1]);
-        $this->assertSame($low, $listeners[2]);
+        self::assertCount(3, $listeners);
+        self::assertSame($high, $listeners[0]);
+        self::assertSame($mid, $listeners[1]);
+        self::assertSame($low, $listeners[2]);
     }
 
     public function testGetListenersForEventResolversViaContainer(): void
@@ -114,8 +114,8 @@ final class ListenerProviderTest extends TestCase
         $event = new TestEvent();
         $listeners = iterator_to_array($provider->getListenersForEvent($event));
 
-        $this->assertCount(1, $listeners);
-        $this->assertSame($resolved, $listeners[0]);
+        self::assertCount(1, $listeners);
+        self::assertSame($resolved, $listeners[0]);
     }
 
     public function testGetListenersForEventUsesCacheForRepeatCalls(): void
@@ -136,8 +136,8 @@ final class ListenerProviderTest extends TestCase
         iterator_to_array($provider->getListenersForEvent($event1));
         $listeners2 = iterator_to_array($provider->getListenersForEvent($event2));
 
-        $this->assertCount(1, $listeners2);
-        $this->assertSame($resolved, $listeners2[0]);
+        self::assertCount(1, $listeners2);
+        self::assertSame($resolved, $listeners2[0]);
     }
 
     public function testCacheInvalidatedOnNewRegistration(): void
@@ -149,11 +149,11 @@ final class ListenerProviderTest extends TestCase
         $provider->addListener(TestEvent::class, $listenerA);
 
         $event = new TestEvent();
-        $this->assertCount(1, iterator_to_array($provider->getListenersForEvent($event)));
+        self::assertCount(1, iterator_to_array($provider->getListenersForEvent($event)));
 
         $provider->addListener(TestEvent::class, $listenerB);
 
-        $this->assertCount(2, iterator_to_array($provider->getListenersForEvent($event)));
+        self::assertCount(2, iterator_to_array($provider->getListenersForEvent($event)));
     }
 
     public function testSamePriorityListenersMaintainRegistrationOrder(): void
@@ -168,9 +168,9 @@ final class ListenerProviderTest extends TestCase
         $event = new TestEvent();
         $listeners = iterator_to_array($provider->getListenersForEvent($event));
 
-        $this->assertCount(2, $listeners);
-        $this->assertSame($first, $listeners[0]);
-        $this->assertSame($second, $listeners[1]);
+        self::assertCount(2, $listeners);
+        self::assertSame($first, $listeners[0]);
+        self::assertSame($second, $listeners[1]);
     }
 
     // --- P3 Edge-Case Tests ---
@@ -187,7 +187,7 @@ final class ListenerProviderTest extends TestCase
         // Second call should re-resolve (not use stale cache)
         $listeners2 = iterator_to_array($provider->getListenersForEvent($event), false);
 
-        $this->assertSame(count($listeners1), count($listeners2), 'After clearCache, same listener count');
+        self::assertSame(count($listeners1), count($listeners2), 'After clearCache, same listener count');
     }
 
     public function testAddListenerDeduplicatesSameListenerAtSamePriority(): void
@@ -200,7 +200,7 @@ final class ListenerProviderTest extends TestCase
 
         $event = new TestEvent('test');
         $listeners = iterator_to_array($provider->getListenersForEvent($event), false);
-        $this->assertCount(1, $listeners, 'Duplicate listener at same priority should be deduped');
+        self::assertCount(1, $listeners, 'Duplicate listener at same priority should be deduped');
     }
 
     // --- P3 Batch 7 ---
@@ -215,6 +215,6 @@ final class ListenerProviderTest extends TestCase
 
         $event = new TestEvent('test');
         $listeners = iterator_to_array($provider->getListenersForEvent($event), false);
-        $this->assertCount(2, $listeners, 'Same listener at different priorities should NOT be deduped');
+        self::assertCount(2, $listeners, 'Same listener at different priorities should NOT be deduped');
     }
 }

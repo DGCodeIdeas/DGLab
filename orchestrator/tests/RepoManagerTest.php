@@ -486,7 +486,7 @@ final class RepoManagerTest extends TestCase
         $manager2 = new RepoManager($cloneDir);
         // Should not throw.
         $manager2->assertClean();
-        $this->addToAssertionCount(1);
+        self::addToAssertionCount(1);
     }
 
     public function testAssertCleanFailsOnModifiedTrackedFile(): void
@@ -540,7 +540,7 @@ final class RepoManagerTest extends TestCase
         $manager2 = new RepoManager($cloneDir);
         // Should not throw — repos.json is allowed.
         $manager2->assertClean(['repos.json']);
-        $this->addToAssertionCount(1);
+        self::addToAssertionCount(1);
     }
 
     public function testAssertCleanFailsOnUntrackedNotInAllowlist(): void

@@ -149,6 +149,9 @@ def check_blueprint_fidelity():
 
     # Check for missing implemented components (discovered vs expected)
     discovered_paths = {c["path"] for c in components}
+    # Handle orchestrator separately (it's at root level, not in tier dirs)
+    if (REPO_ROOT / "orchestrator").exists() and (REPO_ROOT / "orchestrator" / "tests").exists():
+        discovered_paths.add("orchestrator")
     missing = set(IMPLEMENTED_COMPONENTS) - discovered_paths
     for m in missing:
         violations.append({

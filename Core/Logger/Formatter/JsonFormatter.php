@@ -64,7 +64,7 @@ final class JsonFormatter implements FormatterInterface
             $flags |= JSON_PRETTY_PRINT;
         }
 
-        return json_encode($payload, $flags) ?: '{}';
+        return json_encode($payload, $flags);
     }
 
     public function formatBatch(array $records): string
@@ -92,7 +92,7 @@ final class JsonFormatter implements FormatterInterface
             }
             $replace['{' . $key . '}'] = match (true) {
                 is_scalar($value) || $value === null => (string) $value,
-                default => json_encode($value, JSON_THROW_ON_ERROR) ?: '',
+                default => json_encode($value, JSON_THROW_ON_ERROR),
             };
         }
 

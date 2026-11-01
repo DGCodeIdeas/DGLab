@@ -37,32 +37,32 @@ final class TwigDriverTest extends TestCase
     public function testRendersVariables(): void
     {
         $driver = new TwigDriver($this->tmp);
-        $this->assertSame('Hello Ada!', $driver->render('hello.twig', ['name' => 'Ada']));
+        self::assertSame('Hello Ada!', $driver->render('hello.twig', ['name' => 'Ada']));
     }
 
     public function testRepeatedRendersNoContextLeak(): void
     {
         $driver = new TwigDriver($this->tmp);
-        $this->assertSame('Hello Ada!', $driver->render('hello.twig', ['name' => 'Ada']));
-        $this->assertSame('Hello Bob!', $driver->render('hello.twig', ['name' => 'Bob']));
+        self::assertSame('Hello Ada!', $driver->render('hello.twig', ['name' => 'Ada']));
+        self::assertSame('Hello Bob!', $driver->render('hello.twig', ['name' => 'Bob']));
     }
 
     public function testAutoEscapesHtml(): void
     {
         $driver = new TwigDriver($this->tmp);
-        $this->assertSame('&lt;script&gt;', $driver->render('escaped.twig', ['value' => '<script>']));
+        self::assertSame('&lt;script&gt;', $driver->render('escaped.twig', ['value' => '<script>']));
     }
 
     public function testTemplateInheritance(): void
     {
         $driver = new TwigDriver($this->tmp);
-        $this->assertSame('child 42', $driver->render('child.twig', ['x' => 42]));
+        self::assertSame('child 42', $driver->render('child.twig', ['x' => 42]));
     }
 
     public function testIncludes(): void
     {
         $driver = new TwigDriver($this->tmp);
-        $this->assertSame('PARTIAL 7', $driver->render('include.twig', ['y' => 7]));
+        self::assertSame('PARTIAL 7', $driver->render('include.twig', ['y' => 7]));
     }
 
     public function testMissingTemplateThrowsLoaderError(): void
@@ -83,6 +83,6 @@ final class TwigDriverTest extends TestCase
     public function testViewDelegatesToDriver(): void
     {
         $view = new View(new TwigDriver($this->tmp));
-        $this->assertSame('Hello Ada!', $view->render('hello.twig', ['name' => 'Ada']));
+        self::assertSame('Hello Ada!', $view->render('hello.twig', ['name' => 'Ada']));
     }
 }

@@ -55,7 +55,7 @@ final class FilesystemDepth3Test extends TestCase
             self::fail('Path traversal via prefix collision should be rejected');
         } catch (PathTraversalRefusedException $e) {
             // Expected — boundary-aware check correctly rejects
-            $this->assertStringContainsString('escapes root', $e->getMessage());
+            self::assertStringContainsString('escapes root', $e->getMessage());
         } finally {
             @unlink($siblingDir . '/secret.txt');
             @rmdir($siblingDir);
@@ -153,7 +153,7 @@ final class FilesystemDepth3Test extends TestCase
     {
         // Should not throw
         $this->fs->delete('nonexistent.txt');
-        $this->assertTrue(true); // assertion that no exception was thrown
+        self::assertTrue(true); // assertion that no exception was thrown
     }
 
     /**
@@ -183,7 +183,10 @@ final class FilesystemDepth3Test extends TestCase
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) return;
-        $items = scandir($dir) ?: [];
+        $items = scandir($dir);
+        if ($items === false) {
+            $items = [];
+        }
         foreach ($items as $item) {
             if ($item === '.' || $item === '..') continue;
             $path = $dir . '/' . $item;

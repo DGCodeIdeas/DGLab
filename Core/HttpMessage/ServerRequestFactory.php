@@ -59,26 +59,26 @@ final class ServerRequestFactory implements ServerRequestFactoryInterface
         $queryParams = $get;
         if ($uri->getQuery() !== '') {
             parse_str($uri->getQuery(), $parsedQuery);
-            if (!empty($parsedQuery)) {
+            if ($parsedQuery !== []) {
                 $queryParams = array_merge($parsedQuery, $queryParams);
             }
         }
         $request = $request->withQueryParams($queryParams);
 
         // Cookie params.
-        if (!empty($cookie)) {
+        if ($cookie !== []) {
             $request = $request->withCookieParams($cookie);
         }
 
         // Uploaded files.
         $uploadedFiles = self::normalizeUploadedFiles($files);
-        if (!empty($uploadedFiles)) {
+        if ($uploadedFiles !== []) {
             $request = $request->withUploadedFiles($uploadedFiles);
         }
 
         // Parsed body: $_POST for form submissions (Content-Type: application/x-www-form-urlencoded or multipart/form-data).
         $contentType = (string)($server['CONTENT_TYPE'] ?? ($server['HTTP_CONTENT_TYPE'] ?? ''));
-        if (!empty($post) && (
+        if ($post !== [] && (
             str_starts_with($contentType, 'application/x-www-form-urlencoded')
             || str_starts_with($contentType, 'multipart/form-data')
         )) {

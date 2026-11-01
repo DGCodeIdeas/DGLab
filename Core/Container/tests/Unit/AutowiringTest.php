@@ -25,7 +25,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
             }
         ));
         $service = $container->make('closure.concrete');
-        $this->assertInstanceOf(ClosureConcrete::class, $service);
+        self::assertInstanceOf(ClosureConcrete::class, $service);
     }
 
     public function testAutowiresObjectConcrete(): void
@@ -34,7 +34,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
         $instance = new ObjectConcrete();
         $container->instance('object.concrete', $instance);
         $service = $container->make('object.concrete');
-        $this->assertSame($instance, $service);
+        self::assertSame($instance, $service);
     }
 
     public function testAutowiresClassStringConcrete(): void
@@ -42,7 +42,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind('class.string', ClassString::class);
         $service = $container->make('class.string');
-        $this->assertInstanceOf(ClassString::class, $service);
+        self::assertInstanceOf(ClassString::class, $service);
     }
 
     public function testAutowiresDefaultScalar(): void
@@ -50,7 +50,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind('scalar.value', 'literal_string_value');
         $service = $container->make('scalar.value');
-        $this->assertSame('literal_string_value', $service);
+        self::assertSame('literal_string_value', $service);
     }
 
     public function testAutowiresServiceWithNoConstructor(): void
@@ -58,7 +58,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(NoConstructor::class);
         $service = $container->make(NoConstructor::class);
-        $this->assertInstanceOf(NoConstructor::class, $service);
+        self::assertInstanceOf(NoConstructor::class, $service);
     }
 
     public function testAutowiresServiceWithConstructorAndDefaults(): void
@@ -66,7 +66,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(WithDefaults::class);
         $service = $container->make(WithDefaults::class);
-        $this->assertInstanceOf(WithDefaults::class, $service);
+        self::assertInstanceOf(WithDefaults::class, $service);
     }
 
     public function testAutowiresServiceWithProvidedParameters(): void
@@ -74,7 +74,7 @@ class AutowiringTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(WithParams::class);
         $service = $container->make(WithParams::class, ['customParam' => 'customValue']);
-        $this->assertInstanceOf(WithParams::class, $service);
+        self::assertInstanceOf(WithParams::class, $service);
     }
 
     public function testNotFoundExceptionForUnknownClass(): void

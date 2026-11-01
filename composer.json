@@ -7,6 +7,10 @@
         "php": "^8.4",
         "ext-mbstring": "*",
         "ext-pcre": "*",
+        "czproject/git-php": "^4.6",
+        "guzzlehttp/guzzle": "^8.3",
+        "nikic/php-parser": "^5.9",
+        "php-http/discovery": "^1.20",
         "psr/container": "^2.0",
         "psr/event-dispatcher": "^1.0",
         "psr/http-factory": "^1.0",
@@ -14,38 +18,23 @@
         "psr/http-server-handler": "^1.0",
         "psr/http-server-middleware": "^1.0",
         "psr/log": "^3.0",
-        "sovereign-stack/core-config": "*",
-        "sovereign-stack/core-container": "*",
-        "sovereign-stack/core-error-handler": "*",
-        "sovereign-stack/core-event-dispatcher": "*",
-        "sovereign-stack/core-http-message": "*",
-        "sovereign-stack/core-kernel": "*",
-        "sovereign-stack/core-logger": "*",
-        "sovereign-stack/core-middleware": "*",
-        "sovereign-stack/core-router": "*",
-        "sovereign-stack/hub-config": "*",
-        "sovereign-stack/bridge-vanguard": "*",
-        "sovereign-stack/spoke-codex": "*",
-        "sovereign-stack/spoke-canvas": "*",
-        "sovereign-stack/core-dbal": "*",
-        "sovereign-stack/core-crypto": "*",
-        "sovereign-stack/hub-identity": "*",
-        "sovereign-stack/spoke-showcase": "*",
-        "sovereign-stack/spoke-lms": "*",
-        "sovereign-stack/core-view": "*"
+        "twig/twig": "^3.30"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.4",
-        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan": "^2.3",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^11.0"
     },
-"autoload": {
+    "autoload": {
         "psr-4": {
             "App\\": "app/",
             "SovereignStack\\Core\\Container\\": "Core/Container/",
             "SovereignStack\\Core\\EventDispatcher\\": "Core/EventDispatcher/",
-            "SovereignStack\\Core\\Http\\": ["Core/HttpMessage/", "Core/Middleware/"],
+            "SovereignStack\\Core\\Http\\": [
+                "Core/HttpMessage/",
+                "Core/Middleware/"
+            ],
             "SovereignStack\\Core\\Router\\": "Core/Router/",
             "SovereignStack\\Core\\Config\\": "Core/Config/",
             "SovereignStack\\Core\\Logger\\": "Core/Logger/",
@@ -62,7 +51,8 @@
             "SovereignStack\\External\\Canvas\\": "Spokes/External/Canvas/",
             "SovereignStack\\Hub\\Identity\\": "Hub/Identity/",
             "SovereignStack\\Internal\\Showcase\\": "Spokes/Internal/Showcase/",
-            "SovereignStack\\Internal\\Lms\\": "Spokes/Internal/Lms/"
+            "SovereignStack\\Internal\\Lms\\": "Spokes/Internal/Lms/",
+            "SovereignStack\\Orchestrator\\": "orchestrator/src/"
         }
     },
     "autoload-dev": {
@@ -80,7 +70,11 @@
             "SovereignStack\\Core\\EventDispatcher\\Tests\\": "Core/EventDispatcher/tests/",
             "SovereignStack\\Core\\Router\\Tests\\": "Core/Router/tests/",
             "SovereignStack\\Core\\Crypto\\Tests\\": "Core/Crypto/tests/",
-            "SovereignStack\\Core\\Http\\Tests\\": ["Core/HttpMessage/tests/", "Core/Middleware/tests/"]
+            "SovereignStack\\Core\\Http\\Tests\\": [
+                "Core/HttpMessage/tests/",
+                "Core/Middleware/tests/"
+            ],
+            "SovereignStack\\Orchestrator\\Tests\\": "orchestrator/tests/"
         }
     },
     "repositories": [],

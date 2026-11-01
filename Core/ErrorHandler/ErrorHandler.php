@@ -65,7 +65,8 @@ final class ErrorHandler implements ErrorHandlerInterface
             return;
         }
 
-        $this->originalDisplayErrors = ini_get('display_errors') ?: '';
+        $displayErrors = ini_get('display_errors');
+        $this->originalDisplayErrors = $displayErrors === false ? '' : $displayErrors;
         ini_set('display_errors', 'Off');
 
         set_exception_handler($this->handleException(...));

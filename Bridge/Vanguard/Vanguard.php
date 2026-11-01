@@ -110,7 +110,10 @@ final class Vanguard implements BoundaryContractInterface
      */
     private function streamFromJson(mixed $data): \Psr\Http\Message\StreamInterface
     {
-        $json = json_encode($data, JSON_PRETTY_PRINT) ?: '';
+        $json = json_encode($data, JSON_PRETTY_PRINT);
+        if ($json === false) {
+            $json = '';
+        }
         $stream = new \SovereignStack\Core\Http\Stream('php://temp', 'r+');
         $stream->write($json);
         $stream->rewind();

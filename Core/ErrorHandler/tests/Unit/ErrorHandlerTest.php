@@ -85,7 +85,7 @@ final class ErrorHandlerTest extends TestCase
 
         $handler->handleException($e);
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
+        $logContents = $this->readLogContents();
         self::assertStringContainsString('error', $logContents);
         self::assertStringContainsString('Uncaught RuntimeException: test exception', $logContents);
         self::assertStringContainsString('exception', $logContents);
@@ -98,7 +98,7 @@ final class ErrorHandlerTest extends TestCase
 
         $handler->handleException($e);
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
+        $logContents = $this->readLogContents();
         self::assertStringContainsString('critical', $logContents);
     }
 
@@ -111,13 +111,13 @@ final class ErrorHandlerTest extends TestCase
         error_reporting(0); // Emulate @ operator.
 
         try {
-            $before = file_get_contents($this->tempFile) ?: '';
+            $before = $this->readLogContents();
 
             // Should return true (suppress) and NOT throw.
             $result = $handler->handleError(E_USER_WARNING, 'suppressed', __FILE__, __LINE__);
             self::assertTrue($result);
 
-            $after = file_get_contents($this->tempFile) ?: '';
+            $after = $this->readLogContents();
             self::assertSame($before, $after, 'Suppressed errors must not be logged.');
         } finally {
             error_reporting($originalErrorReporting);
@@ -155,7 +155,7 @@ final class ErrorHandlerTest extends TestCase
                 // Expected — handleError converts warnings to exceptions.
             }
 
-            $logContents = file_get_contents($this->tempFile) ?: '';
+            $logContents = $this->readLogContents();
             self::assertStringContainsString('warning', $logContents);
             self::assertStringContainsString('warning test', $logContents);
         } finally {
@@ -168,7 +168,7 @@ final class ErrorHandlerTest extends TestCase
         $handler = $this->buildHandler();
         $handler->handleFatal(); // No error_get_last() in test context.
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
+        $logContents = $this->readLogContents();
         self::assertSame('', $logContents);
     }
 
@@ -195,7 +195,7 @@ final class ErrorHandlerTest extends TestCase
         // After unregister(), a stale handleFatal() invocation MUST be a no-op.
         $handler->handleFatal();
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
+        $logContents = $this->readLogContents();
         self::assertSame('', $logContents, 'handleFatal() must not log after unregister().');
     }
 
@@ -212,7 +212,7 @@ final class ErrorHandlerTest extends TestCase
 
         $handler->handleFatal();
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
+        $logContents = $this->readLogContents();
         self::assertSame('', $logContents);
     }
 
@@ -263,7 +263,7 @@ final class ErrorHandlerTest extends TestCase
         // Should not throw or recurse infinitely.
         $handler->handleException(new \RuntimeException('original'));
 
-        $logContents = file_get_contents($this->tempFile) ?: '';
+        $logContents = $this->readLogContents();
         self::assertStringContainsString('original', $logContents);
     }
 
@@ -279,6 +279,12 @@ final class ErrorHandlerTest extends TestCase
 
         self::assertStringNotContainsString('sensitive', $prodOutput);
         self::assertStringContainsString('sensitive', $devOutput);
+    }
+
+    private function readLogContents(): string
+    {
+        $contents = file_get_contents($this->tempFile);
+        return $contents === false ? '' : $contents;
     }
 
     private function buildHandler(): ErrorHandler
@@ -321,12 +327,12 @@ final class ErrorHandlerTest extends TestCase
         try {
             try {
                 $handler->handleError(E_DEPRECATED, 'deprecated feature', __FILE__, __LINE__);
-                $this->fail('handleError should throw ErrorException for E_DEPRECATED');
+                self::fail('handleError should throw ErrorException for E_DEPRECATED');
             } catch (\ErrorException $e) {
                 self::assertSame(E_DEPRECATED, $e->getSeverity());
             }
 
-            $logContents = file_get_contents($this->tempFile) ?: '';
+            $logContents = $this->readLogContents();
             self::assertStringContainsString('info', $logContents, 'E_DEPRECATED should log at INFO level');
         } finally {
             error_reporting($originalErrorReporting);

@@ -14,7 +14,7 @@ final class EventTest extends TestCase
     {
         $event = new TestEvent();
 
-        $this->assertFalse($event->isPropagationStopped());
+        self::assertFalse($event->isPropagationStopped());
     }
 
     public function testStopPropagationHaltsEvent(): void
@@ -22,16 +22,16 @@ final class EventTest extends TestCase
         $event = new TestEvent();
         $event->stopPropagation();
 
-        $this->assertTrue($event->isPropagationStopped());
+        self::assertTrue($event->isPropagationStopped());
     }
 
     public function testStopPropagationOnStoppableEvent(): void
     {
         $event = new TestStoppableEvent();
-        $this->assertFalse($event->isPropagationStopped());
+        self::assertFalse($event->isPropagationStopped());
 
         $event->stopPropagation();
-        $this->assertTrue($event->isPropagationStopped());
+        self::assertTrue($event->isPropagationStopped());
     }
 
     public function testStampReturnsFluentInterface(): void
@@ -39,7 +39,7 @@ final class EventTest extends TestCase
         $event = new TestEvent();
         $result = $event->stamp('key', 'value');
 
-        $this->assertSame($event, $result);
+        self::assertSame($event, $result);
     }
 
     public function testStampRecordsValue(): void
@@ -48,8 +48,8 @@ final class EventTest extends TestCase
         $event->stamp('audit.entity', 'user_123');
         $event->stamp('audit.action', 'login');
 
-        $this->assertSame('user_123', $event->getStamp('audit.entity'));
-        $this->assertSame('login', $event->getStamp('audit.action'));
+        self::assertSame('user_123', $event->getStamp('audit.entity'));
+        self::assertSame('login', $event->getStamp('audit.action'));
     }
 
     public function testGetStampReturnsMostRecentForKey(): void
@@ -58,15 +58,15 @@ final class EventTest extends TestCase
         $event->stamp('trace', 'first');
         $event->stamp('trace', 'second');
 
-        $this->assertSame('second', $event->getStamp('trace'));
+        self::assertSame('second', $event->getStamp('trace'));
     }
 
     public function testGetStampReturnsDefaultWhenKeyNotFound(): void
     {
         $event = new TestEvent();
 
-        $this->assertNull($event->getStamp('nonexistent'));
-        $this->assertSame('default', $event->getStamp('nonexistent', 'default'));
+        self::assertNull($event->getStamp('nonexistent'));
+        self::assertSame('default', $event->getStamp('nonexistent', 'default'));
     }
 
     public function testGetStampsReturnsFullAuditTrail(): void
@@ -77,19 +77,19 @@ final class EventTest extends TestCase
 
         $stamps = $event->getStamps();
 
-        $this->assertCount(2, $stamps);
-        $this->assertSame('a', $stamps[0][0]);
-        $this->assertSame(1, $stamps[0][1]);
-        $this->assertIsFloat($stamps[0][2]);
-        $this->assertSame('b', $stamps[1][0]);
-        $this->assertSame(2, $stamps[1][1]);
+        self::assertCount(2, $stamps);
+        self::assertSame('a', $stamps[0][0]);
+        self::assertSame(1, $stamps[0][1]);
+        self::assertIsFloat($stamps[0][2]);
+        self::assertSame('b', $stamps[1][0]);
+        self::assertSame(2, $stamps[1][1]);
     }
 
     public function testHasStampsReturnsFalseWhenEmpty(): void
     {
         $event = new TestEvent();
 
-        $this->assertFalse($event->hasStamps());
+        self::assertFalse($event->hasStamps());
     }
 
     public function testHasStampsReturnsTrueAfterStamping(): void
@@ -97,7 +97,7 @@ final class EventTest extends TestCase
         $event = new TestEvent();
         $event->stamp('key', 'value');
 
-        $this->assertTrue($event->hasStamps());
+        self::assertTrue($event->hasStamps());
     }
 
     public function testStampsRecordMicrotimePrecision(): void
@@ -107,9 +107,9 @@ final class EventTest extends TestCase
 
         $stamps = $event->getStamps();
 
-        $this->assertCount(1, $stamps);
+        self::assertCount(1, $stamps);
         // Microtime must be a non-zero float
-        $this->assertGreaterThan(0.0, $stamps[0][2]);
+        self::assertGreaterThan(0.0, $stamps[0][2]);
     }
 
     public function testStampWorksWithComplexValues(): void
@@ -118,7 +118,7 @@ final class EventTest extends TestCase
         $complexData = ['id' => 42, 'tags' => ['a', 'b']];
         $event->stamp('payload', $complexData);
 
-        $this->assertSame($complexData, $event->getStamp('payload'));
+        self::assertSame($complexData, $event->getStamp('payload'));
     }
 
     public function testStampWorksWithNullValue(): void
@@ -126,7 +126,7 @@ final class EventTest extends TestCase
         $event = new TestEvent();
         $event->stamp('empty', null);
 
-        $this->assertNull($event->getStamp('empty', 'fallback'));
+        self::assertNull($event->getStamp('empty', 'fallback'));
     }
 
     public function testMultipleDifferentKeysDoNotOverwrite(): void
@@ -136,8 +136,8 @@ final class EventTest extends TestCase
         $event->stamp('key2', 'value2');
         $event->stamp('key1', 'value3');
 
-        $this->assertSame('value3', $event->getStamp('key1'));
-        $this->assertSame('value2', $event->getStamp('key2'));
-        $this->assertCount(3, $event->getStamps());
+        self::assertSame('value3', $event->getStamp('key1'));
+        self::assertSame('value2', $event->getStamp('key2'));
+        self::assertCount(3, $event->getStamps());
     }
 }

@@ -19,7 +19,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(Service::class);
         $service = $container->make(Service::class);
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 
     public function testMakeResolvesSingleton(): void
@@ -28,7 +28,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $instance = new Service();
         $container->instance(Service::class, $instance);
         $retrieved = $container->make(Service::class);
-        $this->assertSame($instance, $retrieved);
+        self::assertSame($instance, $retrieved);
     }
 
     public function testMakeResolvesClosure(): void
@@ -40,7 +40,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
             }
         ));
         $service = $container->make('closure.service');
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 
     public function testMakeResolvesClassWithNoConstructor(): void
@@ -48,7 +48,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(NoConstructor::class);
         $service = $container->make(NoConstructor::class);
-        $this->assertInstanceOf(NoConstructor::class, $service);
+        self::assertInstanceOf(NoConstructor::class, $service);
     }
 
     public function testMakeWithParameters(): void
@@ -56,7 +56,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(WithParams::class);
         $service = $container->make(WithParams::class, ['customParam' => 'customValue']);
-        $this->assertInstanceOf(WithParams::class, $service);
+        self::assertInstanceOf(WithParams::class, $service);
     }
 
     public function testGetThrowsNotFoundException(): void
@@ -70,13 +70,13 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
     {
         $container = new Container();
         $container->bind(Service::class);
-        $this->assertTrue($container->has(Service::class));
+        self::assertTrue($container->has(Service::class));
     }
 
     public function testHasReturnsTrueForInstantiatedClass(): void
     {
         $container = new Container();
-        $this->assertTrue($container->has(Service::class));
+        self::assertTrue($container->has(Service::class));
     }
 
     public function testSingletonReturnsSameInstance(): void
@@ -85,7 +85,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $instance = new Service();
         $container->instance(Service::class, $instance);
         $retrieved = $container->make(Service::class);
-        $this->assertSame($instance, $retrieved);
+        self::assertSame($instance, $retrieved);
     }
 
     public function testCompileIsIdempotent(): void
@@ -94,7 +94,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->bind(Service::class);
         $container->compile();
         $container->compile(); // Should not throw
-        $this->assertTrue($container->hasDefinition(Service::class));
+        self::assertTrue($container->hasDefinition(Service::class));
     }
 
     public function testBindAfterCompileThrows(): void
@@ -122,13 +122,13 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->bind('B', B::class);
         try {
             $container->make('A');
-            $this->fail('Expected CircularDependencyException');
+            self::fail('Expected CircularDependencyException');
         } catch (CircularDependencyException $e) {
             // Expected
         }
         // After exception, resolving stack should be clean - resolving a different service should work
         $service = $container->make(NoConstructor::class);
-        $this->assertInstanceOf(NoConstructor::class, $service);
+        self::assertInstanceOf(NoConstructor::class, $service);
     }
 
     public function testSingleton(): void
@@ -137,7 +137,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->singleton(Service::class);
         $service1 = $container->make(Service::class);
         $service2 = $container->make(Service::class);
-        $this->assertSame($service1, $service2);
+        self::assertSame($service1, $service2);
     }
 
     public function testSingletonViaGet(): void
@@ -146,7 +146,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->singleton(Service::class);
         $service1 = $container->get(Service::class);
         $service2 = $container->get(Service::class);
-        $this->assertSame($service1, $service2);
+        self::assertSame($service1, $service2);
     }
 
     public function testMakeThrowsNotFoundExceptionForUnboundNonClassString(): void
@@ -167,7 +167,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         // the `default => $concrete` arm in build() after the make() guard.
         $container = new Container();
         $container->bind('timezone', 'UTC');
-        $this->assertSame('UTC', $container->make('timezone'));
+        self::assertSame('UTC', $container->make('timezone'));
     }
 
     public function testGetReturnsService(): void
@@ -175,7 +175,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(Service::class);
         $service = $container->get(Service::class);
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 
     public function testGetThrowsForUnknownService(): void
@@ -191,7 +191,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->singleton(Service::class);
         $service1 = $container->get(Service::class);
         $service2 = $container->get(Service::class);
-        $this->assertSame($service1, $service2);
+        self::assertSame($service1, $service2);
     }
 
     public function testGetDefinitions(): void
@@ -199,7 +199,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(Service::class);
         $definitions = $container->getDefinitions();
-        $this->assertArrayHasKey(Service::class, $definitions);
+        self::assertArrayHasKey(Service::class, $definitions);
     }
 
     public function testGetDefinition(): void
@@ -207,7 +207,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(Service::class);
         $definition = $container->getDefinition(Service::class);
-        $this->assertSame(Service::class, $definition->abstract);
+        self::assertSame(Service::class, $definition->abstract);
     }
 
     public function testGetDefinitionThrowsForUnknown(): void
@@ -221,8 +221,8 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
     {
         $container = new Container();
         $container->bind(Service::class);
-        $this->assertTrue($container->hasDefinition(Service::class));
-        $this->assertFalse($container->hasDefinition('unknown.service'));
+        self::assertTrue($container->hasDefinition(Service::class));
+        self::assertFalse($container->hasDefinition('unknown.service'));
     }
 
     public function testGetWithInstance(): void
@@ -231,7 +231,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $instance = new Service();
         $container->instance(Service::class, $instance);
         $retrieved = $container->get(Service::class);
-        $this->assertSame($instance, $retrieved);
+        self::assertSame($instance, $retrieved);
     }
 
     public function testGetWithClosure(): void
@@ -243,7 +243,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
             }
         ));
         $service = $container->get('closure.service');
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 
     public function testGetDefinitionsMultiple(): void
@@ -252,9 +252,9 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container->bind(Service::class);
         $container->bind(NoConstructor::class);
         $definitions = $container->getDefinitions();
-        $this->assertCount(2, $definitions);
-        $this->assertArrayHasKey(Service::class, $definitions);
-        $this->assertArrayHasKey(NoConstructor::class, $definitions);
+        self::assertCount(2, $definitions);
+        self::assertArrayHasKey(Service::class, $definitions);
+        self::assertArrayHasKey(NoConstructor::class, $definitions);
     }
 
     public function testGetDefinitionWithConcrete(): void
@@ -262,8 +262,8 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind('my-service', Service::class);
         $definition = $container->getDefinition('my-service');
-        $this->assertSame('my-service', $definition->abstract);
-        $this->assertSame(Service::class, $definition->concrete);
+        self::assertSame('my-service', $definition->abstract);
+        self::assertSame(Service::class, $definition->concrete);
     }
 
     public function testGetWithAutowiring(): void
@@ -271,7 +271,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(WithParams::class);
         $service = $container->get(WithParams::class);
-        $this->assertInstanceOf(WithParams::class, $service);
+        self::assertInstanceOf(WithParams::class, $service);
     }
 
     public function testGetWithParameters(): void
@@ -283,7 +283,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $container = new Container();
         $container->bind(WithParams::class);
         $service = $container->make(WithParams::class, ['customParam' => 'customValue']);
-        $this->assertInstanceOf(WithParams::class, $service);
+        self::assertInstanceOf(WithParams::class, $service);
     }
 
     // --- P3 Edge-Case Tests ---
@@ -295,7 +295,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $first = $container->make(WithParams::class);
         $container->singleton(WithParams::class, WithParams::class);
         $second = $container->make(WithParams::class);
-        $this->assertNotSame($first, $second, 'Re-binding must invalidate cached singleton');
+        self::assertNotSame($first, $second, 'Re-binding must invalidate cached singleton');
     }
 
     public function testInstanceReplacesAlreadyResolvedSingleton(): void
@@ -305,7 +305,7 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $first = $container->make(WithParams::class);
         $replacement = new WithParams('replacement');
         $container->instance(WithParams::class, $replacement);
-        $this->assertSame($replacement, $container->get(WithParams::class));
+        self::assertSame($replacement, $container->get(WithParams::class));
     }
 
     public function testAddCompilerPassAfterCompileThrows(): void

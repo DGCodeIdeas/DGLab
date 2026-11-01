@@ -55,7 +55,6 @@ final class AttributeRouteLoaderTest extends TestCase
     public function testLoadSkipsNonExistentClass(): void
     {
         $loader = new AttributeRouteLoader();
-        /** @phpstan-ignore-next-line intentional non-class-string for testing */
         $collection = $loader->load(['NonExistentClass']);
 
         self::assertFalse($collection->has('anything'));

@@ -50,7 +50,8 @@ final class JwtDepth3Test extends TestCase
         $jwt = $signer->sign(['sub' => 'test']);
 
         $parts = explode('.', $jwt);
-        $signature = base64_decode(strtr($parts[2], '-_', '+/'));
+        $signature = base64_decode(strtr($parts[2], '-_', '+/'), true);
+        self::assertNotFalse($signature);
 
         // ES256 signature MUST be exactly 64 bytes (32 R + 32 S)
         self::assertSame(64, strlen($signature), 'ES256 signature must be 64 bytes (R||S)');
@@ -62,8 +63,8 @@ final class JwtDepth3Test extends TestCase
     public function testVerifierRejectsWrongAlgorithm(): void
     {
         // Craft a JWT with alg=HS256 (wrong algorithm)
-        $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
-        $payload = base64_encode(json_encode(['sub' => 'test']));
+        $header = self::base64UrlEncode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+        $payload = self::base64UrlEncode(json_encode(['sub' => 'test']));
         $jwt = $header . '.' . $payload . '.signature';
 
         $verifier = new JwtVerifier($this->publicKey);
@@ -78,13 +79,27 @@ final class JwtDepth3Test extends TestCase
      */
     public function testVerifierRejectsMissingAlgorithm(): void
     {
-        $header = base64_encode(json_encode(['typ' => 'JWT']));
-        $payload = base64_encode(json_encode(['sub' => 'test']));
+        $header = self::base64UrlEncode(json_encode(['typ' => 'JWT']));
+        $payload = self::base64UrlEncode(json_encode(['sub' => 'test']));
         $jwt = $header . '.' . $payload . '.signature';
 
         $verifier = new JwtVerifier($this->publicKey);
 
         $this->expectException(\RuntimeException::class);
+        $verifier->verify($jwt);
+    }
+
+    public function testVerifierRejectsPaddedBase64UrlSegments(): void
+    {
+        $signer = new JwtSigner($this->privateKey);
+        $jwt = $signer->sign(['sub' => 'test']);
+        [$header, $payload, $signature] = explode('.', $jwt);
+        $jwt = $header . '=' . '.' . $payload . '.' . $signature;
+
+        $verifier = new JwtVerifier($this->publicKey);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid base64url encoding');
         $verifier->verify($jwt);
     }
 
@@ -120,6 +135,11 @@ final class JwtDepth3Test extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $verifier->verify($jwt);
+    }
+
+    private static function base64UrlEncode(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
     }
 
     /**

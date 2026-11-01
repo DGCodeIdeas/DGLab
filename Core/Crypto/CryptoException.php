@@ -33,7 +33,7 @@ class CryptoException extends \RuntimeException
         string $message = '',
         ?\Throwable $previous = null
     ) {
-        parent::__construct($message ?: $errorCode, 0, $previous);
+        parent::__construct($message !== '' ? $message : $errorCode, 0, $previous);
     }
 
     public static function tagMismatch(string $kid): self

@@ -97,7 +97,7 @@ final class LineFormatter implements FormatterInterface
             }
             $replacement = match (true) {
                 is_scalar($value) || $value === null => (string) $value,
-                default => json_encode($value, JSON_THROW_ON_ERROR) ?: '',
+                default => json_encode($value, JSON_THROW_ON_ERROR),
             };
             // Security: sanitize interpolated values too — a context value
             // containing \n would break the single-line log format.
@@ -116,7 +116,7 @@ final class LineFormatter implements FormatterInterface
         foreach ($data as $key => $value) {
             $rendered = match (true) {
                 is_scalar($value) || $value === null => var_export($value, true),
-                default => json_encode($value, JSON_THROW_ON_ERROR) ?: 'null',
+                default => json_encode($value, JSON_THROW_ON_ERROR),
             };
             // Security: sanitize rendered context values to prevent log injection.
             $parts[] = "{$key}=" . self::sanitizeForSingleLine($rendered);

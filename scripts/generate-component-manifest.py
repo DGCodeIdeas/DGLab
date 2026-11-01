@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Tier directories to scan (post-migration architecture)
 TIER_DIRS = [

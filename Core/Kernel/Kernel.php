@@ -218,37 +218,37 @@ final class Kernel implements KernelInterface
             // a null return is an invariant violation — the system is broken,
             // not the caller. Worker MUST exit non-zero per §6.2.
             $container = ($this->containerFactory)();
-            /** @phpstan-ignore-next-line factory contract is non-null at the type level, but runtime violation (e.g. reflection-mangled factory) is the panic case the doctrine §4.5.4 throw-point #2 guards. */
+            /** factory contract is non-null at the type level, but runtime violation (e.g. reflection-mangled factory) is the panic case the doctrine §4.5.4 throw-point #2 guards. */
             if ($container === null) {
                 throw PanicException::forNullFactoryResult('containerFactory');
             }
             $config = ($this->configFactory)();
-            /** @phpstan-ignore-next-line see containerFactory note above. */
+            /** see containerFactory note above. */
             if ($config === null) {
                 throw PanicException::forNullFactoryResult('configFactory');
             }
             $logger = ($this->loggerFactory)();
-            /** @phpstan-ignore-next-line see containerFactory note above. */
+            /** see containerFactory note above. */
             if ($logger === null) {
                 throw PanicException::forNullFactoryResult('loggerFactory');
             }
             $errorHandler = ($this->errorHandlerFactory)();
-            /** @phpstan-ignore-next-line see containerFactory note above. */
+            /** see containerFactory note above. */
             if ($errorHandler === null) {
                 throw PanicException::forNullFactoryResult('errorHandlerFactory');
             }
             $providerRegistry = ($this->providerRegistryFactory)();
-            /** @phpstan-ignore-next-line see containerFactory note above. */
+            /** see containerFactory note above. */
             if ($providerRegistry === null) {
                 throw PanicException::forNullFactoryResult('providerRegistryFactory');
             }
             $eventDispatcher = ($this->eventDispatcherFactory)();
-            /** @phpstan-ignore-next-line see containerFactory note above. */
+            /** see containerFactory note above. */
             if ($eventDispatcher === null) {
                 throw PanicException::forNullFactoryResult('eventDispatcherFactory');
             }
             $router = ($this->routerFactory)();
-            /** @phpstan-ignore-next-line see containerFactory note above. */
+            /** see containerFactory note above. */
             if ($router === null) {
                 throw PanicException::forNullFactoryResult('routerFactory');
             }
@@ -405,7 +405,7 @@ final class Kernel implements KernelInterface
             // invariant violation. Detect it: if state isn't Handling when
             // we get here, throw PanicException instead of silently
             // overwriting it.
-            /** @phpstan-ignore-next-line PHPStan infers $this->state is Handling (set above), but runtime mutation by a parallel Fiber is exactly the panic case the doctrine §4.5.4 throw-point #4 guards. */
+            /** PHPStan infers $this->state is Handling (set above), but runtime mutation by a parallel Fiber is exactly the panic case the doctrine §4.5.4 throw-point #4 guards. */
             if ($this->state !== KernelState::Handling) {
                 throw PanicException::forStateRecoveryGap(
                     KernelState::Handling->value,

@@ -41,7 +41,8 @@ final class TestKernelFactory
 
     public static function create(?BootstrapperInterface $customBootstrapper = null): Kernel
     {
-        self::$logFile = tempnam(sys_get_temp_dir(), 'dglab_kernel_test_') ?: '/dev/null';
+        $logFile = tempnam(sys_get_temp_dir(), 'dglab_kernel_test_');
+        self::$logFile = $logFile === false ? '/dev/null' : $logFile;
         @unlink(self::$logFile);
 
         $bootstrappers = $customBootstrapper !== null
@@ -73,7 +74,8 @@ final class TestKernelFactory
      */
     public static function createWithBootstrappers(array $bootstrappers): Kernel
     {
-        self::$logFile = tempnam(sys_get_temp_dir(), 'dglab_kernel_test_') ?: '/dev/null';
+        $logFile = tempnam(sys_get_temp_dir(), 'dglab_kernel_test_');
+        self::$logFile = $logFile === false ? '/dev/null' : $logFile;
         @unlink(self::$logFile);
 
         return new Kernel(

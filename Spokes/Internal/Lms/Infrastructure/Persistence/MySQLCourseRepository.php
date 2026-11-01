@@ -123,9 +123,9 @@ final class MySQLCourseRepository implements CourseRepositoryInterface
     {
         return Course::restoreFromPersistence(
             id: new CourseId((string) $row['id']),
-            title: CourseTitle::fromString((string) $row['title']),
+            title: CourseTitle::fromString($row['title']),
             slug: CourseSlug::fromString((string) $row['slug']),
-            description: isset($row['description']) ? (string) $row['description'] : null,
+            description: isset($row['description']) ? $row['description'] : null,
             status: CourseStatus::from((string) $row['status']),
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             updatedAt: new DateTimeImmutable((string) ($row['updated_at'] ?? $row['created_at'])),

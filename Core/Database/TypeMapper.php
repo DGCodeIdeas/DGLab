@@ -43,13 +43,16 @@ final class TypeMapper
         };
 
         return match ($sqlType) {
-            'timestamp', 'datetime' => \DateTimeImmutable::createFromFormat(
-                'Y-m-d H:i:s.u',
-                $strValue,
-            ) ?: new \DateTimeImmutable($strValue),
+            'timestamp', 'datetime' => self::dateTimeFromString($strValue),
             'bool', 'tinyint' => (bool) (int) $strValue,
             'json' => json_decode($strValue, true) ?? [],
             default => $value,
         };
+    }
+
+    private static function dateTimeFromString(string $value): \DateTimeImmutable
+    {
+        $dateTime = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s.u', $value);
+        return $dateTime === false ? new \DateTimeImmutable($value) : $dateTime;
     }
 }

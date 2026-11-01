@@ -8,7 +8,7 @@ CANONICAL_PULSE_FIELDS = ("requestId", "traceId", "tenantId", "startedAt", "rout
 
 def check_request_context():
     """Parse RequestContext.php and verify constructor fields match canonical tuple."""
-    rc_path = REPO_ROOT / "packages/core/kernel/src/RequestContext.php"
+    rc_path = REPO_ROOT / "Core/Kernel/RequestContext.php"
     violations = []
     
     if not rc_path.exists():

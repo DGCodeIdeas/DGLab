@@ -59,7 +59,7 @@ final class Uri implements UriInterface
         $this->assertNoCrlf('scheme', $this->scheme);
         $this->assertNoCrlf('userInfo', $this->userInfo);
         $this->assertNoCrlf('host', $this->host);
-        $this->port = isset($parts['port']) ? $this->filterPort((int) $parts['port'], $this->scheme) : null;
+        $this->port = isset($parts['port']) ? $this->filterPort($parts['port'], $this->scheme) : null;
         $this->path = $this->normalizePath($parts['path'] ?? '');
         $this->query = $this->normalizeQuery($parts['query'] ?? '');
         $this->fragment = $this->normalizeFragment($parts['fragment'] ?? '');
@@ -137,7 +137,7 @@ final class Uri implements UriInterface
 
     public function withScheme($scheme): UriInterface
     {
-        $scheme = strtolower((string) $scheme);
+        $scheme = strtolower($scheme);
         $this->assertNoCrlf('scheme', $scheme);
         $new = clone $this;
         $new->scheme = $scheme;
@@ -156,7 +156,7 @@ final class Uri implements UriInterface
 
     public function withHost($host): UriInterface
     {
-        $host = strtolower((string) $host);
+        $host = strtolower($host);
         $this->assertNoCrlf('host', $host);
         $new = clone $this;
         $new->host = $host;
@@ -166,28 +166,28 @@ final class Uri implements UriInterface
     public function withPort($port): UriInterface
     {
         $new = clone $this;
-        $new->port = $port === null ? null : $this->filterPort((int) $port, $this->scheme);
+        $new->port = $port === null ? null : $this->filterPort($port, $this->scheme);
         return $new;
     }
 
     public function withPath($path): UriInterface
     {
         $new = clone $this;
-        $new->path = $this->normalizePath((string) $path);
+        $new->path = $this->normalizePath($path);
         return $new;
     }
 
     public function withQuery($query): UriInterface
     {
         $new = clone $this;
-        $new->query = $this->normalizeQuery((string) $query);
+        $new->query = $this->normalizeQuery($query);
         return $new;
     }
 
     public function withFragment($fragment): UriInterface
     {
         $new = clone $this;
-        $new->fragment = $this->normalizeFragment((string) $fragment);
+        $new->fragment = $this->normalizeFragment($fragment);
         return $new;
     }
 

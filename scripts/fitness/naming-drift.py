@@ -49,8 +49,6 @@ def load_root_composer_autoload():
         # Normalize: ensure trailing backslash
         normalized = {}
         for ns, path in autoload.items():
-            if isinstance(path, list):
-                path = path[0]
             normalized[ns.rstrip("\\") + "\\"] = path
         return normalized
     except Exception:
@@ -93,19 +91,20 @@ def check_naming_drift():
                 continue
 
         # Verify the path in autoload matches the actual directory
-        actual_path = autoload[ns_key]
-        if isinstance(actual_path, list):
-            actual_path = actual_path[0]
+        actual_paths = autoload[ns_key]
+        if not isinstance(actual_paths, list):
+            actual_paths = [actual_paths]
         # Path in composer.json is relative to repo root
         expected_rel_path = tier_dir + "/"
-        if not actual_path.endswith(expected_rel_path):
+        path_ok = any(p.rstrip("/") + "/" == expected_rel_path or p == expected_rel_path for p in actual_paths)
+        if not path_ok:
             violations.append({
                 "rule": "NAME-002",
                 "component": component_id,
                 "canonical": expected_rel_path,
-                "found": actual_path,
+                "found": actual_paths,
                 "references": [str(REPO_ROOT / "composer.json")],
-                "message": f"Autoload path mismatch for {component_id}: expected {expected_rel_path}, got {actual_path}"
+                "message": f"Autoload path mismatch for {component_id}: expected {expected_rel_path}, got {actual_paths}"
             })
 
     # Check additional implemented components have autoload entries

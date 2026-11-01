@@ -74,6 +74,7 @@ final readonly class Envelope implements JsonSerializable
             return '';
         }
 
-        return base64_decode($encoded, true) ?: '';
+        $decoded = base64_decode($encoded, true);
+        return $decoded === false ? '' : $decoded;
     }
 }

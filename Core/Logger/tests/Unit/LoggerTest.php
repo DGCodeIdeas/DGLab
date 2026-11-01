@@ -124,7 +124,6 @@ final class LoggerTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid log level');
 
-        /** @phpstan-ignore arguments.type */
         $logger->log('verbose', 'should throw');
     }
 
@@ -281,7 +280,10 @@ final class LoggerTest extends TestCase
         $handler = new StreamHandler($this->tempFile);
         $logger = new Logger([$handler]);
         $logger->log(LogLevel::INFO, '');
-        $content = file_get_contents($this->tempFile) ?: '';
+        $content = file_get_contents($this->tempFile);
+        if ($content === false) {
+            $content = '';
+        }
         self::assertNotEmpty($content, 'Empty message should still produce a log line');
     }
 

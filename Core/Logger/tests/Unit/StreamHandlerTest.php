@@ -157,7 +157,6 @@ final class StreamHandlerTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('must be a file path string or an open resource');
 
-        /** @phpstan-ignore argument.type */
         new StreamHandler(42);
     }
 

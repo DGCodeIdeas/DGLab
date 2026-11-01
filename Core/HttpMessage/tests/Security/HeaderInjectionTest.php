@@ -216,7 +216,12 @@ final class HeaderInjectionTest extends TestCase
     {
         $uri = new \SovereignStack\Core\Http\Uri('http://user:pass@example.com/');
         $this->expectException(\InvalidArgumentException::class);
-        $uri->{$method}($payload);
+        $uri = match ($method) {
+            'withHost' => $uri->withHost($payload),
+            'withScheme' => $uri->withScheme($payload),
+            'withUserInfo' => $uri->withUserInfo($payload),
+            default => throw new \LogicException('Unexpected URI method: ' . $method),
+        };
     }
 
     // -----------------------------------------------------------------------
