@@ -36,6 +36,6 @@ final class RolloutBucket
             : hash('crc32b', $key, binary: false);
 
         // Take the last 8 hex chars (32 bits) and modulo 100.
-        return (int) (hexdec(substr($hash, -8)) % 100);
+        return hexdec(substr($hash, -8)) % 100;
     }
 }

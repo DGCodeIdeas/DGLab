@@ -153,7 +153,7 @@ final class ApplicationFactoryTest extends TestCase
         self::assertStringStartsWith('App\\', $namespace,
             'ApplicationFactory MUST live in the App namespace (application tier per SPEC §3), ' .
             'NOT inside SovereignStack\\Core (which would invert the architecture per M02).');
-        self::assertStringNotStartsWith('SovereignStack\\Core\\', $namespace,
+        self::assertFalse(str_starts_with($namespace, 'SovereignStack\\Core\\'),
             'ApplicationFactory MUST NOT live in Core (would invert dependency direction per ADR-004).');
     }
 }

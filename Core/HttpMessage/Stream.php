@@ -61,7 +61,7 @@ final class Stream implements StreamInterface
         }
 
         $meta = stream_get_meta_data($this->resource);
-        $this->seekable = (bool) $meta['seekable'];
+        $this->seekable = $meta['seekable'];
         // Strip the binary flag ('b') — it's a no-op on modern systems and
         // causes mode-matching failures when PHP reports 'w+b' for php://temp.
         $mode = str_replace('b', '', $mode);

@@ -96,6 +96,11 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Configure git identity for tests
+        run: |
+          git config --global user.email "ci@dglab.dev"
+          git config --global user.name "CI"
+
       - name: Generate component manifest
         run: python3 scripts/generate-component-manifest.py > component-manifest.txt
 

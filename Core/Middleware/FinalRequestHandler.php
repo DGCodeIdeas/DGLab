@@ -37,8 +37,20 @@ final class FinalRequestHandler implements FinalRequestHandlerInterface
         }
 
         $controller = $this->container->get($match->route->controllerClass);
-        return $controller->{$match->route->controllerMethod}(
+        $controllerMethod = $match->route->controllerMethod;
+        $action = [$controller, $controllerMethod];
+        if (!is_callable($action)) {
+            throw new \LogicException('Route controller method is not callable.');
+        }
+
+        $response = call_user_func(
+            $action,
             $request->withAttribute('__route_match', $match),
         );
+        if (!$response instanceof ResponseInterface) {
+            throw new \UnexpectedValueException('Route controller must return a PSR-7 response.');
+        }
+
+        return $response;
     }
 }

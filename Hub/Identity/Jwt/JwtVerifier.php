@@ -33,7 +33,7 @@ final class JwtVerifier
         $headerData = json_decode($this->unb64($header), true);
         if (!is_array($headerData) || ($headerData['alg'] ?? null) !== self::EXPECTED_ALG) {
             throw new \RuntimeException(
-                'JWT alg mismatch: expected ' . self::EXPECTED_ALG . (string) 
+                'JWT alg mismatch: expected ' . self::EXPECTED_ALG .
                 ', got ' . ($headerData['alg'] ?? 'missing')
             );
         }
@@ -93,6 +93,10 @@ final class JwtVerifier
 
     private function unb64(string $data): string
     {
-        return base64_decode(strtr($data, '-_', '+/'));
+        $decoded = base64_decode(strtr($data, '-_', '+/'), true);
+        if ($decoded === false) {
+            throw new \RuntimeException('Invalid base64url encoding in JWT');
+        }
+        return $decoded;
     }
 }

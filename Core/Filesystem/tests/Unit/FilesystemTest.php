@@ -122,7 +122,10 @@ final class FilesystemTest extends TestCase
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) return;
-        $items = scandir($dir) ?: [];
+        $items = scandir($dir);
+        if ($items === false) {
+            $items = [];
+        }
         foreach ($items as $item) {
             if ($item === '.' || $item === '..') continue;
             $path = $dir . '/' . $item;

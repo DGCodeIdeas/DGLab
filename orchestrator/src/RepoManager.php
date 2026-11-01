@@ -209,7 +209,7 @@ class RepoManager
             throw new \RuntimeException('git rev-parse failed: ' . $e->getMessage(), 0, $e);
         }
 
-        $sha = \trim((string) ($output[0] ?? ''));
+        $sha = \trim($output[0] ?? '');
         if (!\preg_match('/^[0-9a-f]{40}$/', $sha)) {
             throw new \RuntimeException("Unexpected HEAD SHA after commit: {$sha}");
         }

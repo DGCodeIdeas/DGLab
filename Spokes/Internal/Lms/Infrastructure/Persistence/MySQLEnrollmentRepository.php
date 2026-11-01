@@ -169,7 +169,7 @@ final class MySQLEnrollmentRepository implements EnrollmentRepositoryInterface
     private function hydrate(array $row): Enrollment
     {
         $completedAt = isset($row['completed_at'])
-            ? new DateTimeImmutable((string) $row['completed_at'])
+            ? new DateTimeImmutable($row['completed_at'])
             : null;
 
         return Enrollment::restoreFromPersistence(

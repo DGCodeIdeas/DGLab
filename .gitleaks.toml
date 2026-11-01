@@ -17,6 +17,12 @@ paths = [
   # scanned. Review basis: gitleaks 8.24.3 findings, triaged manually
   # file-by-file before this entry was written.
   '''packages/.*/tests/''',
+  # Synthetic dot-path key in a performance test is classified as a generic
+  # API key, but it contains no credential and has no authentication use.
+  '''^Core/Config/tests/Performance/ConfigBenchTest\.php$''',
+  # Deliberately fake API-key fixture used to verify redaction behavior; it is
+  # not a credential and must remain visible to the test itself.
+  '''^Core/Logger/tests/Unit/RedactingFormatterTest\.php$''',
   # Known FALSE POSITIVE, reviewed 2026-10-13: the gitleaks 8.24.3 binary's
   # sidekiq-secret rule matches the ASCII tier diagram (the box-drawing '│'
   # UTF-8 bytes at the end of a space-padded line, e.g. "Provisioning,

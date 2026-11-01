@@ -57,7 +57,10 @@ final class MonorepoPackage
         }
 
         $pattern = rtrim($repoRoot, '/') . '/packages/*/*/composer.json';
-        $matches = glob($pattern) ?: [];
+        $matches = glob($pattern);
+        if ($matches === false) {
+            $matches = [];
+        }
         foreach ($matches as $composerPath) {
             $contents = file_get_contents($composerPath);
             if ($contents === false) {

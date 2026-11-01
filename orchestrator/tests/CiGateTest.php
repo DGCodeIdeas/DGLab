@@ -22,7 +22,7 @@ final class CiGateTest extends TestCase
         $gate = $this->buildGate($this->makeRunResponse(123456, 'completed', 'success'));
         // Should not throw.
         $gate->assertGreen('packages-ci.yml', 'main');
-        $this->addToAssertionCount(1);
+        self::addToAssertionCount(1);
     }
 
     public function testAssertGreenFailsOnFailedWorkflow(): void
@@ -67,7 +67,7 @@ final class CiGateTest extends TestCase
 
     public function testAssertGreenFailsOnHttpClientException(): void
     {
-        $client = $this->createStub(ClientInterface::class);
+        $client = self::createStub(ClientInterface::class);
         $client->method('sendRequest')->willThrowException(
             new class ('connection refused') extends \Exception implements ClientExceptionInterface {
             }
@@ -232,7 +232,7 @@ final class CiGateTest extends TestCase
         $gate = $this->buildGate($this->makeRunResponse(1, 'completed', 'success'));
         $gate->setToken('fake-token-abc');
         $gate->assertGreen('packages-ci.yml', 'main');
-        $this->addToAssertionCount(1);
+        self::addToAssertionCount(1);
     }
 
     // ─── test helpers ───────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ final class CiGateTest extends TestCase
         string $owner = 'owner',
         string $repo = 'repo',
     ): CiGate {
-        $client = $this->createStub(ClientInterface::class);
+        $client = self::createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn($response);
         $factory = $this->makeRequestFactory();
         return new CiGate($owner, $repo, $client, $factory);
@@ -253,11 +253,11 @@ final class CiGateTest extends TestCase
 
     private function makeRequestFactory(): RequestFactoryInterface
     {
-        $request = $this->createStub(RequestInterface::class);
+        $request = self::createStub(RequestInterface::class);
         // withHeader returns self so the call chain works.
         $request->method('withHeader')->willReturnSelf();
 
-        $factory = $this->createStub(RequestFactoryInterface::class);
+        $factory = self::createStub(RequestFactoryInterface::class);
         $factory->method('createRequest')->willReturn($request);
         return $factory;
     }
@@ -281,11 +281,11 @@ final class CiGateTest extends TestCase
 
     private function makeRawResponse(string $body, int $status): ResponseInterface
     {
-        $stream = $this->createStub(StreamInterface::class);
+        $stream = self::createStub(StreamInterface::class);
         $stream->method('__toString')->willReturn($body);
         $stream->method('getContents')->willReturn($body);
 
-        $response = $this->createStub(ResponseInterface::class);
+        $response = self::createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($status);
         $response->method('getBody')->willReturn($stream);
         return $response;

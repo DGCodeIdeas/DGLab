@@ -57,7 +57,10 @@ final class EnvLoader implements EnvLoaderInterface
      */
     private function lines(string $contents): iterable
     {
-        $lines = preg_split('/\r\n|\r|\n/', $contents) ?: [];
+        $lines = preg_split('/\r\n|\r|\n/', $contents);
+        if ($lines === false) {
+            $lines = [];
+        }
 
         foreach ($lines as $lineNum => $line) {
             $trimmed = ltrim($line);

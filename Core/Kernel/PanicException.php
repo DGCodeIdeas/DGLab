@@ -97,9 +97,9 @@ class PanicException extends \RuntimeException
      */
     public static function forStateRecoveryGap(mixed $expectedState, mixed $actualState): self
     {
-        /** @phpstan-ignore-next-line mixed→string cast is safe — backed enum value is int|string, both cast cleanly to string for the message. */
+        /** mixed→string cast is safe — backed enum value is int|string, both cast cleanly to string for the message. */
         $expected = (string) $expectedState;
-        /** @phpstan-ignore-next-line see above. */
+        /** see above. */
         $actual = (string) $actualState;
         return self::forInvariantViolation(
             'handle() finally cannot transition state back to Booted',

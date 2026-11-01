@@ -88,12 +88,12 @@ final class FeatureFlagManager implements FeatureManagerInterface
         foreach ($variants as $variantKey => $weight) {
             $cumulative += $weight;
             if ($bucket < $cumulative) {
-                return (string) $variantKey;
+                return $variantKey;
             }
         }
 
         // Weights did not sum to 100 (defensive — write-time validation rejects this).
         // Fall back to the last variant.
-        return (string) array_key_last($variants);
+        return array_key_last($variants);
     }
 }

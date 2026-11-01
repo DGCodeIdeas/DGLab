@@ -26,9 +26,9 @@ final class EventDispatcherTest extends TestCase
 
         $result = $dispatcher->dispatch($event);
 
-        $this->assertSame($event, $result);
-        $this->assertTrue($event->processed);
-        $this->assertSame(['handler'], $event->data['handled_by']);
+        self::assertSame($event, $result);
+        self::assertTrue($event->processed);
+        self::assertSame(['handler'], $event->data['handled_by']);
     }
 
     public function testDispatchReturnsEventUnchangedWhenNoListeners(): void
@@ -39,8 +39,8 @@ final class EventDispatcherTest extends TestCase
         $event = new TestEvent();
         $result = $dispatcher->dispatch($event);
 
-        $this->assertSame($event, $result);
-        $this->assertFalse($event->processed);
+        self::assertSame($event, $result);
+        self::assertFalse($event->processed);
     }
 
     public function testDispatchCallsListenersInPriorityOrder(): void
@@ -59,7 +59,7 @@ final class EventDispatcherTest extends TestCase
 
         $dispatcher->dispatch($event);
 
-        $this->assertSame(['high', 'mid', 'low'], $event->data['handled_by']);
+        self::assertSame(['high', 'mid', 'low'], $event->data['handled_by']);
     }
 
     public function testDispatchStopsOnStoppableEventPropagation(): void
@@ -83,8 +83,8 @@ final class EventDispatcherTest extends TestCase
 
         $dispatcher->dispatch($event);
 
-        $this->assertSame(['stopper'], $event->calledBy);
-        $this->assertTrue($event->isPropagationStopped());
+        self::assertSame(['stopper'], $event->calledBy);
+        self::assertTrue($event->isPropagationStopped());
     }
 
     public function testDispatchContinuesOnListenerFailure(): void
@@ -102,9 +102,9 @@ final class EventDispatcherTest extends TestCase
         // Should not throw — error isolation
         $result = $dispatcher->dispatch($event);
 
-        $this->assertSame($event, $result);
-        $this->assertTrue($event->processed, 'Successful listener should still run after failure');
-        $this->assertSame(['success'], $event->data['handled_by']);
+        self::assertSame($event, $result);
+        self::assertTrue($event->processed, 'Successful listener should still run after failure');
+        self::assertSame(['success'], $event->data['handled_by']);
     }
 
     public function testDispatchWithLoggerRecordsFailure(): void
@@ -117,8 +117,8 @@ final class EventDispatcherTest extends TestCase
         $logger->expects($this->once())
             ->method('error')
             ->with(
-                $this->stringContains('logged failure'),
-                $this->callback(function (array $context): bool {
+                self::stringContains('logged failure'),
+                self::callback(function (array $context): bool {
                     return isset($context['event'], $context['listener'], $context['exception'], $context['trace'])
                         && $context['event'] === TestEvent::class;
                 })
@@ -144,8 +144,8 @@ final class EventDispatcherTest extends TestCase
         $dispatcher = new EventDispatcher($provider);
         $event = new TestEvent();
 
-        $this->assertSame($event, $dispatcher->dispatch($event));
-        $this->assertSame(['after-failure'], $event->data['handled_by']);
+        self::assertSame($event, $dispatcher->dispatch($event));
+        self::assertSame(['after-failure'], $event->data['handled_by']);
     }
 
     public function testDispatchWithMultipleFailuresContinuesAll(): void
@@ -164,8 +164,8 @@ final class EventDispatcherTest extends TestCase
 
         $dispatcher->dispatch($event);
 
-        $this->assertTrue($event->processed);
-        $this->assertSame(['only-survivor'], $event->data['handled_by']);
+        self::assertTrue($event->processed);
+        self::assertSame(['only-survivor'], $event->data['handled_by']);
     }
 
     public function testDispatchModifiesEventThroughListeners(): void
@@ -183,9 +183,9 @@ final class EventDispatcherTest extends TestCase
 
         $result = $dispatcher->dispatch($event);
 
-        $this->assertSame($event, $result);
-        $this->assertTrue($event->data['enriched']);
-        $this->assertSame(987654321, $event->data['timestamp']);
+        self::assertSame($event, $result);
+        self::assertTrue($event->data['enriched']);
+        self::assertSame(987654321, $event->data['timestamp']);
     }
 
     public function testDispatchWithClosureListener(): void
@@ -205,8 +205,8 @@ final class EventDispatcherTest extends TestCase
 
         $dispatcher->dispatch($event);
 
-        $this->assertTrue($called);
-        $this->assertTrue($event->processed);
+        self::assertTrue($called);
+        self::assertTrue($event->processed);
     }
 
     public function testDispatchPreservesEventAcrossMultipleListeners(): void
@@ -232,8 +232,8 @@ final class EventDispatcherTest extends TestCase
 
         $result = $dispatcher->dispatch($event);
 
-        $this->assertSame(3, $event->data['step']);
-        $this->assertSame($event, $result);
+        self::assertSame(3, $event->data['step']);
+        self::assertSame($event, $result);
     }
 
     public function testDispatchExceptionContainsEventClass(): void
@@ -250,7 +250,7 @@ final class EventDispatcherTest extends TestCase
         $result = $dispatcher->dispatch($event);
 
         // Dispatch completes normally — error isolation in action
-        $this->assertSame($event, $result);
+        self::assertSame($event, $result);
     }
 
     // --- P3 Batch 5 ---
@@ -267,7 +267,7 @@ final class EventDispatcherTest extends TestCase
         $event->stopPropagation(); // pre-stop before dispatch
 
         $result = $dispatcher->dispatch($event);
-        $this->assertSame($event, $result, 'Pre-stopped event returns itself');
+        self::assertSame($event, $result, 'Pre-stopped event returns itself');
     }
 
     public function testDispatchNonEventObjectStillWorks(): void
@@ -283,6 +283,6 @@ final class EventDispatcherTest extends TestCase
         $event = new \stdClass();
         $dispatcher->dispatch($event);
 
-        $this->assertTrue($called, 'Listener for stdClass should fire');
+        self::assertTrue($called, 'Listener for stdClass should fire');
     }
 }

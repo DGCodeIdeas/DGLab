@@ -64,7 +64,10 @@ class CiGate
         // After this block, both $repoOwner and $repoName are guaranteed non-null
         // (the ?? operator always returns a non-null string here).
         if ($repoOwner === null || $repoName === null) {
-            $githubRepo = \getenv('GITHUB_REPOSITORY') ?: '';
+            $githubRepo = \getenv('GITHUB_REPOSITORY');
+            if ($githubRepo === false) {
+                $githubRepo = '';
+            }
             $parts = \explode('/', $githubRepo);
             $repoOwner = $repoOwner ?? ($parts[0] ?? '');
             $repoName = $repoName ?? ($parts[1] ?? '');

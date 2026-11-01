@@ -34,7 +34,7 @@ final class DatabaseException extends \RuntimeException
     public static function fromPdoError(\PDOException $e, ?string $sqlHash = null): self
     {
         $message = $e->getMessage();
-        $code = (int) ($e->getCode() ?: 0);
+        $code = (int) $e->getCode();
 
         return new self(
             sprintf('Database error [%s]: %s', $sqlHash ?? 'unknown', $message),

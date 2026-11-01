@@ -16,7 +16,7 @@ class CompileTest extends \PHPUnit\Framework\TestCase
         $container->bind(Service::class);
         $container->compile();
         $container->compile(); // Second call should be no-op
-        $this->assertTrue($container->hasDefinition(Service::class));
+        self::assertTrue($container->hasDefinition(Service::class));
     }
 
     public function testBindAfterCompileThrowsLogicException(): void
@@ -40,6 +40,6 @@ class CompileTest extends \PHPUnit\Framework\TestCase
         });
         $container->compile();
         $service = $container->make('CompiledService');
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 }

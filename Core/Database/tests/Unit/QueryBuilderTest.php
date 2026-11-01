@@ -85,9 +85,7 @@ final class QueryBuilderTest extends TestCase
         $qb = new QueryBuilder($this->conn);
         /** @var array{sql: string, params: array<string, mixed>} $result */
         $result = $qb->select('id')->from('users')->where('email', 'alice@example.com')->toSql();
-        // @phpstan-ignore-next-line
         self::assertStringContainsString(':param_1', $result['sql']);
-        // @phpstan-ignore-next-line
         self::assertStringNotContainsString('alice@example.com', $result['sql']);
         self::assertSame('alice@example.com', $result['params'][':param_1']);
     }
@@ -145,7 +143,6 @@ final class QueryBuilderTest extends TestCase
         /** @var array{sql: string, params: array<string, mixed>} $result */
         $result = $qb->select('id')->from('users')->where('tenant_id', 'T2')->toSql();
         // Should NOT auto-inject tenant_id since an explicit one exists
-        // @phpstan-ignore-next-line
         self::assertStringNotContainsString(':tenant_id', $result['sql']);
     }
 
@@ -157,9 +154,7 @@ final class QueryBuilderTest extends TestCase
         /** @var array{sql: string, params: array<string, mixed>} $result */
         $result = $qb->select('id')->from('users')->where('email', "'; DROP TABLE users; --")->toSql();
         // The payload should be in params, NOT in the SQL string
-        // @phpstan-ignore-next-line
         self::assertStringNotContainsString('DROP TABLE', $result['sql']);
-        // @phpstan-ignore-next-line
         self::assertStringNotContainsString('--', $result['sql']);
     }
 

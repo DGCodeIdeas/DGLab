@@ -131,7 +131,7 @@ final class EventDispatcher implements EventDispatcherInterface
                 $class = $classPart::class;
             } else {
                 // After is_object() is false, $classPart is a string (class name)
-                $class = (string) $classPart;
+                $class = $classPart;
             }
 
             // $methodPart is always a string in array-shaped callables

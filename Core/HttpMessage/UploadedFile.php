@@ -79,7 +79,6 @@ final class UploadedFile implements UploadedFileInterface
             throw new RuntimeException('Cannot move file due to upload error.');
         }
 
-        $targetPath = (string) $targetPath;
         if ($targetPath === '') {
             throw new \InvalidArgumentException('Target path cannot be empty.');
         }

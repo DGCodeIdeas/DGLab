@@ -33,8 +33,8 @@ final class ViewFactoryTest extends TestCase
     {
         $config = new ConfigRepository(['view' => ['driver' => 'twig']]);
         $view = ViewFactory::fromConfig($config, $this->tmp);
-        $this->assertInstanceOf(TwigDriver::class, $view->getDriver());
-        $this->assertSame('hi', $view->render('t.twig'));
+        self::assertInstanceOf(TwigDriver::class, $view->getDriver());
+        self::assertSame('hi', $view->render('t.twig'));
     }
 
     public function testFromConfigUsesViewPathFromConfig(): void
@@ -46,8 +46,8 @@ final class ViewFactoryTest extends TestCase
             ],
         ]);
         $view = ViewFactory::fromConfig($config);
-        $this->assertInstanceOf(TwigDriver::class, $view->getDriver());
-        $this->assertSame('hi', $view->render('t.twig'));
+        self::assertInstanceOf(TwigDriver::class, $view->getDriver());
+        self::assertSame('hi', $view->render('t.twig'));
     }
 
     public function testFromConfigDefaultsToCwdAppResourcesViews(): void
@@ -64,7 +64,7 @@ final class ViewFactoryTest extends TestCase
         try {
             $config = new ConfigRepository(['view' => ['driver' => 'twig']]);
             $view = ViewFactory::fromConfig($config);
-            $this->assertSame('default content', $view->render('default.twig'));
+            self::assertSame('default content', $view->render('default.twig'));
         } finally {
             chdir($originalCwd);
             // Cleanup
@@ -125,6 +125,6 @@ final class ViewFactoryTest extends TestCase
             ],
         ]);
         $view = ViewFactory::fromConfig($config, $this->tmp);
-        $this->assertSame('hi', $view->render('t.twig'));
+        self::assertSame('hi', $view->render('t.twig'));
     }
 }

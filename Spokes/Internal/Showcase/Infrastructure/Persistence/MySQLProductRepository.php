@@ -62,7 +62,7 @@ final class MySQLProductRepository implements ProductRepositoryInterface
             slug: ProductSlug::fromString((string) $row['slug']),
             sku: Sku::fromString((string) $row['sku']),
             price: Price::fromCents((int) $row['price_cents'], (string) $row['currency']),
-            description: isset($row['description']) ? (string) $row['description'] : null,
+            description: isset($row['description']) ? $row['description'] : null,
             status: ProductStatus::from((string) $row['status']),
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             updatedAt: new DateTimeImmutable((string) ($row['updated_at'] ?? $row['created_at'])),

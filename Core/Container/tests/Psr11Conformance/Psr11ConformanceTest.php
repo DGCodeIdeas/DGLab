@@ -67,7 +67,7 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     public function testContainerImplementsPsr11Interface(): void
     {
         $container = new Container();
-        $this->assertInstanceOf(PsrContainerInterface::class, $container);
+        self::assertInstanceOf(PsrContainerInterface::class, $container);
     }
 
     /**
@@ -77,7 +77,7 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     {
         $container = $this->buildContainer();
         $service = $container->get(Service::class);
-        $this->assertInstanceOf(Service::class, $service);
+        self::assertInstanceOf(Service::class, $service);
     }
 
     /**
@@ -90,10 +90,10 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
 
         try {
             $container->get('unknown.service.id');
-            $this->fail('Expected NotFoundException for unknown id.');
+            self::fail('Expected NotFoundException for unknown id.');
         } catch (\Throwable $e) {
-            $this->assertInstanceOf(NotFoundExceptionInterface::class, $e);
-            $this->assertInstanceOf(NotFoundException::class, $e);
+            self::assertInstanceOf(NotFoundExceptionInterface::class, $e);
+            self::assertInstanceOf(NotFoundException::class, $e);
         }
     }
 
@@ -104,12 +104,12 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     {
         $container = $this->buildContainer();
 
-        $this->assertTrue($container->has(Service::class));
-        $this->assertTrue($container->has(NoConstructor::class));
-        $this->assertTrue($container->has('prebuilt.service'));
-        $this->assertTrue($container->has('shared.service'));
-        $this->assertTrue($container->has('closure.service'));
-        $this->assertTrue($container->has('primitive.value'));
+        self::assertTrue($container->has(Service::class));
+        self::assertTrue($container->has(NoConstructor::class));
+        self::assertTrue($container->has('prebuilt.service'));
+        self::assertTrue($container->has('shared.service'));
+        self::assertTrue($container->has('closure.service'));
+        self::assertTrue($container->has('primitive.value'));
     }
 
     /**
@@ -119,8 +119,8 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     {
         $container = $this->buildContainer();
 
-        $this->assertFalse($container->has('unknown.service.id'));
-        $this->assertFalse($container->has('another.unknown.id'));
+        self::assertFalse($container->has('unknown.service.id'));
+        self::assertFalse($container->has('another.unknown.id'));
     }
 
     /**
@@ -132,9 +132,9 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
         $container = $this->buildContainer();
 
         foreach ([Service::class, NoConstructor::class, 'prebuilt.service', 'shared.service', 'closure.service', 'primitive.value'] as $id) {
-            $this->assertTrue($container->has($id), "has($id) must return true");
+            self::assertTrue($container->has($id), "has($id) must return true");
             $value = $container->get($id);
-            $this->assertNotNull($value, "get($id) must return a non-null value when has($id) is true");
+            self::assertNotNull($value, "get($id) must return a non-null value when has($id) is true");
         }
     }
 
@@ -144,9 +144,9 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     public function testNotFoundExceptionImplementsPsr11Interface(): void
     {
         $exception = new NotFoundException('test message');
-        $this->assertInstanceOf(NotFoundExceptionInterface::class, $exception);
-        $this->assertInstanceOf(ContainerExceptionInterface::class, $exception);
-        $this->assertInstanceOf(\Throwable::class, $exception);
+        self::assertInstanceOf(NotFoundExceptionInterface::class, $exception);
+        self::assertInstanceOf(ContainerExceptionInterface::class, $exception);
+        self::assertInstanceOf(\Throwable::class, $exception);
     }
 
     /**
@@ -157,8 +157,8 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     public function testCircularDependencyExceptionImplementsPsr11Interface(): void
     {
         $exception = CircularDependencyException::fromChain(['A', 'B', 'A']);
-        $this->assertInstanceOf(ContainerExceptionInterface::class, $exception);
-        $this->assertInstanceOf(\Throwable::class, $exception);
+        self::assertInstanceOf(ContainerExceptionInterface::class, $exception);
+        self::assertInstanceOf(\Throwable::class, $exception);
     }
 
     /**
@@ -174,10 +174,10 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
 
         try {
             $container->get('A');
-            $this->fail('Expected CircularDependencyException.');
+            self::fail('Expected CircularDependencyException.');
         } catch (\Throwable $e) {
-            $this->assertInstanceOf(ContainerExceptionInterface::class, $e);
-            $this->assertInstanceOf(CircularDependencyException::class, $e);
+            self::assertInstanceOf(ContainerExceptionInterface::class, $e);
+            self::assertInstanceOf(CircularDependencyException::class, $e);
         }
     }
 
@@ -191,7 +191,7 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
 
         $first = $container->get('shared.service');
         $second = $container->get('shared.service');
-        $this->assertSame($first, $second, 'Singleton bindings must return the same object identity.');
+        self::assertSame($first, $second, 'Singleton bindings must return the same object identity.');
     }
 
     /**
@@ -204,7 +204,7 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
 
         $first = $container->get(Service::class);
         $second = $container->get(Service::class);
-        $this->assertNotSame($first, $second, 'Non-singleton bindings must return distinct instances.');
+        self::assertNotSame($first, $second, 'Non-singleton bindings must return distinct instances.');
     }
 
     /**
@@ -216,7 +216,7 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
         $instance = new Service();
         $container->instance('prebuilt', $instance);
 
-        $this->assertSame($instance, $container->get('prebuilt'));
+        self::assertSame($instance, $container->get('prebuilt'));
     }
 
     /**
@@ -226,7 +226,7 @@ class Psr11ConformanceTest extends \PHPUnit\Framework\TestCase
     public function testHasReturnsTrueForExistingClassString(): void
     {
         $container = new Container();
-        $this->assertTrue($container->has(Service::class));
-        $this->assertInstanceOf(Service::class, $container->get(Service::class));
+        self::assertTrue($container->has(Service::class));
+        self::assertInstanceOf(Service::class, $container->get(Service::class));
     }
 }

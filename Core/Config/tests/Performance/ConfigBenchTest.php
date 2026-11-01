@@ -142,7 +142,11 @@ final class ConfigBenchTest extends TestCase
                 sprintf('Build of 20-file/1000-key config took %.2f ms (target: < 500 ms).', $elapsedMs),
             );
         } finally {
-            foreach (glob("{$tmpDir}/*.php") ?: [] as $f) {
+            $files = glob("{$tmpDir}/*.php");
+            if ($files === false) {
+                $files = [];
+            }
+            foreach ($files as $f) {
                 unlink($f);
             }
             rmdir($tmpDir);

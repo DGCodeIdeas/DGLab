@@ -49,7 +49,7 @@ class Request implements RequestInterface
         /** @var array<string, string> $names */
         $names = [];
         foreach ($headers as $name => $value) {
-            $values = is_array($value) ? array_map('strval', $value) : [(string) $value];
+            $values = is_array($value) ? array_map('strval', $value) : [$value];
             $this->assertNoCrlf($name, $values);
             $lower = strtolower($name);
             $normalized[$lower] = $values;
@@ -92,7 +92,7 @@ class Request implements RequestInterface
 
     public function withRequestTarget($requestTarget): RequestInterface
     {
-        $target = (string) $requestTarget;
+        $target = $requestTarget;
         $this->assertNoCrlf('request-target', [$target]);
         $new = clone $this;
         $new->requestTarget = $target;
@@ -107,7 +107,7 @@ class Request implements RequestInterface
     public function withMethod($method): RequestInterface
     {
         $new = clone $this;
-        $new->method = strtoupper((string) $method);
+        $new->method = strtoupper($method);
         return $new;
     }
 
@@ -146,7 +146,7 @@ class Request implements RequestInterface
     public function withProtocolVersion($version): RequestInterface
     {
         $new = clone $this;
-        $new->protocolVersion = (string) $version;
+        $new->protocolVersion = $version;
         return $new;
     }
 
@@ -176,7 +176,7 @@ class Request implements RequestInterface
 
     public function withHeader(string $name, $value): RequestInterface
     {
-        $values = is_array($value) ? array_values(array_map('strval', $value)) : [(string) $value];
+        $values = is_array($value) ? array_values(array_map('strval', $value)) : [$value];
         $this->assertNoCrlf($name, $values);
         $lower = strtolower($name);
         $headers = $this->headers;
@@ -191,7 +191,7 @@ class Request implements RequestInterface
 
     public function withAddedHeader(string $name, $value): RequestInterface
     {
-        $values = is_array($value) ? array_values(array_map('strval', $value)) : [(string) $value];
+        $values = is_array($value) ? array_values(array_map('strval', $value)) : [$value];
         $this->assertNoCrlf($name, $values);
         $lower = strtolower($name);
         $headers = $this->headers;

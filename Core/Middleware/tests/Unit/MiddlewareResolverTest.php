@@ -71,7 +71,6 @@ final class MiddlewareResolverTest extends TestCase
         $resolver = new MiddlewareResolver($container);
 
         $this->expectException(\TypeError::class);
-        /** @phpstan-ignore-next-line intentional type violation for testing */
         $resolver->resolve(42);
     }
 

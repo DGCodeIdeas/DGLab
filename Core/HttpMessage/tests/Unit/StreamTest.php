@@ -62,7 +62,6 @@ final class StreamTest extends TestCase
     public function testConstructRejectsNonStringNonResource(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        /** @phpstan-ignore-next-line intentional type violation for testing */
         new Stream(42);
     }
 

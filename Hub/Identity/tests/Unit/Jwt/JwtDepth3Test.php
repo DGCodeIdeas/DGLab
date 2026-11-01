@@ -50,7 +50,8 @@ final class JwtDepth3Test extends TestCase
         $jwt = $signer->sign(['sub' => 'test']);
 
         $parts = explode('.', $jwt);
-        $signature = base64_decode(strtr($parts[2], '-_', '+/'));
+        $signature = base64_decode(strtr($parts[2], '-_', '+/'), true);
+        self::assertNotFalse($signature);
 
         // ES256 signature MUST be exactly 64 bytes (32 R + 32 S)
         self::assertSame(64, strlen($signature), 'ES256 signature must be 64 bytes (R||S)');
