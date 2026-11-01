@@ -35,7 +35,7 @@ on:
 
 jobs:
   gate:
-    name: Path Gate
+    name: Packages CI
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
