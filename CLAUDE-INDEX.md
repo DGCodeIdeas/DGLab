@@ -523,8 +523,8 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 **Expanded reading set:**
 - PR #368 diff (AGENTS.md reconciliation)
 - PR #369 diff (Progress persistence + concurrency)
-- `FRESH-SESSION-PROMPTS.md` — Agent tasking prompts
-- `DGLab-FRESH-SESSION-HANDOFF.md` — Master handoff
+- `Architecture/CrossCutting/History/FRESH-SESSION-PROMPTS.md` — Agent tasking prompts
+- `Architecture/CrossCutting/History/DGLab-FRESH-SESSION-HANDOFF.md` — Master handoff
 
 ---
 

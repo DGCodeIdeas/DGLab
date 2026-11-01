@@ -1991,7 +1991,7 @@ Work Log:
 - Found Architecture/Verification/lint/run.php `checkStructure()` only requires HUB-01..30 + ESPOKE-01..18 to exist as files, but `validIds` accepts HUB-01..32 + ESPOKE-01..19. So deleting HUB-31.md/HUB-32.md/ESPOKE-19.md would NOT be caught by lint (latent defect). Also dead code at line 71-72 (`$this->validIds['HUB-31'] = true;` is a no-op since range(1,32) already includes it). Stale comment "Proposed HUB-31 is referenced (as 'pending')" (S-064).
 - Found ADR-021 lines 357-358 still say HUB-32/ESPOKE-19 are "Ratified pending canonical publication" — STALE post-A1 (both blueprints exist at depth 1) (S-062).
 - Found CORE-VERIFIED-DAG.md §7 line 632 says C02 has 7 src files — but packages/core/container/src/ now has 8 (ContainerException.php added by A2 PR #301) (S-065).
-- Wrote full report to /home/z/my-project/download/A3-ARCH-DAG-REPORT.md (~510 lines).
+- Wrote full report to Architecture/Verification/A3-ARCH-DAG-REPORT.md (~510 lines).
 
 Findings summary:
 - 11 new findings (S-055 through S-065): 1 HIGH (S-057), 5 MEDIUM (S-055, S-056, S-058, S-059, S-064), 5 LOW (S-060, S-061, S-062, S-063, S-065). No new FATALs.
@@ -2019,7 +2019,7 @@ Recommended remediation order:
 6. S-061 + S-063 (combined baseline commit-policy fix): Single PR that either gitignores the baseline AND adds a CI check, OR updates ADR-021 line 362 to "Committed evidence snapshot" AND adds the same CI check.
 
 Stage Summary:
-- Phase A3 architecture/DAG re-audit complete. Report saved to /home/z/my-project/download/A3-ARCH-DAG-REPORT.md (~510 lines).
+- Phase A3 architecture/DAG re-audit complete. Report saved to Architecture/Verification/A3-ARCH-DAG-REPORT.md (~510 lines).
 - 11 new findings logged (S-055 through S-065): 1 HIGH, 5 MEDIUM, 5 LOW. No new FATALs.
 - Top finding: S-057 (HIGH) — CORE-DECLARED-DAG.md C18→C06 edge misclassified in 3 ways; four-status summary math doesn't reconcile; this is the authoritative input for build-order wave computation.
 - S-033 (HUB-32 canonical publication) verification condition NOT met — HUB-DECLARED-DAG.md §1 still says "29 active" and excludes HUB-32. S-033 cannot move to Closed at this A3 audit. Same closure-rule hazard as A3-RUNTIME-76 found for S-003.

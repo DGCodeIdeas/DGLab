@@ -112,7 +112,7 @@ Which ownership structures, governance mechanisms, and commercial incentives pro
 
 The term "Half Exceptions" originated in a discussion about personal preferences and is **not an established software-engineering term**. SAAI's directive is explicit: *"Do not assume 'Half Exceptions' is an established software-engineering term. Research the underlying concept before introducing a pattern, abstraction, or ADR."* The track therefore begins from terminology research, not from design.
 
-**Four formulations to investigate (per Prompt 1, FRESH-SESSION-PROMPTS.md):**
+**Four formulations to investigate (per Prompt 1, Architecture/CrossCutting/History/FRESH-SESSION-PROMPTS.md):**
 
 | # | Formulation | Origin | Status |
 |---|-------------|--------|--------|
