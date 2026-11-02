@@ -406,7 +406,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 ### 9.3 Framework and DI
 
 **Minimum reading set:**
-- `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` — Framework structures, DI, DX, accessibility (70 sources)
+- `Docs/Research/FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` — Framework structures, DI, DX, accessibility (70 sources)
 
 **Expanded reading set:**
 - `Core/Container/` — Core container implementation
@@ -482,7 +482,7 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 - All migrated LMS test files under `Spokes/Internal/Lms/tests/`
 - `tests/Integration/PublicIndexSmokeTest.php` (root)
 - No real-MySQL LMS concurrency test is currently present on main.
-- `RESEARCH-INDEX.md` — Research test coverage
+- `Docs/Research/RESEARCH-INDEX.md` — Research test coverage
 
 ### 9.10 CI and Developer Tooling
 
@@ -500,18 +500,18 @@ RecordProgressCommand(enrollmentId, moduleId, newStatus)
 ### 9.11 Research and Analysis
 
 **Minimum reading set:**
-- `RESEARCH-INDEX.md` — Links 14 inventory rows (13 distinct reports; row #13 duplicated; omits `COMPONENT-TEMPLATE-FORMATS-RESEARCH.md`)
-- `RESEARCH-AGENDA.md` — Canonical agenda draft (5 tracks + NeoSPX)
+- `Docs/Research/RESEARCH-INDEX.md` — Links 14 inventory rows (13 distinct reports; row #13 duplicated; omits `Docs/Research/COMPONENT-TEMPLATE-FORMATS-RESEARCH.md`)
+- `Docs/Research/RESEARCH-AGENDA.md` — Canonical agenda draft (5 tracks + NeoSPX)
 
 **Expanded reading set:**
-- `RESEARCH-RECONCILIATION-MATRIX.md` — V1–V7 reconciliation
-- `SPX-NAMING-COLLISION-REPORT.md` — SPX naming audit
-- `SPX-EASE-OF-USE-RESEARCH.md` — Ease-of-use & Human/AI (44 sources)
-- `VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` — Vue SFC comparison (21 sources)
-- `COMPONENT-TEMPLATE-FORMATS-RESEARCH.md` — Component template formats (renamed from corrupted path per commit ee361d8)
-- `FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` — Framework structures (70 sources)
-- `SPX-COMPILER-CONSTRUCTION-RESEARCH.md` — Compiler construction (CIT 316 + online)
-- `COMPLETE-ANALYSIS-RECORD.md` — Master analysis record
+- `Docs/Research/RESEARCH-RECONCILIATION-MATRIX.md` — V1–V7 reconciliation
+- `Docs/Research/SPX-NAMING-COLLISION-REPORT.md` — SPX naming audit
+- `Docs/Research/SPX-EASE-OF-USE-RESEARCH.md` — Ease-of-use & Human/AI (44 sources)
+- `Docs/Research/VUE-SFC-COMPONENT-FORMAT-RESEARCH.md` — Vue SFC comparison (21 sources)
+- `Docs/Research/COMPONENT-TEMPLATE-FORMATS-RESEARCH.md` — Component template formats (renamed from corrupted path per commit ee361d8)
+- `Docs/Research/FRAMEWORK-STRUCTURE-DI-DX-ACCESSIBILITY-RESEARCH.md` — Framework structures (70 sources)
+- `Docs/Research/SPX-COMPILER-CONSTRUCTION-RESEARCH.md` — Compiler construction (CIT 316 + online)
+- `Docs/Research/COMPLETE-ANALYSIS-RECORD.md` — Master analysis record
 - `.kilo/plans/1792466263304-research-first-lms-backend-plan.md` — LMS build plan
 
 ### 9.12 Git, PR, and Review History
@@ -616,7 +616,7 @@ GOVERNANCE REMINDERS:
 - The founder controls acceptance and merging.
 
 CURRENT STATE (verified 2026-10-22):
-- Main: 8858e165a76db7b14650298ca17b2265da1e4115
+- Main: 11244ebb5d3d11b7f38ee51100ed069668fbd251
 - PR #368 (AGENTS.md): c1baea7 (open, unapproved)
 - PR #369 (Progress): f985a18 (open, unapproved, CI FAILED — CourseStatus namespace error in test)
 - LMS: Enrollment done, Progress on branch, HTTP layer not started
@@ -658,7 +658,7 @@ Do not modify AGENTS.md, frozen contracts, or governance files without explicit 
 ## Completion Report
 
 1. **Deliverable:** `CLAUDE-INDEX.md` at repository root. File remains local (not committed). Size: ~25KB.
-2. **Repository baseline:** `main` at `8858e165a76db7b14650298ca17b2265da1e4115`.
+2. **Repository baseline:** `main` at `11244ebb5d3d11b7f38ee51100ed069668fbd251`.
 3. **Sources inspected:** AGENTS.md, Architecture/FROZEN-CONTRACTS.md, Architecture/INDEX.md, Architecture/STRUCTURE-01-Wheel.md, Architecture/ADRs/ (21 files), .github/workflows/packages-ci.yml, packages/spoke/internal/lms/ (full structure), tests, migrations, research documents (9 files), git history and branches, PR branches #368 and #369.
 4. **PR verification:**
    - PR #368: Remote HEAD `c1baea799ecf48064f91e8a478d183de41a2109a` (VERIFIED)
@@ -669,7 +669,7 @@ Do not modify AGENTS.md, frozen contracts, or governance files without explicit 
 - Research agenda exists in repo root, not canonical location (authorization pending)
 - Some reported items (AuthMiddleware, findings register, formatting artifact) were not found in the repository
 - `CLAUDE-INDEX(Stale!).md` exists as untracked draft (superseded by this document)
-- Research report count is inconsistent across documents (CLAUDE-INDEX says 9 root files, RESEARCH-INDEX says 14 inventory rows with one duplicate; actual file count is 9). RESEARCH-INDEX.md should be reconciled.
+- Research report count is inconsistent across documents (CLAUDE-INDEX says 9 root files, RESEARCH-INDEX says 14 inventory rows with one duplicate; actual file count is 9). Docs/Research/RESEARCH-INDEX.md should be reconciled.
 6. **Outstanding risks:** All 18 items in §7 risk register, including 8 open decisions and 5 active blockers.
 7. **Claude context-loading recommendation:** A minimal `CLAUDE.md` (4-5 lines) would materially improve context loading. See optional recommendation above.
 8. **Opening prompt:** Included in §12 of this document.
