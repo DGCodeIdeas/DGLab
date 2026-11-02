@@ -272,3 +272,16 @@ Capability Application Contract
   the new ranges; lint check 1 passes cleanly on every doc that references the hospitality IDs. This
   closes D-02 (96 vs 101 count) and D-15 (hospitality references fail lint by design); see
   `DISCREPANCY-REGISTER.md` for the closure record.
+
+---
+
+## OD-13 — Migration runner provider selection (Pass 1 implemented)
+
+**Status:** In progress — temporary Doctrine adapter implemented; native target pending.
+
+- **Temporary provider:** Doctrine DBAL (raw SQL execution, no Doctrine Migrations PHP classes).
+- **Native target:** Revision 5.3 native runner (two-connection gate, L1[M] locks, level lock, gseq log, Test 6e).
+- **Promotion gates:** Native runner must pass all conformance tests against real MySQL before promotion.
+- **Retention:** Doctrine adapter, dependency, tests, and config option retained (demoted to "secondary") once native is promoted. Removal requires separate approval.
+- **Rollback criteria:** If native runner fails, config-only switch back to Doctrine (preconditions: both deployed, config reloadable, DB state compatible).
+- **Rollback limitations:** MySQL DDL implicitly commits; "transactional rollback" is NOT claimed. Failed migrations stay failed/uncertain until operator resolves.

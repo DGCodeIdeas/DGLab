@@ -90,3 +90,11 @@ This document lists all external dependencies used across DGLab's packages and i
 ## No external services required
 
 DGLab's Core packages have zero runtime service dependencies. No database, cache, queue, or external API is needed to use `core/container`, `core/event-dispatcher`, `core/http-message`, `core/middleware`, or `core/router`. Service dependencies (MySQL, Redis) are introduced at the Hub tier and are configurable via CORE-10 (Config).
+
+## Migration Runner (temporary provider)
+
+- **Package:** `doctrine/dbal` ^4.5
+- **Purpose:** Temporary connection layer for the DoctrineMigrationRunner adapter. Executes raw SQL migration files against MySQL. Used only when `migration.runner = doctrine`.
+- **Version policy:** ^4.5 (latest stable). Pinned to minor for stability.
+- **Native target:** Revision 5.3 native migration runner (not yet implemented).
+- **Retention:** Adapter and dependency retained (demoted to "secondary") once native runner is promoted. Removal requires separate approval.
