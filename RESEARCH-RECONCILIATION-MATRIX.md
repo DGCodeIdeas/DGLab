@@ -2,7 +2,7 @@
 
 **Created:** 2026-10-20  
 **Status:** Research deliverable — NOT a governance record. No authorization to publish as `Architecture/CrossCutting/RESEARCH-AGENDA.md`  
-**Sources:** `AGENTS.md` §5, `DGLab-FRESH-SESSION-HANDOFF.md` §3, `FRESH-SESSION-PROMPTS.md`, `SAAI-to-A.ai-DGLab-Briefing.md` §8–§12, `RESEARCH-AGENDA.md` (root), web research results
+**Sources:** `AGENTS.md` §5, `Architecture/CrossCutting/History/DGLab-FRESH-SESSION-HANDOFF.md` §3, `Architecture/CrossCutting/History/FRESH-SESSION-PROMPTS.md`, `SAAI-to-A.ai-DGLab-Briefing.md` §8–§12, `RESEARCH-AGENDA.md` (root), web research results
 
 ---
 
@@ -15,7 +15,7 @@
 | **V3** | Kilo Code independent review | Verified naming collisions. Questioned whether V1's connecting theme attribution is verbatim owner text. | **Agent interpretation — verified partially** |
 | **V4** | Integration pass (Prompt 3) | Combined Z.ai + Kilo reports. Flattened disagreement on connecting theme. | **Agent interpretation — disagreement flattened (flagged)** |
 | **V5** | Local draft (commit `581945d` / patch 0002) | Added reconciliation table for V1–V7. Added source/uncertainty register. | **Local-only — not in repo; applicability unverified** |
-| **V6** | `DGLab-FRESH-SESSION-HANDOFF.md` §3 | Codified research package requirements. Added Gate structure. Added epistemic labels (V/R/P/O). | **Handoff document — authoritative for process** |
+| **V6** | `Architecture/CrossCutting/History/DGLab-FRESH-SESSION-HANDOFF.md` §3 | Codified research package requirements. Added Gate structure. Added epistemic labels (V/R/P/O). | **Handoff document — authoritative for process** |
 | **V7** | `RESEARCH-AGENDA.md` (root, 2026-10-13) | Canonical agenda draft. 5 tracks + SuperPHP section. Only one connecting-theme variant. Detailed hypotheses, deliverables, related doctrines. | **Most recent — in repo root** |
 
 ---

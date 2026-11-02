@@ -259,12 +259,12 @@ src/
 | Document | Lines | Role |
 |----------|-------|------|
 | `AGENTS.md` | 170 | Standing instructions for all AI agents |
-| `DGLab-FRESH-SESSION-HANDOFF.md` | 290 | Master handoff with full protocol, research package, LMS build order |
-| `FRESH-SESSION-PROMPTS.md` | 93 | Five prompts for Z.ai, Kilo, integration, LMS phase, Claude review |
+| `Architecture/CrossCutting/History/DGLab-FRESH-SESSION-HANDOFF.md` | 290 | Master handoff with full protocol, research package, LMS build order |
+| `Architecture/CrossCutting/History/FRESH-SESSION-PROMPTS.md` | 93 | Five prompts for Z.ai, Kilo, integration, LMS phase, Claude review |
 
 ### Cross-Document Consistency
 
-All three documents are **internally consistent**. `FRESH-SESSION-HANDOFF.md` is the most detailed expansion of `AGENTS.md`. `FRESH-SESSION-PROMPTS.md` operationalizes both into agent-specific tasks.
+All three documents are **internally consistent**. `Architecture/CrossCutting/History/DGLab-FRESH-SESSION-HANDOFF.md` is the most detailed expansion of `AGENTS.md`. `Architecture/CrossCutting/History/FRESH-SESSION-PROMPTS.md` operationalizes both into agent-specific tasks.
 
 ### Claims vs. Codebase Reality
 

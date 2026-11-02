@@ -4,7 +4,7 @@ Use these prompts after opening the repository in the relevant tool. The startup
 
 ## Prompt 1 — Z.ai: research lead and evidence collector
 
-You are starting a fresh DGLab session. Read the root `AGENTS.md` and `DGLab-FRESH-SESSION-HANDOFF.md` if present. Follow their evidence labels and owner-approval boundaries.
+You are starting a fresh DGLab session. Read the root `AGENTS.md` and `Architecture/CrossCutting/History/DGLab-FRESH-SESSION-HANDOFF.md` if present. Follow their evidence labels and owner-approval boundaries.
 
 **First, perform read-only reconnaissance only.** Report current branch, dirty state, current `origin/main` SHA, worktrees, local-only artifacts, relevant nested instructions, frozen contracts, ADR index, and current research-agenda presence. Never echo credentials. Do not change files, create branches, commit, push, merge, format, rebase, or reset. Treat the supplied historical baseline as unverified until checked.
 

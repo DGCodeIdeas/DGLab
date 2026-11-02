@@ -257,7 +257,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 
 ## 8. Findings (V2 — compact entries; full V1 content preserved at `Architecture/Verification/SHORTCOMINGS-REGISTER.md`)
 
-> The 47 V1 findings (S-001..S-047) retain their full content in the source register; this V2 section documents only the disposition changes and any new evidence gathered by A3 audits. The 34 A3 findings (S-048..S-065, S-077..S-092) are documented in compact form below — full evidence and remediation details are in the source A3 reports (`download/A3-RUNTIME-REPORT.md`, `download/A3-ARCH-DAG-REPORT.md`, `download/A3-DOC-GOV-REPORT.md`).
+> The 47 V1 findings (S-001..S-047) retain their full content in the source register; this V2 section documents only the disposition changes and any new evidence gathered by A3 audits. The 34 A3 findings (S-048..S-065, S-077..S-092) are documented in compact form below — full evidence and remediation details are in the source A3 reports (`download/A3-RUNTIME-REPORT.md`, `A3-ARCH-DAG-REPORT.md`, `download/A3-DOC-GOV-REPORT.md`).
 
 ### 8.1 V1 finding dispositions (delta from V1)
 
@@ -354,7 +354,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-055 — HUB-VERIFIED-DAG.md stale Hub count (29 instead of 30 post-A1)
 - **Severity:** MEDIUM
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** HUB-VERIFIED-DAG.md still claims "2 of 29 active Hub blueprints" in 4 places (lines 38, 45, 115, 200) despite A1 (PR #294) adding HUB-32 as canonical. Post-A1: 32 total − 2 superseded = **30 active**.
 - **Verification test:** `rg "29 active|2 of 29|6.9%" Architecture/Hub/HUB-VERIFIED-DAG.md` returns zero matches; line 38 reads "2 of 30 active".
 - **Disposition:** Open
@@ -364,7 +364,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-056 — HUB-DECLARED-DAG.md stale HUB-32 references (HUB-32.md now exists)
 - **Severity:** MEDIUM
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** HUB-DECLARED-DAG.md explicitly excludes HUB-32 from its node set in 4 places (lines 22, 34, 70, 72, 711). But HUB-32.md was authored in A1 (PR #294) at depth 1. **Blocks S-033 closure** — S-033's verification condition explicitly requires "HUB-DECLARED-DAG.md §1 node set includes HUB-32 (count = 30 active)".
 - **Verification test:** `rg "29 active|ratified pending canonical|no blueprint file exists" Architecture/Hub/HUB-DECLARED-DAG.md` returns zero matches; line 34 reads "## §1. Node set (30 active Hub blueprints)".
 - **Disposition:** Open
@@ -374,7 +374,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-057 — CORE-DECLARED-DAG.md edge classification inconsistencies (C18→C06 misclassified)
 - **Severity:** HIGH
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** The edge `C18 (Kernel) → C06 (Router)` is misclassified in 3 ways: (1) prose table says DECLARED_ONLY but Evidence column says "verified in code not declared in blueprint" (= UNDECLARED_VERIFIED); (2) Mermaid shows solid (verified) but table says DECLARED_ONLY (should be dotted); (3) `packages/core/kernel/composer.json` line 17 actually requires `sovereign-stack/core-router` — edge IS VERIFIED. Four-status summary math doesn't reconcile (9 listed + "remaining 22" = 31, not 32).
 - **Verification test:** CORE-DECLARED-DAG.md table row for C18→C06 reads `VERIFIED`; four-status summary mathematically reconciles (14 + 31 + 0 + 0 = 45); Mermaid line 108 reads `C06 --> C18`.
 - **Disposition:** Open
@@ -384,7 +384,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-058 — CORE-VERIFIED-DAG.md + CORE-DECLARED-DAG.md Mermaid direction error (§6.1 admits but graph not corrected)
 - **Severity:** MEDIUM
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** CORE-VERIFIED-DAG.md §6.1 (line 577) acknowledges 4 wrong-direction edges (C18→C06, C15→C14, C17→C13, C20→C13) but §4 Mermaid (line 563) still shows the wrong directions. Same 4 wrong directions appear in CORE-DECLARED-DAG.md §3 Mermaid (lines 106, 108, 113, 114). "Admitted-but-not-fixed" pattern.
 - **Verification test:** `rg "C18 --> C06|C15 --> C14|C17 --> C13|C20 --> C13" Architecture/Core/CORE-VERIFIED-DAG.md Architecture/Core/CORE-DECLARED-DAG.md` returns zero matches.
 - **Disposition:** Open
@@ -394,7 +394,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-059 — INDEX.md internally contradictory on HUB-32 active count
 - **Severity:** MEDIUM
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** INDEX.md line 54 says "30 active" (correct post-A1); line 227 says "29 active"; line 234 says "HUB-32 not yet counted"; line 443 says "30 blueprints". Stale pre-A1 references not propagated.
 - **Verification test:** `rg "29 active|30 blueprints|102 declared|ratified pending canonical" Architecture/INDEX.md` returns zero matches; all Hub count references consistently read "32 declared (30 active + 2 superseded)".
 - **Disposition:** Open
@@ -404,7 +404,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-060 — scripts/architecture-boundary-lint.php referenced in workflow yml but doesn't exist
 - **Severity:** LOW
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** `.github/workflows/architecture-boundary-lint.yml` references non-existent `scripts/architecture-boundary-lint.php` (path filter lines 23/30 + false comment lines 62-65). Only the Python version exists.
 - **Verification test:** Either the PHP file exists at `scripts/architecture-boundary-lint.php`, or the yml has no reference to it.
 - **Disposition:** Open
@@ -413,7 +413,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-061 — download/ARCHITECTURE_BASELINE.md is stale (10 commits behind HEAD)
 - **Severity:** LOW
 - **Category:** Build-artifact drift
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** Baseline was generated from commit `ce27388` (PR #292, 2026-10-01). HEAD is `34ea867` (10 commits later including A1 #294, A2 #301). Diff: 102→104 blueprints, 31→32 Hub, 18→19 ESPOKE, 200→201 PHP source files, 7→8 container src files.
 - **Verification test:** `download/ARCHITECTURE_BASELINE.md` line 5-7 reads "Generated: <timestamp>; Commit: 34ea867..." (matching HEAD).
 - **Disposition:** Open
@@ -423,7 +423,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-062 — ADR-021 lines 357-358 stale ("ratified pending canonical publication" — HUB-32 and ESPOKE-19 are now canonical)
 - **Severity:** LOW
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** ADR-021 §"Relationship to Other Documents" still describes HUB-32 and ESPOKE-19 as "Ratified pending canonical publication — blueprint file to be created during implementation phase". Both blueprints were authored in A1 (PR #294) at depth 1.
 - **Verification test:** `rg "ratified pending canonical publication" Architecture/ADRs/ADR-021-tier-stratified-build-order.md` returns zero matches.
 - **Disposition:** Open
@@ -433,7 +433,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-063 — ADR-021 line 362 contradicts git state ("not committed (gitignored)" but file IS committed)
 - **Severity:** LOW
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** ADR-021 line 362 says `download/ARCHITECTURE_BASELINE.md` is "not committed (gitignored, reproducible by running the script)". But `git ls-files download/ARCHITECTURE_BASELINE.md` returns the file — it IS committed. `.gitignore` does NOT ignore `download/`.
 - **Verification test:** Either `git ls-files download/ARCHITECTURE_BASELINE.md` returns empty (and .gitignore contains the path), OR ADR-021 line 362 reads "Committed evidence snapshot — reproducible by running the script."
 - **Disposition:** Open
@@ -443,7 +443,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-064 — architecture-lint checkStructure stale (requires HUB-01..30 + ESPOKE-01..18, missing HUB-31/32 + ESPOKE-19)
 - **Severity:** MEDIUM
 - **Category:** Latent-defect
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** `Architecture/Verification/lint/run.php` `checkStructure()` (lines 169-218) only requires HUB-01..30 + ESPOKE-01..18 to exist as files. But `buildValidIds()` accepts HUB-01..32 + ESPOKE-01..19. So deleting HUB-31.md/HUB-32.md/ESPOKE-19.md would NOT be caught by lint. Dead code at lines 71-72 (`$this->validIds['HUB-31'] = true;` is a no-op since `range(1,32)` already includes it).
 - **Verification test:** Delete `Architecture/Hub/HUB-32.md` temporarily; run `php Architecture/Verification/lint/run.php`; expect exit code 1 with "missing file 'Hub/HUB-32.md'". Restore; expect 0.
 - **Disposition:** Open
@@ -453,7 +453,7 @@ Per A3-ARCH-DAG-76 §4 (re-verification of pre-existing findings): S-026, S-033 
 #### S-065 — CORE-VERIFIED-DAG.md §7 implementation-status table stale for C02 (says 7 src files, actually 8)
 - **Severity:** LOW
 - **Category:** Coherence
-- **Source:** `download/A3-ARCH-DAG-REPORT.md` §3
+- **Source:** `A3-ARCH-DAG-REPORT.md` §3
 - **Description (compact):** CORE-VERIFIED-DAG.md §7 line 632 says "C02 | YES | 7 | 17 | 0.4.0.0 | 2 |" but `packages/core/container/src/` now has 8 PHP files (ContainerException.php added by A2 PR #301).
 - **Verification test:** `ls packages/core/container/src/*.php | wc -l` returns 8; CORE-VERIFIED-DAG.md line 632 reads "C02 | YES | 8 | 17 | 0.4.0.0 | 2 |".
 - **Disposition:** Open
