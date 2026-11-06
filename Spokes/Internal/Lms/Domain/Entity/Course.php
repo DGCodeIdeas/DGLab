@@ -93,12 +93,12 @@ final class Course
         if ($this->status === CourseStatus::Archived) {
             throw new \RuntimeException("Cannot update archived course: {$this->id}");
         }
-        $this->title = new CourseTitle($title);
+        $this->title = CourseTitle::fromString($title);
         if ($description !== null) {
             $this->description = $description;
         }
         if ($slug !== null) {
-            $this->slug = new CourseSlug($slug);
+            $this->slug = CourseSlug::fromString($slug);
         }
         if ($this->status === CourseStatus::Published) {
             $this->version++;

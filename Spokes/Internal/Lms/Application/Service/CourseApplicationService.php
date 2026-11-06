@@ -13,7 +13,7 @@ use SovereignStack\Internal\Lms\Application\CourseApplicationInterface;
 use SovereignStack\Internal\Lms\Domain\Entity\Course;
 use SovereignStack\Internal\Lms\Domain\Exception\CourseNotFoundException;
 use SovereignStack\Internal\Lms\Domain\Repository\{CourseRepositoryInterface, ModuleRepositoryInterface};
-use SovereignStack\Internal\Lms\Domain\ValueObject\{CourseId, ModuleId};
+use SovereignStack\Internal\Lms\Domain\ValueObject\{CourseId, ModuleId, EnrollmentId};
 
 final class CourseApplicationService implements CourseApplicationInterface
 {

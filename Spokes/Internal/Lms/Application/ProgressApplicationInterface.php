@@ -3,7 +3,9 @@
 declare(strict_types=1);
 namespace SovereignStack\Internal\Lms\Application;
 use SovereignStack\Internal\Lms\Domain\Entity\Progress;
+use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 use SovereignStack\Internal\Lms\Domain\ValueObject\{EnrollmentId, ModuleId};
+use SovereignStack\Internal\Lms\Application\Command\RecordProgressCommand;
 
 interface ProgressApplicationInterface
 {

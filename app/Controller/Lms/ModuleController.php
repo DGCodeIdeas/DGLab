@@ -28,7 +28,7 @@ final class ModuleController
         return $this->jsonResponse(200, [
             'modules' => array_map(fn($m) => [
                 'id' => (string)$m->id(),
-                'title' => (string)$m->title(),
+                'title' => $m->title(),
                 'sortOrder' => $m->sortOrder(),
                 'content' => $m->content(),
             ], $modules),

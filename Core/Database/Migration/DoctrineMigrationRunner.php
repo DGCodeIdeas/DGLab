@@ -52,11 +52,11 @@ final class DoctrineMigrationRunner implements MigrationRunnerInterface
         // Use the project's own connection if available, otherwise create
         // a DBAL connection from environment variables.
         $params = [
-            'dbname'   => getenv('DB_NAME') ?: 'dglab_test',
-            'user'     => getenv('DB_USER') ?: 'dglab_test',
-            'password' => getenv('DB_PASS') ?: 'CHANGE_ME_STRONG_PASSWORD',
-            'host'     => getenv('DB_HOST') ?: '127.0.0.1',
-            'port'     => (int) (getenv('DB_PORT') ?: 3306),
+            'dbname'   => getenv('DB_NAME') ?? 'dglab_test',
+            'user'     => getenv('DB_USER') ?? 'dglab_test',
+            'password' => getenv('DB_PASS') ?? 'CHANGE_ME_STRONG_PASSWORD',
+            'host'     => getenv('DB_HOST') ?? '127.0.0.1',
+            'port'     => (int) (getenv('DB_PORT') ?? 3306),
             'driver'   => 'pdo_mysql',
             'charset'  => 'utf8mb4',
         ];
@@ -70,13 +70,13 @@ final class DoctrineMigrationRunner implements MigrationRunnerInterface
             return;
         }
 
-        $files = glob($this->migrationsPath . '/*.sql') ?: [];
+        $files = glob($this->migrationsPath . '/*.sql') ?? [];
         sort($files);
 
         foreach ($files as $file) {
             $basename = basename($file, '.sql');
             // Extract version: "001_create_users_table" → "001"
-            $version = preg_replace('/^(\d+).*/', '$1', $basename) ?: $basename;
+            $version = preg_replace('/^(\d+).*/', '$1', $basename) ?? $basename;
             $this->migrations[$version] = $file;
         }
     }

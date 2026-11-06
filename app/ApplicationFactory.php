@@ -207,13 +207,9 @@ final class ApplicationFactory
                         // ONLY when JWT public key is configured (no auth transport approved yet).
                         $config = $kernel->getConfig();
                         if ($config->has('jwt.public_key')) {
-                            $container = $kernel->getContainer();
-                            $container->instance(
-                                \SovereignStack\Hub\Identity\Jwt\JwtVerifier::class,
-                                new \SovereignStack\Hub\Identity\Jwt\JwtVerifier($config->get('jwt.public_key'))
-                            );
+                            $jwtVerifier = new \SovereignStack\Hub\Identity\Jwt\JwtVerifier($config->get('jwt.public_key'));
                             $authMiddleware = new AuthMiddleware(
-                                jwtVerifier: $container->get(\SovereignStack\Hub\Identity\Jwt\JwtVerifier::class),
+                                jwtVerifier: $jwtVerifier,
                             );
                             $pipeline->pipe($authMiddleware);
                         }
