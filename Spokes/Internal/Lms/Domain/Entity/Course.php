@@ -23,6 +23,8 @@ final class Course
         private CourseSlug $slug,
         private ?string $description,
         private CourseStatus $status = CourseStatus::Draft,
+        private int $version = 1,
+        private ?string $requirementsSnapshot = null,
         private readonly DateTimeImmutable $createdAt = new DateTimeImmutable(),
         ?DateTimeImmutable $updatedAt = null,
     ) {
@@ -42,9 +44,10 @@ final class Course
      */
     public static function restoreFromPersistence(
         CourseId $id, CourseTitle $title, CourseSlug $slug, ?string $description,
-        CourseStatus $status, DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt
+        CourseStatus $status, int $version, ?string $requirementsSnapshot,
+        DateTimeImmutable $createdAt, DateTimeImmutable $updatedAt
     ): self {
-        $course = new self($id, $title, $slug, $description, $status, $createdAt, $updatedAt);
+        $course = new self($id, $title, $slug, $description, $status, $version, $requirementsSnapshot, $createdAt, $updatedAt);
         return $course;
     }
 
@@ -53,6 +56,8 @@ final class Course
     public function slug(): CourseSlug { return $this->slug; }
     public function description(): ?string { return $this->description; }
     public function status(): CourseStatus { return $this->status; }
+    public function version(): int { return $this->version; }
+    public function requirementsSnapshot(): ?string { return $this->requirementsSnapshot; }
     public function createdAt(): DateTimeImmutable { return $this->createdAt; }
     public function updatedAt(): DateTimeImmutable { return $this->updatedAt; }
 
@@ -70,6 +75,7 @@ final class Course
             return; // idempotent
         }
         $this->status = CourseStatus::Published;
+        $this->version++;
         $this->updatedAt = new DateTimeImmutable();
     }
 
@@ -77,6 +83,45 @@ final class Course
     {
         $this->status = CourseStatus::Archived;
         $this->updatedAt = new DateTimeImmutable();
+    }
+
+    /**
+     * Update course (creates new version on publish).
+     */
+    public function update(string $title, ?string $description, ?string $slug): void
+    {
+        if ($this->status === CourseStatus::Archived) {
+            throw new \RuntimeException("Cannot update archived course: {$this->id}");
+        }
+        $this->title = new CourseTitle($title);
+        if ($description !== null) {
+            $this->description = $description;
+        }
+        if ($slug !== null) {
+            $this->slug = new CourseSlug($slug);
+        }
+        if ($this->status === CourseStatus::Published) {
+            $this->version++;
+        }
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    /**
+     * Set requirements snapshot (module membership + learning content).
+     * Only allowed in Draft state.
+     */
+    public function setRequirementsSnapshot(string $snapshot): void
+    {
+        if ($this->status !== CourseStatus::Draft) {
+            throw new \RuntimeException("Cannot set requirements snapshot on non-draft course: {$this->id}");
+        }
+        $this->requirementsSnapshot = $snapshot;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function requirementsSnapshotArray(): ?array
+    {
+        return $this->requirementsSnapshot ? json_decode($this->requirementsSnapshot, true) : null;
     }
 
     /**

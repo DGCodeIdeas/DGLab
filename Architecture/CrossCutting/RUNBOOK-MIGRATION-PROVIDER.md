@@ -14,8 +14,8 @@
 1. Ensure `doctrine/dbal` is installed (`composer require doctrine/dbal`).
 2. Set `migration.runner = doctrine` in application config.
 3. Ensure MySQL credentials are configured (env vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`).
-4. Run `php cli/migrate.php status` to verify pending migrations.
-5. Run `php cli/migrate.php migrate` to apply.
+4. Run `php CLI/migrate.php status` to verify pending migrations.
+5. Run `php CLI/migrate.php migrate` to apply.
 
 ### Switching providers
 
@@ -28,17 +28,17 @@
 **If the switch fails:**
 1. Revert config to the previous provider.
 2. Reload config.
-3. Verify with `php cli/migrate.php status`.
+3. Verify with `php CLI/migrate.php status`.
 4. If DB state is inconsistent, manually reconcile the tracking table.
 
 ### Recovery from failed migration
 
-1. Check status: `php cli/migrate.php status`
+1. Check status: `php CLI/migrate.php status`
 2. Identify the failed version.
 3. Manually inspect the database state.
 4. If DDL partially applied, manually complete or revert the DDL.
 5. Update the tracking table manually if needed.
-6. Re-run `php cli/migrate.php migrate` after resolution.
+6. Re-run `php CLI/migrate.php migrate` after resolution.
 
 ### Rollback
 

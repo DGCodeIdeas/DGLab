@@ -1,0 +1,3 @@
+ALTER TABLE lms_courses
+ADD COLUMN version INT UNSIGNED NOT NULL DEFAULT 1,
+ADD COLUMN requirements_snapshot JSON NULL;

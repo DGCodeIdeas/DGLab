@@ -7,6 +7,10 @@ namespace App;
 use App\Controller\HealthController;
 use App\Controller\HelloController;
 use App\Controller\TemplateController;
+use App\Controller\Lms\CourseController;
+use App\Controller\Lms\EnrollmentController;
+use App\Controller\Lms\ProgressController;
+use App\Controller\Lms\ModuleController;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\NullLogger;
 use SovereignStack\Bridge\ContractRegistry;
@@ -30,6 +34,7 @@ use SovereignStack\Core\Router\Route;
 use SovereignStack\Core\Router\Router;
 use SovereignStack\Core\View\ViewFactory;
 use SovereignStack\Core\View\ViewInterface;
+use SovereignStack\Hub\Identity\Http\AuthMiddleware;
 
 /**
  * Application composition root — extracts construction from public/index.php.
@@ -198,6 +203,21 @@ final class ApplicationFactory
                         $pipeline = $kernel->getPipeline();
                         $pipeline->pipe($this->vanguard);
 
+                        // Pipe the AuthMiddleware AFTER the Vanguard (after contract lookup)
+                        // ONLY when JWT public key is configured (no auth transport approved yet).
+                        $config = $kernel->getConfig();
+                        if ($config->has('jwt.public_key')) {
+                            $container = $kernel->getContainer();
+                            $container->instance(
+                                \SovereignStack\Hub\Identity\Jwt\JwtVerifier::class,
+                                new \SovereignStack\Hub\Identity\Jwt\JwtVerifier($config->get('jwt.public_key'))
+                            );
+                            $authMiddleware = new AuthMiddleware(
+                                jwtVerifier: $container->get(\SovereignStack\Hub\Identity\Jwt\JwtVerifier::class),
+                            );
+                            $pipeline->pipe($authMiddleware);
+                        }
+
                         // Register the "Hello World" route (Milestone 0 success criterion).
                         $router = $kernel->getRouter();
                         $router->addRoute(new Route(
@@ -221,6 +241,10 @@ final class ApplicationFactory
                         $kernel->getContainer()->bind(HelloController::class);
                         $kernel->getContainer()->bind(HealthController::class);
                         $kernel->getContainer()->bind(TemplateController::class);
+                        $kernel->getContainer()->bind(CourseController::class);
+                        $kernel->getContainer()->bind(EnrollmentController::class);
+                        $kernel->getContainer()->bind(ProgressController::class);
+                        $kernel->getContainer()->bind(ModuleController::class);
 
                         // Register the template rendering route.
                         $router->addRoute(new Route(
@@ -229,6 +253,113 @@ final class ApplicationFactory
                             name: 'template.hello',
                             controllerClass: TemplateController::class,
                             controllerMethod: 'hello',
+                        ));
+
+                        // --- LMS API Routes ---
+                        // Course endpoints
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses',
+                            methods: ['POST'],
+                            name: 'lms.courses.create',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'create',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses',
+                            methods: ['GET'],
+                            name: 'lms.courses.list',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'list',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses/{id}',
+                            methods: ['GET'],
+                            name: 'lms.courses.get',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'get',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses/{id}',
+                            methods: ['PUT'],
+                            name: 'lms.courses.update',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'update',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses/{id}/publish',
+                            methods: ['POST'],
+                            name: 'lms.courses.publish',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'publish',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses/{id}/archive',
+                            methods: ['POST'],
+                            name: 'lms.courses.archive',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'archive',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses/{id}/versions',
+                            methods: ['GET'],
+                            name: 'lms.courses.versions',
+                            controllerClass: CourseController::class,
+                            controllerMethod: 'versions',
+                        ));
+
+                        // Module endpoints
+                        $router->addRoute(new Route(
+                            path: '/api/v1/courses/{id}/modules',
+                            methods: ['GET'],
+                            name: 'lms.modules.list',
+                            controllerClass: ModuleController::class,
+                            controllerMethod: 'list',
+                        ));
+
+                        // Enrollment endpoints
+                        $router->addRoute(new Route(
+                            path: '/api/v1/enrollments',
+                            methods: ['POST'],
+                            name: 'lms.enrollments.create',
+                            controllerClass: EnrollmentController::class,
+                            controllerMethod: 'enroll',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/enrollments/{id}',
+                            methods: ['DELETE'],
+                            name: 'lms.enrollments.cancel',
+                            controllerClass: EnrollmentController::class,
+                            controllerMethod: 'cancel',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/enrollments/{id}/reenroll',
+                            methods: ['POST'],
+                            name: 'lms.enrollments.reenroll',
+                            controllerClass: EnrollmentController::class,
+                            controllerMethod: 'reenroll',
+                        ));
+
+                        // Progress endpoints
+                        $router->addRoute(new Route(
+                            path: '/api/v1/progress',
+                            methods: ['POST'],
+                            name: 'lms.progress.record',
+                            controllerClass: ProgressController::class,
+                            controllerMethod: 'record',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/enrollments/{id}/progress',
+                            methods: ['GET'],
+                            name: 'lms.progress.get',
+                            controllerClass: ProgressController::class,
+                            controllerMethod: 'get',
+                        ));
+                        $router->addRoute(new Route(
+                            path: '/api/v1/enrollments/{id}/progress',
+                            methods: ['GET'],
+                            name: 'lms.progress.list',
+                            controllerClass: ProgressController::class,
+                            controllerMethod: 'list',
                         ));
 
                         // --- View subsystem integration ---

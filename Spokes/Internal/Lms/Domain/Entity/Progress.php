@@ -1,7 +1,9 @@
 <?php
+
 declare(strict_types=1);
 namespace SovereignStack\Internal\Lms\Domain\Entity;
 use DateTimeImmutable;
+use SovereignStack\Internal\Lms\Domain\Exception\CannotRevertCompletedModuleException;
 use SovereignStack\Internal\Lms\Domain\ValueObject\{ModuleId, ModuleStatus};
 
 final class Progress
@@ -18,6 +20,29 @@ final class Progress
     public function startedAt(): DateTimeImmutable { return $this->startedAt; }
     public function completedAt(): ?DateTimeImmutable { return $this->completedAt; }
 
+    public function transition(ModuleStatus $newStatus, DateTimeImmutable $now): void
+    {
+        if ($this->status === $newStatus) {
+            return;
+        }
+
+        if ($this->status === ModuleStatus::Completed) {
+            throw new \RuntimeException(
+                "Cannot revert completed module to {$newStatus->value}: {$this->moduleId}",
+                409,
+            );
+        }
+
+        if ($this->status === ModuleStatus::InProgress && $newStatus === ModuleStatus::NotStarted) {
+            throw new \RuntimeException(
+                "Cannot revert in_progress module to not_started: {$this->moduleId}",
+                409,
+            );
+        }
+
+        $this->update($newStatus, $now);
+    }
+
     public function update(ModuleStatus $status, DateTimeImmutable $now): void
     {
         $this->status = $status;
@@ -25,4 +50,9 @@ final class Progress
             $this->completedAt = $now;
         }
     }
+
+    public function moduleId(): ModuleId { return $this->moduleId; }
+    public function status(): ModuleStatus { return $this->status; }
+    public function startedAt(): DateTimeImmutable { return $this->startedAt; }
+    public function completedAt(): ?DateTimeImmutable { return $this->completedAt; }
 }

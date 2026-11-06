@@ -133,6 +133,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $existingEnrollment = Enrollment::create(
             courseId: $course->id(),
             learnerId: $this->learnerId,
+            courseVersion: $course->version(),
         ); // Active by default
 
         $this->courses->method('get')->willReturn($course);
@@ -201,6 +202,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('get')->willReturn($enrollment);
@@ -228,6 +230,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('get')->willReturn($enrollment);
@@ -252,6 +255,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $otherLearner = new UserId('other-learner-id-123456789012');
@@ -305,6 +309,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('get')->willReturn($enrollment);
@@ -333,6 +338,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('get')->willReturn($enrollment);
@@ -362,6 +368,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('findByLearner')->willReturn([$enrollment]);
@@ -379,6 +386,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('findByLearner')->willReturn([$enrollment]);
@@ -419,6 +427,7 @@ final class EnrollmentApplicationServiceTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: $courseId,
             learnerId: $this->learnerId,
+            courseVersion: 1,
         );
 
         $this->enrollments->method('findByCourse')->willReturn([$enrollment]);

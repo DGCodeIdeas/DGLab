@@ -1,0 +1,674 @@
+openapi: 3.1.0
+info:
+  title: DGLab LMS API
+  version: 1.0.0
+  description: |
+    DGLab Learning Management System API.
+    Provides course management, enrollment, and progress tracking for learners.
+  contact:
+    name: DGLab Team
+    email: team@dglab.dev
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.dglab.dev/v1
+    description: Production server
+
+paths:
+  /courses:
+    post:
+      summary: Create a new course (admin/instructor only)
+      operationId: createCourse
+      security:
+        - bearerAuth: [lms:admin, lms:instructor, platform:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseRequest'
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+      get:
+        summary: List published courses (paginated)
+        operationId: listCourses
+        security:
+          - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Paginated list of published courses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCoursesResponse'
+
+  /courses/{id}:
+    get:
+      summary: Get course by ID
+      operationId: getCourse
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update course (admin/instructor)
+      operationId: updateCourse
+      security:
+        - bearerAuth: [lms:admin, lms:instructor, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseRequest'
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      path: /api/v1/courses/{id}/publish
+      summary: Publish a course (admin/instructor)
+      operationId: publishCourse
+      security:
+        - bearerAuth: [lms:admin, lms:instructor, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: Course published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      path: /api/v1/courses/{id}/archive
+      summary: Archive a course (admin/instructor)
+      operationId: archiveCourse
+      security:
+        - bearerAuth: [lms:admin, lms:instructor, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: Course archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /courses/{id}/versions:
+    get:
+      summary: Get course version history
+      operationId: getCourseVersions
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: Version history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CourseVersionResponse'
+
+  /courses/{id}/modules:
+    get:
+      summary: List modules for a course
+      operationId: listModules
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: List of modules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ModuleResponse'
+
+  /enrollments:
+    post:
+      summary: Enroll learner in a course
+      operationId: enrollLearner
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollRequest'
+      responses:
+        '201':
+          description: Enrollment created (or existing returned)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /enrollments/{id}:
+    delete:
+      summary: Cancel enrollment
+      operationId: cancelEnrollment
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: Enrollment cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [cancelled]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /enrollments/{id}/reenroll:
+    post:
+      summary: Re-enroll after cancellation
+      operationId: reenroll
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '201':
+          description: New enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /progress:
+    post:
+      summary: Record module progress
+      operationId: recordProgress
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordProgressRequest'
+      responses:
+        '200':
+          description: Progress recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [recorded]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /enrollments/{id}/progress:
+    get:
+      summary: Get progress for an enrollment
+      operationId: getProgress
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: Progress details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    get:
+      path: /api/v1/enrollments/{id}/progress
+      summary: List all progress for an enrollment
+      operationId: listProgress
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: List of progress records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  progress:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProgressRecordResponse'
+
+  /courses/{id}/modules:
+    get:
+      summary: List modules for a course
+      operationId: listModules
+      security:
+        - bearerAuth: [lms:learner, lms:instructor, lms:admin, platform:admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ulid
+      responses:
+        '200':
+          description: List of modules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ModuleResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token (ES256 per ADR-003) or session cookie for same-origin
+
+  schemas:
+    CreateCourseRequest:
+      type: object
+      required:
+        - title
+        - slug
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+
+    UpdateCourseRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          minLength: 1
+          maxLength: 255
+
+    CourseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: ulid
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, published, archived]
+        version:
+          type: integer
+          minimum: 1
+        requirementsSnapshot:
+          type: object
+          nullable: true
+          properties:
+            requiredModuleIds:
+              type: array
+              items:
+                type: string
+                format: ulid
+            moduleMembership:
+              type: array
+              items:
+                type: object
+                properties:
+                  moduleId:
+                    type: string
+                    format: ulid
+                  sortOrder:
+                    type: integer
+                    minimum: 0
+                  isRequired:
+                    type: boolean
+            learningContent:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  content:
+                    type: string
+
+    CourseVersionResponse:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        requirementsSnapshot:
+          $ref: '#/components/schemas/CourseResponse/properties/requirementsSnapshot'
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedCoursesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseResponse'
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            count:
+              type: integer
+
+    EnrollRequest:
+      type: object
+      required:
+        - courseId
+      properties:
+        courseId:
+          type: string
+          format: ulid
+
+    EnrollmentResponse:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: ulid
+        status:
+          type: string
+          enum: [active, cancelled, completed]
+
+    RecordProgressRequest:
+      type: object
+      required:
+        - enrollmentId
+        - moduleId
+        - status
+      properties:
+        enrollmentId:
+          type: string
+          format: ulid
+        moduleId:
+          type: string
+          format: ulid
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+
+    ProgressResponse:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: ulid
+        moduleId:
+          type: string
+          format: ulid
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ProgressRecordResponse:
+      type: object
+      properties:
+        moduleId:
+          type: string
+          format: ulid
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ModuleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: ulid
+        title:
+          type: string
+        sortOrder:
+          type: integer
+          minimum: 0
+        content:
+          type: string
+          nullable: true
+
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            count:
+              type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication
+    Forbidden:
+      description: Forbidden - insufficient permissions
+    NotFound:
+      description: Resource not found
+    Conflict:
+      description: Resource conflict (e.g., duplicate enrollment)
+    UnprocessableEntity:
+      description: Validation failed

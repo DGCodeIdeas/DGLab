@@ -153,6 +153,7 @@ final class MySQLEnrollmentRepositoryTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: new UserId('test-learner-id-1234567890123'),
+            courseVersion: 1,
         );
 
         // First call: get() to check existence → returns null (new enrollment)
@@ -186,6 +187,7 @@ final class MySQLEnrollmentRepositoryTest extends TestCase
         $enrollment = Enrollment::create(
             courseId: CourseId::generate(),
             learnerId: new UserId('test-learner-id-1234567890123'),
+            courseVersion: 1,
         );
         $enrollment->cancel(); // Change state to test the UPDATE path
 

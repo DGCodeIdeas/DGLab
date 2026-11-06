@@ -15,6 +15,8 @@ use SovereignStack\Internal\Lms\Domain\ValueObject\{CourseId, CourseSlug};
  * Method history:
  *   - get(), getBySlug(), save(), delete()  — original (PR #355)
  *   - findPublished()                        — added Increment 3 (SemVer-minor)
+ *   - findVersion()                          — added Increment 4 (SemVer-minor)
+ *   - saveVersion()                          — added Increment 4 (SemVer-minor)
  */
 interface CourseRepositoryInterface
 {
@@ -39,4 +41,8 @@ interface CourseRepositoryInterface
      * @return Course[] Non-empty array only when published courses exist.
      */
     public function findPublished(int $limit = 20, int $offset = 0): array;
+
+    public function findVersion(string $courseId, int $version): ?Course;
+
+    public function saveVersion(string $courseId, int $version, string $requirementsSnapshot): void;
 }

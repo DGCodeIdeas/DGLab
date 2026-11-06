@@ -14,17 +14,19 @@ final class Enrollment
     public function __construct(
         private readonly EnrollmentId $id,
         private readonly CourseId $courseId,
+        private readonly int $courseVersion,
         private readonly UserId $learnerId,
         private EnrollmentStatus $status,
         private readonly DateTimeImmutable $createdAt,
         private ?DateTimeImmutable $completedAt = null,
     ) {}
 
-    public static function create(CourseId $courseId, UserId $learnerId): self
+    public static function create(CourseId $courseId, UserId $learnerId, int $courseVersion): self
     {
         return new self(
             id: EnrollmentId::generate(),
             courseId: $courseId,
+            courseVersion: $courseVersion,
             learnerId: $learnerId,
             status: EnrollmentStatus::Active,
             createdAt: new DateTimeImmutable(),
@@ -32,52 +34,19 @@ final class Enrollment
     }
 
     public static function restoreFromPersistence(
-        EnrollmentId $id, CourseId $courseId, UserId $learnerId,
+        EnrollmentId $id, CourseId $courseId, int $courseVersion, UserId $learnerId,
         EnrollmentStatus $status, DateTimeImmutable $createdAt, ?DateTimeImmutable $completedAt
     ): self {
-        return new self($id, $courseId, $learnerId, $status, $createdAt, $completedAt);
+        return new self($id, $courseId, $courseVersion, $learnerId, $status, $createdAt, $completedAt);
     }
 
     public function id(): EnrollmentId { return $this->id; }
     public function courseId(): CourseId { return $this->courseId; }
+    public function courseVersion(): int { return $this->courseVersion; }
     public function learnerId(): UserId { return $this->learnerId; }
     public function status(): EnrollmentStatus { return $this->status; }
     public function createdAt(): DateTimeImmutable { return $this->createdAt; }
     public function completedAt(): ?DateTimeImmutable { return $this->completedAt; }
-
-    /**
-     * Per locked progress state machine:
-     * not_started → in_progress → completed (forward-only, idempotent)
-     * completed → in_progress is FORBIDDEN (409).
-     */
-    public function recordProgress(ModuleId $moduleId, ModuleStatus $newStatus): void
-    {
-        $existing = $this->progress[$moduleId->value()] ?? null;
-
-        if ($existing !== null && $existing->status() === ModuleStatus::Completed) {
-            if ($newStatus === ModuleStatus::InProgress) {
-                throw CannotRevertCompletedModuleException::forModule($moduleId);
-            }
-            return; // idempotent: completed → completed
-        }
-
-        if ($existing !== null && $existing->status() === $newStatus) {
-            return; // idempotent
-        }
-
-        $now = new DateTimeImmutable();
-        if ($existing === null) {
-            $this->progress[$moduleId->value()] = new Progress(
-                $moduleId, $newStatus, $now,
-                $newStatus === ModuleStatus::Completed ? $now : null
-            );
-        } else {
-            $existing->update($newStatus, $now);
-        }
-    }
-
-    /** @return Progress[] */
-    public function progress(): array { return $this->progress; }
 
     public function cancel(): void
     {
