@@ -11,12 +11,11 @@ use Psr\Http\Message\StreamFactoryInterface;
 use SovereignStack\Core\Database\ConnectionInterface;
 use SovereignStack\Hub\Identity\Application\IdentityInterface;
 use SovereignStack\Hub\Identity\Domain\ValueObject\{RoleIdentifier, UserId};
-use SovereignStack\Internal\Lms\Application\Command\{CreateCourseCommand, AddModuleCommand, PublishCourseCommand, ArchiveCourseCommand, UpdateCourseCommand};
+use SovereignStack\Internal\Lms\Application\Command\{CreateCourseCommand, AddModuleCommand};
 use SovereignStack\Internal\Lms\Application\Service\CourseApplicationService;
 use SovereignStack\Internal\Lms\Domain\Exception\CourseNotFoundException;
 use SovereignStack\Internal\Lms\Domain\Repository\CourseRepositoryInterface;
 use SovereignStack\Internal\Lms\Domain\ValueObject\{CourseId, CourseSlug, ModuleId};
-use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 
 final class CourseController
 {
@@ -42,7 +41,7 @@ final class CourseController
 
         $courseId = $this->courseService->createCourse($cmd);
 
-        $course = $this->courseService->get($courseId);
+        $course = $this->courseRepo->get($courseId);
         return $this->jsonResponse(201, [
             'id' => (string)$course->id(),
             'title' => (string)$course->title(),
@@ -59,7 +58,7 @@ final class CourseController
         $limit = min(100, max(1, (int)($params['limit'] ?? 20)));
         $offset = max(0, (int)($params['offset'] ?? 0));
 
-        $courses = $this->courseService->listPublished($limit, $offset);
+        $courses = $this->courseService->listPublishedCourses($limit, $offset);
 
         return $this->jsonResponse(200, [
             'data' => array_map(fn($c) => [
@@ -104,8 +103,8 @@ final class CourseController
         $data = json_decode((string)$request->getBody(), true) ?? [];
         $actor = $this->getAuthenticatedUser($request);
 
-        $cmd = new UpdateCourseCommand(
-            id: $request->getAttribute('id'),
+        $cmd = new \SovereignStack\Internal\Lms\Application\Command\UpdateCourseCommand(
+            id: $id,
             title: $data['title'] ?? '',
             description: $data['description'] ?? null,
             slug: $data['slug'] ?? null,
@@ -130,7 +129,7 @@ final class CourseController
         $id = $request->getAttribute('id');
         $actor = $this->getAuthenticatedUser($request);
 
-        $cmd = new PublishCourseCommand(
+        $cmd = new \SovereignStack\Internal\Lms\Application\Command\PublishCourseCommand(
             id: $id,
             publishedBy: $actor,
         );
@@ -152,7 +151,7 @@ final class CourseController
         $id = $request->getAttribute('id');
         $actor = $this->getAuthenticatedUser($request);
 
-        $cmd = new ArchiveCourseCommand(
+        $cmd = new \SovereignStack\Internal\Lms\Application\Command\ArchiveCourseCommand(
             id: $id,
             archivedBy: $actor,
         );
@@ -179,7 +178,7 @@ final class CourseController
         if ($userId === null) {
             throw new \RuntimeException('Unauthenticated', 401);
         }
-        return $userId;
+        return new UserId($userId);
     }
 
     private function jsonResponse(int $status, array $data): ResponseInterface

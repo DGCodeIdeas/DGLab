@@ -12,7 +12,7 @@ use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
 use SovereignStack\Internal\Lms\Application\Command\RecordProgressCommand;
 use SovereignStack\Internal\Lms\Application\Service\ProgressApplicationService;
 use SovereignStack\Internal\Lms\Domain\Repository\ProgressRepositoryInterface;
-use SovereignStack\Internal\Lms\Domain\ValueObject\{EnrollmentId, ModuleId, ModuleStatus, UserId};
+use SovereignStack\Internal\Lms\Domain\ValueObject\{EnrollmentId, ModuleId, ModuleStatus, UserId as LmsUserId};
 
 final class ProgressController
 {
@@ -56,7 +56,7 @@ final class ProgressController
         }
 
         return $this->jsonResponse(200, [
-            'enrollmentId' => (string)$progress->moduleId(),
+            'enrollmentId' => $enrollmentId,
             'moduleId' => (string)$progress->moduleId(),
             'status' => $progress->status()->value,
             'startedAt' => $progress->startedAt()->format('c'),
@@ -90,7 +90,7 @@ final class ProgressController
         if ($userId === null) {
             throw new \RuntimeException('Unauthenticated', 401);
         }
-        return $userId;
+        return new \SovereignStack\Hub\Identity\Domain\ValueObject\UserId($userId);
     }
 
     private function jsonResponse(int $status, array $data, int $httpStatus = 200): \Psr\Http\Message\ResponseInterface

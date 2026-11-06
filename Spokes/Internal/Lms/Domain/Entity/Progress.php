@@ -50,9 +50,4 @@ final class Progress
             $this->completedAt = $now;
         }
     }
-
-    public function moduleId(): ModuleId { return $this->moduleId; }
-    public function status(): ModuleStatus { return $this->status; }
-    public function startedAt(): DateTimeImmutable { return $this->startedAt; }
-    public function completedAt(): ?DateTimeImmutable { return $this->completedAt; }
 }

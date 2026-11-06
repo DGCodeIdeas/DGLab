@@ -17,7 +17,7 @@ use SovereignStack\Internal\Lms\Domain\Entity\{CourseStatus, ModuleStatus};
 use SovereignStack\Internal\Lms\Domain\Repository\{CourseRepositoryInterface, ModuleRepositoryInterface, EnrollmentRepositoryInterface, ProgressRepositoryInterface};
 use SovereignStack\Internal\Lms\Infrastructure\Persistence\{MySQLCourseRepository, MySQLModuleRepository, MySQLEnrollmentRepository, MySQLProgressRepository};
 use SovereignStack\Internal\Lms\Domain\Entity\{Course, Module, Enrollment, Progress};
-use SovereignStack\Internal\Lms\Domain\ValueObject\{CourseId, CourseTitle, CourseSlug, ModuleId, ModuleTitle, EnrollmentId, UserId, ModuleSortOrder, ModuleStatus};
+use SovereignStack\Internal\Lms\Domain\ValueObject\{CourseId, CourseTitle, CourseSlug, ModuleId, ModuleTitle, EnrollmentId, UserId as LmsUserId, ModuleSortOrder};
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -80,6 +80,8 @@ $identity = new class implements \SovereignStack\Hub\Identity\Application\Identi
         return true; // Seed user has all roles
     }
     public function getUser(\SovereignStack\Hub\Identity\Domain\ValueObject\UserId $id): ?array { return null; }
+    public function authenticate(\SovereignStack\Hub\Identity\Domain\ValueObject\Email $email, string $password): ?\SovereignStack\Hub\Identity\Domain\ValueObject\UserId { return null; }
+    public function hasRole(\SovereignStack\Hub\Identity\Domain\ValueObject\UserId $userId, \SovereignStack\Hub\Identity\Domain\ValueObject\RoleIdentifier $role): bool { return true; }
 };
 
 $connection = $container->get(\SovereignStack\Core\Database\ConnectionInterface::class);
@@ -92,7 +94,7 @@ $courseService = new \SovereignStack\Internal\Lms\Application\Service\CourseAppl
     $container->get(\SovereignStack\Internal\Lms\Domain\Repository\CourseRepositoryInterface::class),
     $container->get(\SovereignStack\Internal\Lms\Domain\Repository\ModuleRepositoryInterface::class),
     $container->get(\SovereignStack\Hub\Identity\Application\IdentityInterface::class),
-    $connection,
+    $container->get(\SovereignStack\Core\Database\ConnectionInterface::class),
 );
 
 $enrollmentService = new \SovereignStack\Internal\Lms\Application\Service\EnrollmentApplicationService(
@@ -121,8 +123,8 @@ $adminId = \SovereignStack\Hub\Identity\Domain\ValueObject\UserId::generate();
 // Create demo courses
 echo "Creating courses...\n";
 $courseService = new \SovereignStack\Internal\Lms\Application\Service\CourseApplicationService(
-    new \SovereignStack\Internal\Lms\Infrastructure\Persistence\MySQLCourseRepository($connection),
-    new \SovereignStack\Internal\Lms\Infrastructure\Persistence\MySQLModuleRepository($connection),
+    $container->get(\SovereignStack\Internal\Lms\Domain\Repository\CourseRepositoryInterface::class),
+    $container->get(\SovereignStack\Internal\Lms\Domain\Repository\ModuleRepositoryInterface::class),
     $identity,
     $container->get(\SovereignStack\Core\Database\ConnectionInterface::class),
 );
@@ -260,14 +262,14 @@ if (!empty($enrollments)) {
     $enrollment = $enrollments[0];
     $progressService->recordProgress(new \SovereignStack\Internal\Lms\Application\Command\RecordProgressCommand(
         enrollmentId: $enrollment->id(),
-        moduleId: \SovereignStack\Internal\Lms\Domain\ValueObject\ModuleId::fromString($module1->id()->__toString()),
+        moduleId: \SovereignStack\Internal\Lms\Domain\ValueObject\ModuleId::fromString($module1->id()),
         newStatus: \SovereignStack\Internal\Lms\Domain\ValueObject\ModuleStatus::Completed,
     ), $learnerId);
 
     // Mark second module as in progress
     $progressService->recordProgress(new \SovereignStack\Internal\Lms\Application\Command\RecordProgressCommand(
         enrollmentId: $enrollment->id(),
-        moduleId: \SovereignStack\Internal\Lms\Domain\ValueObject\ModuleId::fromString($module2->id()->__toString()),
+        moduleId: \SovereignStack\Internal\Lms\Domain\ValueObject\ModuleId::fromString($module2->id()),
         newStatus: \SovereignStack\Internal\Lms\Domain\ValueObject\ModuleStatus::InProgress,
     ), $learnerId);
 }

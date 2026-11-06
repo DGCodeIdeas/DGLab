@@ -10,10 +10,10 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use SovereignStack\Hub\Identity\Application\IdentityInterface;
 use SovereignStack\Hub\Identity\Domain\ValueObject\UserId;
-use SovereignStack\Internal\Lms\Application\Command\{EnrollCommand, CancelEnrollmentCommand, ReEnrollCommand};
+use SovereignStack\Internal\Lms\Application\Command\{EnrollCommand, CancelEnrollmentCommand};
 use SovereignStack\Internal\Lms\Application\Service\EnrollmentApplicationService;
 use SovereignStack\Internal\Lms\Domain\Repository\EnrollmentRepositoryInterface;
-use SovereignStack\Internal\Lms\Domain\ValueObject\{EnrollmentId, CourseId, UserId};
+use SovereignStack\Internal\Lms\Domain\ValueObject\{EnrollmentId, CourseId, UserId as LmsUserId};
 
 final class EnrollmentController
 {
@@ -62,12 +62,7 @@ final class EnrollmentController
         $id = $request->getAttribute('id');
         $actor = $this->getAuthenticatedUser($request);
 
-        $cmd = new \SovereignStack\Internal\Lms\Application\Command\ReEnrollCommand(
-            enrollmentId: $id,
-            learnerId: $actor,
-        );
-
-        $newEnrollmentId = $this->enrollmentService->reEnroll($cmd->enrollmentId, $cmd->learnerId);
+        $newEnrollmentId = $this->enrollmentService->reEnroll($id, $actor);
 
         return $this->jsonResponse(201, [
             'enrollmentId' => (string)$newEnrollmentId,
@@ -81,10 +76,10 @@ final class EnrollmentController
         if ($userId === null) {
             throw new \RuntimeException('Unauthenticated', 401);
         }
-        return $userId;
+        return new \SovereignStack\Hub\Identity\Domain\ValueObject\UserId($userId);
     }
 
-    private function jsonResponse(int $status, array $data, int $httpStatus = 200): ResponseInterface
+    private function jsonResponse(int $status, array $data, int $httpStatus = 200): \Psr\Http\Message\ResponseInterface
     {
         $response = new \SovereignStack\Core\Http\Response($status);
         $stream = (new \SovereignStack\Core\Http\StreamFactory())->createStream(json_encode($data, JSON_THROW_ON_ERROR));
