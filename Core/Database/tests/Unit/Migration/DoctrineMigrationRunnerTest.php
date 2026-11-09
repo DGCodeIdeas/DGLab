@@ -30,7 +30,7 @@ final class DoctrineMigrationRunnerTest extends TestCase
         $status = $runner->status();
 
         $this->assertNotEmpty($status);
-        $this->assertCount(5, $status);
+        $this->assertCount(9, $status);
 
         foreach ($status as $m) {
             $this->assertArrayHasKey('version', $m);
@@ -45,7 +45,7 @@ final class DoctrineMigrationRunnerTest extends TestCase
         $runner = new DoctrineMigrationRunner($this->migrationsPath);
         $applied = $runner->migrate();
 
-        $this->assertCount(5, $applied);
+        $this->assertCount(9, $applied);
     }
 
     public function testIdempotentRerun(): void

@@ -77,6 +77,15 @@ final class DoctrineMigrationRunner implements MigrationRunnerInterface
             $basename = basename($file, '.sql');
             // Extract version: "001_create_users_table" → "001"
             $version = preg_replace('/^(\d+).*/', '$1', $basename) ?? $basename;
+            
+            // Detect duplicate migration versions
+            if (isset($this->migrations[$version])) {
+                throw new \RuntimeException(
+                    "Duplicate migration version '$version' found in '$file' and '{$this->migrations[$version]}'. " .
+                    "Migration versions must be unique."
+                );
+            }
+            
             $this->migrations[$version] = $file;
         }
     }
