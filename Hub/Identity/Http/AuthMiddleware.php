@@ -1,46 +1,36 @@
 <?php
 declare(strict_types=1);
+
 namespace SovereignStack\Hub\Identity\Http;
+
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use SovereignStack\Core\Kernel\RequestContext;
 use SovereignStack\Hub\Identity\Jwt\JwtVerifier;
+use SovereignStack\Hub\Identity\Session\SessionStoreInterface;
 
 /**
- * PSR-15 middleware that authenticates requests via JWT.
+ * PSR-15 middleware that authenticates requests via JWT Bearer or session cookie.
  *
- * Per Lap 2 P0-1: stamps RequestContext.userId as the AUTHORITATIVE identity source.
+ * Per ADR-024: Dual transport — session cookies (same-origin) + JWT Bearer (API clients).
+ * Per P0-1: stamps RequestContext.userId as the AUTHORITATIVE identity source.
  * The PSR-7 request attribute remains as a transport-level convenience but is
  * NOT the authoritative identity channel.
- *
- * @package SovereignStack\Hub\Identity\Http
  */
 final class AuthMiddleware implements MiddlewareInterface
 {
     public function __construct(
-        private readonly JwtVerifier $jwtVerifier,
+        private readonly ?JwtVerifier $jwtVerifier = null,
+        private readonly ?SessionStoreInterface $sessionStore = null,
     ) {}
 
     public function process(
         ServerRequestInterface $request,
         RequestHandlerInterface $handler,
     ): ResponseInterface {
-        $authHeader = $request->getHeaderLine('Authorization');
-        $userId = null;
-
-        if (str_starts_with($authHeader, 'Bearer ')) {
-            $token = substr($authHeader, 7);
-            try {
-                $payload = $this->jwtVerifier->verify($token);
-                if (isset($payload['sub'])) {
-                    $userId = $payload['sub'];
-                }
-            } catch (\Throwable) {
-                // Invalid token — proceed as unauthenticated
-            }
-        }
+        $userId = $this->authenticate($request);
 
         // P0-1: RequestContext is the AUTHORITATIVE identity source.
         // The request attribute is a transport convenience only.
@@ -62,13 +52,57 @@ final class AuthMiddleware implements MiddlewareInterface
      * @param RequestContext $context The current request context
      * @return RequestContext A new context with userId stamped (or unchanged if unauthenticated)
      */
-    public function stampRequestContext(RequestContext $context): RequestContext
+    public function stampRequestContext(RequestContext $context, ?string $userId): RequestContext
     {
-        // The userId is stored on the request attribute by process().
-        // This method is called by the composition root after process() completes
-        // to stamp the authoritative RequestContext.
-        // For now, the composition root reads the request attribute and stamps RequestContext.
-        // Future: inject Container into AuthMiddleware to stamp directly.
-        return $context;
+        if ($userId === null) {
+            return $context;
+        }
+        return $context->withUserId($userId);
+    }
+
+    private function authenticate(ServerRequestInterface $request): ?string
+    {
+        // Try JWT Bearer first (API clients)
+        $authHeader = $request->getHeaderLine('Authorization');
+        if (str_starts_with($authHeader, 'Bearer ')) {
+            $token = substr($authHeader, 7);
+            try {
+                if ($this->jwtVerifier === null) {
+                    throw new \RuntimeException('JWT verifier not configured');
+                }
+                $payload = $this->jwtVerifier->verify($token);
+                if (isset($payload['sub'])) {
+                    return (string)$payload['sub'];
+                }
+            } catch (\Throwable) {
+                // Invalid token — fall through to session cookie
+            }
+        }
+
+        // Try session cookie (same-origin browser apps)
+        $cookieHeader = $request->getHeaderLine('Cookie');
+        if ($this->sessionStore !== null && $cookieHeader !== '') {
+            $sessionId = $this->parseSessionCookie($cookieHeader);
+            if ($sessionId !== null) {
+                $session = $this->sessionStore->get($sessionId);
+                if ($session !== null && isset($session['userId'])) {
+                    return (string)$session['userId'];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function parseSessionCookie(string $cookieHeader): ?string
+    {
+        $cookies = [];
+        foreach (explode(';', $cookieHeader) as $cookie) {
+            $parts = explode('=', trim($cookie), 2);
+            if (count($parts) === 2) {
+                $cookies[trim($parts[0])] = trim($parts[1]);
+            }
+        }
+        return $cookies['DGLAB_SESSION'] ?? null;
     }
 }

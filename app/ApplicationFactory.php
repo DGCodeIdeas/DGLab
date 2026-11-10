@@ -35,6 +35,9 @@ use SovereignStack\Core\Router\Router;
 use SovereignStack\Core\View\ViewFactory;
 use SovereignStack\Core\View\ViewInterface;
 use SovereignStack\Hub\Identity\Http\AuthMiddleware;
+use SovereignStack\Hub\Identity\Jwt\JwtVerifier;
+use SovereignStack\Hub\Identity\Session\RedisSessionStore;
+use SovereignStack\Hub\Identity\Session\SessionStoreInterface;
 
 /**
  * Application composition root — extracts construction from public/index.php.
@@ -164,6 +167,24 @@ final class ApplicationFactory
         $contractRegistry->registerContract('/health/ready', new DefaultDtoTransformer());
         $contractRegistry->registerContract('/health/dependencies', new DefaultDtoTransformer());
 
+        // Register LMS API contracts (ADR-024: dual transport auth).
+        // Public read endpoints (discovery)
+        $contractRegistry->registerContract('/api/v1/courses', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}/modules', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}/versions', new DefaultDtoTransformer());
+        // Authenticated endpoints
+        $contractRegistry->registerContract('/api/v1/courses', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}/publish', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}/archive', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/enrollments', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/enrollments/{id}', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/enrollments/{id}/reenroll', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/progress', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/enrollments/{id}/progress', new DefaultDtoTransformer());
+        $contractRegistry->registerContract('/api/v1/courses/{id}/modules', new DefaultDtoTransformer());
+
         $vanguard = new Vanguard(
             contracts: $contractRegistry,
             waf: $waf,
@@ -203,16 +224,34 @@ final class ApplicationFactory
                         $pipeline = $kernel->getPipeline();
                         $pipeline->pipe($this->vanguard);
 
-                        // Pipe the AuthMiddleware AFTER the Vanguard (after contract lookup)
-                        // ONLY when JWT public key is configured (no auth transport approved yet).
+                        // Pipe the AuthMiddleware AFTER the Vanguard (after contract lookup).
+                        // Dual transport: Session cookie (same-origin) + JWT Bearer (API clients).
                         $config = $kernel->getConfig();
+                        $jwtVerifier = null;
                         if ($config->has('jwt.public_key')) {
                             $jwtVerifier = new \SovereignStack\Hub\Identity\Jwt\JwtVerifier($config->get('jwt.public_key'));
-                            $authMiddleware = new AuthMiddleware(
-                                jwtVerifier: $jwtVerifier,
-                            );
-                            $pipeline->pipe($authMiddleware);
                         }
+                        
+                        $sessionStore = null;
+                        if ($config->has('redis.host')) {
+                            $sessionStore = new RedisSessionStore(
+                                new \Predis\Client([
+                                    'scheme' => 'tcp',
+                                    'host'   => $config->get('redis.host'),
+                                    'port'   => $config->get('redis.port', 6379),
+                                    'password' => $config->get('redis.password') ?? null,
+                                    'database' => $config->get('redis.database', 0),
+                                ]),
+                                'dglab:session:',
+                                86400,
+                            );
+                        }
+                        
+                        $authMiddleware = new AuthMiddleware(
+                            jwtVerifier: $jwtVerifier,
+                            sessionStore: $sessionStore,
+                        );
+                        $pipeline->pipe($authMiddleware);
 
                         // Register the "Hello World" route (Milestone 0 success criterion).
                         $router = $kernel->getRouter();

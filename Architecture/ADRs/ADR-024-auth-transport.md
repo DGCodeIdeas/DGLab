@@ -2,7 +2,7 @@
 
 ## Status
 
-**Proposed** — Awaiting Owner Approval
+**Approved** — 2026-11-10
 
 ## Date
 
