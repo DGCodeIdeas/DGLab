@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SovereignStack\Core\Database\Tests\Unit\Migration;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use SovereignStack\Core\Database\Migration\DoctrineMigrationRunner;
 use SovereignStack\Core\Database\Migration\MigrationRunnerInterface;
 
@@ -21,7 +22,7 @@ final class DoctrineMigrationRunnerTest extends TestCase
     public function testImplementsInterface(): void
     {
         $runner = new DoctrineMigrationRunner($this->migrationsPath);
-        $this->assertInstanceOf(MigrationRunnerInterface::class, $runner);
+        Assert::assertInstanceOf(MigrationRunnerInterface::class, $runner);
     }
 
     public function testStatusReturnsAllMigrations(): void
@@ -29,14 +30,14 @@ final class DoctrineMigrationRunnerTest extends TestCase
         $runner = new DoctrineMigrationRunner($this->migrationsPath);
         $status = $runner->status();
 
-        $this->assertNotEmpty($status);
-        $this->assertCount(9, $status);
+        Assert::assertNotEmpty($status);
+        Assert::assertCount(9, $status);
 
         foreach ($status as $m) {
-            $this->assertArrayHasKey('version', $m);
-            $this->assertArrayHasKey('description', $m);
-            $this->assertArrayHasKey('executed', $m);
-            $this->assertArrayHasKey('executedAt', $m);
+            Assert::assertArrayHasKey('version', $m);
+            Assert::assertArrayHasKey('description', $m);
+            Assert::assertArrayHasKey('executed', $m);
+            Assert::assertArrayHasKey('executedAt', $m);
         }
     }
 
@@ -45,7 +46,7 @@ final class DoctrineMigrationRunnerTest extends TestCase
         $runner = new DoctrineMigrationRunner($this->migrationsPath);
         $applied = $runner->migrate();
 
-        $this->assertCount(9, $applied);
+        Assert::assertCount(9, $applied);
     }
 
     public function testIdempotentRerun(): void
@@ -53,7 +54,7 @@ final class DoctrineMigrationRunnerTest extends TestCase
         $runner = new DoctrineMigrationRunner($this->migrationsPath);
         $applied = $runner->migrate();
 
-        $this->assertEmpty($applied, 'Re-run should apply no new migrations');
+        Assert::assertEmpty($applied, 'Re-run should apply no new migrations');
     }
 
     public function testRollbackThrows(): void

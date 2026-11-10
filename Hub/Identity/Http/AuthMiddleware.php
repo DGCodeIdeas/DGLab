@@ -62,9 +62,10 @@ final class AuthMiddleware implements MiddlewareInterface
 
     private function authenticate(ServerRequestInterface $request): ?string
     {
-        // Try JWT Bearer first (API clients)
         $authHeader = $request->getHeaderLine('Authorization');
-        if (str_starts_with($authHeader, 'Bearer ')) {
+        $hasBearerToken = str_starts_with($authHeader, 'Bearer ');
+
+        if ($hasBearerToken) {
             $token = substr($authHeader, 7);
             try {
                 if ($this->jwtVerifier === null) {
@@ -74,12 +75,14 @@ final class AuthMiddleware implements MiddlewareInterface
                 if (isset($payload['sub'])) {
                     return (string)$payload['sub'];
                 }
-            } catch (\Throwable) {
-                // Invalid token — fall through to session cookie
+                throw new \RuntimeException('Invalid JWT: missing subject claim');
+            } catch (\Throwable $e) {
+                // Invalid Bearer token — reject with 401, do NOT fall back to session cookie
+                throw new \RuntimeException('Invalid Bearer token: ' . $e->getMessage(), 401);
             }
         }
 
-        // Try session cookie (same-origin browser apps)
+        // Try session cookie (same-origin browser apps) ONLY when no Bearer token was present
         $cookieHeader = $request->getHeaderLine('Cookie');
         if ($this->sessionStore !== null && $cookieHeader !== '') {
             $sessionId = $this->parseSessionCookie($cookieHeader);
