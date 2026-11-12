@@ -1,7 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
 namespace SovereignStack\Internal\Showcase\Domain\ValueObject;
+
 use Stringable;
+
 final readonly class Sku implements Stringable
 {
     private function __construct(private string $value) {}
@@ -12,6 +16,12 @@ final readonly class Sku implements Stringable
         if (!preg_match('/^[A-Z0-9\-_]+$/', $sku)) throw new \InvalidArgumentException('SKU must be alphanumeric+dash+underscore');
         return new self($sku);
     }
-    public function value(): string { return $this->value; }
-    public function __toString(): string { return $this->value; }
+    public function value(): string
+    {
+        return $this->value;
+    }
+    public function __toString(): string
+    {
+        return $this->value;
+    }
 }

@@ -1,7 +1,9 @@
 <?php
 
 declare(strict_types=1);
+
 namespace SovereignStack\Internal\Lms\Domain\Entity;
+
 use DateTimeImmutable;
 use SovereignStack\Internal\Lms\Domain\Exception\CannotRevertCompletedModuleException;
 use SovereignStack\Internal\Lms\Domain\ValueObject\{ModuleId, ModuleStatus};
@@ -15,10 +17,22 @@ final class Progress
         private ?DateTimeImmutable $completedAt,
     ) {}
 
-    public function moduleId(): ModuleId { return $this->moduleId; }
-    public function status(): ModuleStatus { return $this->status; }
-    public function startedAt(): DateTimeImmutable { return $this->startedAt; }
-    public function completedAt(): ?DateTimeImmutable { return $this->completedAt; }
+    public function moduleId(): ModuleId
+    {
+        return $this->moduleId;
+    }
+    public function status(): ModuleStatus
+    {
+        return $this->status;
+    }
+    public function startedAt(): DateTimeImmutable
+    {
+        return $this->startedAt;
+    }
+    public function completedAt(): ?DateTimeImmutable
+    {
+        return $this->completedAt;
+    }
 
     public function transition(ModuleStatus $newStatus, DateTimeImmutable $now): void
     {

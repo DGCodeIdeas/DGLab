@@ -1,6 +1,9 @@
 <?php
+
 declare(strict_types=1);
+
 namespace SovereignStack\Internal\Showcase\Domain\ValueObject;
+
 final readonly class Price
 {
     private function __construct(
@@ -13,7 +16,16 @@ final readonly class Price
         if (strlen($currency) !== 3) throw new \InvalidArgumentException('Currency must be 3-char ISO 4217');
         return new self($cents, strtoupper($currency));
     }
-    public function cents(): int { return $this->cents; }
-    public function currency(): string { return $this->currency; }
-    public function formatted(): string { return number_format($this->cents / 100, 2) . ' ' . $this->currency; }
+    public function cents(): int
+    {
+        return $this->cents;
+    }
+    public function currency(): string
+    {
+        return $this->currency;
+    }
+    public function formatted(): string
+    {
+        return number_format($this->cents / 100, 2) . ' ' . $this->currency;
+    }
 }
