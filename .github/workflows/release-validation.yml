@@ -252,14 +252,22 @@ jobs:
     steps:
       - name: Aggregate results
         run: |
+          set -euo pipefail
           FAILED=0
-          for job in validate-composer-versions loom-health tag-health-check; do
-            RESULT="${{ needs[format('{0}', job)].result }}"
-            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
-              echo "::error::$job: $RESULT"
+          # Check each job explicitly — ${{ }} expressions are evaluated at
+          # workflow compile time, so a bash loop over job names cannot
+          # dynamically index needs[<name>]. Use a helper function instead.
+          check_job() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "::error::$name: $result"
               FAILED=1
             fi
-          done
+          }
+          check_job "validate-composer-versions" "${{ needs.validate-composer-versions.result }}"
+          check_job "loom-health" "${{ needs.loom-health.result }}"
+          check_job "tag-health-check" "${{ needs.tag-health-check.result }}"
           if [ "$FAILED" -eq 1 ]; then
             echo "::error::Release validation failed"
             exit 1
