@@ -254,9 +254,10 @@ jobs:
         run: |
           set -euo pipefail
           FAILED=0
-          # Check each job explicitly — ${{ }} expressions are evaluated at
-          # workflow compile time, so a bash loop over job names cannot
-          # dynamically index needs[<name>]. Use a helper function instead.
+          # Check each job explicitly. GitHub Actions expressions are
+          # evaluated at workflow compile time, so a bash loop over job
+          # names cannot dynamically index the needs context. Use a
+          # helper function with per-job expressions instead.
           check_job() {
             local name="$1"
             local result="$2"
