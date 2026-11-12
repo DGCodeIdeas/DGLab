@@ -18,6 +18,7 @@ use SovereignStack\Core\EventDispatcher\EventDispatcher;
 use SovereignStack\Core\EventDispatcher\ListenerProvider;
 use SovereignStack\Core\Http\ResponseFactory;
 use SovereignStack\Core\Http\ServerRequestFactory;
+use SovereignStack\Core\ErrorHandler\ErrorHandlerInterface;
 use SovereignStack\Core\Kernel\BootstrapperInterface;
 use SovereignStack\Core\Kernel\Kernel;
 use SovereignStack\Core\Kernel\KernelInterface;
@@ -36,6 +37,12 @@ final class ApplicationCharacterizationTest extends TestCase
 {
     private Application $app;
 
+    /** @var ErrorHandlerInterface|null Error handler captured from the failing
+     *  bootstrapper helper, unregistered in tearDown to avoid leaking global
+     *  handler state (Kernel::boot() registers it; boot failure skips
+     *  terminate() so it is never unregistered automatically). */
+    private ?ErrorHandlerInterface $failingTestErrorHandler = null;
+
     protected function setUp(): void
     {
         $this->app = ApplicationFactory::create();
@@ -51,6 +58,20 @@ final class ApplicationCharacterizationTest extends TestCase
             } catch (\Throwable) {
                 // Ignore cleanup errors
             }
+        }
+        // Clean up any ErrorHandler leaked by the failing-bootstrapper tests.
+        // Kernel::boot() registers the ErrorHandler before bootstrappers run;
+        // on boot failure the Kernel transitions to Terminated without calling
+        // terminate() (which would unregister it). Application::shutdown()
+        // also skips terminate() for Terminated kernels. We unregister
+        // explicitly so PHPUnit does not flag the test as Risky.
+        if ($this->failingTestErrorHandler !== null) {
+            try {
+                $this->failingTestErrorHandler->unregister();
+            } catch (\Throwable) {
+                // Ignore — handler may already be unregistered.
+            }
+            $this->failingTestErrorHandler = null;
         }
     }
 
@@ -754,6 +775,10 @@ final class ApplicationCharacterizationTest extends TestCase
         $dispatcher   = new EventDispatcher($provider);
         $logger       = new Logger();
         $errorHandler = new ErrorHandler($logger, new PlainTextRenderer(), debug: false);
+        // Capture for tearDown cleanup — Kernel::boot() registers this handler
+        // before the failing bootstrapper throws; it is never unregistered
+        // automatically because terminate() is skipped on Terminated kernels.
+        $this->failingTestErrorHandler = $errorHandler;
 
         // Failing bootstrapper: throws a marked exception when bootstrap() is called.
         // This is a GENUINE bootstrapper implementing BootstrapperInterface, not a mock.
