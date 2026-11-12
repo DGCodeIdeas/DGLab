@@ -117,28 +117,34 @@ jobs:
         run: |
           cat orchestrator/repos.json | jq '.'
           # Verify all expected components are present
+          # Expected names match MonorepoPackage::discover() output:
+          #   name = "{tierName}/{shortName}" where tierName is the lowercased
+          #   tier dir (core, hub, bridge, spoke-internal, spoke-external) and
+          #   shortName is the lowercased component dir name.
+          # These are stable identifiers used by all loom commands, NOT
+          # Composer package names (no sovereign-stack/ prefix, no hyphenation).
           EXPECTED=(
-            "sovereign-stack/core-container"
-            "sovereign-stack/core-event-dispatcher"
-            "sovereign-stack/core-http-message"
-            "sovereign-stack/core-middleware"
-            "sovereign-stack/core-router"
-            "sovereign-stack/core-config"
-            "sovereign-stack/core-logger"
-            "sovereign-stack/core-error-handler"
-            "sovereign-stack/core-kernel"
-            "sovereign-stack/core-dbal"
-            "sovereign-stack/core-filesystem"
-            "sovereign-stack/core-neospx"
-            "sovereign-stack/core-crypto"
-            "sovereign-stack/core-view"
-            "sovereign-stack/hub-config"
-            "sovereign-stack/hub-identity"
-            "sovereign-stack/bridge-vanguard"
-            "sovereign-stack/spoke-codex"
-            "sovereign-stack/spoke-showcase"
-            "sovereign-stack/spoke-lms"
-            "sovereign-stack/spoke-canvas"
+            "core/container"
+            "core/eventdispatcher"
+            "core/httpmessage"
+            "core/middleware"
+            "core/router"
+            "core/config"
+            "core/logger"
+            "core/errorhandler"
+            "core/kernel"
+            "core/database"
+            "core/filesystem"
+            "core/neospx"
+            "core/crypto"
+            "core/view"
+            "hub/config"
+            "hub/identity"
+            "bridge/vanguard"
+            "spoke-internal/codex"
+            "spoke-internal/showcase"
+            "spoke-internal/lms"
+            "spoke-external/canvas"
           )
           
           MISSING=()
@@ -171,6 +177,9 @@ jobs:
           echo "Checking per-component tags for all tier directories..."
           
           # Component directories to check (they have phpunit.xml.dist and are real components)
+          # Tier prefixes match MonorepoPackage::discover() tagPrefix:
+          #   {tierName}-{shortName}-v{version}
+          # where tierName is core/hub/bridge/spoke-internal/spoke-external.
           COMPONENTS=(
             "Core/Container:core"
             "Core/EventDispatcher:core"
@@ -189,15 +198,15 @@ jobs:
             "Hub/Config:hub"
             "Hub/Identity:hub"
             "Bridge/Vanguard:bridge"
-            "Spokes/Internal/Codex:ispoke"
-            "Spokes/Internal/Showcase:ispoke"
-            "Spokes/Internal/Lms:ispoke"
-            "Spokes/External/Canvas:espoke"
+            "Spokes/Internal/Codex:spoke-internal"
+            "Spokes/Internal/Showcase:spoke-internal"
+            "Spokes/Internal/Lms:spoke-internal"
+            "Spokes/External/Canvas:spoke-external"
           )
           
-          # Since we don't have per-component composer.json files with versions,
-          # we check for tags using the pattern from the loom release tooling
-          # Tags follow: <tier>-<component>-v<version> or <tier>-v<version>
+          # Tags follow the MonorepoPackage::discover() tagPrefix pattern:
+          #   {tierName}-{shortName}-v{version}  (e.g. core-container-v1.0.0)
+          # or tier-level: {tierName}-v{version} (e.g. core-v1.0.0)
           
           for entry in "${COMPONENTS[@]}"; do
             DIR="${entry%%:*}"
@@ -243,14 +252,23 @@ jobs:
     steps:
       - name: Aggregate results
         run: |
+          set -euo pipefail
           FAILED=0
-          for job in validate-composer-versions loom-health tag-health-check; do
-            RESULT="${{ needs[format('{0}', job)].result }}"
-            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
-              echo "::error::$job: $RESULT"
+          # Check each job explicitly. GitHub Actions expressions are
+          # evaluated at workflow compile time, so a bash loop over job
+          # names cannot dynamically index the needs context. Use a
+          # helper function with per-job expressions instead.
+          check_job() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "::error::$name: $result"
               FAILED=1
             fi
-          done
+          }
+          check_job "validate-composer-versions" "${{ needs.validate-composer-versions.result }}"
+          check_job "loom-health" "${{ needs.loom-health.result }}"
+          check_job "tag-health-check" "${{ needs.tag-health-check.result }}"
           if [ "$FAILED" -eq 1 ]; then
             echo "::error::Release validation failed"
             exit 1
