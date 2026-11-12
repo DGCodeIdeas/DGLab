@@ -115,6 +115,15 @@ jobs:
         run: python3 scripts/generate-component-manifest.py > component-manifest.txt
 
       - name: Discover and run component tests
+        env:
+          # DB credentials for component tests that need MySQL
+          # (specifically Core/Database/DoctrineMigrationRunnerTest).
+          # Mirrors the integration-tests job env block.
+          DB_NAME: ${{ secrets.MYSQL_DATABASE || 'dglab_test' }}
+          DB_USER: ${{ secrets.MYSQL_USER || 'dglab_test' }}
+          DB_PASS: ${{ secrets.MYSQL_PASSWORD || 'test_password' }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
         run: |
           set -euo pipefail
           

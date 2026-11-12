@@ -51,18 +51,67 @@ final class DoctrineMigrationRunner implements MigrationRunnerInterface
     {
         // Use the project's own connection if available, otherwise create
         // a DBAL connection from environment variables.
-        // getenv() returns false when not set; use $_ENV for null-coalescing.
-        $params = [
-            'dbname'   => $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'dglab_test',
-            'user'     => $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'dglab_test',
-            'password' => $_ENV['DB_PASS'] ?? getenv('DB_PASS') ?? 'CHANGE_ME_STRONG_PASSWORD',
-            'host'     => $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? '127.0.0.1',
-            'port'     => (int) ($_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? 3306),
+        // getenv() returns false (not null) when the variable is absent; the
+        // null-coalescing operator ?? only checks null, so false would pass
+        // through to DBAL instead of the default. envString()/envInt() handle
+        // this correctly by converting false to the default.
+        $params = $this->buildConnectionParams();
+
+        return DriverManager::getConnection($params);
+    }
+
+    /**
+     * Build DBAL connection parameters from environment variables.
+     *
+     * Resolution order per key: $_ENV -> getenv() -> default.
+     * getenv() returns false when the variable is absent; the helpers
+     * convert false to the default so DBAL always receives a string/int,
+     * never a boolean false.
+     *
+     * @return array<string, string|int>
+     */
+    private function buildConnectionParams(): array
+    {
+        return [
+            'dbname'   => $this->envString('DB_NAME', 'dglab_test'),
+            'user'     => $this->envString('DB_USER', 'dglab_test'),
+            'password' => $this->envString('DB_PASS', 'CHANGE_ME_STRONG_PASSWORD'),
+            'host'     => $this->envString('DB_HOST', '127.0.0.1'),
+            'port'     => $this->envInt('DB_PORT', 3306),
             'driver'   => 'pdo_mysql',
             'charset'  => 'utf8mb4',
         ];
+    }
 
-        return DriverManager::getConnection($params);
+    /**
+     * Resolve a string environment variable with a default.
+     *
+     * Precedence: $_ENV (isset, including empty string) -> getenv() -> default.
+     * getenv() returns false when the variable is absent; this is converted
+     * to the default so DBAL never receives boolean false.
+     */
+    private function envString(string $key, string $default): string
+    {
+        if (isset($_ENV[$key])) {
+            return $_ENV[$key];
+        }
+        $value = getenv($key);
+        return $value === false ? $default : $value;
+    }
+
+    /**
+     * Resolve an integer environment variable with a default.
+     *
+     * Same precedence as envString(). The value is cast to int so that
+     * string env values (e.g. "3306") are normalized.
+     */
+    private function envInt(string $key, int $default): int
+    {
+        if (isset($_ENV[$key])) {
+            return (int) $_ENV[$key];
+        }
+        $value = getenv($key);
+        return $value === false ? $default : (int) $value;
     }
 
     private function discoverMigrations(): void
