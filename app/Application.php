@@ -126,11 +126,19 @@ final class Application
      * Boots the kernel if not already booted (for direct handle() calls).
      * The run() method boots the kernel before entering the request loop.
      *
-     * If the kernel boot fails, the application transitions to FAILED state.
+     * If the kernel boot fails, Application-level resources are cleaned up
+     * via shutdown() — the kernel/requestLoop references are nulled and the
+     * application transitions to STOPPED. Kernel::boot() has already
+     * transitioned the Kernel to Terminated and released its own references
+     * via releaseReferences(); shutdown() does NOT duplicate that cleanup
+     * (it skips kernel->terminate() because the Kernel is already Terminated,
+     * not Booted/Handling). The original boot exception is preserved and
+     * rethrown even if shutdown() itself fails.
+     *
      * A recoverable request exception returns the application to READY state.
      *
      * @throws \LogicException if application is not in a valid state
-     * @throws \Throwable if kernel boot fails (application transitions to FAILED)
+     * @throws \Throwable if kernel boot fails (application is cleaned up and rethrows)
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -150,8 +158,27 @@ final class Application
             try {
                 $this->kernel->boot();
             } catch (\Throwable $e) {
-                // Boot failure: transition to FAILED and rethrow
-                $this->markFailed();
+                // Boot failure: clean up Application-level resources and rethrow.
+                //
+                // Kernel::boot() has already transitioned the Kernel to Terminated
+                // and released its own references via releaseReferences(). We must
+                // not duplicate that cleanup. Application::shutdown() here only
+                // nulls the Application's kernel/requestLoop references (it skips
+                // kernel->terminate() because the Kernel is already Terminated,
+                // not Booted/Handling) and transitions to STOPPED.
+                //
+                // The original boot exception is preserved and rethrown even if
+                // shutdown() itself throws unexpectedly (it shouldn't — it
+                // catches terminate() failures internally via error_log — but we
+                // guard defensively so cleanup never masks the original cause).
+                try {
+                    $this->shutdown();
+                } catch (\Throwable $cleanupException) {
+                    error_log(
+                        '[DGLab] Application shutdown after boot failure failed: '
+                        . $cleanupException->getMessage()
+                    );
+                }
                 throw $e;
             }
         }
