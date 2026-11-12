@@ -11,6 +11,7 @@ use App\Controller\Lms\CourseController;
 use App\Controller\Lms\EnrollmentController;
 use App\Controller\Lms\ProgressController;
 use App\Controller\Lms\ModuleController;
+use App\Runtime\RequestLoop;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\NullLogger;
 use SovereignStack\Bridge\ContractRegistry;
@@ -60,63 +61,46 @@ use SovereignStack\Hub\Identity\Session\SessionStoreInterface;
  * topology are all preserved — this factory merely extracts the *wiring*
  * of those components out of the entry point.
  *
- * Lifecycle (per SPEC §7):
+ * Lifecycle:
  *   - ApplicationFactory::create() runs ONCE per worker (FrankenPHP worker mode)
- *     or ONCE per request (PHP-FPM fallback). Constructs all services, returns
- *     a new self.
- *   - ApplicationFactory::run() boots the Kernel, then either:
+ *     or ONCE per request (PHP-FPM fallback). Constructs all services and returns
+ *     a fully composed Application in READY state.
+ *   - Application::run() delegates to RequestLoop which boots the Kernel,
+ *     then either:
  *     (a) enters the frankenphp_handle_request loop (worker mode), or
  *     (b) handles a single request and terminates (FPM fallback).
  *
  * Per SPEC §44: "The factory MUST NOT become a service locator." — this class
- * holds the constructed services as private readonly fields, exposes only
- * create() + run(), and never leaks the container to callers.
+ * exposes only create(), and never leaks the container to callers.
  *
  * @package App
  */
 final class ApplicationFactory
 {
     /**
-     * @param Kernel $kernel The booted Kernel (booted once per worker).
-     * @param ResponseFactory $responseFactory For error fallbacks in the per-request handler.
-     * @param callable $log Structured logging helper (frankenphp_log() or error_log() fallback).
-     * @param bool $isDevMode Whether to expose error details in 500 responses.
-     */
-    private function __construct(
-        private readonly Kernel $kernel,
-        private readonly ResponseFactory $responseFactory,
-        private readonly \Closure $log,
-        private readonly bool $isDevMode,
-    ) {}
-
-    /**
-     * Get the kernel for testing purposes.
-     *
-     * This is intentionally limited to testing — production code should
-     * not depend on kernel internals.
-     */
-    public function getKernel(): Kernel
-    {
-        return $this->kernel;
-    }
-
-    /**
      * Compose the application from existing Core/Bridge components.
      *
-     * Steps (per the previous public/index.php, now extracted):
+     * Steps:
      *   1. Build Container, EventDispatcher, Logger, ErrorHandler.
      *   2. Pre-bind the services the HttpBootstrapper expects.
      *   3. Build the Vanguard (BRIDGE-01) with ContractRegistry + WafInspector.
      *   4. Register the root + /health contracts.
      *   5. Build the Kernel with a custom bootstrapper that wires Vanguard
      *      as outermost middleware + registers the hello + /health routes.
+     *   6. Build RequestLoop with the Kernel.
+     *   7. Return a fully composed Application in READY state.
      *
      * This method is the composition boundary per SPEC §44. It MAY depend on
      * all enabled application rings — Core, Bridge, and App — because it is
      * the root, not a runtime/domain layer.
+     *
+     * @throws \Throwable if composition fails; Application is cleaned up before rethrow
      */
-    public static function create(): self
+    public static function create(): Application
     {
+        $application = Application::createInstance();
+        $application->markComposing();
+
         $log = static function (string $message, array $context = []): void {
             if (function_exists('frankenphp_log')) {
                 frankenphp_log($message, FRANKENPHP_LOG_LEVEL_ERROR, $context);
@@ -126,437 +110,307 @@ final class ApplicationFactory
             }
         };
 
-        // --- 1. Build Kernel dependencies ---
-        $container    = new Container();
-        $provider     = new ListenerProvider();
-        $dispatcher   = new EventDispatcher($provider);
-        $logger       = new Logger();
-        $errorHandler = new ErrorHandler($logger, new PlainTextRenderer(), debug: false);
+        try {
+            // --- 1. Build Kernel dependencies ---
+            $container    = new Container();
+            $provider     = new ListenerProvider();
+            $dispatcher   = new EventDispatcher($provider);
+            $logger       = new Logger();
+            $errorHandler = new ErrorHandler($logger, new PlainTextRenderer(), debug: false);
 
-        // Pre-bind the services the HttpBootstrapper expects.
-        $container->instance(
-            \SovereignStack\Core\EventDispatcher\EventDispatcherInterface::class,
-            $dispatcher,
-        );
-        $container->instance(
-            \SovereignStack\Core\Logger\LoggerInterface::class,
-            $logger,
-        );
-        $container->instance(
-            \SovereignStack\Core\ErrorHandler\ErrorHandlerInterface::class,
-            $errorHandler,
-        );
+            // Pre-bind the services the HttpBootstrapper expects.
+            $container->instance(
+                \SovereignStack\Core\EventDispatcher\EventDispatcherInterface::class,
+                $dispatcher,
+            );
+            $container->instance(
+                \SovereignStack\Core\Logger\LoggerInterface::class,
+                $logger,
+            );
+            $container->instance(
+                \SovereignStack\Core\ErrorHandler\ErrorHandlerInterface::class,
+                $errorHandler,
+            );
 
-        // --- 2. Build the Vanguard (BRIDGE-01) ---
-        $contractRegistry = new ContractRegistry();
-        $waf              = new WafInspector();
-        $responseFactory  = new ResponseFactory();
+            // --- 2. Build the Vanguard (BRIDGE-01) ---
+            $contractRegistry = new ContractRegistry();
+            $waf              = new WafInspector();
+            $responseFactory  = new ResponseFactory();
 
-        // Register the root contract — the "Hello World" route.
-        $contractRegistry->registerContract('/', new DefaultDtoTransformer());
+            // Register the root contract — the "Hello World" route.
+            $contractRegistry->registerContract('/', new DefaultDtoTransformer());
 
-        // Register the /hello contract for template rendering.
-        $contractRegistry->registerContract('/hello', new DefaultDtoTransformer());
+            // Register the /hello contract for template rendering.
+            $contractRegistry->registerContract('/hello', new DefaultDtoTransformer());
 
-        // Register the /health contract — used by Tengine's active health check
-        // and future monitoring systems. Pass-through DTO transformer.
-        $contractRegistry->registerContract('/health', new DefaultDtoTransformer());
+            // Register the /health contract — used by Tengine's active health check
+            // and future monitoring systems. Pass-through DTO transformer.
+            $contractRegistry->registerContract('/health', new DefaultDtoTransformer());
 
-        // Three-tier health contracts per SPEC §29 (M4 — Production Release Gate).
-        $contractRegistry->registerContract('/health/live', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/health/ready', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/health/dependencies', new DefaultDtoTransformer());
+            // Three-tier health contracts per SPEC §29 (M4 — Production Release Gate).
+            $contractRegistry->registerContract('/health/live', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/health/ready', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/health/dependencies', new DefaultDtoTransformer());
 
-        // Register LMS API contracts (ADR-024: dual transport auth).
-        // Public read endpoints (discovery)
-        $contractRegistry->registerContract('/api/v1/courses', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}/modules', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}/versions', new DefaultDtoTransformer());
-        // Authenticated endpoints
-        $contractRegistry->registerContract('/api/v1/courses', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}/publish', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}/archive', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/enrollments', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/enrollments/{id}', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/enrollments/{id}/reenroll', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/progress', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/enrollments/{id}/progress', new DefaultDtoTransformer());
-        $contractRegistry->registerContract('/api/v1/courses/{id}/modules', new DefaultDtoTransformer());
+            // Register LMS API contracts (ADR-024: dual transport auth).
+            // Public read endpoints (discovery)
+            $contractRegistry->registerContract('/api/v1/courses', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}/modules', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}/versions', new DefaultDtoTransformer());
+            // Authenticated endpoints
+            $contractRegistry->registerContract('/api/v1/courses', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}/publish', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}/archive', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/enrollments', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/enrollments/{id}', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/enrollments/{id}/reenroll', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/progress', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/enrollments/{id}/progress', new DefaultDtoTransformer());
+            $contractRegistry->registerContract('/api/v1/courses/{id}/modules', new DefaultDtoTransformer());
 
-        $vanguard = new Vanguard(
-            contracts: $contractRegistry,
-            waf: $waf,
-            responseFactory: $responseFactory,
-            logger: new NullLogger(),
-        );
+            $vanguard = new Vanguard(
+                contracts: $contractRegistry,
+                waf: $waf,
+                responseFactory: $responseFactory,
+                logger: new NullLogger(),
+            );
 
-        // --- 3. Build the Kernel with the wiring bootstrapper ---
-        $kernel = new Kernel(
-            containerFactory: fn () => $container,
-            configFactory: fn () => new ConfigRepository([
-                'view' => [
-                    'driver' => 'twig',
-                    'path' => __DIR__ . '/Resources/views',
-                    'options' => [],
-                ],
-            ]),
-            errorHandlerFactory: fn () => $errorHandler,
-            providerRegistryFactory: fn () => new EmptyProviderRegistry(),
-            eventDispatcherFactory: fn () => $dispatcher,
-            loggerFactory: fn () => $logger,
-            routerFactory: fn () => new Router(),
-            bootstrappers: [
-                // Custom bootstrapper: wires the Vanguard as outermost middleware,
-                // then delegates to the HttpBootstrapper for the router + pipeline.
-                new class ($vanguard) implements BootstrapperInterface {
-                    public function __construct(
-                        private readonly Vanguard $vanguard,
-                    ) {}
+            // --- 3. Build the Kernel with the wiring bootstrapper ---
+            $kernel = new Kernel(
+                containerFactory: fn () => $container,
+                configFactory: fn () => new ConfigRepository([
+                    'view' => [
+                        'driver' => 'twig',
+                        'path' => __DIR__ . '/Resources/views',
+                        'options' => [],
+                    ],
+                ]),
+                errorHandlerFactory: fn () => $errorHandler,
+                providerRegistryFactory: fn () => new EmptyProviderRegistry(),
+                eventDispatcherFactory: fn () => $dispatcher,
+                loggerFactory: fn () => $logger,
+                routerFactory: fn () => new Router(),
+                bootstrappers: [
+                    // Custom bootstrapper: wires the Vanguard as outermost middleware,
+                    // then delegates to the HttpBootstrapper for the router + pipeline.
+                    new class ($vanguard) implements BootstrapperInterface {
+                        public function __construct(
+                            private readonly Vanguard $vanguard,
+                        ) {}
 
-                    public function bootstrap(KernelInterface $kernel): void
-                    {
-                        // Run the standard HttpBootstrapper to wire pipeline + router.
-                        (new \SovereignStack\Core\Kernel\HttpBootstrapper())->bootstrap($kernel);
+                        public function bootstrap(KernelInterface $kernel): void
+                        {
+                            // Run the standard HttpBootstrapper to wire pipeline + router.
+                            (new \SovereignStack\Core\Kernel\HttpBootstrapper())->bootstrap($kernel);
 
-                        // Pipe the Vanguard as the OUTERMOST middleware.
-                        $pipeline = $kernel->getPipeline();
-                        $pipeline->pipe($this->vanguard);
+                            // Pipe the Vanguard as the OUTERMOST middleware.
+                            $pipeline = $kernel->getPipeline();
+                            $pipeline->pipe($this->vanguard);
 
-                        // Pipe the AuthMiddleware AFTER the Vanguard (after contract lookup).
-                        // Dual transport: Session cookie (same-origin) + JWT Bearer (API clients).
-                        $config = $kernel->getConfig();
-                        $jwtVerifier = null;
-                        if ($config->has('jwt.public_key')) {
-                            $jwtVerifier = new \SovereignStack\Hub\Identity\Jwt\JwtVerifier($config->get('jwt.public_key'));
-                        }
-                        
-                        $sessionStore = null;
-                        if ($config->has('redis.host')) {
-                            $sessionStore = new RedisSessionStore(
-                                new \Predis\Client([
-                                    'scheme' => 'tcp',
-                                    'host'   => $config->get('redis.host'),
-                                    'port'   => $config->get('redis.port', 6379),
-                                    'password' => $config->get('redis.password') ?? null,
-                                    'database' => $config->get('redis.database', 0),
-                                ]),
-                                'dglab:session:',
-                                86400,
+                            // Pipe the AuthMiddleware AFTER the Vanguard (after contract lookup).
+                            // Dual transport: Session cookie (same-origin) + JWT Bearer (API clients).
+                            $config = $kernel->getConfig();
+                            $jwtVerifier = null;
+                            if ($config->has('jwt.public_key')) {
+                                $jwtVerifier = new \SovereignStack\Hub\Identity\Jwt\JwtVerifier($config->get('jwt.public_key'));
+                            }
+                            
+                            $sessionStore = null;
+                            if ($config->has('redis.host')) {
+                                $sessionStore = new RedisSessionStore(
+                                    new \Predis\Client([
+                                        'scheme' => 'tcp',
+                                        'host'   => $config->get('redis.host'),
+                                        'port'   => $config->get('redis.port', 6379),
+                                        'password' => $config->get('redis.password') ?? null,
+                                        'database' => $config->get('redis.database', 0),
+                                    ]),
+                                    'dglab:session:',
+                                    86400,
+                                );
+                            }
+                            
+                            $authMiddleware = new AuthMiddleware(
+                                jwtVerifier: $jwtVerifier,
+                                sessionStore: $sessionStore,
                             );
+                            $pipeline->pipe($authMiddleware);
+
+                            // Register the "Hello World" route (Milestone 0 success criterion).
+                            $router = $kernel->getRouter();
+                            $router->addRoute(new Route(
+                                path: '/',
+                                methods: ['GET'],
+                                name: 'hello',
+                                controllerClass: HelloController::class,
+                                controllerMethod: 'handle',
+                            ));
+
+                            // Register the /health route (Tengine health check + monitoring).
+                            $router->addRoute(new Route(
+                                path: '/health',
+                                methods: ['GET'],
+                                name: 'health',
+                                controllerClass: HealthController::class,
+                                controllerMethod: 'handle',
+                            ));
+
+                            // Bind the controllers into the container.
+                            $kernel->getContainer()->bind(HelloController::class);
+                            $kernel->getContainer()->bind(HealthController::class);
+                            $kernel->getContainer()->bind(TemplateController::class);
+                            $kernel->getContainer()->bind(CourseController::class);
+                            $kernel->getContainer()->bind(EnrollmentController::class);
+                            $kernel->getContainer()->bind(ProgressController::class);
+                            $kernel->getContainer()->bind(ModuleController::class);
+
+                            // Register the template rendering route.
+                            $router->addRoute(new Route(
+                                path: '/hello',
+                                methods: ['GET'],
+                                name: 'template.hello',
+                                controllerClass: TemplateController::class,
+                                controllerMethod: 'hello',
+                            ));
+
+                            // --- LMS API Routes ---
+                            // Course endpoints
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses',
+                                methods: ['POST'],
+                                name: 'lms.courses.create',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'create',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses',
+                                methods: ['GET'],
+                                name: 'lms.courses.list',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'list',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses/{id}',
+                                methods: ['GET'],
+                                name: 'lms.courses.get',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'get',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses/{id}',
+                                methods: ['PUT'],
+                                name: 'lms.courses.update',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'update',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses/{id}/publish',
+                                methods: ['POST'],
+                                name: 'lms.courses.publish',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'publish',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses/{id}/archive',
+                                methods: ['POST'],
+                                name: 'lms.courses.archive',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'archive',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses/{id}/versions',
+                                methods: ['GET'],
+                                name: 'lms.courses.versions',
+                                controllerClass: CourseController::class,
+                                controllerMethod: 'versions',
+                            ));
+
+                            // Module endpoints
+                            $router->addRoute(new Route(
+                                path: '/api/v1/courses/{id}/modules',
+                                methods: ['GET'],
+                                name: 'lms.modules.list',
+                                controllerClass: ModuleController::class,
+                                controllerMethod: 'list',
+                            ));
+
+                            // Enrollment endpoints
+                            $router->addRoute(new Route(
+                                path: '/api/v1/enrollments',
+                                methods: ['POST'],
+                                name: 'lms.enrollments.create',
+                                controllerClass: EnrollmentController::class,
+                                controllerMethod: 'enroll',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/enrollments/{id}',
+                                methods: ['DELETE'],
+                                name: 'lms.enrollments.cancel',
+                                controllerClass: EnrollmentController::class,
+                                controllerMethod: 'cancel',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/enrollments/{id}/reenroll',
+                                methods: ['POST'],
+                                name: 'lms.enrollments.reenroll',
+                                controllerClass: EnrollmentController::class,
+                                controllerMethod: 'reenroll',
+                            ));
+
+                            // Progress endpoints
+                            $router->addRoute(new Route(
+                                path: '/api/v1/progress',
+                                methods: ['POST'],
+                                name: 'lms.progress.record',
+                                controllerClass: ProgressController::class,
+                                controllerMethod: 'record',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/enrollments/{id}/progress',
+                                methods: ['GET'],
+                                name: 'lms.progress.get',
+                                controllerClass: ProgressController::class,
+                                controllerMethod: 'get',
+                            ));
+                            $router->addRoute(new Route(
+                                path: '/api/v1/enrollments/{id}/progress',
+                                methods: ['GET'],
+                                name: 'lms.progress.list',
+                                controllerClass: ProgressController::class,
+                                controllerMethod: 'list',
+                            ));
+
+                            // --- View subsystem integration ---
+                            $config = $kernel->getConfig();
+                            if ($config->has('view.driver')) {
+                                $view = ViewFactory::fromConfig($config);
+                                $kernel->getContainer()->instance(ViewInterface::class, $view);
+                            }
                         }
-                        
-                        $authMiddleware = new AuthMiddleware(
-                            jwtVerifier: $jwtVerifier,
-                            sessionStore: $sessionStore,
-                        );
-                        $pipeline->pipe($authMiddleware);
+                    },
+                ],
+            );
 
-                        // Register the "Hello World" route (Milestone 0 success criterion).
-                        $router = $kernel->getRouter();
-                        $router->addRoute(new Route(
-                            path: '/',
-                            methods: ['GET'],
-                            name: 'hello',
-                            controllerClass: HelloController::class,
-                            controllerMethod: 'handle',
-                        ));
+            $isDevMode = self::isDevMode();
 
-                        // Register the /health route (Tengine health check + monitoring).
-                        $router->addRoute(new Route(
-                            path: '/health',
-                            methods: ['GET'],
-                            name: 'health',
-                            controllerClass: HealthController::class,
-                            controllerMethod: 'handle',
-                        ));
+            $requestLoop = new RequestLoop(
+                kernel: $kernel,
+                responseFactory: $responseFactory,
+                log: $log,
+                isDevMode: $isDevMode,
+            );
 
-                        // Bind the controllers into the container.
-                        $kernel->getContainer()->bind(HelloController::class);
-                        $kernel->getContainer()->bind(HealthController::class);
-                        $kernel->getContainer()->bind(TemplateController::class);
-                        $kernel->getContainer()->bind(CourseController::class);
-                        $kernel->getContainer()->bind(EnrollmentController::class);
-                        $kernel->getContainer()->bind(ProgressController::class);
-                        $kernel->getContainer()->bind(ModuleController::class);
+            // Set kernel and request loop on Application (transitions to READY)
+            $application->setKernelAndRequestLoop($kernel, $requestLoop);
 
-                        // Register the template rendering route.
-                        $router->addRoute(new Route(
-                            path: '/hello',
-                            methods: ['GET'],
-                            name: 'template.hello',
-                            controllerClass: TemplateController::class,
-                            controllerMethod: 'hello',
-                        ));
-
-                        // --- LMS API Routes ---
-                        // Course endpoints
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses',
-                            methods: ['POST'],
-                            name: 'lms.courses.create',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'create',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses',
-                            methods: ['GET'],
-                            name: 'lms.courses.list',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'list',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses/{id}',
-                            methods: ['GET'],
-                            name: 'lms.courses.get',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'get',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses/{id}',
-                            methods: ['PUT'],
-                            name: 'lms.courses.update',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'update',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses/{id}/publish',
-                            methods: ['POST'],
-                            name: 'lms.courses.publish',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'publish',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses/{id}/archive',
-                            methods: ['POST'],
-                            name: 'lms.courses.archive',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'archive',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses/{id}/versions',
-                            methods: ['GET'],
-                            name: 'lms.courses.versions',
-                            controllerClass: CourseController::class,
-                            controllerMethod: 'versions',
-                        ));
-
-                        // Module endpoints
-                        $router->addRoute(new Route(
-                            path: '/api/v1/courses/{id}/modules',
-                            methods: ['GET'],
-                            name: 'lms.modules.list',
-                            controllerClass: ModuleController::class,
-                            controllerMethod: 'list',
-                        ));
-
-                        // Enrollment endpoints
-                        $router->addRoute(new Route(
-                            path: '/api/v1/enrollments',
-                            methods: ['POST'],
-                            name: 'lms.enrollments.create',
-                            controllerClass: EnrollmentController::class,
-                            controllerMethod: 'enroll',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/enrollments/{id}',
-                            methods: ['DELETE'],
-                            name: 'lms.enrollments.cancel',
-                            controllerClass: EnrollmentController::class,
-                            controllerMethod: 'cancel',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/enrollments/{id}/reenroll',
-                            methods: ['POST'],
-                            name: 'lms.enrollments.reenroll',
-                            controllerClass: EnrollmentController::class,
-                            controllerMethod: 'reenroll',
-                        ));
-
-                        // Progress endpoints
-                        $router->addRoute(new Route(
-                            path: '/api/v1/progress',
-                            methods: ['POST'],
-                            name: 'lms.progress.record',
-                            controllerClass: ProgressController::class,
-                            controllerMethod: 'record',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/enrollments/{id}/progress',
-                            methods: ['GET'],
-                            name: 'lms.progress.get',
-                            controllerClass: ProgressController::class,
-                            controllerMethod: 'get',
-                        ));
-                        $router->addRoute(new Route(
-                            path: '/api/v1/enrollments/{id}/progress',
-                            methods: ['GET'],
-                            name: 'lms.progress.list',
-                            controllerClass: ProgressController::class,
-                            controllerMethod: 'list',
-                        ));
-
-                        // --- View subsystem integration ---
-                        $config = $kernel->getConfig();
-                        if ($config->has('view.driver')) {
-                            $view = ViewFactory::fromConfig($config);
-                            $kernel->getContainer()->instance(ViewInterface::class, $view);
-                        }
-                    }
-                },
-            ],
-        );
-
-        $isDevMode = self::isDevMode();
-
-        return new self(
-            kernel: $kernel,
-            responseFactory: $responseFactory,
-            log: $log,
-            isDevMode: $isDevMode,
-        );
-    }
-
-    /**
-     * Boot the Kernel and dispatch requests through it.
-     *
-     * Per SPEC §44: "public/index.php SHOULD primarily:
-     *   1. load the application factory;
-     *   2. build the application;
-     *   3. invoke the kernel;
-     *   4. allow the existing global error/shutdown handling to remain authoritative."
-     *
-     * Steps 3 + 4 happen here. Step 1 (load factory) is in public/index.php.
-     * Step 2 (build) is the create() call in public/index.php.
-     *
-     * FrankenPHP worker mode: enters the frankenphp_handle_request loop, calling
-     * the per-request $handler for each incoming request. The Kernel is booted
-     * once before the loop. Worker recycling (max_requests=500) is enforced by
-     * the Caddyfile.blue config per SPEC §35.
-     *
-     * PHP-FPM fallback: handles a single request, emits the response via SAPI
-     * functions, and terminates the Kernel.
-     */
-    public function run(): void
-    {
-        // Boot once per worker (FrankenPHP) or once per request (FPM).
-        $this->kernel->boot();
-
-        // Per-request handler (closure shared by both modes).
-        $handler = $this->buildRequestHandler();
-
-        if (function_exists('frankenphp_handle_request')) {
-            // Official FrankenPHP worker pattern (per docs):
-            //   https://frankenphp.dev/docs/worker/
-            //
-            // The for loop with MAX_REQUESTS bounds memory leaks in long-lived
-            // workers — PHP libraries were not originally designed for long-running
-            // processes, so restarting after N requests is a known mitigation.
-            $maxRequests = (int)($_SERVER['MAX_REQUESTS'] ?? 0);
-            for ($nbRequests = 0; !$maxRequests || $nbRequests < $maxRequests; ++$nbRequests) {
-                $keepRunning = frankenphp_handle_request($handler);
-
-                // Call the garbage collector to reduce the chances of it being
-                // triggered in the middle of a page generation.
-                gc_collect_cycles();
-
-                if (!$keepRunning) {
-                    break;
-                }
-            }
-            $this->kernel->terminate();
-        } else {
-            // PHP-FPM / CLI fallback: handle one request, emit, terminate.
-            $request = ServerRequestFactory::fromGlobals();
-            try {
-                $response = $this->kernel->handle($request);
-            } catch (\Throwable $e) {
-                ($this->log)(sprintf('Uncaught %s: %s at %s:%d',
-                    $e::class, $e->getMessage(), $e->getFile(), $e->getLine()),
-                    ['exception' => $e::class, 'file' => $e->getFile(), 'line' => $e->getLine()]);
-                $response = $this->responseFactory->createResponse(500);
-                $response->getBody()->write($this->isDevMode ? $e->getMessage() : 'Internal Server Error');
-            }
-            $this->emitResponse($response);
-            $this->kernel->terminate();
+            return $application;
+        } catch (\Throwable $e) {
+            // Composition failed - cleanup application resources and rethrow
+            $application->shutdown();
+            throw $e;
         }
-    }
-
-    /**
-     * Build the per-request handler closure used by frankenphp_handle_request().
-     *
-     * Per the official FrankenPHP worker documentation, the handler:
-     *   1. Takes NO arguments (FrankenPHP calls it with zero parameters)
-     *   2. Creates the request from superglobals INSIDE via fromGlobals()
-     *   3. Emits the response via echo + http_response_code() + header()
-     *      (NOT by returning a Response — the handler returns void)
-     *
-     * Exceptions thrown inside frankenphp_handle_request() are intercepted by
-     * FrankenPHP BEFORE reaching PHP's set_exception_handler (per docs:
-     * "set_exception_handler is called only when the worker script ends").
-     * This try/catch is the ONLY place to capture + log + render exceptions.
-     */
-    private function buildRequestHandler(): callable
-    {
-        $kernel           = $this->kernel;
-        $responseFactory  = $this->responseFactory;
-        $isDevMode        = $this->isDevMode;
-        $log              = $this->log;
-
-        return static function () use ($kernel, $responseFactory, $isDevMode, $log): void {
-            try {
-                $request  = ServerRequestFactory::fromGlobals();
-                $response = $kernel->handle($request);
-            } catch (\Throwable $e) {
-                $log(sprintf('Uncaught %s: %s at %s:%d',
-                    $e::class, $e->getMessage(), $e->getFile(), $e->getLine()),
-                    ['exception' => $e::class, 'file' => $e->getFile(), 'line' => $e->getLine()]);
-
-                // Build a PSR-7 500 response. In dev mode, include the error
-                // details so curl/journalctl show the actual problem.
-                $response = $responseFactory->createResponse(500);
-                if ($isDevMode) {
-                    $body = sprintf(
-                        "Internal Server Error\n\n%s: %s\n\nat %s:%d\n\nStack trace:\n%s\n",
-                        $e::class,
-                        $e->getMessage(),
-                        $e->getFile(),
-                        $e->getLine(),
-                        $e->getTraceAsString(),
-                    );
-                    $response = $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
-                } else {
-                    $response->getBody()->write('Internal Server Error');
-                }
-            }
-
-            // Emit the response via SAPI functions (echo + headers).
-            // In FrankenPHP worker mode, this output is captured by FrankenPHP
-            // and sent as the HTTP response. The handler must NOT return a value.
-            http_response_code($response->getStatusCode());
-            foreach ($response->getHeaders() as $name => $values) {
-                foreach ($values as $value) {
-                    header($name . ': ' . $value, false);
-                }
-            }
-            echo $response->getBody();
-        };
-    }
-
-    /**
-     * Emit a PSR-7 Response to the SAPI (headers + body).
-     * Only used in PHP-FPM fallback mode.
-     */
-    private function emitResponse(ResponseInterface $response): void
-    {
-        http_response_code($response->getStatusCode());
-        foreach ($response->getHeaders() as $name => $values) {
-            foreach ($values as $value) {
-                header($name . ': ' . $value, false);
-            }
-        }
-        echo $response->getBody();
     }
 
     /**

@@ -51,12 +51,13 @@ final class DoctrineMigrationRunner implements MigrationRunnerInterface
     {
         // Use the project's own connection if available, otherwise create
         // a DBAL connection from environment variables.
+        // getenv() returns false when not set; use $_ENV for null-coalescing.
         $params = [
-            'dbname'   => getenv('DB_NAME') ?? 'dglab_test',
-            'user'     => getenv('DB_USER') ?? 'dglab_test',
-            'password' => getenv('DB_PASS') ?? 'CHANGE_ME_STRONG_PASSWORD',
-            'host'     => getenv('DB_HOST') ?? '127.0.0.1',
-            'port'     => (int) (getenv('DB_PORT') ?? 3306),
+            'dbname'   => $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'dglab_test',
+            'user'     => $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'dglab_test',
+            'password' => $_ENV['DB_PASS'] ?? getenv('DB_PASS') ?? 'CHANGE_ME_STRONG_PASSWORD',
+            'host'     => $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? '127.0.0.1',
+            'port'     => (int) ($_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? 3306),
             'driver'   => 'pdo_mysql',
             'charset'  => 'utf8mb4',
         ];

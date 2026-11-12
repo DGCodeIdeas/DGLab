@@ -253,10 +253,10 @@ The two-DAG governance model ratified by ADR-021 (Amendment 1, PR #287) is **str
 - **Category:** Build-artifact drift
 - **Description:** `download/ARCHITECTURE_BASELINE.md` was generated from commit `ce27388` (PR #292, "Hub DAG Phase 2", 2026-10-01 09:17 UTC). Current HEAD is `34ea867` (2026-10-02 20:44 UTC). There are 10 commits between baseline and HEAD including:
   - PR #293 (`f34bdc5`): A0 state model + shortcomings register + audit
-  - PR #294 (`08b0ce6`): A1 — canonical HUB-32 + ESPOKE-19 + lint + INDEX + HUB-33 fix
+  - PR #294 (`08b0ce6`): A1 — canonical HUB-32 + ESPOKE-19 + lint + INDEX + fix
   - PR #295 (`9336fe6`): A2-prep — Shape C pulse() contract
   - PR #296 (`a80a62f`): Blind-Spot Doctrine
-  - PR #297 (`70de0a5`): Blind-Spot Doctrine references undefined HUB-33 token fix
+  - PR #297 (`70de0a5`): Blind-Spot Doctrine references undefined token fix
   - PR #298 (`f282280`): embed Blind-Spot Awareness in EVERY architectural document
   - PR #299 (`6ae3e13`): contributor awareness statement
   - PR #301 (`2ecfb03`): A2 — Fiber isolation for pulse()

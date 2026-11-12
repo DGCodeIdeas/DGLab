@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
+use App\Application;
 use App\ApplicationFactory;
 use PHPUnit\Framework\TestCase;
 use SovereignStack\Core\Http\ServerRequestFactory;
@@ -21,11 +22,11 @@ use Psr\Http\Message\ResponseInterface;
  */
 final class ViewIntegrationTest extends TestCase
 {
-    private ApplicationFactory $factory;
+    private Application $app;
 
     protected function setUp(): void
     {
-        $this->factory = ApplicationFactory::create();
+        $this->app = ApplicationFactory::create();
     }
 
     /**
@@ -33,7 +34,8 @@ final class ViewIntegrationTest extends TestCase
      */
     public function testApplicationFactoryComposesWithView(): void
     {
-        $this->assertInstanceOf(ApplicationFactory::class, $this->factory);
+        $this->assertInstanceOf(Application::class, $this->app);
+        $this->assertTrue($this->app->canHandleRequests());
     }
 
     /**
@@ -41,9 +43,6 @@ final class ViewIntegrationTest extends TestCase
      */
     public function testHelloWorldEndpointStillWorks(): void
     {
-        $kernel = $this->factory->getKernel();
-        $kernel->boot();
-
         // Override globals for our test
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REQUEST_URI'] = '/';
@@ -59,7 +58,7 @@ final class ViewIntegrationTest extends TestCase
         $_FILES = [];
 
         $request = ServerRequestFactory::fromGlobals();
-        $response = $kernel->handle($request);
+        $response = $this->app->handle($request);
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = (string)$response->getBody();
@@ -71,9 +70,6 @@ final class ViewIntegrationTest extends TestCase
      */
     public function testTemplateRenderingWithTwig(): void
     {
-        $kernel = $this->factory->getKernel();
-        $kernel->boot();
-
         // Test with default name (World)
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REQUEST_URI'] = '/hello';
@@ -89,7 +85,7 @@ final class ViewIntegrationTest extends TestCase
         $_FILES = [];
 
         $request = ServerRequestFactory::fromGlobals();
-        $response = $kernel->handle($request);
+        $response = $this->app->handle($request);
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('text/html; charset=utf-8', $response->getHeaderLine('Content-Type'));
@@ -99,7 +95,7 @@ final class ViewIntegrationTest extends TestCase
         // Test with custom name
         $_GET = ['name' => 'Ada'];
         $request = ServerRequestFactory::fromGlobals();
-        $response = $kernel->handle($request);
+        $response = $this->app->handle($request);
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = (string)$response->getBody();

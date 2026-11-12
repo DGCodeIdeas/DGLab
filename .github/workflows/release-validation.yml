@@ -245,7 +245,7 @@ jobs:
         run: |
           FAILED=0
           for job in validate-composer-versions loom-health tag-health-check; do
-            RESULT="${{ needs.$job.result }}"
+            RESULT="${{ needs[format('{0}', job)].result }}"
             if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
               echo "::error::$job: $RESULT"
               FAILED=1

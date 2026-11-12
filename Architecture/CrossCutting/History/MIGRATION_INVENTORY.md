@@ -135,7 +135,7 @@
    - Update root `composer.json` to use new paths exclusively
    - Resolve CORE-19 status in INDEX.md
 
-2. **Assign CORE-ID to Core/View** — Template engine needs canonical ID (CORE-21?)
+2. **Assign CORE-ID to Core/View** — Template engine needs canonical ID (next available CORE)
 
 3. **Begin Hub Tier Migration** — Create `Hub/` top-level directory, migrate `packages/hub/config/` and `packages/hub/identity/`
 
