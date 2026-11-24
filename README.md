@@ -1,4 +1,4 @@
-# DGLab — Sovereign Stack
+# DGLab — Sovereign Stack - EXPERIMENTAL ARCHIVE
 
 > **This project is developed by both humans and AI systems. Both are capable of producing confident, coherent, technically sophisticated work while still being unaware of important shortcomings in their own reasoning.**
 
